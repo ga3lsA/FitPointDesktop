@@ -11941,29 +11941,108 @@ async function refreshPlaylistArchivePanel(){
 
 /** Affiche le contenu d'une archive (les deux stations) en lecture seule,
  *  dans le panneau Archives — sans toucher à la Playlist en cours. */
+/** Regroupe une liste de titres archivés par catégorie, selon l'ordre de
+ *  rotation d'UNE station donnée explicitement (contrairement à
+ *  playlistCategoryGroups, qui se base sur ACTIVE_STATION — une archive
+ *  affiche les deux stations côte à côte, indépendamment de la station
+ *  actuellement active dans le reste de la page). */
+function playlistCategoryGroupsForStation(titles, station){
+  const order = PLAYLIST_CATEGORY_ORDER[station] || [];
+  const groups = order.map(cat => ({ cat, items: [] }));
+  const other = { cat: 'Non classé', items: [] };
+  titles.forEach(t => {
+    const cat = (t.categorie || '').toUpperCase().trim();
+    const g = groups.find(g => g.cat === cat);
+    if(g) g.items.push(t); else other.items.push(t);
+  });
+  const result = groups.filter(g => g.items.length > 0);
+  if(other.items.length) result.push(other);
+  return result;
+}
+
+/** Ligne en lecture seule pour l'affichage d'une archive — même grille et
+ *  même habillage visuel (badges de catégorie, Fit Score, Quadrant...) que
+ *  buildPlaylistRow, mais en texte statique (pas de champs éditables : modifier
+ *  une archive passée n'aurait pas de sens, et ces champs ne sont de toute
+ *  façon rattachés à aucune entrée de la Playlist en cours). */
+function buildArchiveRow(t, metrics, row360){
+  const catNorm = (t.categorie || '').toUpperCase().trim();
+  const catColor = PLAYLIST_CAT_COLORS[catNorm] || null;
+  const catBg = catColor ? `rgb(${catColor.join(',')})` : 'var(--bg)';
+
+  const fitCell = (row360 && row360.fit !== null && row360.fit !== undefined)
+    ? `<span style="font-size:12px;font-weight:800;color:var(--navy)">${row360.fit.toFixed(0)}</span>`
+    : '<span style="color:var(--muted)">–</span>';
+  const quad = row360 && row360.fpQuad ? QUAD[row360.fpQuad] : null;
+  const quadCell = quad
+    ? `<span title="${escHtml(quad.label)}" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:20px;border-radius:6px;background:${quad.badgeBg};color:${quad.badgeText};font-size:12px">${quad.icon}</span>`
+    : '<span style="color:var(--muted)">–</span>';
+
+  const powerTags = [];
+  if(t.powerNew)   powerTags.push('<span style="font-size:8px;font-weight:800;color:#0DA76B">●NEW</span>');
+  if(t.powerIntro) powerTags.push('<span style="font-size:8px;font-weight:800;color:#7C3AED">●INTRO</span>');
+
+  return `<div style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border)">
+    <div></div>
+    <div style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.artist)}">${escHtml(titleCaseDisplay(t.artist))}</div>
+    <div style="padding:7px 6px;font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.title)}">${escHtml(titleCaseDisplay(t.title))}</div>
+    <div style="padding:7px 4px;text-align:center"><span style="display:inline-block;padding:3px 8px;border-radius:5px;background:${catBg};font-size:11px;font-weight:800;color:#1e2838">${escHtml(t.categorie || '—')}</span></div>
+    <div style="padding:7px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--muted)">${escHtml(t.ancienneCategorie || '–')}</div>
+    <div style="padding:7px 4px;text-align:center">${fitCell}</div>
+    <div style="padding:7px 4px;text-align:center">${quadCell}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potTous, 1)}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potP1, 1)}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnTous, 0, '%')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnP1, 0, '%')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incTous, 0, '%')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incP1, 0, '%')}</div>
+    <div style="padding:4px;text-align:center">${powerTags.join('<br>') || '<span style="color:var(--muted)">–</span>'}</div>
+    <div style="padding:7px 4px;text-align:center;font-size:10.5px;color:var(--text2)">${formatDateFr(t.dateEntree) || '–'}</div>
+    <div style="padding:7px 6px;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.label || '')}">${escHtml(t.label || '–')}</div>
+    <div></div>
+  </div>`;
+}
+
+/** Construit l'affichage complet (groupé par catégorie, même habillage que
+ *  la Playlist en cours) d'une station archivée, pour le panneau Archives. */
+function buildArchiveStationView(items, station, rows360){
+  if(!items.length) return '';
+  const groups = playlistCategoryGroupsForStation(items, station);
+  const groupsHtml = groups.map(group => {
+    const catColor = PLAYLIST_CAT_COLORS[(group.cat || '').toUpperCase().trim()] || PLAYLIST_CAT_DEFAULT_COLOR;
+    const catBg = `rgb(${catColor.join(',')})`;
+    const rowsHtml = group.items.map(t => {
+      const metrics = getPlaylistCallOutMetrics(t.title, t.artist);
+      const row360  = findRow360Match(rows360, t.title, t.artist);
+      return buildArchiveRow(t, metrics, row360);
+    }).join('');
+    return `
+      <div style="display:flex;align-items:center;gap:8px;margin:12px 0 4px">
+        <div style="font-size:12px;font-weight:800;color:#1e2838;background:${catBg};border-radius:6px;padding:3px 10px">${escHtml(group.cat)}</div>
+        <div style="font-size:10.5px;color:var(--navy);font-weight:700;background:var(--bg);border:1.5px solid var(--border);border-radius:16px;padding:2px 9px">${group.items.length} titre${group.items.length>1?'s':''}</div>
+      </div>
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+        ${playlistTableHeader()}
+        ${rowsHtml}
+      </div>`;
+  });
+  return `<div style="margin-top:8px">
+    <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:2px">${STATION_LABELS[station]} — ${items.length} titre${items.length>1?'s':''}</div>
+    ${groupsHtml.join('')}
+  </div>`;
+}
+
 async function loadPlaylistArchiveByDate(dateStr){
   if(!dateStr) return;
   const resultsEl = document.getElementById('playlistArchiveResults');
   if(resultsEl) resultsEl.innerHTML = '⏳ Chargement de l\'archive du ' + dateStr + '…';
   try{
     const data = await loadPlaylistArchiveData(dateStr);
-    const sections = ['EUROPE2', 'RFM'].map(st => {
-      const items = (data[st] || []).slice().sort((a,b) => (a.categorie||'').localeCompare(b.categorie||''));
-      if(!items.length) return '';
-      const rows = items.map(t => `
-        <div style="display:grid;grid-template-columns:90px 1fr 1fr 70px 90px;gap:8px;padding:5px 8px;border-bottom:1px solid var(--border);font-size:11px;align-items:center">
-          <div style="font-weight:800;color:var(--navy)">${escHtml(t.categorie||'—')}</div>
-          <div style="font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.artist))}</div>
-          <div style="color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.title))}</div>
-          <div style="color:var(--muted)">${formatDateFr(t.dateEntree)||'—'}</div>
-          <div style="color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(t.label||'—')}</div>
-        </div>`).join('');
-      return `<div style="margin-top:10px">
-        <div style="font-size:11px;font-weight:800;color:var(--navy);margin-bottom:4px">${STATION_LABELS[st]} — ${items.length} titre${items.length>1?'s':''}</div>
-        <div style="border:1.5px solid var(--border);border-radius:8px;overflow:hidden">${rows}</div>
-      </div>`;
-    }).join('');
-    if(resultsEl) resultsEl.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Archive du ${new Date(dateStr+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>${sections || '<div style="color:var(--muted)">Archive vide.</div>'}`;
+    const rows360 = build360Rows();
+    const sections = ['EUROPE2', 'RFM'].map(st => buildArchiveStationView(data[st] || [], st, rows360)).join('');
+    if(resultsEl){
+      resultsEl.innerHTML = `<div style="overflow-x:auto"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Archive du ${new Date(dateStr+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>${sections || '<div style="color:var(--muted)">Archive vide.</div>'}</div>`;
+    }
   }catch(e){
     if(resultsEl) resultsEl.textContent = 'Erreur de chargement de cette archive : ' + (e.message || e);
   }
