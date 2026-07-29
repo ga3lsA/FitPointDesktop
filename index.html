@@ -1370,7 +1370,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           onkeydown="if(event.key==='Enter') searchPlaylistArchives()">
         <button onclick="searchPlaylistArchives()" style="font-size:11px;padding:8px 14px;border-radius:7px;background:var(--navy);border:none;color:#fff;cursor:pointer;font-weight:700">Rechercher</button>
         <select id="playlistArchiveDateSelect" style="padding:8px 12px;border-radius:8px;border:1.5px solid var(--border);font-size:12px;font-family:inherit" onchange="loadPlaylistArchiveByDate(this.value)">
-          <option value="">— Charger une semaine archivée —</option>
+          <option value="">— Charger une archive dans la Playlist en cours —</option>
         </select>
       </div>
       <div id="playlistArchiveResults" style="font-size:12px;color:var(--muted)">Chargement de la liste des archives…</div>
@@ -11402,6 +11402,18 @@ function updatePlaylistField(key, field, value){
   }
   t[field] = value;
   playlistSaveToStorage();
+
+  // Un paquet ne peut exister qu'entre 2 titres de la MÊME catégorie — si la
+  // catégorie de l'un des deux change et ne correspond plus à l'autre, le
+  // paquet se dissout automatiquement (silencieusement, avec une notification).
+  if(field === 'categorie' && t.bundleId){
+    const partner = playlistFindPartner(t);
+    if(partner && (partner.categorie || '').toUpperCase().trim() !== (t.categorie || '').toUpperCase().trim()){
+      const partnerTitle = partner.title;
+      unlinkPlaylistBundle(t.key, true);
+      showToast('🔗 Paquet dissous : « ' + titleCaseDisplay(t.title) + ' » et « ' + titleCaseDisplay(partnerTitle) + ' » ne sont plus dans la même catégorie', 'success');
+    }
+  }
   // Répercuter Date d'Entrée / Label vers le store partagé Song Attributs,
   // pour que la fiche Song Full Metrics reste synchronisée avec la Playlist.
   if(field === 'dateEntree' || field === 'label'){
@@ -11416,6 +11428,39 @@ function updatePlaylistField(key, field, value){
 }
 
 let playlistExpandedKeys = new Set();
+
+let playlistDraggedKey = null;
+
+function playlistDragStart(e, key){
+  playlistDraggedKey = key;
+  e.dataTransfer.effectAllowed = 'move';
+  try{ e.dataTransfer.setData('text/plain', key); }catch(err){ /* certains navigateurs sont pointilleux, sans conséquence : on a déjà la clé en mémoire */ }
+  e.currentTarget.style.opacity = '.4';
+}
+
+function playlistDragEnd(e){
+  e.currentTarget.style.opacity = '1';
+  playlistDraggedKey = null;
+}
+
+/** Dépose un titre glissé sur le groupe d'une autre catégorie : sa Catégorie
+ *  est mise à jour automatiquement pour correspondre à celle du groupe cible
+ *  (déposer sur "Non classé" vide la catégorie). Réutilise updatePlaylistField,
+ *  qui gère déjà Ancienne Catégorie et la dissolution auto des paquets. */
+function playlistDropOnCategory(e, targetCat){
+  e.preventDefault();
+  const key = playlistDraggedKey;
+  playlistDraggedKey = null;
+  if(!key) return;
+  const t = playlistTitles.find(x => x.key === key && x.station === ACTIVE_STATION);
+  if(!t) return;
+  const newCat = targetCat === 'Non classé' ? '' : targetCat;
+  if((t.categorie || '').toUpperCase().trim() === newCat) return; // déjà dans cette catégorie, rien à faire
+  updatePlaylistField(key, 'categorie', newCat);
+  showToast('✓ « ' + titleCaseDisplay(t.title) + ' » déplacé en catégorie ' + (newCat || '(non classé)'), 'success');
+}
+
+
 
 function togglePlaylistExpand(key){
   if(playlistExpandedKeys.has(key)) playlistExpandedKeys.delete(key);
@@ -11575,7 +11620,7 @@ function buildPlaylistRow(t, metrics, row360){
       <input type="checkbox" name="pl-intro-${safeId}" ${t.powerIntro?'checked':''} onchange="updatePlaylistField('${t.key}','powerIntro',this.checked)" title="Power Intro" style="width:13px;height:13px;cursor:pointer;accent-color:#7C3AED">
     </div>`;
 
-  const rowHtml = `<div style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border);${partner?'border-left:3px solid var(--cyan)':''}${selected?';background:var(--cyan-light)':(expanded?';background:var(--bg)':'')}">
+  const rowHtml = `<div draggable="true" ondragstart="playlistDragStart(event,'${t.key}')" ondragend="playlistDragEnd(event)" style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border);cursor:grab;${partner?'border-left:3px solid var(--cyan)':''}${selected?';background:var(--cyan-light)':(expanded?';background:var(--bg)':'')}">
     ${firstCell}
     <div style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.artist)}">${escHtml(titleCaseDisplay(t.artist))}</div>
     <div style="padding:7px 6px;cursor:pointer" onclick="${playlistLinkMode ? `togglePlaylistLinkSelect('${t.key}','${catNorm}')` : `togglePlaylistExpand('${t.key}')`}">
@@ -11692,7 +11737,10 @@ async function renderPlaylistPage(){
         <div style="font-size:11.5px;color:var(--navy);font-weight:700;background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:3px 12px">${group.items.length} titre${group.items.length>1?'s':''}</div>
         <div style="flex:1;height:1px;background:var(--border)"></div>
       </div>
-      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)">
+      <div ondragover="event.preventDefault();this.style.outline='2px dashed var(--cyan)';this.style.outlineOffset='-2px'"
+        ondragleave="this.style.outline='none'"
+        ondrop="this.style.outline='none';playlistDropOnCategory(event,'${jsAttrEscape(group.cat)}')"
+        style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)">
         ${playlistTableHeader()}
         ${rowsHtml}
       </div>`;
@@ -11950,10 +11998,13 @@ async function exportPowerTabPDF(){
   let prevNew = [], prevIntro = [];
   try{
     const todayKey = new Date().toISOString().slice(0, 10);
-    const dates = await getPlaylistArchiveList();
-    const prevDate = dates.find(d => d !== todayKey);
-    if(prevDate){
-      const prevData = await loadPlaylistArchiveData(prevDate);
+    const entries = await getPlaylistArchiveList();
+    // Les clés sont désormais horodatées (date + heure) : on ignore toute
+    // sauvegarde faite aujourd'hui, quelle que soit l'heure, pour retrouver
+    // la dernière sauvegarde d'un jour précédent.
+    const prevEntry = entries.find(ts => ts.slice(0, 10) !== todayKey);
+    if(prevEntry){
+      const prevData = await loadPlaylistArchiveData(prevEntry);
       const prevStation = prevData[ACTIVE_STATION] || [];
       prevNew   = prevStation.filter(t => t.powerNew);
       prevIntro = prevStation.filter(t => t.powerIntro);
@@ -12080,16 +12131,34 @@ async function exportPowerTabPDF(){
 // tout l'historique archivé. ─────────────────────────────────────────────
 
 const PLAYLIST_ARCHIVE_PREFIX = 'playlist_';
-let playlistArchiveListCache = null; // liste des dates archivées (invalidée à chaque nouvelle sauvegarde)
-const playlistArchiveDataCache = {}; // date -> {EUROPE2:[...], RFM:[...], savedAt}
+let playlistArchiveListCache = null; // liste des archives (invalidée à chaque nouvelle sauvegarde)
+const playlistArchiveDataCache = {}; // horodatage -> {EUROPE2:[...], RFM:[...], savedAt}
 
-function playlistArchiveKeyForDate(dateStr){ return PLAYLIST_ARCHIVE_PREFIX + dateStr; }
+/** Horodatage "AAAA-MM-JJTHH-MM-SS" (heure locale) pour la clé Drive d'une
+ *  nouvelle sauvegarde — inclut désormais l'heure (pas seulement la date),
+ *  pour que plusieurs sauvegardes le même jour créent des archives
+ *  distinctes au lieu de s'écraser entre elles. */
+function playlistArchiveTimestampNow(){
+  const now = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return now.getFullYear() + '-' + p(now.getMonth()+1) + '-' + p(now.getDate())
+    + 'T' + p(now.getHours()) + '-' + p(now.getMinutes()) + '-' + p(now.getSeconds());
+}
+function playlistArchiveKey(ts){ return PLAYLIST_ARCHIVE_PREFIX + ts; }
+
+/** Formate un horodatage d'archive "2026-07-29T14-32-05" en texte lisible
+ *  "29 juillet 2026 à 14:32". */
+function formatArchiveTimestamp(ts){
+  const m = ts.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/);
+  if(!m) return ts;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return d.toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'}) + ' à ' + m[4] + ':' + m[5];
+}
 
 /** Sauvegarde les Playlists des DEUX stations (Europe 2 + RFM) en un seul
- *  objet Drive daté du jour, indépendant des sauvegardes de classements
- *  hebdomadaires. Écrase l'archive du jour si elle existe déjà (une seule
- *  sauvegarde par jour ; refaire "Sauvegarder" le même jour met simplement
- *  à jour l'archive existante). */
+ *  objet Drive horodaté (date + heure), indépendant des sauvegardes de
+ *  classements hebdomadaires. Chaque sauvegarde crée une archive distincte
+ *  — refaire "Sauvegarder" plus tard le même jour n'écrase pas la précédente. */
 async function savePlaylistArchive(){
   if(!DRIVE_SYNC_URL){
     showToast('Configurez d\'abord la synchronisation Drive dans Classements → Historique Drive', 'err');
@@ -12099,50 +12168,52 @@ async function savePlaylistArchive(){
     showToast('Aucun titre dans la Playlist à sauvegarder', 'err');
     return;
   }
-  const todayKey = new Date().toISOString().slice(0, 10);
+  const ts = playlistArchiveTimestampNow();
   const payload = {
-    date: todayKey,
+    date: ts.slice(0, 10),
     savedAt: new Date().toISOString(),
     EUROPE2: playlistTitles.filter(t => t.station === 'EUROPE2'),
     RFM: playlistTitles.filter(t => t.station === 'RFM')
   };
   showToast('⏳ Sauvegarde de la Playlist en cours…', 'success');
   try{
-    await driveCall('save', playlistArchiveKeyForDate(todayKey), JSON.stringify(payload));
-    showToast('✓ Playlist archivée sur Drive (' + todayKey + ')', 'success');
+    await driveCall('save', playlistArchiveKey(ts), JSON.stringify(payload));
+    showToast('✓ Playlist archivée sur Drive (' + formatArchiveTimestamp(ts) + ')', 'success');
     playlistArchiveListCache = null;
-    playlistArchiveDataCache[todayKey] = payload;
+    playlistArchiveDataCache[ts] = payload;
     if(document.getElementById('playlistArchivePanel')?.style.display !== 'none') refreshPlaylistArchivePanel();
   }catch(e){
     showToast('Erreur lors de la sauvegarde : ' + (e.message || e), 'err');
   }
 }
 
-/** Liste des dates archivées (via l'action générique "list" du Drive Sync,
- *  qui renvoie tous les fichiers du dossier FPA_Data — filtrée ici sur le
- *  préfixe "playlist_"). Mise en cache mémoire le temps de la session. */
+/** Liste des archives (via l'action générique "list" du Drive Sync, qui
+ *  renvoie tous les fichiers du dossier FPA_Data — filtrée ici sur le
+ *  préfixe "playlist_"). Mise en cache mémoire le temps de la session.
+ *  Accepte l'ancien format (date seule, sans heure) pour ne pas perdre les
+ *  archives sauvegardées avant l'ajout de l'horodatage. */
 async function getPlaylistArchiveList(){
   if(playlistArchiveListCache) return playlistArchiveListCache;
   if(!DRIVE_SYNC_URL) return [];
   try{
     const r = await driveCall('list');
     if(!r || !r.ok || !Array.isArray(r.keys)) return [];
-    const dates = r.keys
+    const entries = r.keys
       .filter(k => k.startsWith(PLAYLIST_ARCHIVE_PREFIX))
       .map(k => k.slice(PLAYLIST_ARCHIVE_PREFIX.length))
-      .filter(d => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      .filter(d => /^\d{4}-\d{2}-\d{2}(T\d{2}-\d{2}-\d{2})?$/.test(d))
       .sort((a, b) => b.localeCompare(a));
-    playlistArchiveListCache = dates;
-    return dates;
+    playlistArchiveListCache = entries;
+    return entries;
   }catch(e){ return []; }
 }
 
-/** Charge (avec cache mémoire) l'archive Playlist d'une date donnée. */
-async function loadPlaylistArchiveData(dateStr){
-  if(playlistArchiveDataCache[dateStr]) return playlistArchiveDataCache[dateStr];
-  const r = await driveCall('load', playlistArchiveKeyForDate(dateStr));
+/** Charge (avec cache mémoire) l'archive Playlist d'un horodatage donné. */
+async function loadPlaylistArchiveData(ts){
+  if(playlistArchiveDataCache[ts]) return playlistArchiveDataCache[ts];
+  const r = await driveCall('load', playlistArchiveKey(ts));
   const data = JSON.parse(r.data);
-  playlistArchiveDataCache[dateStr] = data;
+  playlistArchiveDataCache[ts] = data;
   return data;
 }
 
@@ -12154,127 +12225,55 @@ function toggleArchivePanel(){
   if(open) refreshPlaylistArchivePanel();
 }
 
-/** Peuple le sélecteur de dates et l'état initial du panneau Archives. */
+/** Peuple le sélecteur d'archives et l'état initial du panneau Archives. */
 async function refreshPlaylistArchivePanel(){
   const sel = document.getElementById('playlistArchiveDateSelect');
   const resultsEl = document.getElementById('playlistArchiveResults');
   if(resultsEl) resultsEl.textContent = 'Chargement de la liste des archives…';
-  const dates = await getPlaylistArchiveList();
+  const entries = await getPlaylistArchiveList();
   if(sel){
-    sel.innerHTML = '<option value="">— Charger une semaine archivée —</option>'
-      + dates.map(d => `<option value="${d}">${new Date(d+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</option>`).join('');
+    sel.innerHTML = '<option value="">— Charger une archive dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' —</option>'
+      + entries.map(ts => `<option value="${ts}">${formatArchiveTimestamp(ts)}</option>`).join('');
   }
   if(resultsEl){
-    resultsEl.textContent = dates.length
-      ? dates.length + ' archive' + (dates.length>1?'s':'') + ' disponible' + (dates.length>1?'s':'') + ' — choisissez une date ci-dessus, ou lancez une recherche.'
+    resultsEl.textContent = entries.length
+      ? entries.length + ' archive' + (entries.length>1?'s':'') + ' disponible' + (entries.length>1?'s':'') + ' — en choisir une la charge dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' (modifiable ensuite normalement), ou lancez une recherche.'
       : (DRIVE_SYNC_URL ? 'Aucune Playlist archivée pour l\'instant.' : 'Configurez la synchronisation Drive pour activer les archives.');
   }
 }
 
-/** Affiche le contenu d'une archive (les deux stations) en lecture seule,
- *  dans le panneau Archives — sans toucher à la Playlist en cours. */
-/** Regroupe une liste de titres archivés par catégorie, selon l'ordre de
- *  rotation d'UNE station donnée explicitement (contrairement à
- *  playlistCategoryGroups, qui se base sur ACTIVE_STATION — une archive
- *  affiche les deux stations côte à côte, indépendamment de la station
- *  actuellement active dans le reste de la page). */
-function playlistCategoryGroupsForStation(titles, station){
-  const order = PLAYLIST_CATEGORY_ORDER[station] || [];
-  const groups = order.map(cat => ({ cat, items: [] }));
-  const other = { cat: 'Non classé', items: [] };
-  titles.forEach(t => {
-    const cat = (t.categorie || '').toUpperCase().trim();
-    const g = groups.find(g => g.cat === cat);
-    if(g) g.items.push(t); else other.items.push(t);
-  });
-  const result = groups.filter(g => g.items.length > 0);
-  if(other.items.length) result.push(other);
-  return result;
-}
+/** Charge une archive DANS la Playlist de travail de la station active —
+ *  ce n'est PAS un aperçu figé : les titres de l'archive remplacent ceux
+ *  actuellement affichés pour cette station et deviennent immédiatement
+ *  modifiables (catégorie, dates, paquets, Power New/Intro...) exactement
+ *  comme n'importe quel autre titre de la Playlist. Une nouvelle sauvegarde
+ *  peut ensuite être faite normalement (💾 Sauvegarder), qui créera une
+ *  archive distincte, horodatée au moment de cette nouvelle sauvegarde. */
+async function loadPlaylistArchiveByDate(ts){
+  if(!ts) return;
+  const sel = document.getElementById('playlistArchiveDateSelect');
+  const currentCount = playlistTitles.filter(t => t.station === ACTIVE_STATION).length;
+  const warn = currentCount
+    ? `Charger cette archive va remplacer les ${currentCount} titre(s) actuellement dans la Playlist ${STATION_LABELS[ACTIVE_STATION]}.\n\nLes modifications non sauvegardées sur cette station seront perdues.\n\nContinuer ?`
+    : `Charger cette archive dans la Playlist ${STATION_LABELS[ACTIVE_STATION]} ?`;
+  if(!confirm(warn)){ if(sel) sel.value = ''; return; }
 
-/** Ligne en lecture seule pour l'affichage d'une archive — même grille et
- *  même habillage visuel (badges de catégorie, Fit Score, Quadrant...) que
- *  buildPlaylistRow, mais en texte statique (pas de champs éditables : modifier
- *  une archive passée n'aurait pas de sens, et ces champs ne sont de toute
- *  façon rattachés à aucune entrée de la Playlist en cours). */
-function buildArchiveRow(t, metrics, row360){
-  const catNorm = (t.categorie || '').toUpperCase().trim();
-  const catColor = PLAYLIST_CAT_COLORS[catNorm] || null;
-  const catBg = catColor ? `rgb(${catColor.join(',')})` : 'var(--bg)';
-
-  const fitCell = (row360 && row360.fit !== null && row360.fit !== undefined)
-    ? `<span style="font-size:12px;font-weight:800;color:var(--navy)">${row360.fit.toFixed(0)}</span>`
-    : '<span style="color:var(--muted)">–</span>';
-  const quad = row360 && row360.fpQuad ? QUAD[row360.fpQuad] : null;
-  const quadCell = quad
-    ? `<span title="${escHtml(quad.label)}" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:20px;border-radius:6px;background:${quad.badgeBg};color:${quad.badgeText};font-size:12px">${quad.icon}</span>`
-    : '<span style="color:var(--muted)">–</span>';
-
-  const powerTags = [];
-  if(t.powerNew)   powerTags.push('<span style="font-size:8px;font-weight:800;color:#0DA76B">●NEW</span>');
-  if(t.powerIntro) powerTags.push('<span style="font-size:8px;font-weight:800;color:#7C3AED">●INTRO</span>');
-
-  return `<div style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border)">
-    <div></div>
-    <div style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.artist)}">${escHtml(titleCaseDisplay(t.artist))}</div>
-    <div style="padding:7px 6px;font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.title)}">${escHtml(titleCaseDisplay(t.title))}</div>
-    <div style="padding:7px 4px;text-align:center"><span style="display:inline-block;padding:3px 8px;border-radius:5px;background:${catBg};font-size:11px;font-weight:800;color:#1e2838">${escHtml(t.categorie || '—')}</span></div>
-    <div style="padding:7px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--muted)">${escHtml(t.ancienneCategorie || '–')}</div>
-    <div style="padding:7px 4px;text-align:center">${fitCell}</div>
-    <div style="padding:7px 4px;text-align:center">${quadCell}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potTous, 1)}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potP1, 1)}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnTous, 0, '%')}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnP1, 0, '%')}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incTous, 0, '%')}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incP1, 0, '%')}</div>
-    <div style="padding:4px;text-align:center">${powerTags.join('<br>') || '<span style="color:var(--muted)">–</span>'}</div>
-    <div style="padding:7px 4px;text-align:center;font-size:10.5px;color:var(--text2)">${formatDateFr(t.dateEntree) || '–'}</div>
-    <div style="padding:7px 6px;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.label || '')}">${escHtml(t.label || '–')}</div>
-    <div></div>
-  </div>`;
-}
-
-/** Construit l'affichage complet (groupé par catégorie, même habillage que
- *  la Playlist en cours) d'une station archivée, pour le panneau Archives. */
-function buildArchiveStationView(items, station, rows360){
-  if(!items.length) return '';
-  const groups = playlistCategoryGroupsForStation(items, station);
-  const groupsHtml = groups.map(group => {
-    const catColor = PLAYLIST_CAT_COLORS[(group.cat || '').toUpperCase().trim()] || PLAYLIST_CAT_DEFAULT_COLOR;
-    const catBg = `rgb(${catColor.join(',')})`;
-    const rowsHtml = group.items.map(t => {
-      const metrics = getPlaylistCallOutMetrics(t.title, t.artist);
-      const row360  = findRow360Match(rows360, t.title, t.artist);
-      return buildArchiveRow(t, metrics, row360);
-    }).join('');
-    return `
-      <div style="display:flex;align-items:center;gap:8px;margin:12px 0 4px">
-        <div style="font-size:12px;font-weight:800;color:#1e2838;background:${catBg};border-radius:6px;padding:3px 10px">${escHtml(group.cat)}</div>
-        <div style="font-size:10.5px;color:var(--navy);font-weight:700;background:var(--bg);border:1.5px solid var(--border);border-radius:16px;padding:2px 9px">${group.items.length} titre${group.items.length>1?'s':''}</div>
-      </div>
-      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
-        ${playlistTableHeader()}
-        ${rowsHtml}
-      </div>`;
-  });
-  return `<div style="margin-top:8px">
-    <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:2px">${STATION_LABELS[station]} — ${items.length} titre${items.length>1?'s':''}</div>
-    ${groupsHtml.join('')}
-  </div>`;
-}
-
-async function loadPlaylistArchiveByDate(dateStr){
-  if(!dateStr) return;
   const resultsEl = document.getElementById('playlistArchiveResults');
-  if(resultsEl) resultsEl.innerHTML = '⏳ Chargement de l\'archive du ' + dateStr + '…';
+  if(resultsEl) resultsEl.textContent = '⏳ Chargement de l\'archive…';
   try{
-    const data = await loadPlaylistArchiveData(dateStr);
-    const rows360 = build360Rows();
-    const sections = ['EUROPE2', 'RFM'].map(st => buildArchiveStationView(data[st] || [], st, rows360)).join('');
-    if(resultsEl){
-      resultsEl.innerHTML = `<div style="overflow-x:auto"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Archive du ${new Date(dateStr+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</div>${sections || '<div style="color:var(--muted)">Archive vide.</div>'}</div>`;
-    }
+    const data = await loadPlaylistArchiveData(ts);
+    // Clone profond : ne jamais réutiliser directement les objets du cache
+    // d'archive, pour que les modifications faites ensuite dans la Playlist
+    // n'altèrent pas l'archive elle-même si on la recharge plus tard.
+    const items = JSON.parse(JSON.stringify(data[ACTIVE_STATION] || []));
+    playlistTitles = playlistTitles.filter(t => t.station !== ACTIVE_STATION).concat(items);
+    playlistSaveToStorage();
+    playlistExpandedKeys = new Set();
+    if(sel) sel.value = '';
+    toggleArchivePanel(); // referme le panneau Archives, retour à la Playlist normale et éditable
+    updatePlaylistBadge();
+    renderPlaylistPage();
+    showToast('✓ Archive du ' + formatArchiveTimestamp(ts) + ' chargée dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' — modifiable normalement', 'success');
   }catch(e){
     if(resultsEl) resultsEl.textContent = 'Erreur de chargement de cette archive : ' + (e.message || e);
   }
@@ -12284,36 +12283,39 @@ async function loadPlaylistArchiveByDate(dateStr){
  *  (recherche texte simple, insensible à la casse — pas de matching flou,
  *  contrairement au reste de l'appli, puisqu'il s'agit ici de retrouver une
  *  saisie exacte plutôt que de faire correspondre des sources hétérogènes).
- *  Plafonné aux 30 archives les plus récentes pour rester réactif. */
+ *  Plafonné aux 30 archives les plus récentes pour rester réactif. Contrairement
+ *  au chargement (limité à la station active), la recherche couvre les deux
+ *  stations — son but est de retrouver où/quand un titre est apparu, pas de
+ *  restaurer un état de travail. */
 async function searchPlaylistArchives(){
   const query = (document.getElementById('playlistArchiveSearch')?.value || '').trim().toLowerCase();
   const resultsEl = document.getElementById('playlistArchiveResults');
   if(!query){ refreshPlaylistArchivePanel(); return; }
   if(resultsEl) resultsEl.textContent = '⏳ Recherche dans les archives…';
 
-  const dates = (await getPlaylistArchiveList()).slice(0, 30);
+  const entries = (await getPlaylistArchiveList()).slice(0, 30);
   const matches = [];
-  for(const d of dates){
+  for(const ts of entries){
     let data;
-    try{ data = await loadPlaylistArchiveData(d); }catch(e){ continue; }
+    try{ data = await loadPlaylistArchiveData(ts); }catch(e){ continue; }
     ['EUROPE2', 'RFM'].forEach(st => {
       (data[st] || []).forEach(t => {
         const hay = (norm(t.artist||'') + ' ' + norm(t.title||''));
-        if(hay.includes(norm(query))) matches.push({ date: d, station: st, ...t });
+        if(hay.includes(norm(query))) matches.push({ ts, station: st, ...t });
       });
     });
   }
 
   if(!resultsEl) return;
   if(!matches.length){
-    resultsEl.textContent = 'Aucun résultat pour « ' + query + ' » dans les ' + dates.length + ' dernière(s) archive(s).';
+    resultsEl.textContent = 'Aucun résultat pour « ' + query + ' » dans les ' + entries.length + ' dernière(s) archive(s).';
     return;
   }
-  matches.sort((a,b) => b.date.localeCompare(a.date));
+  matches.sort((a,b) => b.ts.localeCompare(a.ts));
   resultsEl.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">${matches.length} résultat${matches.length>1?'s':''} pour « ${escHtml(query)} »</div>` +
     matches.map(m => `
-      <div style="display:grid;grid-template-columns:90px 70px 1fr 1fr 70px;gap:8px;padding:5px 8px;border-bottom:1px solid var(--border);font-size:11px;align-items:center">
-        <div style="color:var(--muted)">${new Date(m.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short',year:'numeric'})}</div>
+      <div style="display:grid;grid-template-columns:130px 70px 1fr 1fr 70px;gap:8px;padding:5px 8px;border-bottom:1px solid var(--border);font-size:11px;align-items:center">
+        <div style="color:var(--muted)">${formatArchiveTimestamp(m.ts)}</div>
         <div style="font-weight:700;color:${m.station==='EUROPE2'?'var(--navy)':'#7C3AED'}">${STATION_LABELS[m.station]}</div>
         <div style="font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(m.artist))}</div>
         <div style="color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(m.title))}</div>
