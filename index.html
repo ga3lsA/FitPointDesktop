@@ -1341,6 +1341,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button onclick="savePlaylistArchive()" title="Sauvegarder la Playlist de cette semaine sur Drive (archive indépendante des classements)" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#0DA76B;border:1.5px solid #0DA76B;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">💾 Sauvegarder</button>
         <button onclick="exportPlaylistPDF()" title="Exporter la playlist de la station en cours en PDF" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">📄 Exporter en PDF</button>
         <button onclick="exportPowerTabPDF()" title="Exporter les titres Power New / Power Intro cochés, avec les Nouveau/Out par rapport à la semaine précédente" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#7C3AED;border:1.5px solid #7C3AED;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">🔌 Power Tab</button>
+        <label title="Importer Label / Date d'Entrée depuis un fichier Excel (colonnes Artiste, Titre, Label, Date entrée) — s'applique à la station active" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:5px">
+          📥 Importer Excel
+          <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handlePlaylistAttributesImport(this)">
+        </label>
         <button onclick="clearPlaylist()" title="Vider la Playlist de la station en cours" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#FFEAEA;border:1.5px solid #F5B8B8;color:#CC2222;cursor:pointer;font-weight:700;white-space:nowrap">Tout retirer</button>
       </div>
     </div>
@@ -8752,7 +8756,58 @@ async function openTitleEvolutionModal(btn){
     ${buildDigitalSnapshotSection(chartsSeries, title, artist)}
   </div>`);
 
+  // ── Song Attributs : Date d'Entrée par station, Label, Genre — tous
+  // optionnels. Éditables ici ET depuis la Playlist (Date d'Entrée/Label),
+  // synchronisés dans les deux sens (voir updateSongAttribute). Le Genre
+  // réutilise directement le store de la page Genres (Décision → Genres),
+  // pas de doublon : le confirmer ici le confirme aussi là-bas.
+  const songAttrs = getSongAttributes(title, artist);
+  const genreEntry = getGenreEntry(title, artist);
+  const genreVal = (genreEntry && genreEntry.confirmed && genreEntry.confirmed.length) ? genreEntry.confirmed.join(', ')
+    : ((genreEntry && genreEntry.suggested && genreEntry.suggested.length) ? genreEntry.suggested.join(', ') : '');
+  sections.push(`<div style="display:flex;align-items:center;gap:12px;margin:26px 0 14px">
+    <div style="flex:1;height:3px;background:linear-gradient(90deg,var(--border) 0%,var(--cyan) 50%,var(--border) 100%);border-radius:2px"></div>
+    <span style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap">🏷️ Song Attributs</span>
+    <div style="flex:1;height:3px;background:linear-gradient(90deg,var(--border) 0%,var(--cyan) 50%,var(--border) 100%);border-radius:2px"></div>
+  </div>`);
+  sections.push(`<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date d'entrée Europe 2
+      <input type="date" value="${songAttrs.dateEntreeEurope2 || ''}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','dateEntreeEurope2',this.value)"
+        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+    </label>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date d'entrée RFM
+      <input type="date" value="${songAttrs.dateEntreeRFM || ''}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','dateEntreeRFM',this.value)"
+        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+    </label>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Label
+      <input type="text" placeholder="ex. Polydor" value="${escHtml(songAttrs.label || '')}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','label',this.value)"
+        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+    </label>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Genre
+      <div style="display:flex;gap:6px;margin-top:5px">
+        <input id="tevGenreInput" type="text" placeholder="ex. Pop" value="${escHtml(genreVal)}"
+          onchange="setGenreEntry('${jsAttrEscape(title)}','${jsAttrEscape(artist)}',{confirmed: this.value ? [this.value] : []})"
+          style="flex:1;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+        <button onclick="tevFetchGenre('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher le genre via iTunes"
+          style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
+      </div>
+    </label>
+  </div>`);
+
   document.getElementById('tevBody').innerHTML = sections.join('');
+}
+
+/** Recherche le genre via iTunes pour le champ Genre de la fiche Song
+ *  Attributs, et l'enregistre directement dans le store de la page Genres
+ *  (Décision → Genres) comme genre confirmé. */
+async function tevFetchGenre(title, artist){
+  showToast('⏳ Recherche du genre…', 'success');
+  const rawGenre = await fetchItunesGenre(title, artist);
+  if(!rawGenre){ showToast('Aucun genre trouvé sur iTunes pour ce titre', 'err'); return; }
+  setGenreEntry(title, artist, { confirmed: [rawGenre] });
+  const input = document.getElementById('tevGenreInput');
+  if(input) input.value = rawGenre;
+  showToast('✓ Genre trouvé : ' + rawGenre, 'success');
 }
 
 function closeTitleEvolutionModal(e){
@@ -10710,8 +10765,71 @@ function updateComiteBadge(){
 // 3 champs éditables par titre (Date d'Entrée, Catégorie, Label) et un
 // rattachement à la station active au moment de l'ajout (Europe 2 / RFM),
 // puisque les catégories et l'export PDF diffèrent par station. ──────────
+// ── SONG ATTRIBUTS — attributs éditoriaux par titre (indépendants de la
+// station et du fait qu'il soit ou non dans la Playlist), affichés en bas de
+// la fiche "Song Full Metrics" ET synchronisés avec les champs Date d'Entrée
+// / Label de la Playlist (les deux se mettent à jour l'un l'autre). Les
+// dates d'entrée sont doublées (Europe 2 / RFM) puisqu'un même titre peut
+// être entré à des dates différentes sur chaque station ; le Label et le
+// Genre sont partagés (un même titre n'a qu'un seul label/genre réel). ────
+let songAttributes = songAttributesLoadFromStorage();
+
+function songAttributesLoadFromStorage(){
+  try{ return JSON.parse(localStorage.getItem('fpa_song_attributes') || '{}'); }
+  catch(e){ return {}; }
+}
+function songAttributesSaveToStorage(){
+  try{ localStorage.setItem('fpa_song_attributes', JSON.stringify(songAttributes)); }catch(e){ /* quota localStorage, ignoré */ }
+}
+function getSongAttributes(title, artist){
+  const key = comiteKey(title, artist);
+  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'' };
+  return songAttributes[key];
+}
+
+/** Met à jour un attribut partagé et répercute Date d'Entrée / Label sur les
+ *  entrées Playlist existantes des deux stations (pour que la Playlist et la
+ *  fiche restent synchronisées quel que soit l'endroit où on édite). Le
+ *  Genre n'a pas d'équivalent dans la Playlist, rien à répercuter pour lui. */
+function updateSongAttribute(title, artist, field, value){
+  const attrs = getSongAttributes(title, artist);
+  attrs[field] = value;
+  songAttributesSaveToStorage();
+
+  const key = comiteKey(title, artist);
+  if(field === 'label'){
+    playlistTitles.forEach(t => { if(t.key === key) t.label = value; });
+    playlistSaveToStorage();
+  } else if(field === 'dateEntreeEurope2' || field === 'dateEntreeRFM'){
+    const station = field === 'dateEntreeEurope2' ? 'EUROPE2' : 'RFM';
+    const t = playlistTitles.find(x => x.key === key && x.station === station);
+    if(t){ t.dateEntree = value; playlistSaveToStorage(); }
+  }
+  if(playlistPageOpen) renderPlaylistPage();
+}
+
+/** Migration ponctuelle (exécutée une fois par session, sans effet si déjà
+ *  fait) : recopie les Date d'Entrée / Label déjà saisis dans la Playlist
+ *  vers le nouveau store partagé, pour ne rien perdre des saisies
+ *  précédentes à l'introduction de cette fonctionnalité. Ne touche jamais
+ *  un attribut déjà renseigné (ne risque donc pas d'écraser une saisie plus
+ *  récente faite directement dans "Song Attributs"). */
+function migrateSongAttributesFromPlaylist(){
+  let changed = false;
+  playlistTitles.forEach(t => {
+    const attrs = getSongAttributes(t.title, t.artist);
+    if(t.label && !attrs.label){ attrs.label = t.label; changed = true; }
+    if(t.dateEntree){
+      const field = t.station === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+      if(!attrs[field]){ attrs[field] = t.dateEntree; changed = true; }
+    }
+  });
+  if(changed) songAttributesSaveToStorage();
+}
+
 let playlistTitles = playlistLoadFromStorage();
 dedupePlaylistTitles();
+migrateSongAttributesFromPlaylist();
 updatePlaylistBadge();
 
 function playlistLoadFromStorage(){
@@ -10814,6 +10932,109 @@ function addManualPlaylistTitle(){
   if(titleInput)  titleInput.value  = '';
   showToast('✓ « ' + titleCaseDisplay(title) + ' » ajouté à la Playlist', 'success');
   if(playlistPageOpen) renderPlaylistPage();
+}
+
+/** Meilleure correspondance d'un titre/artiste (Excel importé) parmi les
+ *  titres de la Playlist de la station active — même algorithme de score
+ *  combiné (titre 60% + artiste 40%, seuil 0.55) que findInChart, pour
+ *  rester cohérent avec le reste de l'appli. */
+function playlistFindMatch(title, artist){
+  const nt = norm(title), na = norm(artist);
+  let best = null, bestScore = 0;
+  playlistTitles.filter(t => t.station === ACTIVE_STATION).forEach(t => {
+    const ts = similarity(nt, t.title || '');
+    const as = na ? similarity(na, t.artist || '') : 0.5;
+    const score = ts * 0.6 + as * 0.4;
+    if(score > bestScore && score >= 0.55){ bestScore = score; best = t; }
+  });
+  return best;
+}
+
+/** Convertit une cellule Excel (Date JS, texte "JJ/MM/AAAA" ou "AAAA-MM-JJ",
+ *  éventuellement avec une heure) en date seule "AAAA-MM-JJ" (format natif
+ *  d'un input type="date") — l'heure, si présente, est ignorée. */
+function excelCellToDateOnly(cell){
+  if(cell === null || cell === undefined || cell === '') return '';
+  if(cell instanceof Date && !isNaN(cell.getTime())){
+    return cell.getFullYear() + '-' + String(cell.getMonth()+1).padStart(2,'0') + '-' + String(cell.getDate()).padStart(2,'0');
+  }
+  const str = String(cell).trim();
+  let m = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+  return '';
+}
+
+/** Importe Label et Date d'Entrée depuis un fichier Excel (colonnes
+ *  Artiste, Titre, Label, Date entrée — l'intitulé exact de la 4e colonne
+ *  importe peu, seule sa position/le mot "date" compte) vers les titres
+ *  déjà présents dans la Playlist de la station active. Ne crée jamais de
+ *  nouveau titre : un titre du fichier non retrouvé dans la Playlist est
+ *  simplement listé en fin d'import pour être traité manuellement. */
+function handlePlaylistAttributesImport(input){
+  const file = input.files[0];
+  if(!file) return;
+  if(typeof XLSX === 'undefined'){
+    showToast('Bibliothèque Excel non chargée — vérifiez la connexion internet', 'err');
+    input.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try{
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Repérer la ligne d'en-tête (première ligne non vide) et les colonnes
+      // par leur intitulé plutôt que par position fixe, pour tolérer un
+      // ordre de colonnes différent d'un fichier à l'autre.
+      const headerRowIdx = rows.findIndex(r => r.some(c => String(c).trim() !== ''));
+      if(headerRowIdx < 0){ showToast('Fichier vide', 'err'); input.value = ''; return; }
+      const header = rows[headerRowIdx].map(h => norm(String(h)));
+      const colArtiste = header.findIndex(h => h.includes('artiste'));
+      const colTitre   = header.findIndex(h => h.includes('titre'));
+      const colLabel   = header.findIndex(h => h.includes('label'));
+      const colDate    = header.findIndex(h => h.includes('date'));
+      if(colArtiste < 0 || colTitre < 0){
+        showToast('Colonnes Artiste/Titre introuvables dans le fichier', 'err');
+        input.value = '';
+        return;
+      }
+
+      const dateField = ACTIVE_STATION === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+      let updated = 0;
+      const notFound = [];
+
+      for(let i = headerRowIdx + 1; i < rows.length; i++){
+        const row = rows[i];
+        const artist = String(row[colArtiste] || '').trim();
+        const title  = String(row[colTitre] || '').trim();
+        if(!artist && !title) continue;
+
+        const match = playlistFindMatch(title, artist);
+        if(!match){ notFound.push(titleCaseDisplay(title) + ' — ' + titleCaseDisplay(artist)); continue; }
+
+        const label = colLabel >= 0 ? String(row[colLabel] || '').trim() : '';
+        const dateOnly = colDate >= 0 ? excelCellToDateOnly(row[colDate]) : '';
+        if(label)    updateSongAttribute(match.title, match.artist, 'label', label);
+        if(dateOnly) updateSongAttribute(match.title, match.artist, dateField, dateOnly);
+        if(label || dateOnly) updated++;
+      }
+
+      renderPlaylistPage();
+      let msg = '✓ ' + updated + ' titre(s) mis à jour pour ' + STATION_LABELS[ACTIVE_STATION];
+      if(notFound.length) msg += ' — ' + notFound.length + ' non trouvé(s) dans la Playlist';
+      showToast(msg, notFound.length ? 'err' : 'success');
+      if(notFound.length) console.warn('Titres non trouvés dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' :', notFound);
+    }catch(err){
+      showToast('Erreur de lecture du fichier : ' + (err.message || err), 'err');
+    }finally{
+      input.value = '';
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 function clearPlaylist(){
@@ -11181,6 +11402,14 @@ function updatePlaylistField(key, field, value){
   }
   t[field] = value;
   playlistSaveToStorage();
+  // Répercuter Date d'Entrée / Label vers le store partagé Song Attributs,
+  // pour que la fiche Song Full Metrics reste synchronisée avec la Playlist.
+  if(field === 'dateEntree' || field === 'label'){
+    const attrs = getSongAttributes(t.title, t.artist);
+    if(field === 'label') attrs.label = value;
+    else attrs[ACTIVE_STATION === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2'] = value;
+    songAttributesSaveToStorage();
+  }
   // La catégorie détermine le regroupement/tri affiché : on ré-affiche pour
   // que le titre bascule immédiatement dans le bon groupe.
   if(field === 'categorie' && playlistPageOpen) renderPlaylistPage();
@@ -11307,6 +11536,9 @@ function titleCaseDisplay(str){
 function buildPlaylistRow(t, metrics, row360){
   const expanded = playlistExpandedKeys.has(t.key);
   const safeId = t.key.replace(/[^a-z0-9]/gi, '-');
+  const songAttrs = getSongAttributes(t.title, t.artist);
+  const dateEntreeVal = songAttrs[t.station === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2'] || t.dateEntree || '';
+  const labelVal = songAttrs.label || t.label || '';
   const catNorm = (t.categorie||'').toUpperCase().trim();
   const catColor = PLAYLIST_CAT_COLORS[catNorm] || null;
   const catBg = catColor ? `rgb(${catColor.join(',')})` : 'var(--white)';
@@ -11371,11 +11603,11 @@ function buildPlaylistRow(t, metrics, row360){
     <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incP1, 0, '%')}</div>
     <div style="padding:4px">${powerCell}</div>
     <div style="padding:4px">
-      <input type="date" name="pl-date-${safeId}" value="${t.dateEntree || ''}" onchange="updatePlaylistField('${t.key}','dateEntree',this.value)"
+      <input type="date" name="pl-date-${safeId}" value="${dateEntreeVal}" onchange="updatePlaylistField('${t.key}','dateEntree',this.value)"
         style="width:100%;padding:4px 3px;border-radius:5px;border:1.5px solid var(--border);font-size:10px;font-family:inherit;color:var(--navy);background:var(--white)">
     </div>
     <div style="padding:4px 6px 4px 4px">
-      <input type="text" name="pl-label-${safeId}" placeholder="Label" value="${escHtml(t.label || '')}" onchange="updatePlaylistField('${t.key}','label',this.value)"
+      <input type="text" name="pl-label-${safeId}" placeholder="Label" value="${escHtml(labelVal)}" onchange="updatePlaylistField('${t.key}','label',this.value)"
         style="width:100%;padding:4px 6px;border-radius:5px;border:1.5px solid var(--border);font-size:11px;font-family:inherit;color:var(--navy);background:var(--white)">
     </div>
     <div style="padding:7px 8px 7px 0;text-align:center">
