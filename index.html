@@ -225,6 +225,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       Quotas FR
       <span id="quotasBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
     </button>
+    <button id="categTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleCategPage()" title="Catégorisation automatique des sound codes">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L3 3v6.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
+      Sound Codes
+    </button>
   </div>
 </div>
 
@@ -5137,16 +5141,54 @@ function parseKworbListeners(html){
 
 /** Rang E2 (airplay) pré-calculé une seule fois, réutilisé par tous les
  *  classements kworb (évite de dupliquer la boucle de tri par titre). */
+/** Libellé court ("E2"/"RFM") de la radio correspondant à la STATION ACTIVE
+ *  — utilisé dans les en-têtes/infobulles des classements digitaux pour que
+ *  l'affichage suive la station de référence en cours plutôt que d'être
+ *  toujours Europe 2. */
+function activeStationRadioLabel(){ return ACTIVE_STATION === 'RFM' ? 'RFM' : 'E2'; }
+
+/** Rang de la STATION ACTIVE (Europe 2 ou RFM, jamais les deux) dans le
+ *  classement airplay de la dernière semaine chargée — utilisé pour la
+ *  colonne de comparaison "E2 rang"/"RFM rang" affichée sur tous les
+ *  classements digitaux (Spotify, Shazam, Deezer, Apple Music...). Suit
+ *  ACTIVE_STATION comme le reste de l'app (Cycles de vie, Radar, Analyse de
+ *  potentiel...) — avant ce correctif, c'était toujours la colonne "e2" qui
+ *  était utilisée, y compris avec RFM sélectionnée comme station active. */
 function computeE2RankMap(){
   const map = {};
   if(!airplayLoaded) return map;
+  const activeKey = ACTIVE_STATION === 'RFM' ? 'rfm' : 'e2';
   const sorted = Object.entries(airplayData)
     .filter(([k]) => k.includes('|||'))
-    .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
+    .map(([k,v]) => ({key:k, e2val: (v[activeKey]!==null && v[activeKey]!==undefined && v[activeKey]!=='') ? parseInt(v[activeKey])||0 : 0}))
     .filter(x => x.e2val > 0)
     .sort((a,b) => b.e2val - a.e2val);
   sorted.forEach((x,i) => { map[x.key] = i+1; });
   return map;
+}
+
+/** Retrouve le rang (E2 ou RFM selon la station active) d'un titre dans
+ *  e2RankMap — clé exacte artiste+titre d'abord, puis correspondance FLOUE
+ *  combinant TITRE ET ARTISTE (60%/40%, seuil 0.55 — même algorithme que
+ *  findInChart) en repli.
+ *  CORRECTIF : le repli flou ne comparait auparavant QUE le titre, sans
+ *  tenir compte de l'artiste — ce qui pouvait attribuer à un titre absent
+ *  de la station active (ex. sur RFM) le rang d'un tout autre titre chanté
+ *  par un artiste différent, simplement parce que les deux titres se
+ *  ressemblaient textuellement (repéré sur des titres comme "Gims Soleil"
+ *  ou "Hugel" affichant un rang RFM alors qu'ils n'y sont pas diffusés). */
+function findE2Rank(e2RankMap, title, artist){
+  const k1 = norm(artist) + '|||' + norm(title);
+  if(e2RankMap[k1] !== undefined) return e2RankMap[k1];
+  const nt = norm(title), na = norm(artist);
+  let best = null, bestScore = 0;
+  for(const [k, rank] of Object.entries(e2RankMap)){
+    const parts = k.split('|||');
+    const ka = parts[0] || '', kt = parts[1] || '';
+    const score = similarity(nt, kt) * 0.6 + similarity(na, ka) * 0.4;
+    if(score > bestScore && score >= 0.55){ bestScore = score; best = rank; }
+  }
+  return best;
 }
 
 // ── Proxy Apps Script pour kworb.net — PRIORITAIRE sur les proxies publics ──
@@ -10507,32 +10549,14 @@ function renderChartTable(){
     isEmpty = !loaded;
     if(loaded){
       // Précalcul du rang E2 depuis airplayData (tri par passages E2 décroissants)
-      const e2RankMap = {};
-      if(airplayLoaded){
-        const e2Sorted = Object.entries(airplayData)
-          .filter(([k]) => k.includes('|||'))
-          .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
-          .filter(x => x.e2val > 0)
-          .sort((a,b) => b.e2val - a.e2val);
-        e2Sorted.forEach((x, i) => { e2RankMap[x.key] = i+1; });
-      }
+      const e2RankMap = computeE2RankMap();
       entries = Object.entries(src)
         .map(([r,e]) => {
           const title  = e.t||e.title||'';
           const artist = e.a||e.artist||'';
           const ap = airplayLoaded ? findAirplay(title, artist) : null;
           let e2rank = null;
-          if(ap && airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(ap && airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank)
@@ -10567,33 +10591,18 @@ function renderChartTable(){
     isEmpty = !spotifyLoaded || Object.keys(spotifyData).length === 0;
     if(!isEmpty){
       subEl.textContent = (spotifyDateUsed || '') + ' · ' + Object.keys(spotifyData).length + ' titres';
-      // Précalcul rang E2 depuis airplayData (même logique que shzfr)
-      const e2RankMap = {};
-      if(airplayLoaded){
-        const e2Sorted = Object.entries(airplayData)
-          .filter(([k]) => k.includes('|||'))
-          .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
-          .filter(x => x.e2val > 0)
-          .sort((a,b) => b.e2val - a.e2val);
-        e2Sorted.forEach((x, i) => { e2RankMap[x.key] = i+1; });
-      }
+      // Rang E2/RFM (selon la station active) depuis airplayData — réutilise
+      // computeE2RankMap() plutôt qu'un calcul dupliqué ici, pour ne pas
+      // recréer indépendamment le même bug (figé sur Europe 2 quel que soit
+      // ACTIVE_STATION) à un autre endroit du code.
+      const e2RankMap = computeE2RankMap();
       entries = Object.entries(spotifyData)
         .map(([r,e]) => {
           const title  = e.t||'';
           const artist = e.a||'';
           const ap = airplayLoaded ? findAirplay(title, artist) : null;
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist,
                   streams: e.streams, peak: e.peak, prev: e.prev, days: e.days,
                   e2rank};
@@ -10624,17 +10633,7 @@ function renderChartTable(){
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist,
                   streams: e.streams, peak: e.peak, prev: e.prev, days: e.days,
                   e2rank};
@@ -10674,17 +10673,7 @@ function renderChartTable(){
         const title  = t.title||'';
         const artist = t.artist||'';
         let e2rank = null;
-        if(airplayLoaded){
-          const k1 = norm(artist)+'|||'+norm(title);
-          if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-          else {
-            const found = Object.entries(e2RankMap).find(([k]) => {
-              const kt = k.split('|||')[1];
-              return similarity(norm(title), kt) >= 0.75;
-            });
-            if(found) e2rank = found[1];
-          }
-        }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
         return {rank: t.rank, title, artist, e2rank};
       }).sort((a,b)=>a.rank-b.rank);
     } else if(p && p.fetchedAt){
@@ -10718,17 +10707,7 @@ function renderChartTable(){
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank);
@@ -10782,31 +10761,13 @@ function renderChartTable(){
     isEmpty = !deezerLoaded || Object.keys(deezerData).length === 0;
     if(!isEmpty){
       subEl.textContent = (deezerDateUsed ? 'données du ' + deezerDateUsed : 'données live') + ' · ' + Object.keys(deezerData).length + ' titres';
-      const e2RankMap = {};
-      if(airplayLoaded){
-        const e2Sorted = Object.entries(airplayData)
-          .filter(([k]) => k.includes('|||'))
-          .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
-          .filter(x => x.e2val > 0)
-          .sort((a,b) => b.e2val - a.e2val);
-        e2Sorted.forEach((x, i) => { e2RankMap[x.key] = i+1; });
-      }
+      const e2RankMap = computeE2RankMap();
       entries = Object.entries(deezerData)
         .map(([r,e]) => {
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank);
@@ -10833,31 +10794,13 @@ function renderChartTable(){
     isEmpty = !futursHitsLoaded || Object.keys(futursHitsData).length === 0;
     if(!isEmpty){
       subEl.textContent = (futursHitsDateUsed ? 'données du ' + futursHitsDateUsed : 'données live') + ' · ' + Object.keys(futursHitsData).length + ' titres';
-      const e2RankMap = {};
-      if(airplayLoaded){
-        const e2Sorted = Object.entries(airplayData)
-          .filter(([k]) => k.includes('|||'))
-          .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
-          .filter(x => x.e2val > 0)
-          .sort((a,b) => b.e2val - a.e2val);
-        e2Sorted.forEach((x, i) => { e2RankMap[x.key] = i+1; });
-      }
+      const e2RankMap = computeE2RankMap();
       entries = Object.entries(futursHitsData)
         .map(([r,e]) => {
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank);
@@ -10887,31 +10830,13 @@ function renderChartTable(){
     isEmpty = !amSt.loaded || Object.keys(amSt.data).length === 0;
     if(!isEmpty){
       subEl.textContent = (amSt.dateUsed ? 'données du ' + amSt.dateUsed : 'données live') + ' · ' + Object.keys(amSt.data).length + ' titres';
-      const e2RankMap = {};
-      if(airplayLoaded){
-        const e2Sorted = Object.entries(airplayData)
-          .filter(([k]) => k.includes('|||'))
-          .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
-          .filter(x => x.e2val > 0)
-          .sort((a,b) => b.e2val - a.e2val);
-        e2Sorted.forEach((x, i) => { e2RankMap[x.key] = i+1; });
-      }
+      const e2RankMap = computeE2RankMap();
       entries = Object.entries(amSt.data)
         .map(([r,e]) => {
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank);
@@ -10941,31 +10866,13 @@ function renderChartTable(){
     isEmpty = !itSt.loaded || Object.keys(itSt.data).length === 0;
     if(!isEmpty){
       subEl.textContent = (itSt.dateUsed ? 'données du ' + itSt.dateUsed : 'données live') + ' · ' + Object.keys(itSt.data).length + ' titres';
-      const e2RankMap = {};
-      if(airplayLoaded){
-        const e2Sorted = Object.entries(airplayData)
-          .filter(([k]) => k.includes('|||'))
-          .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
-          .filter(x => x.e2val > 0)
-          .sort((a,b) => b.e2val - a.e2val);
-        e2Sorted.forEach((x, i) => { e2RankMap[x.key] = i+1; });
-      }
+      const e2RankMap = computeE2RankMap();
       entries = Object.entries(itSt.data)
         .map(([r,e]) => {
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank);
@@ -10999,17 +10906,7 @@ function renderChartTable(){
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, views:e.streams, peak:e.peak, weeks:e.days, prev:e.prev, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank);
@@ -11036,31 +10933,13 @@ function renderChartTable(){
     isEmpty = !billboardLoaded || Object.keys(billboardData).length === 0;
     if(!isEmpty){
       subEl.textContent = (billboardDateUsed ? 'données du ' + billboardDateUsed : 'données live') + ' · ' + Object.keys(billboardData).length + ' titres';
-      const e2RankMap = {};
-      if(airplayLoaded){
-        const e2Sorted = Object.entries(airplayData)
-          .filter(([k]) => k.includes('|||'))
-          .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
-          .filter(x => x.e2val > 0)
-          .sort((a,b) => b.e2val - a.e2val);
-        e2Sorted.forEach((x, i) => { e2RankMap[x.key] = i+1; });
-      }
+      const e2RankMap = computeE2RankMap();
       entries = Object.entries(billboardData)
         .map(([r,e]) => {
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank);
@@ -11082,31 +10961,13 @@ function renderChartTable(){
     isEmpty = !billboardGlobalLoaded || Object.keys(billboardGlobalData).length === 0;
     if(!isEmpty){
       subEl.textContent = (billboardGlobalDateUsed ? 'données du ' + billboardGlobalDateUsed : 'données live') + ' · ' + Object.keys(billboardGlobalData).length + ' titres';
-      const e2RankMap = {};
-      if(airplayLoaded){
-        const e2Sorted = Object.entries(airplayData)
-          .filter(([k]) => k.includes('|||'))
-          .map(([k,v]) => ({key:k, e2val: (v.e2!==null && v.e2!==undefined && v.e2!=='') ? parseInt(v.e2)||0 : 0}))
-          .filter(x => x.e2val > 0)
-          .sort((a,b) => b.e2val - a.e2val);
-        e2Sorted.forEach((x, i) => { e2RankMap[x.key] = i+1; });
-      }
+      const e2RankMap = computeE2RankMap();
       entries = Object.entries(billboardGlobalData)
         .map(([r,e]) => {
           const title  = e.t||'';
           const artist = e.a||'';
           let e2rank = null;
-          if(airplayLoaded){
-            const k1 = norm(artist)+'|||'+norm(title);
-            if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
-            else {
-              const found = Object.entries(e2RankMap).find(([k]) => {
-                const kt = k.split('|||')[1];
-                return similarity(norm(title), kt) >= 0.75;
-              });
-              if(found) e2rank = found[1];
-            }
-          }
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
           return {rank:parseInt(r), title, artist, e2rank};
         })
         .sort((a,b)=>a.rank-b.rank);
@@ -11303,19 +11164,19 @@ function renderChartTable(){
   } else if(activeChartTab === 'spyfr' || KWORB_COUNTRY_TABS.includes(activeChartTab)){
     const spyGridH = airplayLoaded ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
     hdrEl.style.gridTemplateColumns = spyGridH;
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:#1DB954;font-weight:800;text-align:right">Streams</span><span style="text-align:center">±</span>' + (airplayLoaded ? '<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang Europe 2 dans le classement airplay">E2 rang</span>' : '');
+    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:#1DB954;font-weight:800;text-align:right">Streams</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
   } else if(activeChartTab === 'yt' || KWORB_YOUTUBE_TABS.includes(activeChartTab)){
     const ytGridH = airplayLoaded ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
     hdrEl.style.gridTemplateColumns = ytGridH;
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:#FF0000;font-weight:800;text-align:right">Vues</span><span style="text-align:center">±</span>' + (airplayLoaded ? '<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang Europe 2 dans le classement airplay">E2 rang</span>' : '');
+    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:#FF0000;font-weight:800;text-align:right">Vues</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
   } else if(activeChartTab.startsWith('kp_')){
     // ── Playlist Spotify clé — pas de streams/peak (non fournis par l'embed) ──
     const showE2KP = airplayLoaded;
     hdrEl.style.gridTemplateColumns = showE2KP ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span>' + (showE2KP ? '<span style="color:var(--cyan);font-weight:800" title="Rang Europe 2 dans le classement airplay">E2 rang</span>' : '') + '<span>LIENS</span>';
+    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span>' + (showE2KP ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '') + '<span>LIENS</span>';
   } else if((activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded){
     hdrEl.style.gridTemplateColumns = '26px 48px minmax(0,1fr) 64px 56px';
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang Europe 2 dans le classement airplay">E2 rang</span><span>LIENS</span>';
+    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span><span>LIENS</span>';
   } else if(activeChartTab === 'kwtop'){
     hdrEl.style.gridTemplateColumns = '26px 48px minmax(0,1fr) 40px';
     hdrEl.innerHTML = '<span></span><span>#</span><span>ARTISTE</span><span></span>';
@@ -11425,9 +11286,9 @@ function renderChartRow(e){
       if(e.e2rank !== null && e.e2rank !== undefined){
         const e2color = e.e2rank<=3?'var(--green-text)':e.e2rank<=10?'var(--cyan)':e.e2rank<=30?'var(--blue)':'var(--text2)';
         const e2fw = e.e2rank<=10?'800':'700';
-        e2Cell = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};text-align:center" title="Rang E2 airplay : #${e.e2rank}">#${e.e2rank}</div>`;
+        e2Cell = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};text-align:center" title="Rang ${activeStationRadioLabel()} airplay : #${e.e2rank}">#${e.e2rank}</div>`;
       } else {
-        e2Cell = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay E2">–</div>`;
+        e2Cell = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
     const gridColsSpy = showE2spy ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
@@ -11462,9 +11323,9 @@ function renderChartRow(e){
       if(e.e2rank !== null && e.e2rank !== undefined){
         const e2color = e.e2rank<=3?'var(--green-text)':e.e2rank<=10?'var(--cyan)':e.e2rank<=30?'var(--blue)':'var(--text2)';
         const e2fw = e.e2rank<=10?'800':'700';
-        e2CellKP = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};text-align:center" title="Rang E2 airplay : #${e.e2rank}">#${e.e2rank}</div>`;
+        e2CellKP = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};text-align:center" title="Rang ${activeStationRadioLabel()} airplay : #${e.e2rank}">#${e.e2rank}</div>`;
       } else {
-        e2CellKP = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay E2">–</div>`;
+        e2CellKP = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
     const gridColsKP = showE2KP ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
@@ -11499,9 +11360,9 @@ function renderChartRow(e){
       if(e.e2rank !== null && e.e2rank !== undefined){
         const e2color = e.e2rank<=3?'var(--green-text)':e.e2rank<=10?'var(--cyan)':e.e2rank<=30?'var(--blue)':'var(--text2)';
         const e2fw = e.e2rank<=10?'800':'700';
-        e2CellYt = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};text-align:center" title="Rang E2 airplay : #${e.e2rank}">#${e.e2rank}</div>`;
+        e2CellYt = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};text-align:center" title="Rang ${activeStationRadioLabel()} airplay : #${e.e2rank}">#${e.e2rank}</div>`;
       } else {
-        e2CellYt = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay E2">–</div>`;
+        e2CellYt = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
     const gridColsYt = showE2yt ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
@@ -11544,9 +11405,9 @@ function renderChartRow(e){
                       : e.e2rank <= 30 ? 'var(--blue)'
                       : 'var(--text2)';
         const e2fw = e.e2rank <= 10 ? '800' : '700';
-        e2Cell = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};font-variant-numeric:tabular-nums;text-align:center" title="Rang E2 airplay : #${e.e2rank}">#${e.e2rank}</div>`;
+        e2Cell = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};font-variant-numeric:tabular-nums;text-align:center" title="Rang ${activeStationRadioLabel()} airplay : #${e.e2rank}">#${e.e2rank}</div>`;
       } else {
-        e2Cell = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay E2">–</div>`;
+        e2Cell = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
 
