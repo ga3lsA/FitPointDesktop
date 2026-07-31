@@ -351,6 +351,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </button>
         <div id="decGroupMenuDetection" class="dec-group-menu" style="display:none">
           <button id="decTabRadar"   onclick="switchDecTab('radar')"   class="dec-subtab-item"><span class="dec-subtab-ic">🎯</span>Radar</button>
+          <button id="decTabWatchlist" onclick="switchDecTab('watchlist')" class="dec-subtab-item"><span class="dec-subtab-ic">🔭</span>Veille<span id="watchlistBadge" style="display:none;background:#0DA76B;color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center;margin-left:5px"></span></button>
           <button id="decTabPolar"  onclick="switchDecTab('polar')"  class="dec-subtab-item"><span class="dec-subtab-ic">⚡</span>Polarisation</button>
           <button id="decTabShazInc" onclick="switchDecTab('shazinc')" class="dec-subtab-item"><span class="dec-subtab-ic">🔍</span>Analyse de potentiel</button>
           <button id="decTabExclusifs" onclick="switchDecTab('exclusifs')" class="dec-subtab-item"><span class="dec-subtab-ic">🔒</span>Exclusifs</button>
@@ -969,6 +970,50 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div id="radarList" style="display:flex;flex-direction:column;gap:10px"></div>
     </div>
 
+    <div id="decPaneWatchlist" style="display:none">
+
+      <!-- En-tête -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:4px;height:40px;background:linear-gradient(180deg,#7C3AED 0%,rgba(124,58,237,.25) 100%);border-radius:4px;flex-shrink:0"></div>
+          <div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Détection — signaux faibles</div>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🔭 Veille</h2>
+            <button id="infoWatchlistBtn" onclick="toggleInfoNote('infoWatchlist')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Comment ça marche
+              <svg class="info-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+          <span id="watchlistCountBadge" style="font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;white-space:nowrap"></span>
+          <button onclick="watchlistDailyCheck(true)" title="Forcer une nouvelle vérification de tous les titres surveillés, même déjà vérifiés aujourd'hui" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#7C3AED;border:1.5px solid #7C3AED;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">🔄 Vérifier maintenant</button>
+        </div>
+      </div>
+
+      <!-- Note explicative (repliable) -->
+      <div id="infoWatchlist" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
+        Ajoutez ici un titre qu'un label vous a présenté, même s'il n'apparaît encore dans aucun classement. FPA le revérifie automatiquement <strong>une fois par jour</strong> (au chargement de l'appli, une fois les classements chargés) sur iTunes/Apple Music, sur <strong>tous les marchés Spotify</strong> (France + 8 autres pays via kworb.net, chargés automatiquement pour la Veille même si vous ne les avez pas ouverts dans Classements), sur les <strong>Playlists Spotify clés</strong> suivies (RapCaviar, New Music Friday..., chargées automatiquement pour la Veille si besoin), et sur tous les autres classements FPA actuellement chargés (Shazam, Deezer, Airplay). Un badge <strong>🎯 Nouveau signal</strong> apparaît dès qu'un titre passe de "introuvable" à "trouvé" quelque part — le signe qu'il commence à sortir de nulle part, y compris à l'étranger avant la France ou via un ajout éditorial à une playlist. L'historique jour par jour reste consultable pour chaque titre. Une fois convaincu, un bouton permet de l'ajouter directement au Comité d'Écoute ou à la Playlist.
+      </div>
+
+      <!-- Ajout manuel -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;box-shadow:var(--shadow)">
+        <span style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">➕ Ajouter un titre à surveiller</span>
+        <input id="watchlistManualArtist" type="text" name="watchlist-manual-artist" placeholder="Artiste" style="flex:1;min-width:130px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit">
+        <input id="watchlistManualTitle" type="text" name="watchlist-manual-title" placeholder="Titre" style="flex:1;min-width:130px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit">
+        <input id="watchlistManualNote" type="text" name="watchlist-manual-note" placeholder="Note (ex. label, contact...)" style="flex:1;min-width:150px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit" onkeydown="if(event.key==='Enter') addWatchlistTitle()">
+        <button onclick="addWatchlistTitle()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:#7C3AED;border:none;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">Ajouter</button>
+      </div>
+
+      <!-- Bandeau vide -->
+      <div id="watchlistEmptyBar" style="display:none;padding:24px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
+
+      <!-- Liste des titres surveillés -->
+      <div id="watchlistList"></div>
+
+    </div>
+
     <div id="decPaneIedr" style="display:none">
 
       <!-- En-tête -->
@@ -1390,6 +1435,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   </div>
 </div>
 
+<!-- PAGE VEILLE ────────────────────────────────────────────────────────── -->
 <!-- PAGE QUOTAS FRANCOPHONES (Yacast) ────────────────────────────────────── -->
 <div id="pageQuotas" style="display:none">
   <div style="max-width:900px;margin:0 auto;padding:24px 16px">
@@ -1861,9 +1907,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <div style="width:1px;height:26px;background:var(--border);margin-right:6px;flex-shrink:0"></div>
     <div class="dec-group" id="chartIntlGroup" style="margin-right:6px;display:flex;align-items:stretch;height:34px;border-radius:8px;background:var(--blue-bg);box-shadow:0 0 0 1px var(--blue-border);opacity:.7">
       <button id="chartGroupBtnIntl" onclick="switchChartTab('kwfr')" style="height:34px;padding:0 10px 0 12px;border:none;background:transparent;color:var(--navy);cursor:pointer;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:6px;border-radius:8px 0 0 8px">
-        🌍 International
+        🎵 Spotify Inter
       </button>
-      <button id="chartGroupChevronBtnIntl" onclick="toggleChartIntlGroup(event)" title="Classements internationaux (source kworb.net)" style="height:34px;width:26px;border:none;border-left:1px solid rgba(11,29,58,.12);background:transparent;color:var(--navy);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:0 8px 8px 0">
+      <button id="chartGroupChevronBtnIntl" onclick="toggleChartIntlGroup(event)" title="Classements internationaux (source kworb.net) et Playlists clés" style="height:34px;width:26px;border:none;border-left:1px solid rgba(11,29,58,.12);background:transparent;color:var(--navy);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:0 8px 8px 0">
         <svg class="dec-group-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div id="chartIntlGroupMenu" class="dec-group-menu" style="display:none;top:40px;left:0">
@@ -1878,6 +1924,20 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button id="chartTabIntl_kwnl" onclick="switchChartTab('kwnl')" class="dec-subtab-item"><span class="dec-subtab-ic">🇳🇱</span>Spotify Pays-Bas</button>
         <button id="chartTabIntl_kwtop" onclick="switchChartTab('kwtop')" class="dec-subtab-item"><span class="dec-subtab-ic">🌍</span>Top Artistes (Monde)</button>
       </div>
+    </div>
+    <div style="width:1px;height:26px;background:var(--border);margin-right:6px;flex-shrink:0"></div>
+    <!-- Groupe Playlists Spotify (éditoriales) — une page complète par
+         playlist suivie, menu déroulant rempli dynamiquement par
+         renderSpotifyPlaylistsGroupMenu() puisque la liste évolue (ajout/
+         retrait libre par l'utilisateur). -->
+    <div class="dec-group" id="chartSpotifyPlaylistsGroup" style="margin-right:6px;display:flex;align-items:stretch;height:34px;border-radius:8px;background:var(--blue-bg);box-shadow:0 0 0 1px var(--blue-border);opacity:.7">
+      <button id="chartGroupBtnSpotifyPlaylists" onclick="toggleChartSpotifyPlaylistsGroup(event)" style="height:34px;padding:0 10px 0 12px;border:none;background:transparent;color:var(--navy);cursor:pointer;font-size:11px;font-weight:800;display:inline-flex;align-items:center;gap:6px;border-radius:8px 0 0 8px">
+        🎧 Playlists Spotify
+      </button>
+      <button id="chartGroupChevronBtnSpotifyPlaylists" onclick="toggleChartSpotifyPlaylistsGroup(event)" title="Playlists éditoriales Spotify suivies (RapCaviar, New Music Friday...)" style="height:34px;width:26px;border:none;border-left:1px solid rgba(11,29,58,.12);background:transparent;color:var(--navy);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:0 8px 8px 0">
+        <svg class="dec-group-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="chartSpotifyPlaylistsGroupMenu" class="dec-group-menu" style="display:none;top:40px;left:0"></div>
     </div>
     <div style="width:1px;height:26px;background:var(--border);margin-right:6px;flex-shrink:0"></div>
     <!-- Groupe Shazam (France + Monde) -->
@@ -2090,6 +2150,45 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <button onclick="embNextPage()" class="btn-ghost" style="font-size:12px;padding:7px 14px;border-radius:8px">Suivant →</button>
         </div>
       </div>
+    </div>
+
+    <!-- Panneau Playlists clés (sous-onglet du groupe Spotify Inter) -->
+    <div id="keyplaylistsChartsPanel" style="display:none">
+      <!-- En-tête -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:4px;height:40px;background:linear-gradient(180deg,#0DA76B 0%,rgba(13,167,107,.25) 100%);border-radius:4px;flex-shrink:0"></div>
+          <div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Spotify Inter</div>
+            <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--navy);line-height:1.15">🎧 Playlists Spotify clés</h2>
+            <button id="infoKeyplaylistsBtn" onclick="toggleInfoNote('infoKeyplaylists')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Comment ça marche
+              <svg class="info-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+        </div>
+        <button onclick="toggleKworbProxyPanel()" title="Configurer le proxy Apps Script personnel (partagé avec International/Billboard) — essayé en priorité pour les Playlists clés" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700;white-space:nowrap;flex-shrink:0">⚙️ Proxy</button>
+      </div>
+
+      <!-- Note explicative (repliable) -->
+      <div id="infoKeyplaylists" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
+        <strong style="color:var(--navy)">Expérimental.</strong> Kworb ne suit pas les playlists éditoriales Spotify (RapCaviar, New Music Friday...), seulement les classements par pays. Cette section tente de récupérer directement le contenu d'une playlist Spotify publique via sa page d'intégration (embed), sans clé ni connexion — <strong>en priorité via votre proxy Apps Script personnel</strong> (bouton ⚙️ ci-dessus, même proxy que kworb/Billboard), beaucoup plus fiable que les proxies CORS publics utilisés en repli. Collez l'URL ou l'identifiant d'une playlist (ex. <code>https://open.spotify.com/playlist/37i9dQZF1DX0XUsuxWHRQd</code> pour RapCaviar), donnez-lui un nom, puis cliquez sur "🔄 Charger". Si la récupération échoue, le détail de chaque tentative (proxy par proxy) reste consultable pour diagnostiquer précisément.
+      </div>
+
+      <!-- Ajout d'une playlist -->
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;box-shadow:var(--shadow)">
+        <span style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">➕ Suivre une playlist</span>
+        <input id="keyplaylistUrlInput" type="text" name="keyplaylist-url" placeholder="URL ou ID de la playlist Spotify" style="flex:2;min-width:200px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit">
+        <input id="keyplaylistLabelInput" type="text" name="keyplaylist-label" placeholder="Nom (ex. RapCaviar)" style="flex:1;min-width:130px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit" onkeydown="if(event.key==='Enter') addKeyPlaylist()">
+        <button onclick="addKeyPlaylist()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:#0DA76B;border:none;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">Ajouter</button>
+      </div>
+
+      <!-- Bandeau vide -->
+      <div id="keyplaylistsEmptyBar" style="display:none;padding:24px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
+
+      <!-- Liste des playlists suivies -->
+      <div id="keyplaylistsList"></div>
     </div>
 
     <!-- Panneau Live (sous-onglet du groupe Airplay) -->
@@ -2769,7 +2868,8 @@ function initPlatformLogosInTabs(){
     ['chartTabBB_bbus',        LOGO_BILLBOARD, 'Billboard', 14, 'Billboard US (Hot 100)'],
     ['chartTabBB_kwradio',     LOGO_BILLBOARD, 'Billboard', 14, 'Billboard Radio (Airplay US)'],
     ['chartTabBB_bbg200',      LOGO_BILLBOARD, 'Billboard', 14, 'Billboard Global 200'],
-    ['chartGroupBtnIntl',      LOGO_SPOTIFY,   'Spotify',   16, 'International'],
+    ['chartGroupBtnIntl',      LOGO_SPOTIFY,   'Spotify',   16, 'Spotify Inter'],
+    ['chartGroupBtnSpotifyPlaylists', LOGO_SPOTIFY, 'Spotify', 16, 'Playlists Spotify'],
   ];
   tabs.forEach(([id, src, alt, h, suffix]) => {
     const el = document.getElementById(id);
@@ -4807,6 +4907,16 @@ function chartGlobalSearchSources(){
     if(st && st.loaded) sources.push({label: KWORB_YOUTUBE_COUNTRIES[cc].label, chart: st.data});
   });
   if(kworbRadioLoaded)      sources.push({label:'Billboard Radio', chart: kworbRadioData});
+  // Playlists Spotify clés (RapCaviar, New Music Friday...) — uniquement
+  // celles effectivement chargées (tracks non vides). Converties au même
+  // format {rang: {t,a}} que les autres sources pour réutiliser le même
+  // moteur de recherche/correspondance.
+  keyPlaylists.forEach(p => {
+    if(!p.tracks || !p.tracks.length) return;
+    const chart = {};
+    p.tracks.forEach(t => { chart[t.rank] = { t: t.title, a: t.artist }; });
+    sources.push({label: p.label, chart});
+  });
   return sources;
 }
 
@@ -4836,14 +4946,8 @@ function renderChartGlobalSearch(){
   });
 
   const results = Object.values(matches).slice(0, 30);
-  if(!sources.length){
-    box.style.display = 'block';
-    box.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted);text-align:center">Aucun classement chargé pour l'instant — ouvrez-en un dans les onglets ci-dessus.</div>`;
-    return;
-  }
   if(!results.length){
-    box.style.display = 'block';
-    box.innerHTML = `<div style="padding:14px;font-size:12px;color:var(--muted);text-align:center">Aucun résultat dans les ${sources.length} classement${sources.length>1?'s':''} chargé${sources.length>1?'s':''}</div>`;
+    renderChartSearchWebFallback(input.value.trim(), sources.length, box);
     return;
   }
 
@@ -4860,6 +4964,102 @@ function renderChartGlobalSearch(){
       <div style="font-size:9.5px;font-weight:700;color:var(--muted)">${escHtml(shown)}</div>
     </button>`;
   }).join('');
+}
+
+/** Panneau de secours affiché quand une recherche ne trouve AUCUN titre
+ *  dans les classements FPA chargés — utile pour un titre tout juste
+ *  proposé par un label, pas encore présent dans un classement. Combine :
+ *  1) une vérification en direct sur iTunes/Apple Music (seule API tierce
+ *     interrogeable en JSONP sans proxy ni clé — donne un vrai signal :
+ *     existence, date de sortie, pochette) ;
+ *  2) des liens de recherche en un clic vers Spotify/YouTube/Deezer/Shazam/
+ *     TikTok/Instagram/Google (pas de données live possibles ici : ces
+ *     plateformes n'offrent pas d'API de recherche publique sans clé/auth,
+ *     donc simple raccourci plutôt qu'un vrai signal chiffré) ;
+ *  3) un ajout rapide direct au Comité d'Écoute ou à la Playlist, pour
+ *     accélérer la mise en place d'un titre qui a retenu l'attention. */
+function renderChartSearchWebFallback(query, nbSourcesLoaded, box){
+  box.style.display = 'block';
+  const noDataMsg = nbSourcesLoaded
+    ? `Aucun résultat dans les ${nbSourcesLoaded} classement${nbSourcesLoaded>1?'s':''} chargé${nbSourcesLoaded>1?'s':''} pour FPA.`
+    : `Aucun classement chargé pour l'instant dans FPA.`;
+  const encoded = encodeURIComponent(query);
+  const linkStyle = 'display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap';
+  box.innerHTML = `
+    <div style="padding:11px 14px;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--border)">${noDataMsg}</div>
+    <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
+      <div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">🌐 Signaux faibles — ailleurs sur le web</div>
+      <div id="chartSearchItunesCheck" style="font-size:11.5px;color:var(--muted);margin-bottom:10px">⏳ Vérification sur iTunes / Apple Music…</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        <a href="https://open.spotify.com/search/${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🟢 Spotify</a>
+        <a href="https://www.youtube.com/results?search_query=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">▶️ YouTube</a>
+        <a href="https://www.deezer.com/search/${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🎧 Deezer</a>
+        <a href="https://www.shazam.com/fr/search?term=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🔍 Shazam</a>
+        <a href="https://www.tiktok.com/search?q=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🎵 TikTok</a>
+        <a href="https://www.instagram.com/explore/search/keyword/?q=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">📸 Instagram</a>
+        <a href="https://www.google.com/search?q=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🌐 Google</a>
+      </div>
+      <div style="font-size:9.5px;color:var(--muted);margin-top:8px">Spotify/YouTube/Deezer/Shazam/TikTok/Instagram/Google n'offrant pas de recherche publique interrogeable sans clé, ce sont des raccourcis vers leur recherche — pas des données chiffrées comme iTunes ci-dessus.</div>
+    </div>
+    <div style="padding:12px 14px">
+      <div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">➕ Ajouter rapidement — Station ${STATION_LABELS[ACTIVE_STATION]}</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+        <input id="chartSearchQuickArtist" type="text" placeholder="Artiste" style="flex:1;min-width:100px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);font-size:11.5px;font-family:inherit">
+        <input id="chartSearchQuickTitle" type="text" placeholder="Titre" value="${escHtml(query)}" style="flex:1;min-width:100px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);font-size:11.5px;font-family:inherit">
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="quickAddFromChartSearch('comite')" style="flex:1;font-size:11px;padding:7px;border-radius:6px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700">⭐ Comité d'Écoute</button>
+        <button onclick="quickAddFromChartSearch('playlist')" style="flex:1;font-size:11px;padding:7px;border-radius:6px;background:#0DA76B;color:#fff;border:none;cursor:pointer;font-weight:700">🎵 Playlist</button>
+      </div>
+    </div>`;
+
+  fetchItunesTrackInfo(query).then(info => {
+    const el = document.getElementById('chartSearchItunesCheck');
+    if(!el) return; // le panneau a changé entre-temps (nouvelle frappe, fermeture...)
+    if(!info){ el.innerHTML = '❌ Non trouvé sur iTunes / Apple Music'; return; }
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+      ${info.artworkUrl ? `<img src="${info.artworkUrl}" style="width:34px;height:34px;border-radius:6px;object-fit:cover;flex-shrink:0">` : ''}
+      <div style="min-width:0">
+        <div style="font-weight:700;color:var(--navy)">✓ Trouvé — ${escHtml(info.trackName||'')} · ${escHtml(info.artistName||'')}</div>
+        ${info.releaseDate ? `<div style="color:var(--muted)">Sortie : ${new Date(info.releaseDate).toLocaleDateString('fr-FR')}</div>` : ''}
+      </div>
+    </div>`;
+  });
+}
+
+/** Ajoute rapidement le titre recherché (via le panneau de secours ci-dessus)
+ *  au Comité d'Écoute ou à la Playlist de la station active — même logique
+ *  que les formulaires d'ajout manuel dédiés (addManualComiteTitle /
+ *  addManualPlaylistTitle), réécrite ici puisque ce panneau vit sur la page
+ *  Classements et non sur Comité d'Écoute / Playlist. */
+function quickAddFromChartSearch(target){
+  const artist = (document.getElementById('chartSearchQuickArtist')?.value || '').trim();
+  const title  = (document.getElementById('chartSearchQuickTitle')?.value || '').trim();
+  if(!artist || !title){
+    showToast('Renseignez l\'artiste et le titre', 'err');
+    return;
+  }
+  const key = comiteKey(title, artist);
+  if(target === 'comite'){
+    if(comiteTitles.some(t => t.key === key && comiteEntryStation(t) === ACTIVE_STATION)){
+      showToast('Déjà dans le Comité d\'Écoute ' + STATION_LABELS[ACTIVE_STATION], 'err');
+      return;
+    }
+    comiteTitles.push({ key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, manual: true });
+    comiteSaveToStorage();
+    updateComiteBadge();
+    showToast('✓ « ' + titleCaseDisplay(title) + ' » ajouté au Comité d\'Écoute ' + STATION_LABELS[ACTIVE_STATION], 'success');
+  } else {
+    if(playlistTitles.some(t => t.key === key && t.station === ACTIVE_STATION)){
+      showToast('Déjà dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'err');
+      return;
+    }
+    playlistTitles.push({ key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, manual: true });
+    playlistSaveToStorage();
+    updatePlaylistBadge();
+    showToast('✓ « ' + titleCaseDisplay(title) + ' » ajouté à la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success');
+  }
+  closeChartGlobalSearch();
 }
 
 function closeChartGlobalSearch(){
@@ -9356,6 +9556,15 @@ function toggleChartsPage(){
     btn.style.borderColor = 'var(--cyan)';
     btn.style.color = 'var(--navy)';
     btn.style.background = 'var(--cyan-light)';
+    // Réinitialiser la recherche à chaque (ré)ouverture de la page : un texte
+    // de recherche resté dans la case (notamment après avoir consulté le
+    // panneau "Signaux faibles" pour un titre sans résultat) filtrait sinon
+    // silencieusement tout le tableau au retour sur Classements, donnant
+    // l'impression que les classements ne s'affichaient plus.
+    const searchInput = document.getElementById('chartSearch');
+    if(searchInput) searchInput.value = '';
+    const searchResultsBox = document.getElementById('chartGlobalSearchResults');
+    if(searchResultsBox){ searchResultsBox.style.display = 'none'; searchResultsBox.innerHTML = ''; }
     renderChartTable();
     updateLoadAllChartsStatus();
   } else {
@@ -9414,6 +9623,11 @@ function switchChartTab(tab){
   if(bbMenu) bbMenu.style.display = 'none';
   const bbChevronEl = document.querySelector('#chartBillboardGroup .dec-group-chevron');
   if(bbChevronEl) bbChevronEl.style.transform = '';
+  // Referme le menu déroulant Playlists Spotify s'il était ouvert
+  const kpMenu = document.getElementById('chartSpotifyPlaylistsGroupMenu');
+  if(kpMenu) kpMenu.style.display = 'none';
+  const kpChevronEl = document.querySelector('#chartSpotifyPlaylistsGroup .dec-group-chevron');
+  if(kpChevronEl) kpChevronEl.style.transform = '';
   // L'onglet Airplay affiche beaucoup plus de colonnes (12 radios) que les
   // autres classements (marché) : élargir le conteneur pour que le titre et
   // l'artiste restent lisibles sur une seule ligne, comme avant l'ajout
@@ -9462,6 +9676,21 @@ function switchChartTab(tab){
     const it = document.getElementById('chartTabIntl_' + t);
     if(it) it.classList.toggle('active', tab === t);
   });
+  // Groupe déroulant Playlists Spotify (une playlist = un onglet dynamique
+  // 'kp_'+id, plus l'onglet fixe 'keyplaylists' pour ajouter/gérer)
+  const KP_TABS = keyPlaylists.map(p => 'kp_' + p.id).concat(['keyplaylists']);
+  const groupBtnKP = document.getElementById('chartSpotifyPlaylistsGroup');
+  const inKPGroup = KP_TABS.includes(tab);
+  if(groupBtnKP){
+    groupBtnKP.style.boxShadow = inKPGroup ? '0 0 0 1.5px var(--cyan)' : '0 0 0 1px var(--blue-border)';
+    groupBtnKP.style.opacity   = inKPGroup ? '1' : '.7';
+  }
+  keyPlaylists.forEach(p => {
+    const it = document.getElementById('chartTabKP_' + p.id);
+    if(it) it.classList.toggle('active', tab === 'kp_' + p.id);
+  });
+  const kpManageItem = document.getElementById('chartTabIntl_keyplaylists');
+  if(kpManageItem) kpManageItem.classList.toggle('active', tab === 'keyplaylists');
   // Groupe déroulant Billboard (US, Radio, Global 200) : même style
   const BB_TABS = ['bbus', 'kwradio', 'bbg200'];
   const BB_ITEM_IDS = { bbus:'chartTabBB_bbus', kwradio:'chartTabBB_kwradio', bbg200:'chartTabBB_bbg200' };
@@ -9554,6 +9783,15 @@ function switchChartTab(tab){
   // Spotify France : pas de chargement automatique — import CSV manuel uniquement
   // (voir commentaire sur spotifyData plus haut : le proxy Apps Script tenté
   // ne fonctionne pas, l'API charts.spotify.com bloque les requêtes serveur).
+  // Playlists Spotify clés : chargement à la demande, uniquement à la
+  // première visite de la page complète de chaque playlist (pas de
+  // rafraîchissement silencieux — l'extraction passe par des proxies,
+  // inutile de la solliciter à chaque clic d'onglet).
+  if(tab.startsWith('kp_')){
+    const pid = tab.slice(3);
+    const p = keyPlaylists.find(x => x.id === pid);
+    if(p && !p.fetchedAt) refreshKeyPlaylist(pid);
+  }
 }
 
 let chartAirplaySortKey = null; // 'e2' | 'rfm' | null
@@ -9620,6 +9858,21 @@ function renderChartTable(){
     return;
   }
   if(livePanel) livePanel.style.display = 'none';
+
+  const keyplaylistsPanel = document.getElementById('keyplaylistsChartsPanel');
+  if(activeChartTab === 'keyplaylists'){
+    if(stdHeader) stdHeader.style.display = 'none';
+    const em = document.getElementById('chartEmptyMsg'); if(em) em.style.display = 'none';
+    const th = document.getElementById('chartTableHeader'); if(th) th.style.display = 'none';
+    const tb = document.getElementById('chartTableBody'); if(tb) tb.style.display = 'none';
+    if(chartSearchEl) chartSearchEl.style.display = 'none';
+    if(chartCountEl)  chartCountEl.style.display  = 'none';
+    if(embPanel) embPanel.style.display = 'none';
+    if(keyplaylistsPanel) keyplaylistsPanel.style.display = 'block';
+    renderKeyPlaylistsPage();
+    return;
+  }
+  if(keyplaylistsPanel) keyplaylistsPanel.style.display = 'none';
 
   if(activeChartTab === 'emb'){
     if(stdHeader) stdHeader.style.display = 'none';
@@ -9813,6 +10066,55 @@ function renderChartTable(){
       onmouseenter="this.style.borderColor='#FFD9A0';this.style.color='#B36B00'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>`;
+
+  } else if(activeChartTab.startsWith('kp_')){
+    // ── Playlist Spotify éditoriale suivie (page complète, même
+    // présentation que les classements Spotify par pays ci-dessus) —
+    // extraction via fetchKeyPlaylistTracklist (proxy Apps Script en
+    // priorité), pas de streams/peak/variation disponibles (l'embed Spotify
+    // ne fournit qu'un ordre + titre/artiste, contrairement à kworb.net).
+    const pid = activeChartTab.slice(3);
+    const p = keyPlaylists.find(x => x.id === pid);
+    titleEl.innerHTML = logoImg(LOGO_SPOTIFY, 'Spotify', 44) + ' 🎧 ' + (p ? escHtml(p.label) : 'Playlist') + ' — Playlist Spotify';
+    isEmpty = !p || !p.tracks || !p.tracks.length;
+    if(p && p.tracks && p.tracks.length){
+      subEl.textContent = (p.fetchedAt ? 'récupérée le ' + new Date(p.fetchedAt).toLocaleString('fr-FR', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '') + ' · ' + p.tracks.length + ' titres · source Spotify (embed)';
+      const e2RankMap = computeE2RankMap();
+      entries = p.tracks.map(t => {
+        const title  = t.title||'';
+        const artist = t.artist||'';
+        let e2rank = null;
+        if(airplayLoaded){
+          const k1 = norm(artist)+'|||'+norm(title);
+          if(e2RankMap[k1] !== undefined){ e2rank = e2RankMap[k1]; }
+          else {
+            const found = Object.entries(e2RankMap).find(([k]) => {
+              const kt = k.split('|||')[1];
+              return similarity(norm(title), kt) >= 0.75;
+            });
+            if(found) e2rank = found[1];
+          }
+        }
+        return {rank: t.rank, title, artist, e2rank};
+      }).sort((a,b)=>a.rank-b.rank);
+    } else if(p && p.fetchedAt){
+      subEl.textContent = '❌ Extraction échouée pour cette playlist — voir le détail dans « Ajouter / gérer les playlists »';
+    } else if(!p){
+      subEl.textContent = 'Playlist introuvable (a-t-elle été retirée ?)';
+    } else {
+      subEl.textContent = 'Chargement en cours…';
+    }
+    importEl.innerHTML = p ? `<button onclick="refreshKeyPlaylist('${pid}')"
+      style="display:flex;align-items:center;gap:6px;background:#E8F8EF;border:1.5px solid #A8E6CE;border-radius:8px;padding:7px 13px;cursor:pointer;font-size:12px;font-weight:700;color:#0DA76B"
+      onmouseenter="this.style.background='#C6F1DB'" onmouseleave="this.style.background='#E8F8EF'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      ${p.tracks && p.tracks.length ? 'Actualiser' : 'Charger ' + escHtml(p.label)}
+    </button>
+    <button onclick="switchChartTab('keyplaylists')" title="Voir le détail par proxy / gérer les playlists suivies"
+      style="display:flex;align-items:center;justify-content:center;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;padding:0;flex-shrink:0;cursor:pointer;color:var(--text2)"
+      onmouseenter="this.style.borderColor='#FFD9A0';this.style.color='#B36B00'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>` : '';
 
   } else if(activeChartTab === 'kwradio'){
     // ── Billboard Radio (Airplay US) — kworb.net ──
@@ -10416,6 +10718,11 @@ function renderChartTable(){
     const ytGridH = airplayLoaded ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
     hdrEl.style.gridTemplateColumns = ytGridH;
     hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:#FF0000;font-weight:800;text-align:right">Vues</span><span style="text-align:center">±</span>' + (airplayLoaded ? '<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang Europe 2 dans le classement airplay">E2 rang</span>' : '');
+  } else if(activeChartTab.startsWith('kp_')){
+    // ── Playlist Spotify clé — pas de streams/peak (non fournis par l'embed) ──
+    const showE2KP = airplayLoaded;
+    hdrEl.style.gridTemplateColumns = showE2KP ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
+    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span>' + (showE2KP ? '<span style="color:var(--cyan);font-weight:800" title="Rang Europe 2 dans le classement airplay">E2 rang</span>' : '') + '<span>LIENS</span>';
   } else if((activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded){
     hdrEl.style.gridTemplateColumns = '26px 48px minmax(0,1fr) 64px 56px';
     hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang Europe 2 dans le classement airplay">E2 rang</span><span>LIENS</span>';
@@ -10554,6 +10861,36 @@ function renderChartRow(e){
       </div>
       <div style="text-align:center">${varHtml}</div>
       ${showE2spy ? e2Cell : ''}
+    </div>`;
+  } else if(activeChartTab.startsWith('kp_')){
+    // ── Playlist Spotify clé (RapCaviar, New Music Friday…) — même
+    // présentation que Spotify France/pays ci-dessus, mais sans
+    // streams/peak/variation (non fournis par l'extraction embed). ──
+    const showE2KP = airplayLoaded;
+    let e2CellKP = '';
+    if(showE2KP){
+      if(e.e2rank !== null && e.e2rank !== undefined){
+        const e2color = e.e2rank<=3?'var(--green-text)':e.e2rank<=10?'var(--cyan)':e.e2rank<=30?'var(--blue)':'var(--text2)';
+        const e2fw = e.e2rank<=10?'800':'700';
+        e2CellKP = `<div style="font-size:12px;font-weight:${e2fw};color:${e2color};text-align:center" title="Rang E2 airplay : #${e.e2rank}">#${e.e2rank}</div>`;
+      } else {
+        e2CellKP = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay E2">–</div>`;
+      }
+    }
+    const gridColsKP = showE2KP ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
+    const kpSearchUrl = 'https://open.spotify.com/search/' + encodeURIComponent((e.title||'') + ' ' + (e.artist||''));
+    return `<div style="display:grid;grid-template-columns:${gridColsKP};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#A8E6CE':'var(--border)'};margin-bottom:0">
+      ${comiteCheckbox(e.title, e.artist)}
+      <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
+      <div>
+        <a href="${kpSearchUrl}" onclick="return openSpotifyPopup(this.href)" style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;text-decoration:none;display:flex;align-items:center;gap:5px"
+          onmouseenter="this.style.color='#1DB954'" onmouseleave="this.style.color='var(--navy)'">
+          ${e.title||''}
+          <svg width="10" height="10" viewBox="0 0 168 168" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;opacity:.5"><circle cx="84" cy="84" r="84" fill="#1DB954"/><path d="M84 46c-20.9 0-40.1 8.5-53.8 22.2l6.2 6.2C49.2 61.6 66 54 84 54s34.8 7.6 47.6 20.4l6.2-6.2C124.1 54.5 104.9 46 84 46zm0 19c-14.6 0-27.9 5.9-37.6 15.5l6.2 6.2C60.8 79.5 72 74.9 84 74.9s23.2 4.6 31.4 11.8l6.2-6.2C111.9 70.9 98.6 65 84 65zm0 19c-8.3 0-15.9 3.4-21.4 8.8l6.2 6.2C72.8 95.6 78.1 93 84 93s11.2 2.6 15.2 6l6.2-6.2C99.9 87.4 92.3 84 84 84zm0 19a8 8 0 1 0 0 16 8 8 0 0 0 0-16z" fill="white"/></svg>
+        </a>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.artist||''}</div>
+      </div>
+      ${showE2KP ? e2CellKP : ''}
     </div>`;
   } else if(activeChartTab === 'yt' || KWORB_YOUTUBE_TABS.includes(activeChartTab)){
     // ── YouTube (kworb.net) — France ou pays ──
@@ -12825,7 +13162,7 @@ function toggleDecisionPage(){
 /* ── Groupes de sous-onglets (menus déroulants) ── */
 const DEC_TAB_TO_GROUP = {
   matrix:'ranking', spu:'ranking', comp:'ranking',
-  radar:'detection', polar:'detection', shazinc:'detection', exclusifs:'detection',
+  radar:'detection', polar:'detection', shazinc:'detection', exclusifs:'detection', watchlist:'detection',
   iedr:'digital', shazlag:'digital', compscore:'digital', opportunity:'digital', benchmark:'digital',
   cycles:'trajectoire', burn:'trajectoire'
   // 'genres' n'appartient à aucun groupe (entrée seule)
@@ -12862,7 +13199,7 @@ function switchDecTab(tab){
   if(tab === 'list') tab = 'matrix'; // compat : la liste est désormais intégrée à la matrice
   decActiveTab = tab;
   closeAllDecGroups();
-  ['matrix','spu','comp','burn','polar','shazinc','exclusifs','cycles','radar','iedr','shazlag','compscore','opportunity','benchmark','genres'].forEach(t => {
+  ['matrix','spu','comp','burn','polar','shazinc','exclusifs','watchlist','cycles','radar','iedr','shazlag','compscore','opportunity','benchmark','genres'].forEach(t => {
     document.getElementById('decPane'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'block':'none';
     const b = document.getElementById('decTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(b){
@@ -12890,6 +13227,7 @@ function switchDecTab(tab){
   if(tab==='exclusifs') renderExclusifsPage();
   if(tab==='cycles')  renderLifeCyclesPage();
   if(tab==='radar')   renderRadarPage();
+  if(tab==='watchlist') renderWatchlistPage();
   if(tab==='iedr')    renderIedrPage();
   if(tab==='shazlag')     renderShazamLagPage();
   if(tab==='compscore')   renderCompscorePage();
@@ -13510,6 +13848,721 @@ function fetchItunesArtwork(title, artist, timeoutMs = 7000){
     script.onerror = () => { clearTimeout(timer); cleanup(script); itunesArtworkCache.set(cacheKey, null); resolve(null); };
     document.body.appendChild(script);
   });
+}
+
+/** Variante enrichie de fetchItunesArtwork pour les "signaux faibles" de la
+ *  recherche globale Classements : renvoie pochette, date de sortie et
+ *  intitulé exact trouvé sur iTunes/Apple Music pour un titre absent de
+ *  tous les classements FPA — utile pour évaluer un titre tout juste
+ *  proposé par un label, avant même qu'il apparaisse dans un classement.
+ *  Prend directement une requête texte libre (pas de séparation titre/
+ *  artiste nécessaire), sans cache (requête ponctuelle, pas répétée comme
+ *  fetchItunesArtwork qui est appelée à chaque rendu de card). */
+function fetchItunesTrackInfo(query, timeoutMs = 7000){
+  return new Promise((resolve) => {
+    const cbName = '__fpaItunesTrack_' + Math.floor(Math.random()*1e9);
+    const cleanup = (script) => { window[cbName] = () => {}; if(script) script.remove(); };
+    const timer = setTimeout(() => { const s = document.getElementById(cbName); cleanup(s); resolve(null); }, timeoutMs);
+    window[cbName] = (data) => {
+      clearTimeout(timer);
+      const s = document.getElementById(cbName); cleanup(s);
+      try{
+        const r = data && data.results && data.results[0];
+        if(!r){ resolve(null); return; }
+        resolve({
+          trackName: r.trackName || null,
+          artistName: r.artistName || null,
+          releaseDate: r.releaseDate || null,
+          artworkUrl: r.artworkUrl100 ? r.artworkUrl100.replace('100x100bb', '300x300bb') : null
+        });
+      }catch(e){ resolve(null); }
+    };
+    const term = encodeURIComponent(query);
+    const script = document.createElement('script');
+    script.id = cbName;
+    script.src = `https://itunes.apple.com/search?term=${term}&entity=song&limit=1&callback=${cbName}`;
+    script.onerror = () => { clearTimeout(timer); cleanup(script); resolve(null); };
+    document.body.appendChild(script);
+  });
+}
+
+// ── VEILLE — suivi de titres pas encore exposés (proposés par un label, en
+// développement...), indépendant de la station et des classements. Chaque
+// titre est revérifié une fois par jour (iTunes/Apple Music + tous les
+// classements FPA actuellement chargés), avec un historique jour par jour et
+// une alerte dès qu'un signal auparavant absent apparaît. ──────────────────
+let watchlistTitles = watchlistLoadFromStorage();
+updateWatchlistBadge();
+
+function watchlistLoadFromStorage(){
+  try{ return JSON.parse(localStorage.getItem('fpa_watchlist_titles') || '[]'); }
+  catch(e){ return []; }
+}
+function watchlistSaveToStorage(){
+  try{ localStorage.setItem('fpa_watchlist_titles', JSON.stringify(watchlistTitles)); }catch(e){ /* quota localStorage, ignoré */ }
+}
+
+function addWatchlistTitle(){
+  const artistInput = document.getElementById('watchlistManualArtist');
+  const titleInput  = document.getElementById('watchlistManualTitle');
+  const noteInput   = document.getElementById('watchlistManualNote');
+  const artist = (artistInput?.value || '').trim();
+  const title  = (titleInput?.value || '').trim();
+  const note   = (noteInput?.value || '').trim();
+  if(!artist || !title){
+    showToast('Renseignez l\'artiste et le titre', 'err');
+    return;
+  }
+  const key = comiteKey(title, artist);
+  if(watchlistTitles.some(w => w.key === key)){
+    showToast('Ce titre est déjà en Veille', 'err');
+    return;
+  }
+  watchlistTitles.push({ key, title, artist, note, addedAt: new Date().toISOString(), history: [] });
+  watchlistSaveToStorage();
+  updateWatchlistBadge();
+  if(artistInput) artistInput.value = '';
+  if(titleInput)  titleInput.value  = '';
+  if(noteInput)   noteInput.value   = '';
+  showToast('✓ « ' + titleCaseDisplay(title) + ' » ajouté à la Veille', 'success');
+  if(decisionPageOpen && decActiveTab === 'watchlist') renderWatchlistPage();
+  // Vérification immédiate du titre qu'on vient d'ajouter, sans attendre le lendemain
+  watchlistCheckOne(watchlistTitles[watchlistTitles.length - 1]).then(() => {
+    watchlistSaveToStorage();
+    if(decisionPageOpen && decActiveTab === 'watchlist') renderWatchlistPage();
+  });
+}
+
+function removeWatchlistTitle(key){
+  watchlistTitles = watchlistTitles.filter(w => w.key !== key);
+  watchlistSaveToStorage();
+  updateWatchlistBadge();
+  if(decisionPageOpen && decActiveTab === 'watchlist') renderWatchlistPage();
+}
+
+function updateWatchlistBadge(){
+  const badge = document.getElementById('watchlistBadge');
+  const newSignalsCount = watchlistTitles.filter(w => watchlistHasNewSignalToday(w)).length;
+  if(badge){ badge.textContent = newSignalsCount || watchlistTitles.length; badge.style.display = watchlistTitles.length ? 'inline-block' : 'none'; badge.style.background = newSignalsCount ? '#0DA76B' : '#7C3AED'; }
+  const countEl = document.getElementById('watchlistCountBadge');
+  if(countEl) countEl.textContent = watchlistTitles.length + ' titre' + (watchlistTitles.length>1?'s':'') + ' surveillé' + (watchlistTitles.length>1?'s':'') + (newSignalsCount ? ' — ' + newSignalsCount + ' nouveau(x) signal(aux)' : '');
+}
+
+/** Un titre a-t-il un "nouveau signal" à son dernier point d'historique par
+ *  rapport au précédent (quelque chose trouvé aujourd'hui qui ne l'était
+ *  pas avant) ? Sert au badge de la Veille et au surlignage dans la liste. */
+function watchlistHasNewSignalToday(w){
+  if(!w.history || w.history.length < 1) return false;
+  const last = w.history[w.history.length - 1];
+  const prev = w.history.length >= 2 ? w.history[w.history.length - 2] : null;
+  if(!prev) return watchlistSnapshotHasAnySignal(last); // premier point : "nouveau" si déjà quelque chose trouvé dès le départ
+  const sources = ['itunes','shzFR','shzWW','spyFR','dzFR','airplay'];
+  if(sources.some(s => watchlistSourceFound(last[s]) && !watchlistSourceFound(prev[s]))) return true;
+  // Nouveau signal si un marché Spotify (kworb) trouvé aujourd'hui ne l'était pas hier
+  const lastKworb = last.spKworb || {};
+  const prevKworb = prev.spKworb || {};
+  if(Object.keys(lastKworb).some(cc => watchlistSourceFound(lastKworb[cc]) && !watchlistSourceFound(prevKworb[cc]))) return true;
+  // Nouveau signal si le titre apparaît aujourd'hui dans une Playlist Spotify
+  // clé (RapCaviar, New Music Friday...) où il n'était pas hier
+  const lastKP = last.kpPlaylists || {};
+  const prevKP = prev.kpPlaylists || {};
+  return Object.keys(lastKP).some(id => watchlistSourceFound(lastKP[id]) && !watchlistSourceFound(prevKP[id]));
+}
+function watchlistSourceFound(v){ return v !== null && v !== undefined && v !== false; }
+function watchlistSpKworbHasAny(spKworb){
+  return !!spKworb && Object.values(spKworb).some(v => watchlistSourceFound(v));
+}
+function watchlistSnapshotHasAnySignal(snap){
+  return watchlistSourceFound(snap.itunes) || watchlistSourceFound(snap.shzFR) || watchlistSourceFound(snap.shzWW) ||
+    watchlistSourceFound(snap.spyFR) || watchlistSourceFound(snap.dzFR) || watchlistSourceFound(snap.airplay) ||
+    watchlistSpKworbHasAny(snap.spKworb) || watchlistSpKworbHasAny(snap.kpPlaylists);
+}
+
+/** Vérifie un seul titre (iTunes + classements FPA actuellement chargés) et
+ *  ajoute un point d'historique daté du jour — sans sauvegarder ni
+ *  re-render (laissé à l'appelant, pour pouvoir enchaîner plusieurs titres
+ *  sans multiplier les écritures localStorage). */
+async function watchlistCheckOne(w){
+  const today = new Date().toISOString().slice(0, 10);
+  const snapshot = { date: today };
+
+  let itunesInfo = null;
+  try{ itunesInfo = await fetchItunesTrackInfo(w.artist + ' ' + w.title); }catch(e){ /* pas grave, on continue sans */ }
+  snapshot.itunes = itunesInfo ? { releaseDate: itunesInfo.releaseDate || null, artworkUrl: itunesInfo.artworkUrl || null } : null;
+
+  snapshot.shzFR = chartsLoaded.fr ? (findInChart(chartsData.fr, w.title, w.artist) || null) : null;
+  snapshot.shzWW = chartsLoaded.ww ? (findInChart(chartsData.ww, w.title, w.artist) || null) : null;
+  snapshot.spyFR = spotifyLoaded ? (findInChart(spotifyData, w.title, w.artist) || null) : null;
+  snapshot.dzFR  = deezerLoaded ? (findInChart(deezerData, w.title, w.artist) || null) : null;
+
+  // Spotify — tous les marchés disponibles via kworb.net (France quotidien +
+  // 8 autres pays), pas seulement la France : un titre peut décoller à
+  // l'étranger avant d'apparaître sur le marché français, signal précoce
+  // précieux pour un titre encore en développement.
+  snapshot.spKworb = {};
+  Object.keys(KWORB_COUNTRIES).forEach(cc => {
+    const st = kworbSpotifyState[cc];
+    snapshot.spKworb[cc] = (st && st.loaded) ? (findInChart(st.data, w.title, w.artist) || null) : null;
+  });
+
+  // Playlists Spotify clés (RapCaviar, New Music Friday, Hits du Moment...)
+  // — un titre repéré par un label peut être ajouté à une playlist
+  // éditoriale avant même d'apparaître dans un classement quantitatif :
+  // signal de confiance éditoriale précoce, indépendant des charts.
+  snapshot.kpPlaylists = {};
+  keyPlaylists.forEach(p => {
+    if(!p.tracks || !p.tracks.length) return;
+    const chart = {};
+    p.tracks.forEach(t => { chart[t.rank] = { t: t.title, a: t.artist }; });
+    snapshot.kpPlaylists[p.id] = findInChart(chart, w.title, w.artist) || null;
+  });
+
+  if(airplayLoaded){
+    const entry = radarFindAirplayEntry(airplayData, w.title, w.artist);
+    snapshot.airplay = entry ? (parseInt(entry.rg) || true) : null;
+  } else {
+    snapshot.airplay = null;
+  }
+
+  w.history = w.history || [];
+  if(w.history.length && w.history[w.history.length - 1].date === today){
+    w.history[w.history.length - 1] = snapshot; // remplace le point du jour (re-vérification manuelle)
+  } else {
+    w.history.push(snapshot);
+  }
+  if(w.history.length > 60) w.history = w.history.slice(-60); // 60 derniers jours suffisent largement
+}
+
+/** Vérifie tous les titres en Veille. Sans "force", ne revérifie que ceux
+ *  pas encore vérifiés aujourd'hui (appelé automatiquement au démarrage,
+ *  après le chargement des classements). Avec "force" (bouton "🔄 Vérifier
+ *  maintenant"), revérifie tout le monde même déjà fait aujourd'hui. */
+async function watchlistDailyCheck(force){
+  if(!watchlistTitles.length) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const toCheck = watchlistTitles.filter(w => force || !w.history.length || w.history[w.history.length-1].date !== today);
+  if(!toCheck.length) return;
+
+  if(force) showToast('⏳ Vérification de ' + toCheck.length + ' titre(s) en Veille…', 'success');
+
+  // Charger les marchés Spotify (kworb) pas encore chargés, en parallèle,
+  // pour scruter tous les pays disponibles et pas seulement la France.
+  // Silencieux en cas d'échec (proxy indisponible etc.) : la vérification
+  // se poursuit simplement avec les marchés qui ont pu être chargés.
+  await Promise.all(Object.keys(KWORB_COUNTRIES)
+    .filter(cc => kworbSpotifyState[cc] && !kworbSpotifyState[cc].loaded && !kworbSpotifyState[cc].loading)
+    .map(cc => loadKworbSpotify(cc).catch(() => {})));
+
+  // Charger les Playlists Spotify clés pas encore récupérées (même logique
+  // de repli silencieux — si l'extraction échoue pour l'une, la vérification
+  // se poursuit avec les autres sources déjà disponibles).
+  await Promise.all(keyPlaylists
+    .filter(p => !p.fetchedAt)
+    .map(p => refreshKeyPlaylist(p.id).catch(() => {})));
+
+  for(const w of toCheck){
+    try{ await watchlistCheckOne(w); }catch(e){ console.error('Erreur de vérification Veille pour', w.title, w.artist, e); }
+  }
+  watchlistSaveToStorage();
+  updateWatchlistBadge();
+
+  const newSignals = watchlistTitles.filter(w => toCheck.includes(w) && watchlistHasNewSignalToday(w));
+  if(newSignals.length){
+    showToast('🎯 Nouveau signal pour ' + newSignals.length + ' titre(s) en Veille : ' + newSignals.map(w => titleCaseDisplay(w.title)).join(', '), 'success');
+  } else if(force){
+    showToast('✓ Vérification terminée — aucun nouveau signal', 'success');
+  }
+  if(decisionPageOpen && decActiveTab === 'watchlist') renderWatchlistPage();
+}
+
+function watchlistShowEmpty(msg){
+  const emptyEl = document.getElementById('watchlistEmptyBar');
+  const listEl  = document.getElementById('watchlistList');
+  if(emptyEl){ emptyEl.style.display = 'block'; emptyEl.innerHTML = msg; }
+  if(listEl) listEl.innerHTML = '';
+}
+
+/** Petit badge pour une source dans l'historique d'un titre en Veille. */
+function watchlistSourceBadge(icon, label, value, isRank){
+  const found = watchlistSourceFound(value);
+  const text = found ? (isRank && typeof value === 'number' ? '#' + value : '✓') : '–';
+  return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:${found?'#EAF7F2':'var(--bg)'};border:1px solid ${found?'#A8E6CE':'var(--border)'};min-width:38px">
+    <span style="font-size:8px;font-weight:800;color:var(--muted)">${icon}</span>
+    <span style="font-size:11px;font-weight:800;color:${found?'#0DA76B':'var(--muted)'}">${text}</span>
+  </span>`;
+}
+
+function buildWatchlistCard(w){
+  const last = w.history.length ? w.history[w.history.length - 1] : null;
+  const isNew = watchlistHasNewSignalToday(w);
+  const cover = last?.itunes?.artworkUrl;
+
+  // Marchés Spotify (kworb) où le titre a été repéré — seuls les pays
+  // trouvés sont affichés, pour ne pas noyer la fiche sous 9 badges vides.
+  const kworbFoundBadges = last?.spKworb
+    ? Object.entries(last.spKworb)
+        .filter(([cc, v]) => watchlistSourceFound(v))
+        .map(([cc, v]) => `<span title="${escHtml(KWORB_COUNTRIES[cc]?.label || cc)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:#EAF7F2;border:1px solid #A8E6CE;min-width:38px">
+        <span style="font-size:8px;font-weight:800;color:var(--muted)">${KWORB_COUNTRIES[cc]?.flag || cc}</span>
+        <span style="font-size:11px;font-weight:800;color:#0DA76B">#${v}</span>
+      </span>`).join('')
+    : '';
+
+  // Playlists Spotify clés (RapCaviar, New Music Friday...) où le titre est
+  // repéré — même principe que les marchés kworb ci-dessus, un badge par
+  // playlist où il figure (le label de la playlist tient lieu d'icône).
+  const kpFoundBadges = last?.kpPlaylists
+    ? Object.entries(last.kpPlaylists)
+        .filter(([id, v]) => watchlistSourceFound(v))
+        .map(([id, v]) => {
+          const p = keyPlaylists.find(x => x.id === id);
+          const label = p ? p.label : id;
+          return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:#EAF7F2;border:1px solid #A8E6CE;min-width:38px;max-width:90px">
+        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🎧 ${escHtml(label)}</span>
+        <span style="font-size:11px;font-weight:800;color:#0DA76B">#${v}</span>
+      </span>`;
+        }).join('')
+    : '';
+
+  const currentBadges = last ? `
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
+      ${watchlistSourceBadge('🍎', 'iTunes / Apple Music', last.itunes)}
+      ${watchlistSourceBadge('🎧', 'Shazam France', last.shzFR, true)}
+      ${watchlistSourceBadge('🌍', 'Shazam Monde', last.shzWW, true)}
+      ${watchlistSourceBadge('🟢', 'Spotify France (import)', last.spyFR, true)}
+      ${watchlistSourceBadge('🎵', 'Deezer France', last.dzFR, true)}
+      ${watchlistSourceBadge('📻', 'Airplay', last.airplay, true)}
+      ${kworbFoundBadges}
+      ${kpFoundBadges}
+    </div>` : `<div style="font-size:11px;color:var(--muted);margin-top:8px">⏳ Pas encore vérifié — sera vérifié automatiquement, ou cliquez sur « 🔄 Vérifier maintenant »</div>`;
+
+  const releaseInfo = last?.itunes?.releaseDate
+    ? `<div style="font-size:10.5px;color:var(--muted);margin-top:4px">Sorti le ${new Date(last.itunes.releaseDate).toLocaleDateString('fr-FR')}</div>`
+    : '';
+
+  const historyRows = w.history.slice().reverse().slice(0, 14).map(h => {
+    const parts = [];
+    if(watchlistSourceFound(h.itunes)) parts.push('iTunes');
+    if(watchlistSourceFound(h.shzFR)) parts.push('Shazam FR #' + h.shzFR);
+    if(watchlistSourceFound(h.shzWW)) parts.push('Shazam Monde #' + h.shzWW);
+    if(watchlistSourceFound(h.spyFR)) parts.push('Spotify FR (import) #' + h.spyFR);
+    if(watchlistSourceFound(h.dzFR)) parts.push('Deezer FR #' + h.dzFR);
+    if(watchlistSourceFound(h.airplay)) parts.push('Airplay' + (typeof h.airplay === 'number' ? ' #' + h.airplay : ''));
+    if(h.spKworb){
+      Object.entries(h.spKworb).forEach(([cc, v]) => {
+        if(watchlistSourceFound(v)) parts.push((KWORB_COUNTRIES[cc]?.flag || cc) + ' Spotify ' + cc.toUpperCase() + ' #' + v);
+      });
+    }
+    if(h.kpPlaylists){
+      Object.entries(h.kpPlaylists).forEach(([id, v]) => {
+        if(watchlistSourceFound(v)){
+          const p = keyPlaylists.find(x => x.id === id);
+          parts.push('🎧 ' + (p ? p.label : id) + ' #' + v);
+        }
+      });
+    }
+    return `<div style="display:flex;gap:8px;padding:4px 0;font-size:10.5px;border-bottom:1px solid var(--border)">
+      <div style="color:var(--muted);flex-shrink:0;width:78px">${new Date(h.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</div>
+      <div style="color:var(--text2)">${parts.length ? escHtml(parts.join(' · ')) : '<span style="color:var(--muted)">Rien trouvé</span>'}</div>
+    </div>`;
+  }).join('');
+
+  const evoDataAttr = JSON.stringify({artist:w.artist, title:w.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+
+  return `<div style="background:var(--white);border:1.5px solid ${isNew?'#0DA76B':'var(--border)'};border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow);position:relative">
+    ${isNew ? `<div style="position:absolute;top:-9px;left:14px;background:#0DA76B;color:#fff;font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:20px">🎯 Nouveau signal</div>` : ''}
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px;min-width:0">
+        <div style="flex-shrink:0;width:64px;height:64px;border-radius:9px;overflow:hidden;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+          ${cover ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover">` : '<span style="font-size:20px;color:var(--border)">🎵</span>'}
+        </div>
+        <div style="min-width:0">
+          <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoDataAttr}" title="Voir la fiche d'évolution complète"
+            style="font-size:14px;font-weight:800;color:var(--navy);cursor:pointer" onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(w.title))}</div>
+          <div style="font-size:12px;color:var(--text2)">${escHtml(titleCaseDisplay(w.artist))}</div>
+          ${w.note ? `<div style="font-size:10.5px;color:var(--muted);margin-top:2px">📝 ${escHtml(w.note)}</div>` : ''}
+          ${releaseInfo}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <button onclick="watchlistPromote('${jsAttrEscape(w.key)}','comite')" title="Ajouter au Comité d'Écoute (station active)" style="font-size:10.5px;padding:6px 10px;border-radius:6px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700;white-space:nowrap">⭐ Comité</button>
+        <button onclick="watchlistPromote('${jsAttrEscape(w.key)}','playlist')" title="Ajouter à la Playlist (station active)" style="font-size:10.5px;padding:6px 10px;border-radius:6px;background:#0DA76B;color:#fff;border:none;cursor:pointer;font-weight:700;white-space:nowrap">🎵 Playlist</button>
+        <button onclick="removeWatchlistTitle('${jsAttrEscape(w.key)}')" title="Retirer de la Veille" style="width:26px;height:26px;border-radius:6px;background:#FFEAEA;border:1px solid #F5B8B8;color:#CC2222;cursor:pointer;font-size:12px">✕</button>
+      </div>
+    </div>
+    ${currentBadges}
+    ${w.history.length ? `<details style="margin-top:10px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer;font-weight:700">📅 Historique (${w.history.length} vérification${w.history.length>1?'s':''})</summary><div style="margin-top:6px">${historyRows}</div></details>` : ''}
+  </div>`;
+}
+
+async function renderWatchlistPage(){
+  const listEl = document.getElementById('watchlistList');
+  if(!listEl) return;
+  updateWatchlistBadge();
+
+  if(!watchlistTitles.length){
+    watchlistShowEmpty('🔭 Aucun titre en veille pour l\'instant. Ajoutez un titre qu\'un label vous a présenté ci-dessus — FPA le revérifiera automatiquement chaque jour.');
+    return;
+  }
+  const emptyEl = document.getElementById('watchlistEmptyBar');
+  if(emptyEl) emptyEl.style.display = 'none';
+
+  // Nouveaux signaux d'abord, puis les plus récemment ajoutés
+  const sorted = watchlistTitles.slice().sort((a, b) => {
+    const an = watchlistHasNewSignalToday(a) ? 1 : 0;
+    const bn = watchlistHasNewSignalToday(b) ? 1 : 0;
+    if(an !== bn) return bn - an;
+    return (b.addedAt || '').localeCompare(a.addedAt || '');
+  });
+  listEl.innerHTML = sorted.map(w => buildWatchlistCard(w)).join('');
+}
+
+/** Ajoute un titre de la Veille au Comité d'Écoute ou à la Playlist de la
+ *  station active — la Veille elle-même reste inchangée (on continue à le
+ *  suivre même une fois promu). */
+function watchlistPromote(key, target){
+  const w = watchlistTitles.find(x => x.key === key);
+  if(!w) return;
+  if(target === 'comite'){
+    if(comiteTitles.some(t => t.key === key && comiteEntryStation(t) === ACTIVE_STATION)){
+      showToast('Déjà dans le Comité d\'Écoute ' + STATION_LABELS[ACTIVE_STATION], 'err');
+      return;
+    }
+    comiteTitles.push({ key, title: w.title, artist: w.artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, manual: true });
+    comiteSaveToStorage();
+    updateComiteBadge();
+    showToast('✓ « ' + titleCaseDisplay(w.title) + ' » ajouté au Comité d\'Écoute ' + STATION_LABELS[ACTIVE_STATION], 'success');
+  } else {
+    if(playlistTitles.some(t => t.key === key && t.station === ACTIVE_STATION)){
+      showToast('Déjà dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'err');
+      return;
+    }
+    playlistTitles.push({ key, title: w.title, artist: w.artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, manual: true });
+    playlistSaveToStorage();
+    updatePlaylistBadge();
+    showToast('✓ « ' + titleCaseDisplay(w.title) + ' » ajouté à la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success');
+  }
+}
+
+// ── PLAYLISTS SPOTIFY CLÉS — expérimental. Kworb ne suit pas les playlists
+// éditoriales (RapCaviar, New Music Friday...), seulement les classements
+// pays. On tente ici une lecture directe de la page d'intégration (embed)
+// publique de Spotify pour une playlist donnée, via la même chaîne de
+// proxies CORS que le reste de l'appli. Le format exact des données
+// intégrées dans cette page n'est pas garanti (Spotify peut le changer sans
+// préavis) : plusieurs stratégies d'extraction sont tentées, et la réponse
+// brute reste consultable en cas d'échec pour ajuster l'extraction. ───────
+/** Playlists éditoriales Spotify suivies par défaut — ID officiels vérifiés
+ *  (open.spotify.com/playlist/ID). Ajoutées une seule fois au tout premier
+ *  chargement (voir seedDefaultKeyPlaylists ci-dessous) ; l'utilisateur peut
+ *  ensuite librement en retirer ou en ajouter d'autres via "➕ Ajouter". */
+const DEFAULT_KEY_PLAYLISTS = [
+  { id:'37i9dQZF1DX0XUsuxWHRQd', label:'RapCaviar' },
+  { id:'37i9dQZF1DXcBWIGoYBM5M', label:"Today's Top Hits" },
+  { id:'37i9dQZF1DX742okrrpwah', label:'New Music Friday France' },
+  { id:'37i9dQZF1DWVuV87wUBNwc', label:'Hits du Moment' },
+  { id:'37i9dQZF1DXcSPhLAnCjoM', label:'Grand Hit' },
+  { id:'37i9dQZF1DWSBZhfF4ZHr8', label:'Fresh Variété' },
+  { id:'37i9dQZF1DWWNlI0CRgWup', label:'Radar France' },
+  { id:'37i9dQZF1DX2L0iB23Enbq', label:'Viral Hits' },
+  { id:'37i9dQZEVXcC2PfF6E4Vbt', label:'Découvertes de la semaine' },
+  { id:'37i9dQZF1DX1X23oiQRTB5', label:'Pvnchlinrs' },
+];
+
+let keyPlaylists = keyPlaylistsLoadFromStorage();
+
+/** N'ajoute les playlists par défaut qu'une seule fois dans la vie du
+ *  navigateur (clé localStorage dédiée) — pour ne jamais les faire
+ *  réapparaître si l'utilisateur les a volontairement retirées ensuite. */
+function seedDefaultKeyPlaylists(){
+  try{
+    if(localStorage.getItem('fpa_key_playlists_seeded_v1')) return;
+    let changed = false;
+    DEFAULT_KEY_PLAYLISTS.forEach(def => {
+      if(!keyPlaylists.some(p => p.id === def.id)){
+        keyPlaylists.push({ id:def.id, label:def.label, tracks:null, rawSample:'', fetchedAt:null, addedAt:new Date().toISOString() });
+        changed = true;
+      }
+    });
+    localStorage.setItem('fpa_key_playlists_seeded_v1', '1');
+    if(changed) keyPlaylistsSaveToStorage();
+  }catch(e){ /* localStorage indisponible, ignoré */ }
+}
+
+function keyPlaylistsLoadFromStorage(){
+  try{ return JSON.parse(localStorage.getItem('fpa_key_playlists') || '[]'); }
+  catch(e){ return []; }
+}
+function keyPlaylistsSaveToStorage(){
+  try{ localStorage.setItem('fpa_key_playlists', JSON.stringify(keyPlaylists)); }catch(e){ /* quota localStorage, ignoré */ }
+}
+
+/** Extrait un ID de playlist Spotify (22 caractères alphanumériques) depuis
+ *  une URL complète (open.spotify.com/playlist/ID, spotify:playlist:ID...)
+ *  ou renvoie directement l'entrée si c'est déjà un ID nu. */
+function extractSpotifyPlaylistId(input){
+  const trimmed = (input || '').trim();
+  let m = trimmed.match(/playlist[/:]([a-zA-Z0-9]{22})/);
+  if(m) return m[1];
+  if(/^[a-zA-Z0-9]{22}$/.test(trimmed)) return trimmed;
+  return null;
+}
+
+/** Tente d'extraire la tracklist depuis le HTML de la page embed Spotify.
+ *  Plusieurs formats possibles selon la version de leur frontend — on
+ *  essaie successivement les structures JSON connues. Retourne un tableau
+ *  [{rank, title, artist}] si une stratégie fonctionne, sinon null. */
+function parseSpotifyEmbedPlaylist(html){
+  // Stratégie 1 : bloc __NEXT_DATA__ (SSR Next.js)
+  try{
+    const m = html.match(/<script id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/);
+    if(m){
+      const data = JSON.parse(m[1]);
+      const entity = data?.props?.pageProps?.state?.data?.entity;
+      const rawTracks = entity?.trackList || entity?.tracks?.items || null;
+      if(Array.isArray(rawTracks) && rawTracks.length){
+        const tracks = rawTracks.map((t, i) => ({
+          rank: i + 1,
+          title: t.name || t.title || t.track?.name || '',
+          artist: t.subtitle || (t.artists || t.track?.artists || []).map(a => a.name).join(', ') || ''
+        })).filter(t => t.title);
+        if(tracks.length) return tracks;
+      }
+    }
+  }catch(e){ /* format inattendu, on tente la stratégie suivante */ }
+
+  // Stratégie 2 : bloc Spotify.Entity (ancien format d'embed)
+  try{
+    const m = html.match(/Spotify\.Entity\s*=\s*(\{[\s\S]*?\});/);
+    if(m){
+      const data = JSON.parse(m[1]);
+      const rawTracks = data?.trackList || data?.tracks?.items || null;
+      if(Array.isArray(rawTracks) && rawTracks.length){
+        const tracks = rawTracks.map((t, i) => ({
+          rank: i + 1,
+          title: t.name || t.title || t.track?.name || '',
+          artist: t.subtitle || (t.artists || t.track?.artists || []).map(a => a.name).join(', ') || ''
+        })).filter(t => t.title);
+        if(tracks.length) return tracks;
+      }
+    }
+  }catch(e){ /* ... */ }
+
+  return null;
+}
+
+async function fetchKeyPlaylistTracklist(playlistId){
+  const url = `https://open.spotify.com/embed/playlist/${playlistId}`;
+  const log = [];
+  let rawHtmlForDebug = '';
+
+  // Proxy Apps Script personnel en priorité — même proxy générique déjà
+  // utilisé pour kworb.net/Billboard (voir Code_gs_Proxy_Kworb.gs), qui
+  // accepte n'importe quelle URL cible, pas seulement kworb.net. Beaucoup
+  // plus fiable que les proxies CORS publics (pas de rate-limit tiers).
+  // Peut échouer silencieusement (renvoie null) si le script .gs déployé a
+  // une liste blanche de domaines qui exclut open.spotify.com — dans ce cas
+  // on retombe simplement sur les proxies publics ci-dessous.
+  if(/^https:\/\//i.test(KWORB_APPS_SCRIPT_PROXY_URL || '')){
+    try{
+      const html = await fetchKworbViaAppsScript(url);
+      if(html){
+        if(html.length > rawHtmlForDebug.length) rawHtmlForDebug = html;
+        const parsed = parseSpotifyEmbedPlaylist(html);
+        if(parsed){
+          log.push({ proxy: 'Proxy Apps Script personnel', status: '✓ ' + parsed.length + ' titres extraits' });
+          return { tracks: parsed, rawSample: rawHtmlForDebug.slice(0, 3000), log };
+        }
+        log.push({ proxy: 'Proxy Apps Script personnel', status: 'Réponse reçue (' + html.length + ' car.) mais format non reconnu' });
+      } else {
+        log.push({ proxy: 'Proxy Apps Script personnel', status: 'Aucune réponse (domaine non autorisé dans le .gs, ou échec réseau)' });
+      }
+    }catch(e){
+      log.push({ proxy: 'Proxy Apps Script personnel', status: 'Erreur : ' + (e.message || e) });
+    }
+  } else {
+    log.push({ proxy: 'Proxy Apps Script personnel', status: 'Non configuré (bouton ⚙️ ci-dessus)' });
+  }
+
+  const { result, log: proxyLog } = await fetchDataViaProxyWithRaw(url, parseSpotifyEmbedPlaylist, (raw) => {
+    if(raw.length > rawHtmlForDebug.length) rawHtmlForDebug = raw;
+  });
+  return { tracks: result, rawSample: rawHtmlForDebug.slice(0, 3000), log: log.concat(proxyLog) };
+}
+
+/** Variante de fetchDataViaProxy qui remonte, EN PLUS du résultat, un
+ *  journal détaillé de chaque tentative (proxy essayé, code HTTP ou erreur,
+ *  succès/échec du parsing) — indispensable pour diagnostiquer un échec
+ *  quand aucun proxy n'a même réussi à récupérer de contenu (auquel cas
+ *  l'échantillon HTML brut, lui, reste vide et n'aide à rien). */
+async function fetchDataViaProxyWithRaw(url, parserFn, onRaw){
+  const log = [];
+  for(const makeProxy of CORS_PROXIES){
+    const proxyUrl = makeProxy(url);
+    let proxyHost = proxyUrl;
+    try{ proxyHost = new URL(proxyUrl).hostname; }catch(e){ /* URL non standard, on garde l'URL complète */ }
+    try{
+      const resp = await Promise.race([
+        fetch(proxyUrl, {signal:AbortSignal.timeout(8000)}),
+        new Promise((_,rej)=>setTimeout(()=>rej(new Error('délai dépassé (8s)')),8000))
+      ]);
+      if(!resp.ok){
+        log.push({ proxy: proxyHost, status: 'HTTP ' + resp.status });
+        continue;
+      }
+      const text = await resp.text();
+      if(onRaw) onRaw(text);
+      const parsed = parserFn(text);
+      if(parsed){
+        log.push({ proxy: proxyHost, status: '✓ ' + parsed.length + ' titres extraits' });
+        return { result: parsed, log };
+      }
+      log.push({ proxy: proxyHost, status: 'Réponse reçue (' + text.length + ' car.) mais format non reconnu' });
+    }catch(e){
+      log.push({ proxy: proxyHost, status: 'Échec : ' + (e.message || e) });
+    }
+  }
+  return { result: null, log };
+}
+
+function addKeyPlaylist(){
+  const urlInput   = document.getElementById('keyplaylistUrlInput');
+  const labelInput = document.getElementById('keyplaylistLabelInput');
+  const raw   = (urlInput?.value || '').trim();
+  const label = (labelInput?.value || '').trim();
+  const id = extractSpotifyPlaylistId(raw);
+  if(!id){
+    showToast('URL ou ID de playlist Spotify non reconnu', 'err');
+    return;
+  }
+  if(keyPlaylists.some(p => p.id === id)){
+    showToast('Cette playlist est déjà suivie', 'err');
+    return;
+  }
+  keyPlaylists.push({ id, label: label || id, tracks: null, rawSample: '', fetchedAt: null, addedAt: new Date().toISOString() });
+  keyPlaylistsSaveToStorage();
+  if(urlInput) urlInput.value = '';
+  if(labelInput) labelInput.value = '';
+  renderKeyPlaylistsPage();
+  renderSpotifyPlaylistsGroupMenu();
+  refreshKeyPlaylist(id);
+}
+
+function removeKeyPlaylist(id){
+  keyPlaylists = keyPlaylists.filter(p => p.id !== id);
+  keyPlaylistsSaveToStorage();
+  renderKeyPlaylistsPage();
+  renderSpotifyPlaylistsGroupMenu();
+  // Si la playlist retirée était affichée en page complète, on revient sur
+  // la page de gestion plutôt que de laisser un onglet "fantôme" actif.
+  if(activeChartTab === 'kp_' + id) switchChartTab('keyplaylists');
+}
+
+async function refreshKeyPlaylist(id){
+  const p = keyPlaylists.find(x => x.id === id);
+  if(!p) return;
+  const statusEl = document.getElementById('kpStatus-' + id);
+  if(statusEl) statusEl.textContent = '⏳ Chargement…';
+  try{
+    const { tracks, rawSample, log } = await fetchKeyPlaylistTracklist(id);
+    p.tracks = tracks;
+    p.rawSample = rawSample;
+    p.log = log;
+    p.fetchedAt = new Date().toISOString();
+    keyPlaylistsSaveToStorage();
+    if(tracks) showToast('✓ « ' + p.label + ' » — ' + tracks.length + ' titres récupérés', 'success');
+    else showToast('❌ Extraction impossible pour « ' + p.label + ' » — détail par proxy consultable ci-dessous', 'err');
+  }catch(e){
+    showToast('Erreur lors de la récupération de « ' + p.label + ' » : ' + (e.message || e), 'err');
+  }
+  renderKeyPlaylistsPage();
+  // Si la page complète de cette playlist (onglet 'kp_'+id) est actuellement
+  // affichée, on la re-rend aussi pour y refléter le résultat du chargement.
+  if(activeChartTab === 'kp_' + id) renderChartTable();
+}
+
+function keyPlaylistsShowEmpty(msg){
+  const emptyEl = document.getElementById('keyplaylistsEmptyBar');
+  const listEl  = document.getElementById('keyplaylistsList');
+  if(emptyEl){ emptyEl.style.display = 'block'; emptyEl.innerHTML = msg; }
+  if(listEl) listEl.innerHTML = '';
+}
+
+function buildKeyPlaylistCard(p){
+  const fetchedLabel = p.fetchedAt
+    ? new Date(p.fetchedAt).toLocaleString('fr-FR', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})
+    : 'jamais';
+
+  let body;
+  if(p.tracks && p.tracks.length){
+    body = `<div style="max-height:280px;overflow-y:auto;margin-top:10px;border:1px solid var(--border);border-radius:8px">
+      ${p.tracks.map(t => `<div style="display:flex;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);font-size:11.5px">
+        <div style="color:var(--muted);width:28px;flex-shrink:0">${t.rank}</div>
+        <div style="font-weight:700;color:var(--navy);min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.title))}</div>
+        <div style="color:var(--text2);min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.artist))}</div>
+      </div>`).join('')}
+    </div>`;
+  } else if(p.fetchedAt){
+    const logRows = (p.log || []).map(l => `<div style="display:flex;gap:8px;padding:3px 0;font-size:10.5px">
+      <div style="color:var(--muted);width:170px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(l.proxy)}</div>
+      <div style="color:var(--text2)">${escHtml(l.status)}</div>
+    </div>`).join('');
+    body = `<div style="margin-top:10px;padding:12px;background:#FFF0F0;border:1.5px solid #F5B8B8;border-radius:8px;font-size:11.5px;color:#C0392B">
+      ❌ Extraction échouée — la page récupérée ne correspond à aucun format connu, ou aucun proxy n'a pu la récupérer.
+      ${logRows ? `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #F5B8B8">
+        <div style="font-weight:700;margin-bottom:4px;color:#8a2b2b">Détail par proxy essayé :</div>
+        ${logRows}
+      </div>` : ''}
+      ${p.rawSample ? `<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700;color:#8a2b2b">Voir la réponse brute (pour ajuster l'extraction)</summary><textarea readonly style="width:100%;height:140px;margin-top:6px;font-size:10px;font-family:monospace;padding:6px;border-radius:6px;border:1px solid var(--border)">${escHtml(p.rawSample)}</textarea></details>` : '<div style="margin-top:6px;font-style:italic">Aucun proxy n\'a réussi à récupérer de contenu — voir le détail ci-dessus.</div>'}
+    </div>`;
+  } else {
+    body = `<div style="margin-top:10px;font-size:11.5px;color:var(--muted)">⏳ Pas encore chargée — cliquez sur « 🔄 Charger »</div>`;
+  }
+
+  return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+      <div style="min-width:0">
+        <div style="font-size:14px;font-weight:800;color:var(--navy)">${escHtml(p.label)}</div>
+        <div id="kpStatus-${p.id}" style="font-size:10.5px;color:var(--muted)">Dernière tentative : ${fetchedLabel}${p.tracks ? ' — ' + p.tracks.length + ' titres' : ''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <button onclick="refreshKeyPlaylist('${p.id}')" style="font-size:10.5px;padding:6px 12px;border-radius:6px;background:#0DA76B;color:#fff;border:none;cursor:pointer;font-weight:700;white-space:nowrap">🔄 Charger</button>
+        <button onclick="removeKeyPlaylist('${p.id}')" title="Retirer" style="width:26px;height:26px;border-radius:6px;background:#FFEAEA;border:1px solid #F5B8B8;color:#CC2222;cursor:pointer;font-size:12px">✕</button>
+      </div>
+    </div>
+    ${body}
+  </div>`;
+}
+
+function renderKeyPlaylistsPage(){
+  const listEl = document.getElementById('keyplaylistsList');
+  if(!listEl) return;
+  if(!keyPlaylists.length){
+    keyPlaylistsShowEmpty('🎧 Aucune playlist suivie pour l\'instant. Collez l\'URL d\'une playlist Spotify publique ci-dessus (ex. RapCaviar, New Music Friday France...) pour tenter de récupérer son contenu.');
+    return;
+  }
+  const emptyEl = document.getElementById('keyplaylistsEmptyBar');
+  if(emptyEl) emptyEl.style.display = 'none';
+  listEl.innerHTML = keyPlaylists.map(p => buildKeyPlaylistCard(p)).join('');
+}
+
+/** Construit le contenu du menu déroulant "🎧 Playlists Spotify" du header
+ *  Classements — un item par playlist suivie (page complète, onglet
+ *  'kp_'+id, même présentation que les autres classements Spotify), plus un
+ *  item fixe en bas pour ajouter/gérer les playlists (ouvre l'onglet
+ *  'keyplaylists', qui reste la page d'ajout/diagnostic). Appelée au
+ *  démarrage et à chaque ajout/retrait de playlist, puisque la liste est
+ *  dynamique (l'utilisateur peut en ajouter au fil des découvertes). */
+function renderSpotifyPlaylistsGroupMenu(){
+  const menuEl = document.getElementById('chartSpotifyPlaylistsGroupMenu');
+  if(!menuEl) return;
+  const items = keyPlaylists.map(p => {
+    const tabId = 'kp_' + p.id;
+    return `<button id="chartTabKP_${p.id}" onclick="switchChartTab('${tabId}')" class="dec-subtab-item"><span class="dec-subtab-ic">🎧</span>${escHtml(p.label)}</button>`;
+  }).join('');
+  menuEl.innerHTML = items
+    + (items ? '<div style="height:1px;background:var(--border);margin:4px 8px"></div>' : '')
+    + `<button id="chartTabIntl_keyplaylists" onclick="switchChartTab('keyplaylists')" class="dec-subtab-item"><span class="dec-subtab-ic">➕</span>Ajouter / gérer les playlists</button>`;
 }
 
 /** Export du store complet des sound codes (toutes vagues confondues, indexé
@@ -15470,9 +16523,11 @@ function toggleCategPage(){
     document.getElementById('steps').style.display   = 'none';
     document.getElementById('backBtn').style.display = 'none';
     document.getElementById('pageCateg').style.display = 'block';
-    btn.style.borderColor = 'var(--cyan)';
-    btn.style.color       = 'var(--navy)';
-    btn.style.background  = 'var(--cyan-light)';
+    if(btn){
+      btn.style.borderColor = 'var(--cyan)';
+      btn.style.color       = 'var(--navy)';
+      btn.style.background  = 'var(--cyan-light)';
+    }
     categGoStep(1);
     if(categRules.length === 0) categInitDefaultRule();
   } else {
@@ -15539,6 +16594,7 @@ function togglePlaylistPage(){
     restoreMainPage();
   }
 }
+
 
 /* ══════════════════════════════════════════════════════════════════════
    QUOTAS FRANCOPHONES (Yacast) — suivi jour/mois/trimestre Europe 2 & RFM
@@ -16521,8 +17577,10 @@ const toggleChartShazamGroup  = makeChartGroupToggle('chartShazamGroup', 'chartS
 const toggleChartDeezerGroup  = makeChartGroupToggle('chartDeezerGroup', 'chartDeezerGroupMenu');
 const toggleChartAppleGroup   = makeChartGroupToggle('chartAppleGroup', 'chartAppleGroupMenu');
 const toggleChartYoutubeGroup = makeChartGroupToggle('chartYoutubeGroup', 'chartYoutubeGroupMenu');
+const toggleChartSpotifyPlaylistsGroup = makeChartGroupToggle('chartSpotifyPlaylistsGroup', 'chartSpotifyPlaylistsGroupMenu');
 [['chartShazamGroup','chartShazamGroupMenu'],['chartDeezerGroup','chartDeezerGroupMenu'],
- ['chartAppleGroup','chartAppleGroupMenu'],['chartYoutubeGroup','chartYoutubeGroupMenu']].forEach(([groupId, menuId]) => {
+ ['chartAppleGroup','chartAppleGroupMenu'],['chartYoutubeGroup','chartYoutubeGroupMenu'],
+ ['chartSpotifyPlaylistsGroup','chartSpotifyPlaylistsGroupMenu']].forEach(([groupId, menuId]) => {
   document.addEventListener('click', e => {
     if(!e.target.closest('#' + groupId)){
       const group = document.getElementById(groupId);
@@ -20320,12 +21378,16 @@ updateHistoryBadge();
 updateStationToggleUI();
 // Remplace les icônes emoji/placeholders des onglets Classements par les vrais logos
 initPlatformLogosInTabs();
+// Playlists Spotify clés : amorce les playlists par défaut (une seule fois
+// dans la vie du navigateur) puis construit le menu déroulant du header.
+seedDefaultKeyPlaylists();
+renderSpotifyPlaylistsGroupMenu();
 // Chargement automatique de tous les classements auto-fetchables au lancement
 // de la plateforme (silencieux, léger délai pour ne pas bloquer l'affichage
 // initial). Spotify France (CSV) et YouTube (quota limité) restent manuels —
 // voir le commentaire détaillé sur loadAllCharts().
 setTimeout(() => {
-  loadAllCharts(true).then(() => { maybeShowRadarStartupPopup(); });
+  loadAllCharts(true).then(() => { maybeShowRadarStartupPopup(); watchlistDailyCheck(false); });
 }, 1200);
 // Affiche le numéro de version + date/heure de génération dans l'en-tête
 (function(){
