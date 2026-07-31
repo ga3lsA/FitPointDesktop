@@ -114,8 +114,33 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 </head>
 <body>
 
+<!-- ÉCRAN DE CONNEXION — verrou d'interface, affiché tant qu'aucun rôle
+     n'est enregistré (voir CURRENT_ROLE / applyRoleRestrictions au bootstrap) -->
+<div id="fpaLoginOverlay" style="display:none;position:fixed;inset:0;background:var(--navy);z-index:9999;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--white);border-radius:16px;max-width:380px;width:100%;padding:36px 32px;box-shadow:0 20px 60px rgba(0,0,0,.35);text-align:center">
+    <svg width="56" height="56" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg" style="border-radius:50%;box-shadow:0 4px 16px rgba(0,184,200,.3);margin-bottom:16px" aria-label="Fit Point Analyzer">
+      <circle cx="340" cy="340" r="300" fill="var(--cyan)"/>
+      <rect x="228" y="280" width="32" height="120" rx="3" fill="var(--navy)"/>
+      <rect x="272" y="240" width="32" height="160" rx="3" fill="var(--navy)"/>
+      <rect x="316" y="210" width="32" height="190" rx="3" fill="var(--navy)"/>
+      <rect x="360" y="255" width="32" height="145" rx="3" fill="var(--navy)"/>
+      <rect x="404" y="295" width="32" height="105" rx="3" fill="var(--navy)"/>
+      <rect x="448" y="270" width="32" height="130" rx="3" fill="var(--navy)"/>
+      <circle cx="340" cy="470" r="18" fill="var(--navy)"/>
+    </svg>
+    <div style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--navy);margin-bottom:4px">Fit Point Analyzer</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:22px">Connexion requise</div>
+    <input id="fpaLoginPassword" type="password" placeholder="Mot de passe" autocomplete="current-password"
+      style="width:100%;font-size:14px;padding:11px 14px;border-radius:9px;border:1.5px solid var(--border);text-align:center;margin-bottom:10px"
+      onkeydown="if(event.key==='Enter') fpaLogin()">
+    <div id="fpaLoginError" style="display:none;font-size:11.5px;color:#CC2222;font-weight:600;margin-bottom:10px">Mot de passe incorrect</div>
+    <button onclick="fpaLogin()" style="width:100%;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:11px;font-size:13px;font-weight:700;cursor:pointer">Se connecter</button>
+    <div style="font-size:10px;color:var(--muted);margin-top:16px;line-height:1.5">Deux profils : Administrateur (accès complet) et Consultation (Drive Sync, URLs des backends, Playlists Spotify clés et import/export Call Out/OMT réservés à l'admin).</div>
+  </div>
+</div>
 
 <div id="app" style="min-height:100vh">
+
 
 <!-- HEADER -->
 <div id="appHeader" style="background:var(--white);border-bottom:1.5px solid var(--border);padding:0 16px 0 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;height:68px;position:sticky;top:0;z-index:100;box-shadow:0 1px 10px rgba(11,29,58,.06);overflow:hidden">
@@ -159,6 +184,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <span id="s3" class="step">③ Résultats</span>
   </div>
   <div id="headerTabsRow" style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;flex-shrink:1;min-width:0">
+    <span id="fpaRoleBadge" title="" style="font-size:10px;font-weight:800;color:var(--navy);background:var(--cyan-light);border:1px solid var(--cyan-mid);border-radius:20px;padding:4px 10px;white-space:nowrap;flex-shrink:0"></span>
+    <button onclick="fpaLogout()" title="Se déconnecter" class="btn-ghost" style="font-size:10.5px;padding:5px 7px;flex-shrink:0">⏏</button>
+    <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
     <button id="stationToggleBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleActiveStation()" title="Bascule la station de référence pour tout le Call Out/Historique/Décision (Cycles de vie, Radar, Analyse de potentiel...)">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a8 8 0 0 1 15-4"/><polyline points="19 3 19 7 15 7"/><path d="M20 13a8 8 0 0 1-15 4"/><polyline points="5 21 5 17 9 17"/></svg>
       <span id="stationToggleLabel">📻 Europe 2</span>
@@ -2315,7 +2343,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           </h1>
         </div>
         <p style="font-size:17px;color:rgba(255,255,255,.65);line-height:1.7;margin-bottom:28px;max-width:420px">
-          Analyse des call outs et OMT, calcul du Fit Point, monitoring de l'airplay et de la consommation musicale
+          Analyse des Call Outs, et OMT, calcul du Fit Score, intégration des scores de signature émotionnelle de Habs(R), monitoring de l'airplay et de la consommation musicale en streaming
         </p>
 
         <!-- Logos radios du groupe -->
@@ -2358,29 +2386,85 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
       </div>
 
-      <!-- Colonne droite : drop zone -->
-      <div>
-        <div id="dropZone"
-          style="border:2px dashed rgba(0,184,200,.4);border-radius:20px;padding:48px 36px;text-align:center;cursor:pointer;background:rgba(255,255,255,.04);backdrop-filter:blur(4px);transition:all .2s"
-          onclick="document.getElementById('fileInput').click()"
-          ondragover="event.preventDefault();this.style.borderColor='var(--cyan)';this.style.background='rgba(0,184,200,.08)'"
-          ondragleave="this.style.borderColor='rgba(0,184,200,.4)';this.style.background='rgba(255,255,255,.04)'"
-          ondrop="handleDrop(event)">
-          <div style="width:64px;height:64px;border-radius:16px;background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.3);display:flex;align-items:center;justify-content:center;margin:0 auto 20px">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      <!-- Colonne droite : actions de chargement -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <!-- Call Out -->
+        <div style="padding:16px 18px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+            <div style="font-size:14px;font-weight:800;color:#fff">📋 Call Out</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
+                Charger
+                <input type="file" accept=".xlsx,.xls" style="display:none" onchange="homeLoadFile(this,'callout',true)">
+              </label>
+              <label style="background:var(--cyan);border:1.5px solid var(--cyan);color:var(--navy);font-weight:800;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
+                Charger et calculer
+                <input type="file" accept=".xlsx,.xls" style="display:none" onchange="homeLoadFile(this,'callout',false)">
+              </label>
+            </div>
           </div>
-          <div style="font-family:var(--font-display);font-size:18px;font-weight:700;color:#fff;margin-bottom:8px">Glissez votre fichier ici</div>
-          <div style="color:rgba(255,255,255,.45);font-size:14px;margin-bottom:24px">ou cliquez pour parcourir</div>
-          <div style="display:inline-block;background:var(--cyan);color:var(--navy);font-weight:800;font-size:14px;padding:10px 28px;border-radius:10px;letter-spacing:.01em">
-            Choisir un fichier .xlsx
-          </div>
-          <div style="color:rgba(255,255,255,.3);font-size:12px;margin-top:16px">Format .xlsx — export brut OMT, AMT ou Call Out</div>
-          <input id="fileInput" type="file" accept=".xlsx,.xls" style="display:none" onchange="handleFile(event)">
+          <div id="homePending_callout" style="font-size:11px;line-height:1.6"></div>
         </div>
-        <div id="uploadMsg" style="display:none;margin-top:14px;padding:12px 16px;border-radius:10px;font-size:13px"></div>
+
+        <!-- OMT -->
+        <div style="padding:16px 18px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+            <div style="font-size:14px;font-weight:800;color:#fff">🎙️ OMT</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
+                Charger
+                <input type="file" accept=".xlsx,.xls" style="display:none" onchange="homeLoadFile(this,'omt',true)">
+              </label>
+              <label style="background:var(--cyan);border:1.5px solid var(--cyan);color:var(--navy);font-weight:800;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
+                Charger et calculer
+                <input type="file" accept=".xlsx,.xls" style="display:none" onchange="homeLoadFile(this,'omt',false)">
+              </label>
+            </div>
+          </div>
+          <div id="homePending_omt" style="font-size:11px;line-height:1.6"></div>
+        </div>
+
+        <div id="uploadMsg" style="display:none;margin-top:0;padding:12px 16px;border-radius:10px;font-size:13px"></div>
+
+        <!-- Live Muzicast + Tout charger, côte à côte -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12)">
+            <div style="font-size:12.5px;font-weight:800;color:#fff;margin-bottom:8px">🔴 Live Muzicast</div>
+            <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
+              Charger le Live
+              <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleLiveImport(this.files[0]);this.value=''">
+            </label>
+            <div style="font-size:10.5px;color:rgba(255,255,255,.4);margin-top:6px">Alimente le Classement Live</div>
+          </div>
+          <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12)">
+            <div style="font-size:12.5px;font-weight:800;color:#fff;margin-bottom:8px">💫 Habs(R)</div>
+            <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
+              Charger les scores
+              <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleHabsImport(this)">
+            </label>
+            <div id="homeHabsInfo" style="font-size:10.5px;color:rgba(255,255,255,.4);margin-top:6px">Signature émotionnelle</div>
+          </div>
+        </div>
+
+        <!-- Tout charger (classements + playlists digitales) -->
+        <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12)">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+            <div style="font-size:12.5px;font-weight:800;color:#fff">🌍 Tous les classements digitaux</div>
+            <button id="homeLoadAllBtn" onclick="loadAllCharts()" style="display:flex;align-items:center;gap:6px;background:var(--cyan);color:var(--navy);border:none;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Tout charger
+            </button>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);margin:6px 0 4px">Shazam, Spotify, Deezer, Apple Music, iTunes, YouTube, Billboard, Playlists Spotify clés…</div>
+          <div id="homeLoadAllBar" style="display:none;height:5px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:6px">
+            <div id="homeLoadAllBarFill" style="height:100%;width:0%;background:var(--cyan);transition:width .25s"></div>
+          </div>
+          <div id="homeLoadAllCount" style="font-size:10.5px;color:rgba(255,255,255,.5);margin-top:4px"></div>
+        </div>
 
         <!-- Upload optionnel : données individuelles pour suggestion auto des anchors -->
-        <div id="rawMatrixZone" style="margin-top:14px;padding:14px 16px;border-radius:12px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.03)">
+        <div id="rawMatrixZone" style="padding:14px 16px;border-radius:12px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.03)">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
             <div>
               <div style="font-size:12px;font-weight:700;color:#fff">+ Données individuelles (facultatif)</div>
@@ -2393,6 +2477,40 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           </div>
           <div id="rawMatrixMsg" style="display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:11px;line-height:1.5"></div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VUE D'ENSEMBLE : Radar, Veille, Quotas FR & Analyse de potentiel, résumés inline -->
+  <div style="background:#0F2847;width:100%;padding:32px 40px 40px">
+    <div style="max-width:1400px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:800;color:#fff">🎯 Radar — titres en forte progression</div>
+          <button onclick="goToRadarPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir le Radar →</button>
+        </div>
+        <div id="homeRadarSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:800;color:#fff">🔭 Veille — titres suivis</div>
+          <button onclick="goToWatchlistPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir la Veille →</button>
+        </div>
+        <div id="homeWatchlistSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:800;color:#fff">📊 Quotas FR — du jour</div>
+          <button onclick="goToQuotasPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir les Quotas →</button>
+        </div>
+        <div id="homeQuotasSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:800;color:#fff">🚀 Titres à pousser</div>
+          <button onclick="goToPotentielPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir l'analyse →</button>
+        </div>
+        <div id="homePotentielSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
       </div>
     </div>
   </div>
@@ -2900,12 +3018,97 @@ const FPA_DEFAULT_URLS = {
   quotasEndpoint: '', // URL Web App Apps Script — Quotas FR (Yacast Gmail)
 };
 
+// ── AUTHENTIFICATION (verrou d'INTERFACE — pas une sécurité réelle) ─────────
+// FPA est un fichier unique exécuté entièrement dans le navigateur : ce
+// verrou empêche les clics accidentels d'un profil non-admin sur les
+// actions sensibles (Drive Sync, URLs des backends, Playlists Spotify
+// clés, import/export Call Out/OMT) — il ne protège pas contre quelqu'un
+// de déterminé à contourner (le code, y compris les mots de passe
+// ci-dessous, reste lisible via "Afficher le code source"/F12).
+// ⚠️ CHANGEZ CES DEUX MOTS DE PASSE avant tout usage réel.
+const FPA_ADMIN_PASSWORD = 'admin';
+const FPA_USER_PASSWORD  = 'user';
+
+let CURRENT_ROLE = (function(){
+  try{ return localStorage.getItem('fpa_role') || null; }catch(e){ return null; }
+})();
+
+function isAdmin(){ return CURRENT_ROLE === 'admin'; }
+
+/** Garde-fou à appeler en tout début des actions réservées à l'admin.
+ *  Retourne true si autorisé ; sinon affiche un toast et retourne false —
+ *  la fonction appelante doit alors s'arrêter (return). */
+function requireAdmin(){
+  if(isAdmin()) return true;
+  showToast('🔒 Action réservée au profil Administrateur', 'err');
+  return false;
+}
+
+function fpaLogin(){
+  const input = document.getElementById('fpaLoginPassword');
+  const pwd = (input?.value || '');
+  let role = null;
+  if(pwd === FPA_ADMIN_PASSWORD) role = 'admin';
+  else if(pwd === FPA_USER_PASSWORD) role = 'user';
+  const err = document.getElementById('fpaLoginError');
+  if(!role){
+    if(err) err.style.display = 'block';
+    return;
+  }
+  if(err) err.style.display = 'none';
+  CURRENT_ROLE = role;
+  try{ localStorage.setItem('fpa_role', role); }catch(e){ /* pas bloquant */ }
+  const overlay = document.getElementById('fpaLoginOverlay');
+  if(overlay) overlay.style.display = 'none';
+  applyRoleRestrictions();
+}
+
+function fpaLogout(){
+  try{ localStorage.removeItem('fpa_role'); }catch(e){}
+  location.reload();
+}
+
+/** Cache/désactive les quelques éléments statiques (page d'accueil) réservés
+ *  à l'admin, et met à jour le badge de rôle dans le header. Les actions
+ *  générées dynamiquement ailleurs (boutons ⚙️ Proxy répétés dans
+ *  Classements, etc.) sont bloquées au niveau des fonctions elles-mêmes
+ *  (requireAdmin() en tête de fonction) plutôt qu'en les cachant une par
+ *  une — plus robuste qu'une liste d'IDs à maintenir. */
+function applyRoleRestrictions(){
+  const badge = document.getElementById('fpaRoleBadge');
+  if(badge){
+    badge.textContent = isAdmin() ? '👑 Admin' : '👤 Consultation';
+    badge.title = isAdmin()
+      ? 'Profil administrateur — accès complet'
+      : 'Profil consultation — Drive Sync, URLs des backends, Playlists Spotify clés et import/export Call Out/OMT réservés à l\'administrateur';
+  }
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin() ? '' : 'none';
+  });
+}
+
 // ── STATE ─────────────────────────────────────────────────────────────────
 let fileRows=[],fileHeaders=[],originalRawData=null,cols={},scoreColumns=[],
     targetCol='',anchors=['','',''],burnPct=30,powerPct=10,analysisResult=[],
     fitPoint=0,fitZoneLow=0,hst=0,stdDev=0,powerThreshold=0,sourceFileName='OMT_Export';
 // Matrice individuelle (facultative) pour suggestion automatique des anchors
 let rawMatrix=null,rawMatrixFileName='',anchorSuggestions=null,titleOrderCandidates=[];
+
+// ── HOME — fichiers Call Out / OMT chargés en mémoire mais pas encore
+// configurés/calculés (options "Charger" de la home, sans "et calculer").
+// Persisté en localStorage : survit à un rechargement de page, mais reste
+// propre à CET ordinateur/navigateur (pas de synchronisation Drive pour
+// l'instant — contrairement aux classements/airplay, il n'existe pas
+// aujourd'hui de sauvegarde Drive des fichiers Call Out/OMT bruts). ──
+let homePendingFiles = homePendingFilesLoadFromStorage();
+function homePendingFilesLoadFromStorage(){
+  try{ return JSON.parse(localStorage.getItem('fpa_home_pending_files') || '{}'); }
+  catch(e){ return {}; }
+}
+function homePendingFilesSaveToStorage(){
+  try{ localStorage.setItem('fpa_home_pending_files', JSON.stringify(homePendingFiles)); return true; }
+  catch(e){ return false; } // quota localStorage dépassé (gros fichier) : on continue sans persistance
+}
 
 // ── UTILS ─────────────────────────────────────────────────────────────────
 function show(id){const e=document.getElementById(id);if(e)e.style.display=''}
@@ -2930,6 +3133,10 @@ function goHome(){
     const el=document.getElementById(id); if(el)el.style.display='none';
   });
   show('pageUpload');
+  renderHomePendingCard('callout');
+  renderHomePendingCard('omt');
+  renderHomeHabsCard();
+  updateHomeSummaries();
 }
 
 function showToast(msg,type='success'){
@@ -3405,14 +3612,6 @@ function applyAnchorSuggestionsIfAvailable(){
 
 
 // ── FILE HANDLING ─────────────────────────────────────────────────────────
-function handleDrop(e){
-  e.preventDefault();
-  document.getElementById('dropZone').style.borderColor='rgba(0,184,200,.4)';
-  document.getElementById('dropZone').style.background='rgba(255,255,255,.04)';
-  const f=e.dataTransfer.files[0];if(f)processFile(f);
-}
-function handleFile(e){const f=e.target.files[0];if(f)processFile(f);}
-
 function processFile(file){
   hide('uploadMsg');
   sourceFileName=file.name.replace(/\.[^/.]+$/,'');
@@ -3447,7 +3646,228 @@ function processFile(file){
   reader.readAsArrayBuffer(file);
 }
 
+/** Point d'entrée unique des boutons de chargement de la home pour Call Out
+ *  et OMT — 'kind' vaut 'callout' ou 'omt' (sert uniquement à étiqueter/
+ *  mémoriser le fichier, le parsing lui-même est identique et auto-détecte
+ *  le contenu comme aujourd'hui). Si deferred=false : comportement actuel
+ *  inchangé (processFile → sélecteur d'onglet → configuration → calcul). Si
+ *  deferred=true : le fichier est parsé et gardé en mémoire, sans lancer le
+ *  calcul — à reprendre plus tard via "Configurer et calculer maintenant"
+ *  sur la carte correspondante de la home. */
+function homeLoadFile(input, kind, deferred){
+  if(!requireAdmin()) return;
+  const file = input.files && input.files[0];
+  if(!file) return;
+  if(deferred) processFileDeferred(file, kind);
+  else processFile(file);
+  input.value = ''; // permet de recharger le même fichier une seconde fois si besoin
+}
+
+function processFileDeferred(file, kind){
+  const label = kind === 'callout' ? 'Call Out' : 'OMT';
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      const validSheets = [];
+      const titleOrderCand = [];
+      for(const name of wb.SheetNames){
+        const ws = wb.Sheets[name];
+        const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+        const orderCand = detectTitleOrderSheet(raw, name);
+        if(orderCand) titleOrderCand.push(orderCand);
+        if(SKIP_SHEETS.includes(name.toUpperCase().trim())) continue;
+        const parsed = parseSheet(raw, name);
+        if(parsed && parsed.rows.length > 0) validSheets.push({name, parsed, raw});
+      }
+      if(!validSheets.length){
+        showToast('❌ Aucun onglet exploitable trouvé dans ce fichier ' + label, 'err');
+        return;
+      }
+      homePendingFiles[kind] = {
+        sourceFileName: file.name.replace(/\.[^/.]+$/, ''),
+        validSheets, titleOrderCand,
+        loadedAt: new Date().toISOString(),
+      };
+      const persisted = homePendingFilesSaveToStorage();
+      renderHomePendingCard(kind);
+      showToast('✓ Fichier ' + label + ' « ' + homePendingFiles[kind].sourceFileName + ' » chargé en mémoire' + (persisted ? '' : ' (fichier volumineux : ne survivra pas à un rechargement de page)') + ' — configurez le Fit Score quand vous voulez', 'success');
+    }catch(err){
+      showToast('Erreur de lecture du fichier ' + label + ' : ' + err.message, 'err');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+/** Reprend la configuration/calcul d'un fichier Call Out ou OMT chargé plus
+ *  tôt via homeLoadFile(..., true) — reprend exactement le même point du
+ *  parcours (sélecteur d'onglet) que le chargement immédiat. */
+function resumeHomePendingFile(kind){
+  // Autorisé pour les deux profils : ce fichier est déjà en mémoire locale
+  // (chargé plus tôt), ce n'est pas un nouvel import — seul homeLoadFile()
+  // (le VRAI import depuis le disque) reste réservé à l'admin.
+  const pending = homePendingFiles[kind];
+  if(!pending) return;
+  sourceFileName = pending.sourceFileName;
+  rawDataDirectSheets = [];
+  rawDataSourceName   = '';
+  titleOrderCandidates = pending.titleOrderCand || [];
+  showSheetSelector(pending.validSheets);
+}
+
+function removeHomePendingFile(kind){
+  if(!requireAdmin()) return;
+  delete homePendingFiles[kind];
+  homePendingFilesSaveToStorage();
+  renderHomePendingCard(kind);
+}
+
+/** (Re)construit la ligne d'info "dernier fichier en mémoire" d'une carte
+ *  Call Out ou OMT de la home — date/heure de chargement + bouton pour
+ *  reprendre la configuration, ou message si aucun fichier en mémoire. */
+/** Retrouve la dernière vague Call Out ou OMT enregistrée dans l'historique
+ *  (histLoad(), la page Historique — IndexedDB) pour la STATION ACTIVE.
+ *  C'est la vraie source de vérité déjà utilisée partout ailleurs dans FPA :
+ *  contrairement à homePendingFiles (qui ne suit qu'un fichier chargé depuis
+ *  la home durant cette session, pas encore configuré), l'historique
+ *  contient toutes les vagues que Gaël a explicitement enregistrées
+ *  ("Enregistrer la vague") ou importées en masse, avec leur date réelle.
+ *  Retourne {vague, idx} (idx = position dans histLoad(), pour
+ *  loadVagueForAnalysis) ou null si aucune vague ne correspond. */
+function getLatestVague(kind){
+  const stationLabel = (STATION_LABELS[ACTIVE_STATION] || '').toLowerCase();
+  const needle = kind === 'callout' ? 'call out' : 'omt';
+  const history = histLoad();
+  let best = null, bestIdx = -1, bestTime = -Infinity;
+  history.forEach((v, idx) => {
+    const type = (v.type || '').toLowerCase();
+    if(!type.includes(needle)) return;
+    if(stationLabel && !type.includes(stationLabel)) return;
+    const t = v.savedAt ? new Date(v.savedAt).getTime() : (v.date ? new Date(v.date).getTime() : 0);
+    if(t >= bestTime){ bestTime = t; best = v; bestIdx = idx; }
+  });
+  return best ? {vague: best, idx: bestIdx} : null;
+}
+
+/** Recharge et lance directement la configuration/calcul de la dernière
+ *  vague Call Out/OMT de l'historique — équivalent, depuis la home, de
+ *  cliquer sur cette vague dans la page Historique. */
+function resumeFromHistory(kind){
+  // Autorisé pour les deux profils : vague déjà présente localement dans
+  // l'historique (IndexedDB), pas un nouvel import de fichier.
+  const found = getLatestVague(kind);
+  if(!found){ showToast('Aucune vague ' + (kind==='callout'?'Call Out':'OMT') + ' trouvée dans l\'historique pour ' + (STATION_LABELS[ACTIVE_STATION]||'cette station'), 'err'); return; }
+  loadVagueForAnalysis(found.idx);
+}
+
+function renderHomePendingCard(kind){
+  const el = document.getElementById('homePending_' + kind);
+  if(!el) return;
+  const label = kind === 'callout' ? 'Call Out' : 'OMT';
+  const parts = [];
+
+  // 1) Dernière vague de L'HISTORIQUE (la vraie source de vérité) pour la station active
+  const found = getLatestVague(kind);
+  if(found){
+    const v = found.vague;
+    const count = (v.sheets||[]).reduce((s,sh)=>s+(sh.count||0),0);
+    const dateInfo = v.date ? ' — semaine du ' + escHtml(v.date) : '';
+    parts.push(`<div style="color:rgba(255,255,255,.75)">
+      Dernière vague dans l'historique : « ${escHtml(v.name)} »${dateInfo} (${count} titres)
+      <button onclick="resumeFromHistory('${kind}')" style="margin-left:8px;background:var(--cyan);color:var(--navy);border:none;border-radius:6px;padding:3px 10px;font-size:10.5px;font-weight:800;cursor:pointer">Recharger et calculer</button>
+    </div>`);
+  } else {
+    parts.push(`<div style="color:rgba(255,255,255,.4)">Aucune vague ${label} dans l'historique pour ${escHtml(STATION_LABELS[ACTIVE_STATION]||'cette station')}</div>`);
+  }
+
+  // 2) Fichier chargé cette session depuis la home, pas encore configuré
+  // (distinct de l'historique : pas encore nommé/enregistré comme vague)
+  const p = homePendingFiles[kind];
+  if(p){
+    const d = new Date(p.loadedAt);
+    const dateStr = d.toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'}) + ' à ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    parts.push(`<div style="color:rgba(255,255,255,.6);margin-top:4px">
+      Fichier chargé (pas encore configuré) : « ${escHtml(p.sourceFileName)} » le ${dateStr}
+      <button onclick="resumeHomePendingFile('${kind}')" style="margin-left:8px;background:var(--cyan);color:var(--navy);border:none;border-radius:6px;padding:3px 10px;font-size:10.5px;font-weight:800;cursor:pointer">Configurer et calculer maintenant</button>
+      <button onclick="removeHomePendingFile('${kind}')" title="Retirer" style="margin-left:6px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:11px">✕</button>
+    </div>`);
+  }
+
+  el.innerHTML = parts.join('');
+}
+
+// ── HABS(R) — scores de signature émotionnelle ─────────────────────────────
+// Format exact du fichier fourni par Habs(R) pas encore spécifié : import
+// générique pour l'instant (colonnes Titre/Artiste détectées comme partout
+// ailleurs dans FPA + toute colonne numérique = un score), stocké et
+// affiché sur la home. PAS ENCORE branché dans le calcul du Fit Score, les
+// quadrants ou les fiches Song Full Metrics — une passe dédiée sera
+// nécessaire une fois le format réel et l'usage souhaité (pondération du
+// Fit Score ? affichage informatif seul ? nouveau quadrant ?) précisés.
+let habsScores = (() => { try{ return JSON.parse(localStorage.getItem('fpa_habs_scores') || '{}'); }catch(e){ return {}; } })();
+let habsLastImportInfo = (() => { try{ return JSON.parse(localStorage.getItem('fpa_habs_last_import') || 'null'); }catch(e){ return null; } })();
+
+function handleHabsImport(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+      const headers = (raw[0] || []).map(h => (h||'').toString().trim());
+      const dc = detectCols(headers);
+      if(!dc.title || !dc.artist){
+        showToast('❌ Colonnes Titre/Artiste non reconnues dans ce fichier Habs(R)', 'err');
+        return;
+      }
+      const titleIdx = headers.indexOf(dc.title), artistIdx = headers.indexOf(dc.artist);
+      const scoreCols = headers.map((h,i)=>({h,i})).filter(({h,i}) => i!==titleIdx && i!==artistIdx && h);
+      const imported = {};
+      let count = 0;
+      raw.slice(1).forEach(row => {
+        const title = row[titleIdx], artist = row[artistIdx];
+        if(!title || !artist) return;
+        const scores = {};
+        scoreCols.forEach(({h,i}) => { const v = parseFloat(row[i]); if(!isNaN(v)) scores[h] = v; });
+        if(!Object.keys(scores).length) return;
+        imported[comiteKey(title, artist)] = { title, artist, scores };
+        count++;
+      });
+      if(!count){
+        showToast('❌ Aucune ligne exploitable (Titre/Artiste + au moins un score numérique) dans ce fichier', 'err');
+        return;
+      }
+      habsScores = { ...habsScores, ...imported };
+      try{ localStorage.setItem('fpa_habs_scores', JSON.stringify(habsScores)); }catch(e){ /* quota localStorage, ignoré */ }
+      habsLastImportInfo = { fileName: file.name.replace(/\.[^/.]+$/,''), count, importedAt: new Date().toISOString() };
+      try{ localStorage.setItem('fpa_habs_last_import', JSON.stringify(habsLastImportInfo)); }catch(e){ /* ignoré */ }
+      renderHomeHabsCard();
+      showToast('✓ Signature émotionnelle Habs(R) : ' + count + ' titre(s) importé(s)', 'success');
+    }catch(err){
+      showToast('Erreur de lecture du fichier Habs(R) : ' + err.message, 'err');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+function renderHomeHabsCard(){
+  const el = document.getElementById('homeHabsInfo');
+  if(!el) return;
+  if(!habsLastImportInfo){
+    el.innerHTML = '<span style="color:rgba(255,255,255,.4)">Aucun score de signature émotionnelle chargé</span>';
+    return;
+  }
+  const d = new Date(habsLastImportInfo.importedAt);
+  el.innerHTML = `<span style="color:rgba(255,255,255,.75)">${Object.keys(habsScores).length} titre(s) en mémoire — dernier import « ${escHtml(habsLastImportInfo.fileName)} » le ${d.toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})}</span>`;
+}
+
 let currentCibleBlocks = {}; // {suffixe: libellé de cible}, ex. {'':'ENSEMBLE...', '__3':'RFM Fav - 155'}
+
 
 function loadSingleSheet(name,parsed,raw){
   fileHeaders=parsed.headers;
@@ -3815,6 +4235,7 @@ const QUAD_LABELS= Object.fromEntries(Object.entries(QUAD).map(([k,v])=>[k,v.lab
 // ── EXPORT EXCEL ──────────────────────────────────────────────────────────
 
 function exportExcel(){
+  if(!requireAdmin()) return;
   if(!analysisResult.length){showToast('Lancez l\'analyse d\'abord','err');return;}
   showToast('Génération du fichier Excel…','loading');
 
@@ -4089,6 +4510,7 @@ async function fetchDeezerViaProxy(){
 
 /* ── Panneau de configuration du proxy Deezer (URL Apps Script) ── */
 function toggleDeezerProxyPanel(){
+  if(!requireAdmin()) return;
   const panel = document.getElementById('deezerProxyPanel');
   if(!panel) return;
   const open = panel.style.display === 'none' || panel.style.display === '';
@@ -4272,6 +4694,7 @@ async function fetchAppleMusicViaProxy(country = 'us', type = 'most-played'){
 
 /* ── Panneau de configuration du proxy Apple Music (URL Apps Script) ── */
 function toggleAppleMusicProxyPanel(){
+  if(!requireAdmin()) return;
   const panel = document.getElementById('appleMusicProxyPanel');
   if(!panel) return;
   const open = panel.style.display === 'none' || panel.style.display === '';
@@ -4785,6 +5208,7 @@ async function fetchKworbPage(targetUrl, parserFn){
 
 /* ── Panneau de configuration du proxy kworb.net (URL Apps Script) ── */
 function toggleKworbProxyPanel(){
+  if(!requireAdmin()) return;
   const panel = document.getElementById('kworbProxyPanel');
   if(!panel) return;
   const open = panel.style.display === 'none' || panel.style.display === '';
@@ -5156,6 +5580,7 @@ function fetchShazamViaAppsScript(country /* 'france' | 'world' */, timeoutMs = 
 }
 
 function toggleShazamProxyPanel(){
+  if(!requireAdmin()) return;
   const panel = document.getElementById('shazamProxyPanel');
   if(!panel) return;
   const open = panel.style.display === 'none' || panel.style.display === '';
@@ -5389,6 +5814,12 @@ async function loadAllCharts(silent = false){
   const statusEl = document.getElementById('loadAllChartsStatus');
   if(statusEl){ statusEl.textContent = 'Connexion à toutes les sources…'; statusEl.style.color = 'var(--muted)'; }
   if(!silent) showToast('Chargement de tous les classements en arrière-plan…', 'success');
+  // Miroir sur la carte de la home (mêmes infos, présentation "compteur + barre
+  // de progression" en plus) — chaque élément est mis à jour s'il existe dans
+  // le DOM, qu'on soit sur la home ou sur la page Classements.
+  const homeBtn = document.getElementById('homeLoadAllBtn');
+  if(homeBtn){ homeBtn.disabled = true; }
+  updateAllChartsProgressUI(0, 1, 'Connexion à toutes les sources…');
 
   const tasks = [];
 
@@ -5424,23 +5855,55 @@ async function loadAllCharts(silent = false){
   Object.keys(KWORB_YOUTUBE_COUNTRIES).forEach(cc => {
     if(!kworbYoutubeCountryState[cc].loaded) tasks.push(loadKworbYoutubeCountry(cc));
   });
+  // Playlists Spotify clés suivies (RapCaviar, New Music Friday...) pas
+  // encore récupérées — au même titre que les autres sources auto-fetchables.
+  keyPlaylists.filter(p => !p.fetchedAt).forEach(p => tasks.push(refreshKeyPlaylist(p.id)));
 
-  const results = await Promise.allSettled(tasks);
+  // Suivi de progression : chaque tâche, une fois réglée (succès ou échec),
+  // incrémente le compteur et met à jour le texte + la barre — sur la page
+  // Classements comme sur la home, sans attendre que TOUTES soient finies.
+  const total = tasks.length;
+  let done = 0;
+  updateAllChartsProgressUI(0, total, 'Chargement de ' + total + ' source(s)…');
+  const trackedTasks = tasks.map(t => t.finally ? t.finally(() => {
+    done++;
+    updateAllChartsProgressUI(done, total, done + ' / ' + total + ' source(s) chargée(s)…');
+  }) : t);
+
+  const results = await Promise.allSettled(trackedTasks);
 
   enrichResultsWithCharts();
   if(document.getElementById('pageResults') && document.getElementById('pageResults').style.display !== 'none') renderTable();
   if(document.getElementById('pageCharts')  && document.getElementById('pageCharts').style.display  !== 'none') renderChartTable();
   updateLoadAllChartsStatus();
+  renderSpotifyPlaylistsGroupMenu();
+  updateHomeSummaries();
 
   allChartsLoadingInProgress = false;
   if(btn){
     btn.disabled = false;
     btn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg> Tout charger`;
   }
+  if(homeBtn) homeBtn.disabled = false;
+  const okCount = results.filter(r => r.status === 'fulfilled').length;
+  updateAllChartsProgressUI(total, total, '✓ ' + okCount + ' / ' + total + ' source(s) fraîchement récupérée(s)');
   if(!silent){
-    const okCount = results.filter(r => r.status === 'fulfilled').length;
-    showToast('Classements chargés ✓ (' + okCount + '/' + results.length + ' sources fraîchement récupérées)', 'success');
+    showToast('Classements chargés ✓ (' + okCount + '/' + total + ' sources fraîchement récupérées)', 'success');
   }
+}
+
+/** Met à jour le compteur + la barre de progression du chargement global,
+ *  partout où ils sont présents dans le DOM (home et/ou page Classements).
+ *  'done'/'total' comptent les TÂCHES DE CETTE SESSION de chargement (sources
+ *  pas encore chargées), pas l'ensemble des sources disponibles. */
+function updateAllChartsProgressUI(done, total, label){
+  const pct = total > 0 ? Math.round((done/total)*100) : 100;
+  const barEl   = document.getElementById('homeLoadAllBar');
+  const fillEl  = document.getElementById('homeLoadAllBarFill');
+  const countEl = document.getElementById('homeLoadAllCount');
+  if(barEl)  barEl.style.display = 'block';
+  if(fillEl) fillEl.style.width = pct + '%';
+  if(countEl) countEl.textContent = label;
 }
 
 function showResults(){
@@ -6121,6 +6584,14 @@ function sortByAirplay(key){
  *  non validées (403). Repli sur cette option simple, fiable. */
 let _spotifyPopupWin = null;
 function openSpotifyPopup(url){
+  // Garde-fou : un <a href="..."> vide/mal formé voit sa propriété .href
+  // résolue par le navigateur vers l'URL de LA PAGE ELLE-MÊME (comportement
+  // standard pour un lien relatif vide) — sans ce garde-fou, window.open()
+  // tenterait de rouvrir le fichier FPA courant, ce que Chrome bloque en
+  // usage file:// ("Unsafe attempt to load URL ... from frame with URL
+  // ..."), et peut laisser l'interface dans un état incohérent. On ignore
+  // simplement le clic dans ce cas plutôt que de planter.
+  if(!url || url === window.location.href) return false;
   if(_spotifyPopupWin && !_spotifyPopupWin.closed){
     _spotifyPopupWin.location.href = url;
     _spotifyPopupWin.focus();
@@ -6867,6 +7338,94 @@ function idbDelete(key){
     tx.onerror    = () => reject(tx.error);
   }));
 }
+/** Lit TOUTES les clés/valeurs actuellement dans FPA_DB (historique des
+ *  vagues, historique quotidien des quotas, snapshots EMB...) — générique,
+ *  ne suppose rien sur la liste des clés existantes, pour rester valable
+ *  même si de nouvelles clés IndexedDB sont ajoutées plus tard (ex. futurs
+ *  snapshots EMB). Utilisé par la migration complète (export/import). */
+function idbGetAllEntries(){
+  return idbOpen().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(IDB_STORE, 'readonly');
+    const store = tx.objectStore(IDB_STORE);
+    let keys, vals;
+    const check = () => { if(keys !== undefined && vals !== undefined) resolve({keys, vals}); };
+    const keysReq = store.getAllKeys();
+    keysReq.onsuccess = () => { keys = keysReq.result; check(); };
+    const valsReq = store.getAll();
+    valsReq.onsuccess = () => { vals = valsReq.result; check(); };
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+
+// ── MIGRATION COMPLÈTE (export/import de tous les réglages + données) ──────
+// Pensée pour changer de poste : réunit en un seul fichier JSON tout ce qui
+// est aujourd'hui propre à CE navigateur — les URLs des backends Apps
+// Script, les données (Comité, Playlist, Veille, Playlists Spotify clés,
+// sound codes, Habs(R)...) ainsi que l'historique des vagues et l'historique
+// quotidien des quotas (IndexedDB). Balayage générique par préfixe/store
+// plutôt que liste figée de clés, pour rester valable si de nouvelles clés
+// sont ajoutées plus tard sans avoir à mettre cette fonction à jour.
+async function exportFpaSettingsJSON(){
+  if(!requireAdmin()) return;
+  const localStorageDump = {};
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith('fpa_')) localStorageDump[k] = localStorage.getItem(k);
+  }
+  let indexedDBDump = {};
+  try{
+    const { keys, vals } = await idbGetAllEntries();
+    keys.forEach((k, i) => { indexedDBDump[k] = vals[i]; });
+  }catch(e){ /* IndexedDB indisponible : on exporte quand même le localStorage */ }
+
+  const bundle = {
+    fpaExportVersion: 1,
+    exportedAt: new Date().toISOString(),
+    localStorage: localStorageDump,
+    indexedDB: indexedDBDump,
+  };
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'fpa_migration_' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('✓ Export terminé — ' + Object.keys(localStorageDump).length + ' réglage(s) + ' + Object.keys(indexedDBDump).length + ' entrée(s) IndexedDB', 'success');
+}
+
+function importFpaSettingsJSON(input){
+  if(!requireAdmin()) return;
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async function(ev){
+    try{
+      const bundle = JSON.parse(ev.target.result);
+      if(!bundle || (!bundle.localStorage && !bundle.indexedDB)){
+        showToast('❌ Fichier de migration non reconnu', 'err');
+        return;
+      }
+      const nLS  = Object.keys(bundle.localStorage || {}).length;
+      const nIDB = Object.keys(bundle.indexedDB || {}).length;
+      if(!confirm(`Importer ${nLS} réglage(s) et ${nIDB} entrée(s) d'historique ?\n\nCela ÉCRASE les valeurs déjà présentes sur ce poste pour les mêmes clés (le reste n'est pas touché). La page sera rechargée juste après.`)) return;
+
+      Object.entries(bundle.localStorage || {}).forEach(([k, v]) => {
+        try{ localStorage.setItem(k, v); }catch(e){ /* quota dépassé pour cette clé, ignorée */ }
+      });
+      for(const [k, v] of Object.entries(bundle.indexedDB || {})){
+        try{ await idbSet(k, v); }catch(e){ /* ignorée */ }
+      }
+      showToast('✓ Import terminé — rechargement…', 'success');
+      setTimeout(() => location.reload(), 1200);
+    }catch(err){
+      showToast('Erreur de lecture du fichier de migration : ' + err.message, 'err');
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+  input.value = '';
+}
 
 /* ── Persistance ──
    Cache mémoire synchrone (historyCache) utilisé par tout le reste du code via
@@ -6899,6 +7458,13 @@ async function histInit(){
   historyLoaded = true;
   updateHistoryBadge();
   if(historyPageOpen) renderHistoryPage();
+  // La home affiche la dernière vague Call Out/OMT de l'historique — mais
+  // histInit() est asynchrone (lecture IndexedDB), donc au moment où le
+  // bootstrap de fin de fichier appelle renderHomePendingCard() une première
+  // fois, historyCache est probablement encore vide. On refait l'affichage
+  // ici, une fois l'historique réellement chargé.
+  renderHomePendingCard('callout');
+  renderHomePendingCard('omt');
   // Sauvegarde automatique désactivée au démarrage à la demande de Gaël :
   // le backup Drive (fpa_auto_backup) ne se déclenche plus qu'à la main,
   // via le bouton dédié dans le panneau Drive Sync (qui appelle runAutoBackup()
@@ -6970,6 +7536,7 @@ function updateVagueNamePreview(){
 
 /* ── Ouvrir modal ── */
 function openSaveModal(){
+  if(!requireAdmin()) return;
   // Toujours reconstruire au cas où les données viennent d'être chargées
   buildRawDataSheets();
   if(!rawDataAllSheets || rawDataAllSheets.length === 0){
@@ -7086,6 +7653,7 @@ function buildAutoVagueName(type, date, num){
  *  station active, et enregistre ou remplace la vague correspondante dans
  *  l'historique. */
 async function bulkImportFiles(fileList){
+  if(!requireAdmin()) return;
   if(!fileList || fileList.length === 0) return;
   const files = Array.from(fileList);
   const station = STATION_LABELS[ACTIVE_STATION];
@@ -7176,6 +7744,8 @@ async function bulkImportFiles(fileList){
 
   histSave(history);
   renderHistoryPage();
+  renderHomePendingCard('callout');
+  renderHomePendingCard('omt');
 
   let msg = `${added} vague${added>1?'s':''} ajoutée${added>1?'s':''}, ${replaced} remplacée${replaced>1?'s':''}`;
   if(skipped.length) msg += ` — ${skipped.length} ignoré${skipped.length>1?'s':''} : ${skipped.join(' · ')}`;
@@ -7251,6 +7821,8 @@ function confirmSaveVague(){
   histSave(history);
   closeSaveModal();
   updateHistoryBadge();
+  renderHomePendingCard('callout');
+  renderHomePendingCard('omt');
   showToast(`Vague « ${name} » enregistrée — ${snapshot.sheets.reduce((s,sh)=>s+sh.count,0)} titres`, 'success');
 }
 
@@ -7496,6 +8068,10 @@ function rebuildSheetsFromVague(v){
  *  renvoie vers l'écran de configuration habituel (choix d'onglet le cas
  *  échéant, ancres, seuils burn/power) exactement comme après un upload. */
 function loadVagueForAnalysis(idx){
+  // Autorisé pour les deux profils : vague déjà présente localement dans
+  // l'historique (IndexedDB), pas un nouvel import de fichier depuis le
+  // disque — seuls l'import/export bruts (bulkImportFiles, exportExcel,
+  // exportAllHistoryJSON, importHistoryJSON...) restent réservés à l'admin.
   const history = histLoad();
   const v = history[idx];
   if(!v) return;
@@ -7622,6 +8198,7 @@ function exportSingleVagueJSON(idx){
 }
 
 function exportAllHistoryJSON(){
+  if(!requireAdmin()) return;
   const history = histLoad();
   if(!history.length){ showToast('Aucune vague à exporter','err'); return; }
   const blob = new Blob([JSON.stringify(history, null, 2)], {type:'application/json'});
@@ -7633,6 +8210,7 @@ function exportAllHistoryJSON(){
 }
 
 function importHistoryJSON(file){
+  if(!requireAdmin()) return;
   if(!file) return;
   const reader = new FileReader();
   reader.onload = e => {
@@ -7699,6 +8277,8 @@ function toggleActiveStation(){
   if(typeof refreshAllMembershipButtons === 'function') refreshAllMembershipButtons();
   if(typeof comitePageOpen !== 'undefined' && comitePageOpen && typeof renderComitePage === 'function') renderComitePage();
   if(typeof playlistPageOpen !== 'undefined' && playlistPageOpen && typeof renderPlaylistPage === 'function') renderPlaylistPage();
+  // Le résumé Call Out/OMT de la home est filtré par station active
+  if(typeof renderHomePendingCard === 'function'){ renderHomePendingCard('callout'); renderHomePendingCard('omt'); }
 }
 
 function updateStationToggleUI(){
@@ -14455,6 +15035,7 @@ async function fetchDataViaProxyWithRaw(url, parserFn, onRaw){
 }
 
 function addKeyPlaylist(){
+  if(!requireAdmin()) return;
   const urlInput   = document.getElementById('keyplaylistUrlInput');
   const labelInput = document.getElementById('keyplaylistLabelInput');
   const raw   = (urlInput?.value || '').trim();
@@ -14478,6 +15059,7 @@ function addKeyPlaylist(){
 }
 
 function removeKeyPlaylist(id){
+  if(!requireAdmin()) return;
   keyPlaylists = keyPlaylists.filter(p => p.id !== id);
   keyPlaylistsSaveToStorage();
   renderKeyPlaylistsPage();
@@ -16682,6 +17264,7 @@ function toggleQuotasPage(){
 }
 
 function quotasOpenConfig(){
+  if(!requireAdmin()) return;
   const box = document.getElementById('quotasConfigBox');
   if(!box) return;
   box.style.display = (box.style.display === 'none') ? 'block' : 'none';
@@ -18922,7 +19505,7 @@ function radarShowEmpty(msg){
 
 /** Calcule les titres en forte progression pour le Radar, indépendamment de
  *  l'affichage — réutilisée par renderRadarPage() (onglet Décision → Radar)
- *  et par le popup de démarrage (maybeShowRadarStartupPopup()).
+ *  et par le résumé Radar de la home (renderHomeRadarSummary()).
  *  Retourne {status:'ok', rows, refEntry, compLabel, useLive}
  *       ou  {status:'no-analysis'|'no-drive'|'no-history'|'error', message?}. */
 async function computeRadarRows(){
@@ -19174,79 +19757,221 @@ async function renderRadarPage(){
 // (voir l'appel après loadAllCharts(true) en fin de fichier), un résumé des
 // titres actuellement détectés par le Radar. Activable/désactivable, choix
 // persisté en localStorage (activé par défaut).
-const RADAR_STARTUP_KEY = 'fpa_radar_startup_popup';
-
-function radarStartupPopupEnabled(){
-  const v = localStorage.getItem(RADAR_STARTUP_KEY);
-  return v === null ? true : v === '1'; // activé par défaut si jamais réglé
-}
-function setRadarStartupPopupEnabled(on){
-  try{ localStorage.setItem(RADAR_STARTUP_KEY, on ? '1' : '0'); }catch(e){ /* localStorage indisponible : pas bloquant */ }
-}
-
-/** Ouvre l'onglet Décision → Radar et ferme le popup de démarrage. */
-function goToRadarPageFromPopup(){
-  const modal = document.getElementById('radarStartupModal');
-  if(modal) modal.remove();
+/** Ouvre l'onglet Décision → Radar depuis la home. */
+function goToRadarPage(){
   try{
     if(document.getElementById('pageDecision')?.style.display === 'none' || !document.getElementById('pageDecision')) toggleDecisionPage();
     switchDecTab('radar');
   }catch(e){ /* navigation best-effort */ }
 }
 
-function renderRadarStartupModal(rows){
-  const existing = document.getElementById('radarStartupModal');
-  if(existing) existing.remove();
-
-  const MAX_SHOWN = 12;
-  const itemsHtml = rows.length ? rows.slice(0, MAX_SHOWN).map(({r, gains, totalGain}) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border:1.5px solid #A8E6CE;border-left:4px solid #0DA76B;border-radius:10px;margin-bottom:8px;background:var(--white)">
+/** Résumé Radar affiché directement sur la home — remplace l'ancien popup
+ *  de démarrage (jugé trop intrusif : il fallait le fermer à chaque
+ *  ouverture de l'appli). Mêmes données que l'onglet Radar
+ *  (computeRadarRows), rendu inline dans une carte. Appelée au démarrage
+ *  après le chargement automatique des classements, et à chaque
+ *  rafraîchissement (bouton "Tout charger" de la home). */
+async function renderHomeRadarSummary(){
+  const el = document.getElementById('homeRadarSummary');
+  if(!el) return;
+  if(!analysisResult || !analysisResult.length){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargez et calculez une analyse Call Out/OMT pour voir apparaître le Radar ici.</div>';
+    return;
+  }
+  el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">⏳ Calcul du Radar…</div>';
+  let result;
+  try{ result = await computeRadarRows(); }catch(e){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Radar indisponible pour l\'instant.</div>';
+    return;
+  }
+  const STATUS_MSG = {
+    'no-drive':   'Configurez la synchronisation Drive (page Airplay) pour activer le Radar.',
+    'no-history': 'Aucune semaine sauvegardée sur Drive pour l\'instant — le Radar a besoin d\'au moins une semaine d\'historique.',
+    'error':      'Erreur lors du calcul du Radar.',
+  };
+  if(result.status !== 'ok'){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">' + (STATUS_MSG[result.status] || 'Radar indisponible.') + '</div>';
+    return;
+  }
+  const MAX_SHOWN = 6;
+  const rows = result.rows;
+  if(!rows.length){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">🎯 Aucun titre en forte progression actuellement.</div>';
+    return;
+  }
+  el.innerHTML = rows.slice(0, MAX_SHOWN).map(({r, gains, totalGain}) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(13,167,107,.5);border-left:3px solid #0DA76B;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
       <div style="min-width:0;flex:1">
-        <div style="font-size:13px;font-weight:800;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
-        <div style="font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')} · ${gains.length} signal${gains.length>1?'s':''}</div>
+        <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')} · ${gains.length} signal${gains.length>1?'s':''}</div>
       </div>
-      <div style="flex-shrink:0;text-align:center;padding:5px 12px;background:#0DA76B;border-radius:8px">
-        <div style="font-size:14px;font-weight:800;color:#fff">+${totalGain}</div>
+      <div style="flex-shrink:0;text-align:center;padding:3px 10px;background:#0DA76B;border-radius:7px">
+        <div style="font-size:12px;font-weight:800;color:#fff">+${totalGain}</div>
       </div>
     </div>`).join('') + (rows.length > MAX_SHOWN
-      ? `<div style="text-align:center;font-size:11px;color:var(--muted);margin-top:4px">+ ${rows.length - MAX_SHOWN} autre(s) titre(s) — voir l'onglet Radar pour la liste complète</div>`
-      : '')
-    : `<div style="padding:28px 10px;text-align:center;color:var(--muted);font-size:13px">🎯 Aucun titre dans le Radar actuellement.</div>`;
-
-  const modal = document.createElement('div');
-  modal.id = 'radarStartupModal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
-  modal.onclick = (e) => { if(e.target === modal) modal.remove(); };
-  modal.innerHTML = `
-    <div style="background:var(--bg);border-radius:16px;max-width:480px;width:100%;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)" onclick="event.stopPropagation()">
-      <div style="padding:18px 22px;border-bottom:1.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">🎯 Radar — titres en forte progression</div>
-        <button onclick="document.getElementById('radarStartupModal').remove()" style="background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted);line-height:1;padding:2px">✕</button>
-      </div>
-      <div style="padding:16px 22px;overflow-y:auto;flex:1">${itemsHtml}</div>
-      <div style="padding:12px 22px;border-top:1.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;flex-shrink:0">
-        <label style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2);cursor:pointer">
-          <input type="checkbox" id="radarStartupPopupToggle" ${radarStartupPopupEnabled() ? 'checked' : ''} onchange="setRadarStartupPopupEnabled(this.checked)">
-          Afficher ce résumé au démarrage
-        </label>
-        <button onclick="goToRadarPageFromPopup()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Ouvrir le Radar</button>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
+      ? `<div style="text-align:center;font-size:10.5px;color:rgba(255,255,255,.4);margin-top:2px">+ ${rows.length - MAX_SHOWN} autre(s) titre(s) — voir l'onglet Radar pour la liste complète</div>`
+      : '');
 }
 
-/** Déclenchée au démarrage, après le chargement automatique des classements
- *  (loadAllCharts). Silencieuse (pas de popup) si l'option est désactivée,
- *  si aucune analyse Call Out/OMT n'est chargée, ou si les prérequis Drive
- *  (URL configurée + au moins une semaine sauvegardée) ne sont pas réunis —
- *  dans ces derniers cas il n'y a simplement rien de pertinent à montrer. */
-async function maybeShowRadarStartupPopup(){
-  if(!radarStartupPopupEnabled()) return;
-  if(!analysisResult || !analysisResult.length) return;
-  let result;
-  try{ result = await computeRadarRows(); }catch(e){ return; }
-  if(result.status !== 'ok') return; // no-drive / no-history / error : silencieux au démarrage
-  renderRadarStartupModal(result.rows);
+/** Ouvre l'onglet Décision → Veille depuis la home. */
+function goToWatchlistPage(){
+  try{
+    if(document.getElementById('pageDecision')?.style.display === 'none' || !document.getElementById('pageDecision')) toggleDecisionPage();
+    switchDecTab('watchlist');
+  }catch(e){ /* navigation best-effort */ }
+}
+
+/** Résumé Veille affiché directement sur la home — met en avant les titres
+ *  avec un nouveau signal en tête de liste (même logique de tri que la page
+ *  Veille elle-même), pour repérer d'un coup d'œil ce qui mérite un
+ *  détour vers l'onglet complet. */
+function renderHomeWatchlistSummary(){
+  const el = document.getElementById('homeWatchlistSummary');
+  if(!el) return;
+  if(!watchlistTitles.length){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Aucun titre en Veille pour l\'instant — ajoutez un titre proposé par un label depuis l\'onglet Veille.</div>';
+    return;
+  }
+  const sorted = watchlistTitles.slice().sort((a,b) => (watchlistHasNewSignalToday(b)?1:0) - (watchlistHasNewSignalToday(a)?1:0));
+  const MAX_SHOWN = 6;
+  const newCount = watchlistTitles.filter(w => watchlistHasNewSignalToday(w)).length;
+  el.innerHTML = sorted.slice(0, MAX_SHOWN).map(w => {
+    const isNew = watchlistHasNewSignalToday(w);
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid ${isNew?'rgba(13,167,107,.5)':'rgba(255,255,255,.15)'};border-left:3px solid ${isNew?'#0DA76B':'rgba(255,255,255,.25)'};border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(w.title))}</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(w.artist))}</div>
+      </div>
+      ${isNew ? '<div style="flex-shrink:0;font-size:9.5px;font-weight:800;color:#fff;background:#0DA76B;padding:3px 9px;border-radius:20px;white-space:nowrap">🎯 Nouveau</div>' : ''}
+    </div>`;
+  }).join('') + (watchlistTitles.length > MAX_SHOWN
+    ? `<div style="text-align:center;font-size:10.5px;color:rgba(255,255,255,.4);margin-top:2px">+ ${watchlistTitles.length - MAX_SHOWN} autre(s) titre(s) — voir l'onglet Veille pour la liste complète</div>`
+    : '') + (newCount ? `<div style="text-align:center;font-size:10.5px;color:#3DDC97;font-weight:700;margin-top:4px">${newCount} nouveau${newCount>1?'x':''} signal${newCount>1?'aux':''} au total</div>` : '');
+}
+
+/** Ouvre la page Quotas FR depuis la home. */
+function goToQuotasPage(){
+  if(!quotasPageOpen) toggleQuotasPage();
+}
+
+/** Résumé Quotas FR (Europe 2 / RFM) affiché directement sur la home — même
+ *  donnée que la page Quotas (quotasData), avec la tendance jour/veille déjà
+ *  calculée ailleurs (quotasTrendArrow/quotasGetPreviousSnapshot). Récupère
+ *  automatiquement les quotas si un endpoint est configuré et qu'aucune
+ *  donnée n'a encore été chargée cette session. */
+async function renderHomeQuotasSummary(){
+  const el = document.getElementById('homeQuotasSummary');
+  if(!el) return;
+  const endpoint = quotasGetEndpoint();
+  if(!endpoint){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Configurez l\'endpoint Quotas FR (onglet Quotas) pour voir apparaître le résumé ici.</div>';
+    return;
+  }
+  if(!quotasData){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">⏳ Récupération des quotas…</div>';
+    try{ await quotasRefresh(); }catch(e){ /* geré ci-dessous */ }
+  }
+  if(!quotasData){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Quotas indisponibles pour l\'instant.</div>';
+    return;
+  }
+  el.innerHTML = Object.keys(QUOTAS_THRESHOLDS).map(mediaKey => {
+    const def = QUOTAS_THRESHOLDS[mediaKey];
+    const d = quotasData[mediaKey];
+    if(!d || !d.mois){
+      return `<div style="padding:8px 12px;color:rgba(255,255,255,.4);font-size:11.5px;border:1.5px solid rgba(255,255,255,.15);border-radius:9px;margin-bottom:6px">${escHtml(def.label)} : aucune donnée</div>`;
+    }
+    const prev = quotasGetPreviousSnapshot(mediaKey, 'mois');
+    const trendFR = quotasTrendArrow(d.mois.txQuotaFR, prev ? prev.txQuotaFR : null);
+    const trendNT = quotasTrendArrow(d.mois.txNT, prev ? prev.txNT : null);
+    const seuilFR = d.seuilQuotaFR ?? def.quotaFR;
+    const seuilNT = d.seuilNT ?? def.ntTarget;
+    const okFR = d.mois.txQuotaFR >= seuilFR;
+    const okNT = d.mois.txNT >= seuilNT;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(255,255,255,.15);border-left:3px solid ${(okFR&&okNT)?'#0DA76B':'#E07B00'};border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
+      <div style="font-size:12.5px;font-weight:700;color:#fff">${escHtml(def.label)}</div>
+      <div style="display:flex;gap:16px">
+        <div style="text-align:right">
+          <div style="font-size:9px;color:rgba(255,255,255,.45)">Quota FR (seuil ${seuilFR}%)</div>
+          <div style="font-size:13px;font-weight:800;color:${okFR?'#3DDC97':'#FFB663'}">${d.mois.txQuotaFR.toFixed(1)}%${trendFR}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:9px;color:rgba(255,255,255,.45)">${escHtml(def.ntLabel)} (seuil ${seuilNT}%)</div>
+          <div style="font-size:13px;font-weight:800;color:${okNT?'#3DDC97':'#FFB663'}">${d.mois.txNT.toFixed(1)}%${trendNT}</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/** Ouvre l'onglet Décision → Analyse de potentiel depuis la home. */
+function goToPotentielPage(){
+  try{
+    if(document.getElementById('pageDecision')?.style.display === 'none' || !document.getElementById('pageDecision')) toggleDecisionPage();
+    switchDecTab('shazinc');
+  }catch(e){ /* navigation best-effort */ }
+}
+
+/** Résumé "titres à pousser" affiché sur la home — réutilise exactement le
+ *  même calcul et le même seuil relatif ("Signal fort" = top 15% de la
+ *  vague) que la page Analyse de potentiel (getShazIncData()), pour rester
+ *  cohérent avec ce qu'on y voit en détail. Mode brut ou ajusté Fit Score
+ *  selon le dernier mode utilisé sur cette page (shazIncMode). */
+function renderHomePotentielSummary(){
+  const el = document.getElementById('homePotentielSummary');
+  if(!el) return;
+  if(!analysisResult || !analysisResult.length){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargez et calculez une analyse Call Out/OMT pour voir apparaître les titres à pousser ici.</div>';
+    return;
+  }
+  const allRows = getShazIncData();
+  if(!allRows.length){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Données Shazam et/ou taux d\'Inconnu introuvables pour l\'instant.</div>';
+    return;
+  }
+  const useFit = shazIncMode === 'fit';
+  const getMom = r => useFit ? r.momentumFit : r.momentumBrut;
+  const sensitivity = 15; // même valeur par défaut que la page dédiée
+  const validScores = allRows.map(getMom).filter(v => v !== null && !isNaN(v)).sort((a,b) => a-b);
+  if(!validScores.length){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Pas encore assez de données pour calculer le potentiel.</div>';
+    return;
+  }
+  const idx = Math.min(validScores.length-1, Math.max(0, Math.ceil(((100-sensitivity)/100) * validScores.length) - 1));
+  const fortThreshold = validScores[idx];
+  const pushRows = allRows
+    .filter(r => { const m = getMom(r); return m !== null && m >= fortThreshold; })
+    .sort((a,b) => (getMom(b) ?? -1) - (getMom(a) ?? -1));
+
+  if(!pushRows.length){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">🔍 Aucun titre à pousser détecté actuellement.</div>';
+    return;
+  }
+  const MAX_SHOWN = 6;
+  el.innerHTML = pushRows.slice(0, MAX_SHOWN).map(r => {
+    const mom = Math.round(getMom(r));
+    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(224,123,0,.45);border-left:3px solid #E07B00;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')}${r.shzRank!==null?' · Shazam #'+r.shzRank:''}${r.inc!==null?' · Inc '+Math.round(r.inc)+'%':''}</div>
+      </div>
+      <div style="flex-shrink:0;text-align:center;padding:3px 10px;background:#E07B00;border-radius:7px">
+        <div style="font-size:12px;font-weight:800;color:#fff">${mom}</div>
+      </div>
+    </div>`;
+  }).join('') + (pushRows.length > MAX_SHOWN
+    ? `<div style="text-align:center;font-size:10.5px;color:rgba(255,255,255,.4);margin-top:2px">+ ${pushRows.length - MAX_SHOWN} autre(s) titre(s) — voir l'Analyse de potentiel pour la liste complète</div>`
+    : '');
+}
+
+/** Rafraîchit les résumés de la home (Radar + Veille + Quotas FR + titres à
+ *  pousser) — appelée au démarrage après le chargement automatique des
+ *  classements, et à chaque fois que "Tout charger" termine sur la home. */
+function updateHomeSummaries(){
+  renderHomeRadarSummary();
+  renderHomeWatchlistSummary();
+  renderHomeQuotasSummary();
+  renderHomePotentielSummary();
 }
 
 
@@ -21149,6 +21874,7 @@ function updateDriveSyncStatus(errorMsg) {
 
 // ── Panneau Drive Sync ────────────────────────────────────────────────────
 function toggleDriveSyncPanel() {
+  if(!requireAdmin()) return;
   const panel = document.getElementById('driveSyncPanel');
   if (!panel) return;
   const open = panel.style.display === 'none' || panel.style.display === '';
@@ -21381,6 +22107,20 @@ function renderDriveSyncPanel() {
           </div>
         </div>
       </div>
+      <!-- Migration vers un autre poste -->
+      <div style="padding:14px 18px;background:var(--white);border-bottom:1.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;font-weight:800;color:var(--navy)">💾 Migration vers un autre poste</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:420px;line-height:1.5">Exporte en un fichier tout ce qui est propre à ce navigateur : URLs des backends, Comité/Playlist/Veille, Playlists Spotify clés, sound codes, Habs(R), historique des vagues et des quotas. Ne couvre pas le Drive Sync lui-même (déjà côté serveur, indépendant du poste).</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button onclick="exportFpaSettingsJSON()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700">⬇ Tout exporter</button>
+          <label style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--white);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700">
+            ⬆ Tout importer
+            <input type="file" accept=".json" style="display:none" onchange="importFpaSettingsJSON(this)">
+          </label>
+        </div>
+      </div>
       <!-- Historique détaillé -->
       <div>
         ${histRows || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Aucune semaine enregistrée</div>'}
@@ -21401,6 +22141,16 @@ function renderDriveSyncPanel() {
     </div>`;
 }
 
+// Authentification : si aucun rôle enregistré, bloque l'accès derrière
+// l'écran de connexion — sinon applique les restrictions d'interface du
+// rôle en mémoire (badge + éléments .admin-only le cas échéant).
+if(!CURRENT_ROLE){
+  const overlay = document.getElementById('fpaLoginOverlay');
+  if(overlay) overlay.style.display = 'flex';
+} else {
+  applyRoleRestrictions();
+}
+
 // Init badge historique au chargement
 updateHistoryBadge();
 // Sync le libellé du sélecteur de station avec la préférence sauvegardée
@@ -21411,12 +22161,18 @@ initPlatformLogosInTabs();
 // dans la vie du navigateur) puis construit le menu déroulant du header.
 seedDefaultKeyPlaylists();
 renderSpotifyPlaylistsGroupMenu();
+// Home : affiche l'état déjà connu localement (fichiers Call Out/OMT en
+// mémoire, scores Habs(R)) dès le démarrage, avant même le chargement des
+// classements — ces informations viennent du localStorage, pas du réseau.
+renderHomePendingCard('callout');
+renderHomePendingCard('omt');
+renderHomeHabsCard();
 // Chargement automatique de tous les classements auto-fetchables au lancement
 // de la plateforme (silencieux, léger délai pour ne pas bloquer l'affichage
 // initial). Spotify France (CSV) et YouTube (quota limité) restent manuels —
 // voir le commentaire détaillé sur loadAllCharts().
 setTimeout(() => {
-  loadAllCharts(true).then(() => { maybeShowRadarStartupPopup(); watchlistDailyCheck(false); });
+  loadAllCharts(true).then(() => { updateHomeSummaries(); watchlistDailyCheck(false).then(updateHomeSummaries); });
 }, 1200);
 // Affiche le numéro de version + date/heure de génération dans l'en-tête
 (function(){
