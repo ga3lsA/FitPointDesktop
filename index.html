@@ -8543,7 +8543,7 @@ function renderLifeCyclesPage(){
 
 /** Séries Classements hebdomadaires (Shazam, Spotify, Deezer, Apple Music US/FR, Billboard, Airplay par radio) — asynchrone, via Drive Sync */
 async function getTitleChartsSeries(title, artist){
-  const result = { shzFR: [], shzWW: [], spyFR: [], spBE: [], spSE: [], spNL: [], dzFR: [], bbUS: [], bbG200: [], amUS: [], amFR: [], itFR: [], yt: [], airplay: {}, airplayRank: {} };
+  const result = { shzFR: [], shzWW: [], spyFR: [], spBE: [], spSE: [], spNL: [], dzFR: [], bbUS: [], bbG200: [], amUS: [], amFR: [], itFR: [], yt: [], kpPlaylists: {}, airplay: {}, airplayRank: {} };
   AIRPLAY_RADIOS.forEach(rad => { result.airplay[rad.key] = []; result.airplayRank[rad.key] = null; });
 
   let mostRecentWeekAirplay = null; // table complète (tous titres) de la dernière semaine validée — nécessaire pour dériver un rang par volume
@@ -8621,6 +8621,16 @@ async function getTitleChartsSeries(title, artist){
   if(appleMusicState.fr.loaded){ const rk = findInChart(appleMusicState.fr.data, title, artist); if(rk) result.amFR.push({...todayPoint, val:rk}); }
   if(itunesState.fr.loaded){ const rk = findInChart(itunesState.fr.data, title, artist); if(rk) result.itFR.push({...todayPoint, val:rk}); }
   if(kworbYoutubeLoaded){ const rk = findInChart(kworbYoutubeData, title, artist); if(rk) result.yt.push({...todayPoint, val:rk}); }
+  // Playlists Spotify clés (RapCaviar, New Music Friday...) — pas d'historique
+  // Drive (fonctionnalité indépendante des sauvegardes hebdomadaires), donc un
+  // seul point "Aujourd'hui" par playlist où le titre est actuellement repéré.
+  keyPlaylists.forEach(p => {
+    if(!p.tracks || !p.tracks.length) return;
+    const chart = {};
+    p.tracks.forEach(t => { chart[t.rank] = { t: t.title, a: t.artist }; });
+    const rk = findInChart(chart, title, artist);
+    if(rk) result.kpPlaylists[p.id] = [{...todayPoint, val: rk}];
+  });
   if(airplayLoaded){
     const found = radarFindAirplayEntry(airplayData, title, artist);
     if(found){
@@ -11572,6 +11582,27 @@ function buildDigitalSnapshotSection(series, title, artist){
 
   const airplayBadges = AIRPLAY_RADIOS.map(rad => comiteAirplayBadge(rad, series.airplay[rad.key])).join('');
 
+  // Playlists Spotify clés où le titre est actuellement repéré — un badge
+  // uniquement pour celles où il figure (contrairement aux badges fixes
+  // ci-dessus, la liste des playlists suivies est dynamique et pourrait être
+  // longue : inutile d'afficher une dizaine de badges vides "–").
+  const kpFoundBadgesFullMetrics = Object.entries(series.kpPlaylists || {})
+    .filter(([id, pts]) => pts && pts.length)
+    .map(([id, pts]) => {
+      const p = keyPlaylists.find(x => x.id === id);
+      const label = p ? p.label : id;
+      const val = pts[pts.length - 1].val;
+      return `<div title="${escHtml(label)}" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:50px;max-width:90px">
+        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🎧 ${escHtml(label)}</span>
+        <span style="font-size:13px;font-weight:800;color:#1DB954">#${val}</span>
+      </div>`;
+    }).join('');
+
+  const hasAnyData = series.shzFR.length || series.shzWW.length || series.spyFR.length || series.spBE.length || series.spSE.length || series.spNL.length || series.dzFR.length ||
+    series.amFR.length || series.amUS.length || series.itFR.length || series.yt.length || series.bbUS.length || series.bbG200.length ||
+    Object.values(series.kpPlaylists || {}).some(pts => pts.length) ||
+    Object.values(series.airplay).some(a => a.length);
+
   // Airplay LIVE (page Classement Live) : comparaison RANG contre RANG pour
   // toutes les radios (y compris celles affichées en volume de passages
   // dans la ligne "semaine validée" ci-dessus) — on compare donc le rang
@@ -11590,10 +11621,6 @@ function buildDigitalSnapshotSection(series, title, artist){
       }).join('')
     : '';
 
-  const hasAnyData = series.shzFR.length || series.shzWW.length || series.spyFR.length || series.spBE.length || series.spSE.length || series.spNL.length || series.dzFR.length ||
-    series.amFR.length || series.amUS.length || series.itFR.length || series.yt.length || series.bbUS.length || series.bbG200.length ||
-    Object.values(series.airplay).some(a => a.length);
-
   if(!hasAnyData){
     return `<div style="font-size:11px;color:var(--muted);padding:8px 0">Aucun classement disponible pour l'instant — chargez Shazam/Spotify/Deezer/Apple Music/iTunes/YouTube/Billboard/Airplay dans <strong>Classements</strong>.</div>`;
   }
@@ -11603,7 +11630,9 @@ function buildDigitalSnapshotSection(series, title, artist){
     ${liveAirplayHtml ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">🔴 AIRPLAY (LIVE #RANGS)</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${liveAirplayHtml}</div>` : ''}
     <div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">🎧 DIGITAL (LIVE)</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">${digitalBadges}</div>`;
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${digitalBadges}</div>
+    ${kpFoundBadgesFullMetrics ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px">🎧 PLAYLISTS SPOTIFY CLÉS</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${kpFoundBadgesFullMetrics}</div>` : ''}`;
 }
 
 async function buildComiteCard(t, series, coverId){
