@@ -225,10 +225,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       Quotas FR
       <span id="quotasBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
     </button>
-    <button id="categTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleCategPage()" title="Catégorisation automatique des sound codes">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3.24L3 3v6.59a2 2 0 0 0 .59 1.41l9.58 9.58a2 2 0 0 0 2.82 0l4.6-4.6a2 2 0 0 0 0-2.82z"/><circle cx="7.5" cy="7.5" r="1.5"/></svg>
-      Sound Codes
-    </button>
   </div>
 </div>
 
@@ -2374,7 +2370,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <!-- Stats bar -->
         <div style="display:flex;gap:32px">
           <div>
-            <div style="font-family:var(--font-display);font-size:28px;font-weight:800;color:#fff">700+</div>
+            <div style="font-family:var(--font-display);font-size:28px;font-weight:800;color:#fff">10000+</div>
             <div style="font-size:12px;color:rgba(255,255,255,.5);margin-top:2px">titres analysables</div>
           </div>
           <div style="width:1px;background:rgba(255,255,255,.1)"></div>
@@ -2440,6 +2436,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
               <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleLiveImport(this.files[0]);this.value=''">
             </label>
             <div style="font-size:10.5px;color:rgba(255,255,255,.4);margin-top:6px">Alimente le Classement Live</div>
+            <div id="homeLiveInfo" style="font-size:10.5px;color:rgba(255,255,255,.4);margin-top:4px"></div>
           </div>
           <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12)">
             <div style="font-size:12.5px;font-weight:800;color:#fff;margin-bottom:8px">💫 Habs(R)</div>
@@ -3140,6 +3137,7 @@ function goHome(){
   renderHomePendingCard('callout');
   renderHomePendingCard('omt');
   renderHomeHabsCard();
+  renderHomeLiveCard();
   updateHomeSummaries();
 }
 
@@ -6192,8 +6190,44 @@ function clearAirplay(){
 let liveAirplayData   = {};
 let liveAirplayLoaded = false;
 let livePeriod        = '';
-let liveLoadedAt      = null; // Date de chargement du fichier Live (session en cours uniquement)
+let liveLoadedAt      = null; // Date de chargement du fichier Live
 let liveSearch         = '';
+
+/** Sauvegarde le Live en localStorage (clé fpa_live_data) — persistance
+ *  PROVISOIRE propre à ce navigateur : survit à un rechargement de page,
+ *  mais reste écrasée par le prochain chargement d'un fichier Live (le
+ *  Live représente toujours "l'instant présent", pas un historique) et
+ *  n'est pas synchronisée sur Drive. Si le fichier est trop volumineux
+ *  pour le quota localStorage, on continue simplement en mémoire pour
+ *  cette session (comportement d'avant ce correctif). */
+function liveDataSaveToStorage(){
+  try{
+    localStorage.setItem('fpa_live_data', JSON.stringify({
+      data: liveAirplayData,
+      period: livePeriod,
+      loadedAt: liveLoadedAt ? liveLoadedAt.toISOString() : null,
+    }));
+    return true;
+  }catch(e){ return false; }
+}
+
+function liveDataLoadFromStorage(){
+  try{
+    const raw = localStorage.getItem('fpa_live_data');
+    if(!raw) return false;
+    const saved = JSON.parse(raw);
+    if(!saved || !saved.data) return false;
+    liveAirplayData   = saved.data;
+    liveAirplayLoaded = true;
+    livePeriod         = saved.period || '';
+    liveLoadedAt        = saved.loadedAt ? new Date(saved.loadedAt) : null;
+    return true;
+  }catch(e){ return false; }
+}
+
+function liveDataClearStorage(){
+  try{ localStorage.removeItem('fpa_live_data'); }catch(e){ /* non bloquant */ }
+}
 
 let liveShazamLive       = null;  // chart {rang:{t,a}} — Shazam FR téléchargé pour cette page
 let liveShazamLoading     = false;
@@ -6230,18 +6264,39 @@ function handleLiveImport(file){
     if(el){ el.textContent = '✓ ' + n + ' titres chargés à ' + loadedAtStr; el.style.display = 'inline'; }
     const clearBtn = document.getElementById('liveClearBtn');
     if(clearBtn) clearBtn.style.display = '';
-    showToast('Classement Live chargé — ' + n + ' titres', 'success');
+    const persisted = liveDataSaveToStorage();
+    renderHomeLiveCard();
+    showToast('Classement Live chargé — ' + n + ' titres' + (persisted ? '' : ' (fichier volumineux : ne survivra pas à un rechargement de page)'), 'success');
     renderLivePage();
   };
   reader.readAsArrayBuffer(file);
 }
 
+/** Coche visible sur la carte Live de la home, avec date + heure de
+ *  chargement — mémoire de session uniquement (pas persisté en
+ *  localStorage), cohérent avec liveAirplayData qui n'est lui-même jamais
+ *  sauvegardé et doit être rechargé à chaque session. */
+function renderHomeLiveCard(){
+  const el = document.getElementById('homeLiveInfo');
+  if(!el) return;
+  if(!liveAirplayLoaded || !liveLoadedAt){
+    el.innerHTML = '';
+    return;
+  }
+  const n = Object.keys(liveAirplayData).filter(k => k.includes('|||')).length;
+  const dateStr = liveLoadedAt.toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  const timeStr = liveLoadedAt.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+  el.innerHTML = '<span style="color:#3DDC97">✓ ' + n + ' titres</span> — chargé le ' + dateStr + ' à ' + timeStr;
+}
+
 function clearLive(){
   liveAirplayData = {}; liveAirplayLoaded = false; livePeriod = ''; liveLoadedAt = null;
+  liveDataClearStorage();
   const el = document.getElementById('liveStatus');
   if(el) el.style.display = 'none';
   const clearBtn = document.getElementById('liveClearBtn');
   if(clearBtn) clearBtn.style.display = 'none';
+  renderHomeLiveCard();
   renderLivePage();
   showToast('Classement Live retiré', 'success');
 }
@@ -22028,6 +22083,20 @@ renderSpotifyPlaylistsGroupMenu();
 renderHomePendingCard('callout');
 renderHomePendingCard('omt');
 renderHomeHabsCard();
+// Live : restaure le dernier fichier chargé (localStorage, propre à ce
+// navigateur) s'il y en a un — évite de le reperdre à chaque rechargement
+// de page tant qu'un nouveau fichier Live n'a pas été chargé par-dessus.
+if(liveDataLoadFromStorage()){
+  const n = Object.keys(liveAirplayData).filter(k => k.includes('|||')).length;
+  const el = document.getElementById('liveStatus');
+  if(el && liveLoadedAt){
+    el.textContent = '✓ ' + n + ' titres chargés à ' + liveLoadedAt.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
+    el.style.display = 'inline';
+  }
+  const clearBtn = document.getElementById('liveClearBtn');
+  if(clearBtn) clearBtn.style.display = '';
+  renderHomeLiveCard();
+}
 // Chargement automatique de tous les classements auto-fetchables au lancement
 // de la plateforme (silencieux, léger délai pour ne pas bloquer l'affichage
 // initial). Spotify France (CSV) et YouTube (quota limité) restent manuels —
