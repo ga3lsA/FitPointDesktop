@@ -184,28 +184,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <span id="s3" class="step">③ Résultats</span>
   </div>
   <div id="headerTabsRow" style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;flex-shrink:1;min-width:0">
-    <span id="fpaRoleBadge" title="" style="font-size:10px;font-weight:800;color:var(--navy);background:var(--cyan-light);border:1px solid var(--cyan-mid);border-radius:20px;padding:4px 10px;white-space:nowrap;flex-shrink:0"></span>
-    <button onclick="fpaLogout()" title="Se déconnecter" class="btn-ghost" style="font-size:10.5px;padding:5px 7px;flex-shrink:0">⏏</button>
-    <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
-    <button id="stationToggleBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleActiveStation()" title="Bascule la station de référence pour tout le Call Out/Historique/Décision (Cycles de vie, Radar, Analyse de potentiel...)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a8 8 0 0 1 15-4"/><polyline points="19 3 19 7 15 7"/><path d="M20 13a8 8 0 0 1-15 4"/><polyline points="5 21 5 17 9 17"/></svg>
-      <span id="stationToggleLabel">📻 Europe 2</span>
-    </button>
-    <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
     <button id="homeTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="goToFitScoreTable()" title="Retour au tableau Fit Score">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
     </button>
     <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
     <button id="backBtn" class="btn-ghost" style="display:none;font-size:10.5px;padding:5px 8px" onclick="goBack()">← Modifier</button>
-    <button id="rawDataTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleRawDataPage()">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
-      Données
-    </button>
-    <button id="historyTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleHistoryPage()">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Historique
-      <span id="historyBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
-    </button>
     <button id="chartsTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleChartsPage()">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
       Classements
@@ -224,11 +207,28 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       Playlist
       <span id="playlistBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
     </button>
+    <button id="rawDataTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleRawDataPage()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+      Données
+    </button>
+    <button id="historyTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleHistoryPage()">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      Historique
+      <span id="historyBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
+    </button>
     <button id="quotasTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleQuotasPage()" title="Quotas de chansons francophones (Yacast)">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-      Quotas FR
+      Quotas
       <span id="quotasBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
     </button>
+    <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
+    <button id="stationToggleBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleActiveStation()" title="Bascule la station de référence pour tout le Call Out/Historique/Décision (Cycles de vie, Radar, Analyse de potentiel...)">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a8 8 0 0 1 15-4"/><polyline points="19 3 19 7 15 7"/><path d="M20 13a8 8 0 0 1-15 4"/><polyline points="5 21 5 17 9 17"/></svg>
+      <span id="stationToggleLabel">📻 Europe 2</span>
+    </button>
+    <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
+    <span id="fpaRoleBadge" title="" style="font-size:10px;font-weight:800;color:var(--navy);background:var(--cyan-light);border:1px solid var(--cyan-mid);border-radius:20px;padding:4px 10px;white-space:nowrap;flex-shrink:0"></span>
+    <button onclick="fpaLogout()" title="Se déconnecter" class="btn-ghost" style="font-size:10.5px;padding:5px 7px;flex-shrink:0">⏏</button>
   </div>
 </div>
 
@@ -3211,6 +3211,7 @@ function clearSavedAnalysis(kind){
 function resumeAnalysisResults(kind){
   if(currentAnalysisKind() !== kind || !analysisResult.length) restoreAnalysisFromStorage(kind);
   if(!analysisResult.length){ showToast('Aucun résultat ' + (kind==='callout'?'Call Out':'OMT') + ' en mémoire', 'err'); return; }
+  hide('pageUpload');
   showResults();
 }
 
@@ -5984,6 +5985,12 @@ function countLoadedAutoCharts(){
     kworbRadioLoaded, kworbListenersLoaded, kworbYoutubeLoaded,
     ...Object.keys(KWORB_YOUTUBE_COUNTRIES).map(cc => kworbYoutubeCountryState[cc].loaded),
     ...Object.keys(KWORB_COUNTRIES).map(cc => kworbSpotifyState[cc].loaded),
+    // Playlists Spotify clés + Radios clés (Top Songs) suivies — comptées ici
+    // aussi pour que le total affiché corresponde à toutes les sources
+    // réellement chargées par "Tout charger", pas seulement les classements
+    // "génériques" historiques.
+    ...keyPlaylists.map(p => !!p.fetchedAt),
+    ...RADIO_TOP_SONGS_SOURCES.map(r => !!(radioTopSongsData[r.id] && radioTopSongsData[r.id].fetchedAt)),
   ];
   total = flags.length;
   loaded = flags.filter(Boolean).length;
@@ -5991,13 +5998,21 @@ function countLoadedAutoCharts(){
 }
 
 function updateLoadAllChartsStatus(){
-  const el = document.getElementById('loadAllChartsStatus');
-  if(!el) return;
   const { loaded, total } = countLoadedAutoCharts();
-  el.textContent = loaded === total
-    ? '✓ ' + loaded + '/' + total + ' classements chargés'
-    : loaded + '/' + total + ' classements chargés';
-  el.style.color = loaded === total ? 'var(--green-text)' : 'var(--muted)';
+  const label = (loaded === total ? '✓ ' : '') + loaded + '/' + total + ' classements chargés';
+  const el = document.getElementById('loadAllChartsStatus');
+  if(el){
+    el.textContent = label;
+    el.style.color = loaded === total ? 'var(--green-text)' : 'var(--muted)';
+  }
+  // Miroir sur la home — sans ça, le compteur affiché restait figé sur le
+  // dernier message d'une session de "Tout charger" passée (ex. un total
+  // devenu obsolète après l'ajout de nouvelles sources comme les Radios
+  // clés) au lieu de refléter l'état réel à chaque affichage de la home.
+  if(!allChartsLoadingInProgress){
+    const homeEl = document.getElementById('homeLoadAllCount');
+    if(homeEl) homeEl.textContent = label;
+  }
 }
 
 async function loadAllCharts(silent = false){
@@ -6053,6 +6068,10 @@ async function loadAllCharts(silent = false){
   // Playlists Spotify clés suivies (RapCaviar, New Music Friday...) pas
   // encore récupérées — au même titre que les autres sources auto-fetchables.
   keyPlaylists.filter(p => !p.fetchedAt).forEach(p => tasks.push(refreshKeyPlaylist(p.id)));
+  // Radios clés (Top Songs — Z100, KIIS, Capital FM, Radio 538...) pas
+  // encore récupérées non plus — oubliées ici jusqu'ici, ce qui sous-
+  // comptait le nombre total de sources affiché au chargement global.
+  RADIO_TOP_SONGS_SOURCES.filter(r => !(radioTopSongsData[r.id] && radioTopSongsData[r.id].fetchedAt)).forEach(r => tasks.push(fetchRadioTopSongs(r.id)));
 
   // Suivi de progression : chaque tâche, une fois réglée (succès ou échec),
   // incrémente le compteur et met à jour le texte + la barre — sur la page
@@ -6108,8 +6127,16 @@ function showResults(){
   if(bar) bar.style.display = 'flex';
   // Initialiser le statut Spotify dans la barre
   updateSpotifyStatus();
-  // Si Drive Sync configuré et historique pas encore chargé → charger auto
+  // Si Drive Sync configuré et historique pas encore chargé → charger auto.
+  // Cas particulier corrigé : chartsHistoryLoaded passe à true dès que
+  // l'INDEX Drive est chargé (voir loadChartsIndex), pas une fois l'airplay
+  // effectivement injecté dans analysisResult — si ce chargement de semaine
+  // échoue ou traîne au premier appel, l'airplay pouvait rester manquant
+  // jusqu'à un rechargement complet de page. On retente donc explicitement
+  // tant que l'airplay n'est pas là, même si l'index l'est déjà.
   if(DRIVE_SYNC_URL && !chartsHistoryLoaded){
+    loadChartsHistoryFromDrive();
+  } else if(DRIVE_SYNC_URL && chartsHistoryLoaded && !airplayLoaded){
     loadChartsHistoryFromDrive();
   } else {
     updateDriveSyncStatus();
@@ -10714,7 +10741,7 @@ function renderChartTable(){
     const em = document.getElementById('chartEmptyMsg'); if(em) em.style.display = 'none';
     const th = document.getElementById('chartTableHeader'); if(th) th.style.display = 'none';
     const tb = document.getElementById('chartTableBody'); if(tb) tb.style.display = 'none';
-    if(chartSearchEl) chartSearchEl.style.display = 'none';
+    if(chartSearchEl) chartSearchEl.style.display = ''; // recherche globale, utile même sur Live
     if(chartCountEl)  chartCountEl.style.display  = 'none';
     if(embPanel) embPanel.style.display = 'none';
     if(livePanel) livePanel.style.display = 'block';
@@ -10955,7 +10982,8 @@ function renderChartTable(){
     titleEl.innerHTML = rLogo + (rsrc ? escHtml(rsrc.label) : 'Radio') + ' — Top Songs';
     isEmpty = !rd || !rd.tracks || !rd.tracks.length;
     if(rd && rd.tracks && rd.tracks.length){
-      subEl.textContent = (rd.fetchedAt ? 'récupéré le ' + new Date(rd.fetchedAt).toLocaleString('fr-FR', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '') + ' · ' + rd.tracks.length + ' titres · source ' + (rsrc ? escHtml(rsrc.label) : '') + ' (site web)';
+      const top10Note = rid === 'radio538' ? ' · top 10 non disponible automatiquement (mise en page en affiche graphique) — classement à partir du rang 11' : '';
+      subEl.textContent = (rd.fetchedAt ? 'récupéré le ' + new Date(rd.fetchedAt).toLocaleString('fr-FR', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '') + ' · ' + rd.tracks.length + ' titres · source ' + (rsrc ? escHtml(rsrc.label) : '') + ' (site web)' + top10Note;
       const e2RankMap = computeE2RankMap();
       entries = rd.tracks.map(t => {
         const title  = t.title||'';
@@ -20642,23 +20670,47 @@ async function renderHomeQuotasSummary(){
     if(!d || !d.mois){
       return `<div style="padding:8px 12px;color:rgba(255,255,255,.4);font-size:11.5px;border:1.5px solid rgba(255,255,255,.15);border-radius:9px;margin-bottom:6px">${escHtml(def.label)} : aucune donnée</div>`;
     }
-    const prev = quotasGetPreviousSnapshot(mediaKey, 'mois');
-    const trendFR = quotasTrendArrow(d.mois.txQuotaFR, prev ? prev.txQuotaFR : null);
-    const trendNT = quotasTrendArrow(d.mois.txNT, prev ? prev.txNT : null);
+    const prevMois = quotasGetPreviousSnapshot(mediaKey, 'mois');
+    const trendFR = quotasTrendArrow(d.mois.txQuotaFR, prevMois ? prevMois.txQuotaFR : null);
+    const trendNT = quotasTrendArrow(d.mois.txNT, prevMois ? prevMois.txNT : null);
     const seuilFR = d.seuilQuotaFR ?? def.quotaFR;
     const seuilNT = d.seuilNT ?? def.ntTarget;
     const okFR = d.mois.txQuotaFR >= seuilFR;
     const okNT = d.mois.txNT >= seuilNT;
-    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(255,255,255,.15);border-left:3px solid ${(okFR&&okNT)?'#0DA76B':'#E07B00'};border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
-      <div style="font-size:12.5px;font-weight:700;color:#fff">${escHtml(def.label)}</div>
-      <div style="display:flex;gap:16px">
-        <div style="text-align:right">
-          <div style="font-size:9px;color:rgba(255,255,255,.45)">Quota FR (seuil ${seuilFR}%)</div>
-          <div style="font-size:13px;font-weight:800;color:${okFR?'#3DDC97':'#FFB663'}">${d.mois.txQuotaFR.toFixed(1)}%${trendFR}</div>
+
+    const trim = d.trimestre;
+    const prevTrim = quotasGetPreviousSnapshot(mediaKey, 'trimestre');
+    const trimTrendFR = trim ? quotasTrendArrow(trim.txQuotaFR, prevTrim ? prevTrim.txQuotaFR : null) : '';
+    const trimTrendNT = trim ? quotasTrendArrow(trim.txNT, prevTrim ? prevTrim.txNT : null) : '';
+    const trimOkFR = trim ? trim.txQuotaFR >= seuilFR : null;
+    const trimOkNT = trim ? trim.txNT >= seuilNT : null;
+
+    return `<div style="padding:8px 12px;border:1.5px solid rgba(255,255,255,.15);border-left:3px solid ${(okFR&&okNT)?'#0DA76B':'#E07B00'};border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
+      <div style="font-size:12.5px;font-weight:700;color:#fff;margin-bottom:6px">${escHtml(def.label)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="font-size:9px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em">Mois en cours</div>
+        <div style="display:flex;gap:16px">
+          <div style="text-align:right">
+            <div style="font-size:9px;color:rgba(255,255,255,.45)">Quota FR (seuil ${seuilFR}%)</div>
+            <div style="font-size:13px;font-weight:800;color:${okFR?'#3DDC97':'#FFB663'}">${d.mois.txQuotaFR.toFixed(1)}%${trendFR}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:9px;color:rgba(255,255,255,.45)">${escHtml(def.ntLabel)} (seuil ${seuilNT}%)</div>
+            <div style="font-size:13px;font-weight:800;color:${okNT?'#3DDC97':'#FFB663'}">${d.mois.txNT.toFixed(1)}%${trendNT}</div>
+          </div>
         </div>
-        <div style="text-align:right">
-          <div style="font-size:9px;color:rgba(255,255,255,.45)">${escHtml(def.ntLabel)} (seuil ${seuilNT}%)</div>
-          <div style="font-size:13px;font-weight:800;color:${okNT?'#3DDC97':'#FFB663'}">${d.mois.txNT.toFixed(1)}%${trendNT}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.12)">
+        <div style="font-size:9px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em">Trimestre en cours</div>
+        <div style="display:flex;gap:16px">
+          <div style="text-align:right">
+            <div style="font-size:9px;color:rgba(255,255,255,.45)">Quota FR (seuil ${seuilFR}%)</div>
+            <div style="font-size:13px;font-weight:800;color:${trim ? (trimOkFR?'#3DDC97':'#FFB663') : 'rgba(255,255,255,.4)'}">${trim ? trim.txQuotaFR.toFixed(1)+'%'+trimTrendFR : 'n/d'}</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:9px;color:rgba(255,255,255,.45)">${escHtml(def.ntLabel)} (seuil ${seuilNT}%)</div>
+            <div style="font-size:13px;font-weight:800;color:${trim ? (trimOkNT?'#3DDC97':'#FFB663') : 'rgba(255,255,255,.4)'}">${trim ? trim.txNT.toFixed(1)+'%'+trimTrendNT : 'n/d'}</div>
+          </div>
         </div>
       </div>
     </div>`;
@@ -20729,6 +20781,7 @@ function renderHomePotentielSummary(){
  *  pousser) — appelée au démarrage après le chargement automatique des
  *  classements, et à chaque fois que "Tout charger" termine sur la home. */
 function updateHomeSummaries(){
+  updateLoadAllChartsStatus();
   renderHomeRadarSummary();
   renderHomeWatchlistSummary();
   renderHomeQuotasSummary();
