@@ -1781,8 +1781,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 <div id="modalTitleEvolution" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:600;align-items:center;justify-content:center;padding:24px" onclick="closeTitleEvolutionModal(event)">
   <div id="tevCard" style="background:var(--white);border-radius:16px;box-shadow:0 20px 60px rgba(11,29,58,.25);width:100%;max-width:860px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">
     <!-- Header -->
-    <div id="tevHeader" style="padding:18px 24px 14px;border-bottom:1.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-shrink:0">
-      <div style="display:flex;align-items:center;gap:14px;min-width:0">
+    <div id="tevHeader" style="display:flex;flex-direction:column;padding:14px 24px;border-bottom:1.5px solid var(--border);flex-shrink:0">
+      <div id="tevLogosRow" style="display:flex;align-items:center;justify-content:center;gap:28px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--border)"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+        <div style="display:flex;align-items:center;gap:14px;min-width:0">
         <div id="tevCoverWrap" style="display:none;flex-shrink:0;width:112px;height:112px;border-radius:10px;overflow:hidden;background:var(--bg);border:1.5px solid var(--border)">
           <img id="tevCover" src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
         </div>
@@ -1809,6 +1811,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
         <button onclick="closeTitleEvolutionModal()" style="flex-shrink:0;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:16px;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s"
           onmouseenter="this.style.borderColor='var(--cyan)';this.style.color='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">×</button>
+      </div>
       </div>
     </div>
     <!-- Corps -->
@@ -9666,6 +9669,56 @@ function buildEvoAirplayRow(radio, points){
 let tevCoverRequestId = 0;
 
 /** Ouvre la fenêtre d'évolution complète pour un titre */
+// État "repliée / dépliée" de la section Call Out/OMT dans la fiche Song
+// Full Metrics — persiste tant que la page n'est pas rechargée (repliée une
+// fois pour l'export, elle le reste pour les prochains titres consultés,
+// jusqu'à ce qu'on la redéplie explicitement).
+let tevCallOutCollapsed = false;
+function toggleTevCallOutSection(){
+  tevCallOutCollapsed = !tevCallOutCollapsed;
+  const sec = document.getElementById('tevCallOutSection');
+  const chevron = document.getElementById('tevCallOutChevron');
+  if(sec) sec.style.display = tevCallOutCollapsed ? 'none' : 'grid';
+  if(chevron) chevron.style.transform = 'rotate(' + (tevCallOutCollapsed ? '-90' : '0') + 'deg)';
+  const label = chevron ? chevron.closest('div[onclick]') : null;
+  if(label) label.title = tevCallOutCollapsed ? 'Déplier' : "Replier (masqué à l'export si replié)";
+}
+
+/** Construit la ligne de logos en haut de la fiche Song Full Metrics
+ *  (Fit Point Analyzer + Europe 1 + Europe 2 + RFM). Réutilise les logos
+ *  DÉJÀ présents ailleurs dans la page (header + home) plutôt que de
+ *  dupliquer des données base64 : même technique que quotasLogoImg pour
+ *  les logos radio (recherche par attribut alt), et clonage direct du SVG
+ *  inline pour le logo FPA (pas de base64, pas de recherche nécessaire). */
+function populateTevLogosRow(){
+  const row = document.getElementById('tevLogosRow');
+  if(!row) return;
+  const stationLogo = (altText) => {
+    const img = document.querySelector('img[alt="' + altText + '"]');
+    return img ? `<img src="${img.getAttribute('src')}" alt="${altText}" style="display:block;height:24px;width:auto;object-fit:contain">` : '';
+  };
+  const fpaLogo = `<svg width="24" height="24" viewBox="0 0 680 680" role="img" xmlns="http://www.w3.org/2000/svg" style="display:block;flex-shrink:0;border-radius:50%" aria-label="Fit Point Analyzer">
+    <circle cx="340" cy="340" r="300" fill="var(--cyan)"/>
+    <rect x="228" y="280" width="32" height="120" rx="3" fill="var(--navy)"/>
+    <rect x="272" y="240" width="32" height="160" rx="3" fill="var(--navy)"/>
+    <rect x="316" y="210" width="32" height="190" rx="3" fill="var(--navy)"/>
+    <rect x="360" y="255" width="32" height="145" rx="3" fill="var(--navy)"/>
+    <rect x="404" y="295" width="32" height="105" rx="3" fill="var(--navy)"/>
+    <rect x="448" y="270" width="32" height="130" rx="3" fill="var(--navy)"/>
+    <circle cx="340" cy="470" r="18" fill="var(--navy)"/>
+  </svg>`;
+  row.innerHTML = `
+    <div style="display:flex;align-items:center;gap:8px;padding-right:24px;border-right:1px solid var(--border)">
+      ${fpaLogo}
+      <span style="font-size:11px;font-weight:800;letter-spacing:.01em;color:var(--navy);line-height:1">Fit Point Analyzer</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:20px">
+      ${stationLogo('Europe 1')}
+      ${stationLogo('Europe 2')}
+      ${stationLogo('RFM')}
+    </div>`;
+}
+
 async function openTitleEvolutionModal(btn){
   const raw = btn.getAttribute('data-evotitle');
   if(!raw) return;
@@ -9678,6 +9731,7 @@ async function openTitleEvolutionModal(btn){
   document.getElementById('tevTitle').textContent  = title || '';
   document.getElementById('tevArtist').textContent = artist || '';
   document.getElementById('tevBody').innerHTML = '<div style="text-align:center;padding:50px;color:var(--muted);font-size:13px">⏳ Chargement de l\'historique complet…</div>';
+  populateTevLogosRow();
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
@@ -9740,9 +9794,15 @@ async function openTitleEvolutionModal(btn){
     </div>`);
   }
 
-  // ── Section 1 : Call Out / OMT ──
-  sections.push(`<div style="margin-bottom:6px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">📋 Recherche musicale ${escHtml(STATION_LABELS[ACTIVE_STATION])}</div>`);
-  sections.push(`<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:22px">
+  // ── Section 1 : Call Out / OMT — repliable (state : tevCallOutCollapsed).
+  // Un display:none est simplement absent du rendu capturé par html2canvas,
+  // donc replier cette section avant d'exporter suffit à l'exclure du
+  // PNG/PDF généré, sans logique supplémentaire côté export.
+  sections.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;cursor:pointer;user-select:none" onclick="toggleTevCallOutSection()" title="${tevCallOutCollapsed ? 'Déplier' : "Replier (masqué à l'export si replié)"}">
+    <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">📋 Recherche musicale ${escHtml(STATION_LABELS[ACTIVE_STATION])}</div>
+    <svg id="tevCallOutChevron" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--muted);flex-shrink:0;transition:transform .15s;transform:rotate(${tevCallOutCollapsed ? '-90' : '0'}deg)"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>`);
+  sections.push(`<div id="tevCallOutSection" style="display:${tevCallOutCollapsed ? 'none' : 'grid'};grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin-bottom:22px">
     ${buildEvoCard('Pot Score Tous', '🎯', vagueSeries.potTous, {color:'var(--cyan)', title, artist})}
     ${buildEvoCard('Pot Score P1',   '🎯', vagueSeries.potP1,   {color:'var(--blue)', title, artist})}
     ${buildEvoCard('Inconnu Ensemble', '❓', vagueSeries.incTous, {color:'var(--orange-text)', suffix:'%', title, artist})}
@@ -12996,7 +13056,36 @@ function truncateForPdf(doc, text, maxWidth){
   return t + '…';
 }
 
-function exportPlaylistPDF(){
+/** Met en MAJUSCULES un nom d'artiste pour l'export PDF (le champ source
+ *  n'est pas forcément déjà en majuscules selon comment il a été saisi). */
+function pdfArtistCase(str){
+  return (str || '').toUpperCase();
+}
+
+/** "Title Case" pour un titre de chanson à l'export PDF : chaque mot
+ *  commence par une majuscule, le reste en minuscules — gère aussi les mots
+ *  séparés par une apostrophe ou un trait d'union (ex. "l'oeil" → "L'Oeil",
+ *  "jean-paul" → "Jean-Paul"). */
+function pdfTitleCase(str){
+  return (str || '').toLowerCase().replace(/(^|[\s'\-])([a-zà-ÿ])/g, (m, sep, c) => sep + c.toUpperCase());
+}
+
+/** Réduit la taille de police (par pas de 0.5pt) jusqu'à ce que le texte
+ *  tienne dans maxWidth (mm) — utilisé pour que le titre "PLAYLIST ... du
+ *  ... au ..." tienne toujours sur une seule ligne à côté du logo, quelle
+ *  que soit la longueur de la plage de dates. Police déjà réglée (gras) sur
+ *  `doc` par l'appelant ; ne touche qu'à la taille. */
+function fitPdfFontSize(doc, text, maxWidth, startSize, minSize){
+  let size = startSize;
+  doc.setFontSize(size);
+  while(size > minSize && doc.getTextWidth(text) > maxWidth){
+    size -= 0.5;
+    doc.setFontSize(size);
+  }
+  return size;
+}
+
+async function exportPlaylistPDF(){
   if(typeof window.jspdf === 'undefined'){
     showToast('Bibliothèque PDF non chargée — vérifiez la connexion internet', 'err');
     return;
@@ -13017,70 +13106,100 @@ function exportPlaylistPDF(){
   const COL_NAVY   = [11, 29, 58];
   const COL_TEXT   = [30, 40, 56];
   const COL_MUTED  = [110, 122, 142];
+  const COL_MUTED2 = [150, 158, 172];
+  const COL_CHANGE = [200, 90, 20]; // catégorie précédente différente de l'actuelle : mise en avant
 
-  const cols = { numW: 8, artW: 42, titW: 52, catW: 22, entW: 24 };
-  cols.labW = CW - (cols.numW + cols.artW + cols.titW + cols.catW + cols.entW);
+  // Colonnes — largeur fixe pour num/catégories/date, le reste réparti
+  // entre artiste/titre/labels. "Catégorie Précédente" en plus de la
+  // maquette d'origine (voir t.ancienneCategorie, déjà tracée ailleurs dans
+  // l'app à chaque changement de catégorie — pas besoin de recalcul).
+  const cols = { numW: 7, artW: 33, titW: 40, catW: 15, prevCatW: 15, entW: 18 };
+  cols.labW = CW - (cols.numW + cols.artW + cols.titW + cols.catW + cols.prevCatW + cols.entW);
+
+  // ── Dimensionnement ADAPTATIF pour tenir sur UNE SEULE page A4 quel que
+  // soit le nombre de titres : plus la playlist est longue, plus les lignes
+  // et les polices se resserrent automatiquement (dans des bornes qui
+  // restent lisibles à l'impression).
+  const groups = playlistCategoryGroups(stationTitles);
+  const totalRows = stationTitles.length;
+  const TOP_MARGIN = 10, HEADER_LOGO_H = 13, COLBAND_H = 6, COLBAND_GAP = 2, FOOTER_RESERVE = 9;
+  const GROUP_GAP = 1.6;
+  const SAFETY_MARGIN = 6; // absorbe les marges de sécurité de checkPageBreak (voir plus bas) pour un calcul de rowH légèrement plus prudent
+  const overhead = TOP_MARGIN + HEADER_LOGO_H + COLBAND_H + COLBAND_GAP + FOOTER_RESERVE + SAFETY_MARGIN + (groups.length * GROUP_GAP);
+  const availableForRows = PH - overhead;
+  const rowH = Math.max(3.6, Math.min(6.2, availableForRows / totalRows));
+  const fontMain  = Math.max(5.5, Math.min(8, rowH * 1.28));   // artiste / titre / catégorie
+  const fontSmall = Math.max(5,   fontMain - 1.4);             // catégorie précédente / date / label
 
   let y = 0;
   let pageNum = 1;
 
   function addPageHeader(){
-    y = 14;
-    // Logo de la station — les deux ont maintenant un vrai logo embarqué
-    // (Europe 2 recadré depuis un export fourni ; RFM récupéré depuis le
-    // logo déjà présent dans l'en-tête de l'application).
+    y = TOP_MARGIN;
+    // Logo de la station — les deux ont un vrai logo embarqué (Europe 2
+    // recadré depuis un export fourni ; RFM récupéré depuis le logo déjà
+    // présent dans l'en-tête de l'application).
     if(ACTIVE_STATION === 'EUROPE2'){
-      doc.addImage(LOGO_EUROPE2_PDF, 'PNG', ML, y, 32, 12.6);
+      doc.addImage(LOGO_EUROPE2_PDF, 'PNG', ML, y, 26, 10.2);
     } else {
-      doc.addImage(LOGO_RFM_PDF, 'PNG', ML, y, 25, 12.8);
+      doc.addImage(LOGO_RFM_PDF, 'PNG', ML, y, 20, 10.4);
     }
 
     // Titre "PLAYLIST [STATION] du J au J MOIS ANNÉE" — le "2" d'Europe 2
     // est mis en rose pour rester fidèle à l'identité visuelle de la radio.
+    // Taille réduite automatiquement (fitPdfFontSize) pour que le titre
+    // tienne toujours entièrement dans la largeur restante à côté du logo,
+    // quelle que soit la longueur de la plage de dates affichée.
     const weekLabel = playlistWeekRange();
+    const segments = ACTIVE_STATION === 'EUROPE2' ? ['PLAYLIST EUROPE ', '2', ' ' + weekLabel] : ['PLAYLIST RFM ' + weekLabel];
+    const fullText = segments.join('');
+    const tx0 = ML + 32;
+    const maxTitleWidth = PW - MR - tx0;
     doc.setFont('helvetica','bold');
-    doc.setFontSize(18);
-    let tx = ML + 40;
-    const ty = y + 9;
-    const segments = ACTIVE_STATION === 'EUROPE2' ? ['PLAYLIST EUROPE ', '2'] : ['PLAYLIST RFM'];
+    const titleSize = fitPdfFontSize(doc, fullText, maxTitleWidth, 15, 8);
+    doc.setFontSize(titleSize);
+    let tx = tx0;
+    const ty = y + HEADER_LOGO_H/2 + titleSize/2.8;
     doc.setTextColor(20, 20, 20);
     doc.text(segments[0], tx, ty);
     tx += doc.getTextWidth(segments[0]);
-    if(segments[1]){
+    if(segments[1] && ACTIVE_STATION === 'EUROPE2'){
       doc.setTextColor(...COL_PINK);
       doc.text(segments[1], tx, ty);
       tx += doc.getTextWidth(segments[1]);
       doc.setTextColor(20, 20, 20);
+      doc.text(segments[2], tx, ty);
     }
-    doc.text(' ' + weekLabel, tx, ty);
 
-    y += 20;
+    y += HEADER_LOGO_H + 2;
 
     // Bandeau de colonnes (rose, comme le modèle)
     doc.setFillColor(...COL_PINK);
-    doc.rect(ML, y, CW, 8, 'F');
+    doc.rect(ML, y, CW, COLBAND_H, 'F');
     doc.setFont('helvetica','bold');
-    doc.setFontSize(9);
+    doc.setFontSize(Math.min(7.5, fontMain));
     doc.setTextColor(255, 255, 255);
     let cx = ML + cols.numW;
-    doc.text('ARTISTE', cx + cols.artW/2, y + 5.3, {align:'center'}); cx += cols.artW;
-    doc.text('TITRE', cx + cols.titW/2, y + 5.3, {align:'center'}); cx += cols.titW;
-    doc.text('CATEGORIE', cx + cols.catW/2, y + 5.3, {align:'center'}); cx += cols.catW;
-    doc.text('ENTREE', cx + cols.entW/2, y + 5.3, {align:'center'}); cx += cols.entW;
-    doc.text('LABELS', cx + cols.labW/2, y + 5.3, {align:'center'});
-    y += 8 + 3;
+    const bandBaseline = y + COLBAND_H/2 + 1.1;
+    doc.text('ARTISTE', cx + cols.artW/2, bandBaseline, {align:'center'}); cx += cols.artW;
+    doc.text('TITRE', cx + cols.titW/2, bandBaseline, {align:'center'}); cx += cols.titW;
+    doc.text('CATEGORIE', cx + cols.catW/2, bandBaseline, {align:'center'}); cx += cols.catW;
+    doc.text('CAT. PRECED.', cx + cols.prevCatW/2, bandBaseline, {align:'center'}); cx += cols.prevCatW;
+    doc.text('ENTREE', cx + cols.entW/2, bandBaseline, {align:'center'}); cx += cols.entW;
+    doc.text('LABELS', cx + cols.labW/2, bandBaseline, {align:'center'});
+    y += COLBAND_H + COLBAND_GAP;
   }
 
   function addPageFooter(){
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setTextColor(...COL_MUTED);
     doc.setFont('helvetica','normal');
-    doc.text('Playlist générée automatiquement — Fit Point Analyzer', ML, PH - 8);
-    doc.text('Page ' + pageNum, PW - MR, PH - 8, {align:'right'});
+    doc.text('Playlist générée automatiquement — Fit Point Analyzer', ML, PH - 6);
+    doc.text('Page ' + pageNum, PW - MR, PH - 6, {align:'right'});
   }
 
   function checkPageBreak(neededHeight){
-    if(y + neededHeight > PH - 16){
+    if(y + neededHeight > PH - FOOTER_RESERVE + 3){
       addPageFooter();
       doc.addPage();
       pageNum++;
@@ -13090,53 +13209,63 @@ function exportPlaylistPDF(){
 
   addPageHeader();
 
-  const groups = playlistCategoryGroups(stationTitles);
-  const rowH = 7.5;
-
   groups.forEach(group => {
     checkPageBreak(rowH * 2);
-    y += 3; // léger espacement avant chaque groupe, comme le modèle
+    y += GROUP_GAP;
     group.items.forEach((t, idx) => {
-      checkPageBreak(rowH + 2);
+      checkPageBreak(rowH + 1);
       const cat = (t.categorie || '').toUpperCase().trim();
       const color = PLAYLIST_CAT_COLORS[cat] || PLAYLIST_CAT_DEFAULT_COLOR;
+      const prevCat = (t.ancienneCategorie || '').toUpperCase().trim();
       let x = ML;
-      const baseline = y + rowH/2 + 1.2;
+      const baseline = y + rowH/2 + fontMain/2.8;
 
       // Numéro (rouge, remis à 1 à chaque nouvelle catégorie)
       doc.setFont('helvetica','bold');
-      doc.setFontSize(9);
+      doc.setFontSize(fontSmall);
       doc.setTextColor(200, 30, 30);
       doc.text(String(idx + 1), x + cols.numW/2, baseline, {align:'center'});
       x += cols.numW;
 
-      // Artiste
+      // Artiste — MAJUSCULES, gras
       doc.setFont('helvetica','bold');
+      doc.setFontSize(fontMain);
       doc.setTextColor(...COL_TEXT);
-      doc.text(truncateForPdf(doc, t.artist || '', cols.artW - 4), x + 2, baseline);
+      doc.text(truncateForPdf(doc, pdfArtistCase(t.artist), cols.artW - 3), x + 1.5, baseline);
       x += cols.artW;
 
-      // Titre
+      // Titre — Title Case, non gras
       doc.setFont('helvetica','normal');
-      doc.text(truncateForPdf(doc, t.title || '', cols.titW - 4), x + 2, baseline);
+      doc.text(truncateForPdf(doc, pdfTitleCase(t.title), cols.titW - 3), x + 1.5, baseline);
       x += cols.titW;
 
       // Catégorie (cellule colorée)
       doc.setFillColor(...color);
       doc.rect(x, y, cols.catW, rowH, 'F');
       doc.setFont('helvetica','bold');
+      doc.setFontSize(fontSmall);
       doc.setTextColor(30, 40, 30);
       doc.text(cat || '—', x + cols.catW/2, baseline, {align:'center'});
       x += cols.catW;
 
-      // Date d'entrée
+      // Catégorie précédente — texte seul (pas de fond coloré, pour bien la
+      // distinguer de la catégorie actuelle) ; mise en évidence si elle
+      // diffère de la catégorie actuelle (mouvement dans la grille), grise
+      // et discrète sinon (rien de nouveau à signaler).
+      doc.setFont('helvetica', prevCat && prevCat !== cat ? 'bold' : 'normal');
+      doc.setTextColor(...(prevCat && prevCat !== cat ? COL_CHANGE : COL_MUTED2));
+      doc.text(prevCat || '—', x + cols.prevCatW/2, baseline, {align:'center'});
+      x += cols.prevCatW;
+
+      // Date d'entrée — police réduite (info secondaire)
       doc.setFont('helvetica','normal');
+      doc.setFontSize(fontSmall);
       doc.setTextColor(...COL_TEXT);
       doc.text(formatDateFr(t.dateEntree) || '—', x + cols.entW/2, baseline, {align:'center'});
       x += cols.entW;
 
-      // Label
-      doc.text(truncateForPdf(doc, t.label || '—', cols.labW - 4), x + cols.labW/2, baseline, {align:'center'});
+      // Label — police réduite (info secondaire)
+      doc.text(truncateForPdf(doc, t.label || '—', cols.labW - 3), x + cols.labW/2, baseline, {align:'center'});
 
       y += rowH;
     });
