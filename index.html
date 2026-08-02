@@ -15536,37 +15536,38 @@ function groupPdfItemsIntoLines(items){
 const NL_MONTHS_RE = /\b(JANUARI|FEBRUARI|MAART|APRIL|MEI|JUNI|JULI|AUGUSTUS|SEPTEMBER|OKTOBER|NOVEMBER|DECEMBER)\b/i;
 
 /** Parseur du Top 50 538 à partir des lignes reconstruites par position
- *  (voir groupPdfItemsIntoLines). RÉVISÉ après vérification du PDF réel
- *  (semaine 31 2026) : CONTRAIREMENT à l'hypothèse initiale, ce n'est PAS
- *  un export texte "1 Artiste - Titre" mais une AFFICHE graphique en
- *  collage. Sur le PDF vérifié :
- *  - Les 40 TITRES des rangs 11 à 50 apparaissent comme un bloc unique,
- *    dans le même ordre que les rangs juste avant eux → extraction FIABLE
- *    (vérifiée : correspond aux titres réels de Capital FM pour les
- *    chansons communes aux deux classements ; gère aussi les titres trop
- *    longs coupés sur 2 lignes via un regroupement par proximité
- *    verticale — voir étape 2b ci-dessous).
- *  - Le bloc des 40 ARTISTES existe plus loin dans le document, mais
- *    séparé du bloc des titres par un nombre de lignes "top 10" parasites
- *    qui dépend des retours à la ligne des titres du top 10 cette
- *    semaine-là — donc PAS un décalage fixe d'une semaine à l'autre.
- *    Plutôt que de deviner ce décalage et risquer d'associer un mauvais
- *    artiste à un titre (donnée fausse — pire qu'une donnée absente pour
- *    des décisions éditoriales), le texte restant est renvoyé tel quel
- *    (remainderRawSample) pour repérage/vérification manuelle.
- *  - Les rangs 1 à 10 ("top 10", mis en avant graphiquement en haut de
- *    l'affiche) sont disposés en collage multi-colonnes dont l'ordre de
- *    lecture ne correspond à aucun bloc séquentiel exploitable de façon
- *    fiable sans reconstruction géométrique plus poussée — non extraits
- *    non plus (inclus dans remainderRawSample). */
+ *  (voir groupPdfItemsIntoLines). Structure RÉELLEMENT vérifiée ligne par
+ *  ligne avec Gaël sur le texte brut reconstruit en conditions réelles
+ *  (semaine 31 2026) : ce n'est pas un export texte "1 Artiste - Titre"
+ *  mais une AFFICHE graphique en collage — MAIS pour les rangs 11 à 50,
+ *  la lecture par position (x/y) fait apparaître un motif RÉGULIER et
+ *  fiable, répété 40 fois : [ARTISTE, RANG, VARIATION, TITRE]. Point
+ *  important, contre-intuitif : l'ARTISTE d'un titre apparaît juste AVANT
+ *  son numéro de rang dans le flux (pas juste après le titre comme on
+ *  pourrait s'y attendre — l'artiste est visuellement sous le rang
+ *  précédent mais appartient au titre suivant). Vérifié précisément :
+ *  rang 11 "PASSENGER" → ligne juste avant "11" = "ALEX WARREN" (exact,
+ *  Alex Warren est bien l'artiste de Passenger) ; rang 50 "MATERIAL LOVER"
+ *  → ligne juste avant "50" = "SIENNA SPIRO" (exact). D'où l'algorithme :
+ *  pour un numéro de rang trouvé à l'indice idx dans les lignes, titre =
+ *  lignes[idx+2], artiste = lignes[idx-1].
+ *  Les rangs 1 à 10 ("top 10", mis en avant graphiquement en collage
+ *  multi-colonnes en haut de l'affiche) restent NON extraits : plusieurs
+ *  titres/artistes s'y retrouvent concaténés sur une même ligne selon la
+ *  mise en page de la semaine (nombre de mots, retours à la ligne...),
+ *  sans motif fixe exploitable de façon fiable — le texte correspondant
+ *  est renvoyé tel quel dans remainderRawSample pour vérification
+ *  manuelle plutôt que de risquer un mauvais appariement titre/artiste. */
 function parse538TopSongsFromLines(lines){
   const texts = lines.map(l => l.text).filter(Boolean);
 
   // 1) Repère la plus longue séquence de nombres consécutifs (rang N,
-  //    N+1, N+2...) parmi les lignes purement numériques — c'est le bloc
-  //    des rangs 11 à 50, contrairement aux badges de variation ("11=",
-  //    "8#", "3+ 2- 6+"...) qui contiennent d'autres caractères que des
-  //    chiffres et ne sont donc jamais confondus avec un rang.
+  //    N+1, N+2...) parmi les lignes purement numériques — c'est la
+  //    séquence des rangs 11 à 50, jamais confondue avec les badges de
+  //    variation ("11=", "8#", "3+ 2- 6+"...) qui contiennent d'autres
+  //    caractères que des chiffres, ni avec les numéros isolés de l'en-
+  //    tête ("31" pour "semaine 31", "1" pour "1 août"...) qui ne
+  //    s'enchaînent jamais sur 10+ valeurs consécutives.
   const pureNumIdx = [];
   texts.forEach((t, i) => { if(/^\d{1,2}$/.test(t)) pureNumIdx.push({ i, v: parseInt(t, 10) }); });
 
@@ -15577,78 +15578,32 @@ function parse538TopSongsFromLines(lines){
   }
   if(bestRun.length < 10) return { tracks: null, remainderRawSample: '' }; // structure non reconnue
 
-  const rankValues = bestRun.map(e => e.v);
-  const rankBlockEndIdx = bestRun[bestRun.length - 1].i;
-  const N = rankValues.length;
+  // 2) Pour chaque rang trouvé, titre = lignes[idx+2], artiste = lignes[idx-1]
+  //    (voir doc ci-dessus). Filet de sécurité : si la ligne récupérée
+  //    ressemble à un badge/en-tête/numéro plutôt qu'à un vrai texte, on la
+  //    traite comme absente plutôt que de risquer une donnée fausse.
+  const isHeader  = t => /CONTACT|MEER INFO|538\.NL|NIET PUBLICEREN|^WEEK\s+\d+$/i.test(t) || NL_MONTHS_RE.test(t);
+  const isBadge   = t => /^[\d\s\-+=#*]+$/.test(t) && !/^\d{1,2}$/.test(t);
+  const isPureNum = t => /^\d{1,2}$/.test(t);
+  const looksBad  = t => !t || isHeader(t) || isBadge(t) || isPureNum(t);
 
-  // 2) Après ce bloc de rangs (en sautant l'en-tête, les badges de
-  //    variation et les éventuels résidus du "top 10"), les lignes de
-  //    texte suivantes qui ne sont ni un nombre pur, ni un badge, ni une
-  //    ligne d'en-tête sont candidates à être des TITRES puis des
-  //    ARTISTES (mêmes ordre que les rangs).
-  const isHeader    = t => /CONTACT|MEER INFO|538\.NL|NIET PUBLICEREN|^WEEK\s+\d+$/i.test(t) || NL_MONTHS_RE.test(t);
-  const isBadge      = t => /^[\d\s\-+=#]+$/.test(t) && !/^\d{1,2}$/.test(t);
-  const isPureNum    = t => /^\d{1,2}$/.test(t);
-  const isCandidate  = t => t.length > 1 && !isHeader(t) && !isBadge(t) && !isPureNum(t) && /[A-Za-zÀ-ÿ]/.test(t);
+  const tracks = bestRun.map(entry => {
+    const idx = entry.i;
+    const rawTitle  = texts[idx + 2];
+    const rawArtist = texts[idx - 1];
+    return {
+      rank: entry.v,
+      title:  looksBad(rawTitle)  ? '' : decodeHtmlEntitiesSimple(rawTitle),
+      artist: looksBad(rawArtist) ? '' : decodeHtmlEntitiesSimple(rawArtist),
+    };
+  }).filter(t => t.title); // un titre illisible rend l'entrée inexploitable
 
-  const rawCandidates = [];
-  for(let i = rankBlockEndIdx + 1; i < lines.length; i++){
-    if(isCandidate(lines[i].text)) rawCandidates.push({ text: lines[i].text, y: lines[i].y });
-  }
+  // Le "top 10" (avant le début de la séquence 11-50) reste en collage non
+  // décodé — conservé pour vérification manuelle dans le panneau diagnostic.
+  const top10EndIdx = Math.max(0, bestRun[0].i - 1); // exclut l'artiste du rang 11, déjà consommé ci-dessus
+  const remainder = texts.slice(0, top10EndIdx);
 
-  // 2b) Un titre (ou artiste) trop long pour tenir sur une ligne de
-  //     l'affiche est coupé sur 2 lignes — ex. observé : "MAGNETIC ZWOELE"
-  //     / "ZOMERNACHTEN". Ces deux lignes sont beaucoup plus rapprochées
-  //     verticalement qu'une transition normale entre deux titres/artistes
-  //     distincts : on fusionne donc les paires dont l'écart vertical est
-  //     nettement inférieur à l'écart médian observé sur l'ensemble de la
-  //     séquence, pour ne pas décaler tout l'appariement rang↔titre↔artiste
-  //     qui suit.
-  const candidates = [];
-  if(rawCandidates.length >= 3){
-    const gaps = [];
-    for(let i = 1; i < rawCandidates.length; i++) gaps.push(Math.abs(rawCandidates[i-1].y - rawCandidates[i].y));
-    const sortedGaps = gaps.slice().sort((a, b) => a - b);
-    const medianGap = sortedGaps[Math.floor(sortedGaps.length / 2)] || 0;
-    const mergeThreshold = medianGap * 0.55;
-    let cur = rawCandidates[0];
-    for(let i = 1; i < rawCandidates.length; i++){
-      const gap = Math.abs(rawCandidates[i-1].y - rawCandidates[i].y);
-      if(medianGap > 0 && gap < mergeThreshold){
-        cur = { text: cur.text + ' ' + rawCandidates[i].text, y: cur.y }; // suite du même titre/artiste coupé sur 2 lignes
-      } else {
-        candidates.push(cur.text);
-        cur = rawCandidates[i];
-      }
-    }
-    candidates.push(cur.text);
-  } else {
-    rawCandidates.forEach(c => candidates.push(c.text));
-  }
-
-  if(candidates.length < N) return { tracks: null, remainderRawSample: candidates.join(' | ') };
-
-  const titles = candidates.slice(0, N);
-  // Le bloc des artistes suit plus loin dans "candidates", mais séparé du
-  // bloc des titres par un nombre de lignes "top 10" parasites qui varie
-  // d'une semaine à l'autre (dépend des retours à la ligne des titres du
-  // top 10 cette semaine-là) — voir doc ci-dessus. Plutôt que de deviner
-  // un décalage fixe et risquer d'associer un mauvais artiste à un titre
-  // (donnée fausse, pire qu'une donnée absente pour des décisions
-  // éditoriales), on restitue ici le reste du texte tel quel : Gaël peut
-  // y repérer visuellement le bloc des 40 artistes (dans le même ordre que
-  // les titres ci-dessus) et, si le décalage s'avère stable d'une semaine
-  // à l'autre, on pourra coder l'appariement automatique en connaissance
-  // de cause.
-  const remainder = candidates.slice(N);
-
-  const tracks = rankValues.map((rank, i) => ({
-    rank,
-    title: decodeHtmlEntitiesSimple(titles[i]),
-    artist: '', // non extrait automatiquement — voir remainderRawSample / doc ci-dessus
-  }));
-
-  return { tracks, remainderRawSample: remainder.join(' | ') };
+  return { tracks: tracks.length ? tracks : null, remainderRawSample: remainder.join(' | ') };
 }
 
 /** Récupère et parse le Top 50 de Radio 538 — cas particulier parmi les
@@ -15714,7 +15669,7 @@ async function fetchRadio538TopSongs(){
       });
     }
     lines = groupPdfItemsIntoLines(items);
-    fullText = lines.map(l => l.text).join('\n');
+    fullText = lines.map((l, i) => (i+1) + '. ' + l.text).join('\n');
     log.push({ proxy: '— extraction texte (pdf.js) —', status: '✓ ' + items.length + ' fragment(s) → ' + lines.length + ' ligne(s) reconstruite(s) sur ' + pdf.numPages + ' page(s)' });
   }catch(e){
     log.push({ proxy: '— extraction texte (pdf.js) —', status: 'Échec : ' + (e.message || e) });
@@ -15725,19 +15680,20 @@ async function fetchRadio538TopSongs(){
   const parsed = parse538TopSongsFromLines(lines);
   const tracks = parsed.tracks;
   if(tracks){
-    log.push({ proxy: '— parsing —', status: '✓ ' + tracks.length + ' rangs/titres extraits de façon fiable (' + tracks[0].rank + ' à ' + tracks[tracks.length - 1].rank + ') — voir note ci-dessous pour les artistes' });
+    const withArtist = tracks.filter(t => t.artist).length;
+    log.push({ proxy: '— parsing —', status: '✓ ' + tracks.length + ' titres extraits (rangs ' + tracks[0].rank + ' à ' + tracks[tracks.length - 1].rank + '), dont ' + withArtist + ' avec artiste' });
     if(parsed.remainderRawSample){
-      log.push({ proxy: '— artistes + top 10 —', status: 'Non appariés automatiquement (mise en page en collage graphique — voir doc de parse538TopSongsFromLines) — texte brut restant pour vérification manuelle : ' + parsed.remainderRawSample.slice(0, 500) });
+      log.push({ proxy: '— top 10 —', status: 'Non extrait automatiquement (mise en page en collage graphique — voir doc de parse538TopSongsFromLines) — texte brut pour vérification manuelle : ' + parsed.remainderRawSample.slice(0, 500) });
     }
   } else {
     log.push({ proxy: '— parsing —', status: 'Format non reconnu (voir échantillon texte ci-dessous)' });
   }
 
-  radioTopSongsData['radio538'] = { tracks, rawSample: fullText.slice(0,3000), log, fetchedAt: new Date().toISOString() };
+  radioTopSongsData['radio538'] = { tracks, rawSample: fullText.slice(0,8000), log, fetchedAt: new Date().toISOString() };
   radioTopSongsSaveToStorage();
   renderRadioChartsPanel();
   if(activeChartTab === 'radio_radio538') renderChartTable();
-  if(tracks) showToast('✓ « ' + src.label + ' » — ' + tracks.length + ' rangs/titres récupérés (rangs 11-50 ; artistes et top 10 pas encore automatisés, voir détail par proxy)', 'success');
+  if(tracks) showToast('✓ « ' + src.label + ' » — ' + tracks.length + ' titres récupérés avec rang, titre et artiste (rangs 11-50 ; top 10 non automatisé, voir détail par proxy)', 'success');
   else showToast('❌ Extraction impossible pour « ' + src.label + ' » — détail par proxy consultable ci-dessous', 'err');
 }
 
@@ -15816,6 +15772,9 @@ function renderRadioChartsPanel(){
           : `<span style="color:#CC2222;font-weight:700">❌ Extraction échouée</span>`)
       : 'Pas encore testé';
     const logHtml = d && d.log ? d.log.map(l => `<div style="font-size:10.5px;color:var(--muted);padding:2px 0">${escHtml(l.proxy)} — ${escHtml(l.status)}</div>`).join('') : '';
+    const rawSampleHtml = d && d.rawSample
+      ? `<details style="margin-top:6px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer">Texte brut extrait (échantillon)</summary><pre style="font-size:10px;color:var(--text2);white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;max-height:280px;overflow:auto">${escHtml(d.rawSample)}</pre></details>`
+      : '';
     const cardIcon = src.logo ? `<img src="${src.logo}" alt="${escHtml(src.label)}" height="20" style="vertical-align:middle;object-fit:contain" onerror="this.replaceWith(document.createTextNode('📻'))">` : '📻';
     return `<div style="padding:16px 18px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -15829,6 +15788,7 @@ function renderRadioChartsPanel(){
         </div>
       </div>
       ${logHtml ? `<details style="margin-top:10px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer">Détail par proxy</summary>${logHtml}</details>` : ''}
+      ${rawSampleHtml}
     </div>`;
   }).join('');
 }
