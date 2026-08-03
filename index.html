@@ -6026,10 +6026,13 @@ function updateLoadAllChartsStatus(){
   // dernier message d'une session de "Tout charger" passée (ex. un total
   // devenu obsolète après l'ajout de nouvelles sources comme les Radios
   // clés) au lieu de refléter l'état réel à chaque affichage de la home.
-  if(!allChartsLoadingInProgress){
-    const homeEl = document.getElementById('homeLoadAllCount');
-    if(homeEl) homeEl.textContent = label;
-  }
+  // Passe par updateAllChartsProgressUI (et non une écriture directe du
+  // texte) pour que la barre de progression et le compteur ne puissent
+  // JAMAIS se désynchroniser — c'était la cause du bug "barre à 100% mais
+  // compteur à 27/42" : le texte était réécrit ici avec le total réel après
+  // coup, sans que la barre (figée sur le dernier état d'un chargement actif)
+  // ne soit remise à jour en même temps.
+  if(!allChartsLoadingInProgress) updateAllChartsProgressUI(loaded, total, label);
 }
 
 async function loadAllCharts(silent = false){
@@ -6093,9 +6096,18 @@ async function loadAllCharts(silent = false){
   // Suivi de progression : chaque tâche, une fois réglée (succès ou échec),
   // incrémente le compteur et met à jour le texte + la barre — sur la page
   // Classements comme sur la home, sans attendre que TOUTES soient finies.
-  const total = tasks.length;
-  let done = 0;
-  updateAllChartsProgressUI(0, total, 'Chargement de ' + total + ' source(s)…');
+  // Le total affiché doit refléter l'ENSEMBLE des sources connues (~41),
+  // pas seulement celles restant à charger cette session — sinon le
+  // compteur affiche un total tronqué (ex. 26 au lieu de 41) dès qu'une
+  // partie des sources est déjà en cache (Playlists clés/Radios clés déjà
+  // récupérées lors d'une session précédente, persistées en localStorage).
+  // "done" démarre donc au nombre déjà chargé AVANT ce lancement, puis
+  // s'incrémente au fil des tâches de CETTE session — le compteur part
+  // ainsi d'une base réaliste (ex. "15/41") plutôt que de "0/26".
+  const fullCount = countLoadedAutoCharts();
+  const total = fullCount.total;
+  let done = fullCount.total - tasks.length; // déjà chargées avant ce lancement
+  updateAllChartsProgressUI(done, total, 'Chargement de ' + tasks.length + ' source(s)…');
   const trackedTasks = tasks.map(t => t.finally ? t.finally(() => {
     done++;
     updateAllChartsProgressUI(done, total, done + ' / ' + total + ' source(s) chargée(s)…');
@@ -6117,9 +6129,9 @@ async function loadAllCharts(silent = false){
   }
   if(homeBtn) homeBtn.disabled = false;
   const okCount = results.filter(r => r.status === 'fulfilled').length;
-  updateAllChartsProgressUI(total, total, '✓ ' + okCount + ' / ' + total + ' source(s) fraîchement récupérée(s)');
+  updateAllChartsProgressUI(done, total, '✓ ' + done + ' / ' + total + ' source(s) chargées au total (' + okCount + '/' + tasks.length + ' fraîchement récupérées)');
   if(!silent){
-    showToast('Classements chargés ✓ (' + okCount + '/' + total + ' sources fraîchement récupérées)', 'success');
+    showToast('Classements chargés ✓ (' + okCount + '/' + tasks.length + ' sources fraîchement récupérées, ' + done + '/' + total + ' au total)', 'success');
   }
 }
 
