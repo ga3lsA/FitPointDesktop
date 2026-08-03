@@ -1024,6 +1024,18 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
       </div>
 
+      <!-- Titres suivis vs Vue d'ensemble quotidienne (instantanés Drive) -->
+      <div style="display:flex;gap:6px;margin-bottom:18px">
+        <button id="veilleModeBtn_titles" onclick="switchVeilleMode('titles')" style="font-size:11.5px;padding:7px 14px;border-radius:8px;border:1.5px solid #7C3AED;background:#7C3AED;color:#fff;cursor:pointer;font-weight:700">🔭 Titres suivis</button>
+        <button id="veilleModeBtn_daily" onclick="switchVeilleMode('daily')" style="font-size:11.5px;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);cursor:pointer;font-weight:700">📅 Vue d'ensemble quotidienne</button>
+        <button onclick="configDailySnapshotUrl()" title="Configurer l'URL du script Apps Script des instantanés quotidiens" style="font-size:11.5px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer">⚙️</button>
+      </div>
+
+      <!-- Vue d'ensemble quotidienne : mouvements de classements + entrées/sorties playlists & radios -->
+      <div id="dailyOverviewContainer" style="display:none"></div>
+
+      <div id="veilleTitlesPane">
+
       <!-- Note explicative (repliable) -->
       <div id="infoWatchlist" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
         Ajoutez ici un titre qu'un label vous a présenté, même s'il n'apparaît encore dans aucun classement. FPA le revérifie automatiquement <strong>une fois par jour</strong> (au chargement de l'appli, une fois les classements chargés) sur iTunes/Apple Music, sur <strong>tous les marchés Spotify</strong> (France + 8 autres pays via kworb.net, chargés automatiquement pour la Veille même si vous ne les avez pas ouverts dans Classements), sur les <strong>Playlists Spotify clés</strong> suivies (RapCaviar, New Music Friday..., chargées automatiquement pour la Veille si besoin), et sur tous les autres classements FPA actuellement chargés (Shazam, Deezer, Airplay). Un badge <strong>🎯 Nouveau signal</strong> apparaît dès qu'un titre passe de "introuvable" à "trouvé" quelque part — le signe qu'il commence à sortir de nulle part, y compris à l'étranger avant la France ou via un ajout éditorial à une playlist. L'historique jour par jour reste consultable pour chaque titre. Une fois convaincu, un bouton permet de l'ajouter directement au Comité d'Écoute ou à la Playlist.
@@ -1043,6 +1055,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Liste des titres surveillés -->
       <div id="watchlistList"></div>
+
+      </div>
 
     </div>
 
@@ -20732,6 +20746,273 @@ async function renderHomeRadarSummary(){
 }
 
 /** Ouvre l'onglet Décision → Veille depuis la home. */
+// ═══════════════════════════════════════════════════════════════════════
+// VEILLE — VUE D'ENSEMBLE QUOTIDIENNE
+// Instantanés quotidiens de classements/playlists/radios sauvegardés en
+// tâche de fond côté Apps Script (voir DailySnapshot.gs, déclencheur
+// horaire, indépendant du Drive Sync hebdomadaire existant pour ne pas
+// risquer d'y réintroduire les soucis de corruption déjà rencontrés avec
+// des écritures concurrentes). FPA ne fait ici que LIRE ces instantanés et
+// calculer les écarts (mouvements de classement, entrées/sorties de
+// playlists et radios) — aucune écriture depuis le client.
+// ═══════════════════════════════════════════════════════════════════════
+
+let DAILY_SNAPSHOT_URL = localStorage.getItem('fpa_daily_snapshot_url') || FPA_DEFAULT_URLS.dailySnapshot || '';
+let dailySnapshots = [];        // [{date, charts:{}, playlists:{}, radios:{}}, ...] du plus récent au plus ancien
+let dailySnapshotsLoaded = false;
+let dailyOverviewMode = 'jour'; // 'jour' (vs hier) | 'semaine' (vs moyenne glissante des 7 jours précédents)
+
+// Sources couvertes par l'instantané quotidien (voir DailySnapshot.gs pour
+// le détail de récupération). Spotify (charts.spotify.com et Playlists clés
+// Spotify) est volontairement absent : bloqué côté serveur (nécessite
+// l'exécution JS d'un vrai navigateur, voir échanges précédents), donc pas
+// automatisable via un déclencheur Apps Script — reste en rafraîchissement
+// manuel comme aujourd'hui. Radio 538 (PDF) est également absent pour
+// l'instant : à ajouter plus tard si besoin, l'extraction pdf.js n'est pas
+// directement portable en Apps Script.
+const DAILY_CHART_SOURCES    = { apple_fr: 'Apple Music France', shazam_fr: 'Shazam France', shazam_ww: 'Shazam Monde' };
+const DAILY_PLAYLIST_SOURCES = { deezer_top_france: 'Deezer Top France', deezer_futurs_hits: 'Deezer Futurs Hits' };
+const DAILY_RADIO_SOURCES    = { capital_fm: 'Capital FM (UK)', z100: 'Z100 New York', kiis1027: 'KIIS 102.7 Los Angeles' };
+
+function configDailySnapshotUrl(){
+  const current = DAILY_SNAPSHOT_URL || '';
+  const url = window.prompt("URL du script Apps Script « DailySnapshot » (Déployer → Application Web → copier l'URL /exec) :", current);
+  if(url === null) return; // annulé
+  DAILY_SNAPSHOT_URL = url.trim();
+  localStorage.setItem('fpa_daily_snapshot_url', DAILY_SNAPSHOT_URL);
+  showToast(DAILY_SNAPSHOT_URL ? '✓ URL enregistrée' : 'URL effacée', 'success');
+  dailySnapshotsLoaded = false;
+  if(document.getElementById('dailyOverviewContainer')?.style.display !== 'none') loadDailySnapshots();
+}
+
+function switchVeilleMode(mode){
+  const titlesPane = document.getElementById('veilleTitlesPane');
+  const dailyPane  = document.getElementById('dailyOverviewContainer');
+  const btnTitles  = document.getElementById('veilleModeBtn_titles');
+  const btnDaily   = document.getElementById('veilleModeBtn_daily');
+  const active   = { border:'#7C3AED', background:'#7C3AED', color:'#fff' };
+  const inactive = { border:'var(--border)', background:'var(--white)', color:'var(--text2)' };
+  const apply = (btn, s) => { btn.style.borderColor = s.border; btn.style.background = s.background; btn.style.color = s.color; };
+  if(mode === 'titles'){
+    titlesPane.style.display = '';
+    dailyPane.style.display  = 'none';
+    apply(btnTitles, active); apply(btnDaily, inactive);
+  } else {
+    titlesPane.style.display = 'none';
+    dailyPane.style.display  = '';
+    apply(btnTitles, inactive); apply(btnDaily, active);
+    if(!dailySnapshotsLoaded) loadDailySnapshots();
+    else renderDailyOverview();
+  }
+}
+
+let _dailyCbId = 0;
+/** Appel JSONP vers le script Apps Script des instantanés quotidiens — même
+ *  mécanisme que driveCallJSONP (Web App Apps Script, pas de CORS natif). */
+function dailySnapshotCallJSONP(params, timeoutMs = 15000){
+  return new Promise((resolve, reject) => {
+    if(!/^https:\/\//i.test(DAILY_SNAPSHOT_URL || '')){
+      reject(new Error("URL non configurée (⚙️ à côté des boutons Titres suivis / Vue d'ensemble)"));
+      return;
+    }
+    const cbName = '__fpaDS_' + (++_dailyCbId);
+    const neutralize = () => { window[cbName] = () => {}; };
+    const timer = setTimeout(() => {
+      neutralize();
+      const s = document.getElementById('__jsonp_' + cbName); if(s) s.remove();
+      reject(new Error('Délai dépassé'));
+    }, timeoutMs);
+    window[cbName] = (data) => {
+      clearTimeout(timer); neutralize();
+      const s = document.getElementById('__jsonp_' + cbName); if(s) s.remove();
+      if(data && data.ok === false) reject(new Error(data.error || 'Erreur'));
+      else resolve(data);
+    };
+    let url = DAILY_SNAPSHOT_URL.trim() + '?callback=' + cbName;
+    for(const [k, v] of Object.entries(params)) url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(String(v));
+    const script = document.createElement('script');
+    script.id = '__jsonp_' + cbName;
+    script.src = url;
+    script.onerror = () => { clearTimeout(timer); neutralize(); script.remove(); reject(new Error('Erreur réseau')); };
+    document.head.appendChild(script);
+  });
+}
+
+async function loadDailySnapshots(){
+  const container = document.getElementById('dailyOverviewContainer');
+  if(container) container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">⏳ Chargement des instantanés quotidiens…</div>';
+  try{
+    const data = await dailySnapshotCallJSONP({ action: 'list', days: 8 });
+    if(data && Array.isArray(data.snapshots)){
+      dailySnapshots = data.snapshots.slice().sort((a, b) => b.date.localeCompare(a.date));
+      dailySnapshotsLoaded = true;
+    } else {
+      dailySnapshots = [];
+    }
+  }catch(e){
+    dailySnapshots = [];
+    if(container) container.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">❌ ${escHtml(e.message)}</div>`;
+    return;
+  }
+  renderDailyOverview();
+}
+
+/** Table clé → rang pour une source d'un instantané donné (clé =
+ *  "Titre|||Artiste", même convention que le reste de FPA). */
+function dailySnapshotRankMap(snapshot, bucket, sourceKey){
+  const src = snapshot && snapshot[bucket] && snapshot[bucket][sourceKey];
+  if(!src) return null;
+  const map = {};
+  if(Array.isArray(src)){
+    src.forEach((key, i) => { map[key] = i + 1; });
+  } else {
+    Object.entries(src).forEach(([rank, key]) => { map[key] = parseInt(rank, 10); });
+  }
+  return map;
+}
+
+/** Rang moyen sur une série d'instantanés (mode "Semaine") — sert de point
+ *  de comparaison lissé plutôt qu'un simple J-1, pour ne pas être noyé sous
+ *  le bruit quotidien des classements qui bougent beaucoup (Spotify,
+ *  Shazam...). */
+function dailyAverageRankMap(snapshots, bucket, sourceKey, excludeFirst){
+  const sums = {}, counts = {};
+  snapshots.forEach((snap, i) => {
+    if(excludeFirst && i === 0) return;
+    const map = dailySnapshotRankMap(snap, bucket, sourceKey);
+    if(!map) return;
+    Object.entries(map).forEach(([key, rank]) => {
+      sums[key] = (sums[key] || 0) + rank;
+      counts[key] = (counts[key] || 0) + 1;
+    });
+  });
+  const avg = {};
+  Object.keys(sums).forEach(key => { avg[key] = sums[key] / counts[key]; });
+  return avg;
+}
+
+/** Plus forts mouvements de classement, toutes sources confondues, triés
+ *  par amplitude — "Jour" compare à J-1, "Semaine" compare à la moyenne
+ *  glissante des 7 jours précédents (hors aujourd'hui). Les titres tout
+ *  juste apparus (absents du point de comparaison) ne sont pas comptés
+ *  comme un "mouvement" ici — voir computeDailyDiff pour les entrées. */
+function computeDailyMovers(){
+  if(dailySnapshots.length < 2) return [];
+  const today = dailySnapshots[0];
+  const movers = [];
+  Object.entries(DAILY_CHART_SOURCES).forEach(([srcKey, label]) => {
+    const todayMap = dailySnapshotRankMap(today, 'charts', srcKey);
+    if(!todayMap) return;
+    const compareMap = dailyOverviewMode === 'semaine'
+      ? dailyAverageRankMap(dailySnapshots, 'charts', srcKey, true)
+      : dailySnapshotRankMap(dailySnapshots[1], 'charts', srcKey);
+    if(!compareMap) return;
+    Object.entries(todayMap).forEach(([key, rankToday]) => {
+      const rankBefore = compareMap[key];
+      if(rankBefore === undefined) return;
+      const delta = rankBefore - rankToday; // positif = progression (rang plus petit = mieux classé)
+      if(Math.abs(delta) < 1) return;
+      const [title, artist] = key.split('|||');
+      movers.push({ key, title: title || '', artist: artist || '', source: label, rankToday, rankBefore, delta });
+    });
+  });
+  return movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 12);
+}
+
+/** Entrées/sorties pour les Playlists clés ou les Radios internationales —
+ *  simple différence d'ensembles entre aujourd'hui et le point de
+ *  comparaison (hier, ou il y a 7 jours en mode "Semaine"). */
+function computeDailyDiff(bucket, sources){
+  if(dailySnapshots.length < 2) return [];
+  const today = dailySnapshots[0];
+  const compareSnap = dailyOverviewMode === 'semaine'
+    ? (dailySnapshots[7] || dailySnapshots[dailySnapshots.length - 1])
+    : dailySnapshots[1];
+  if(!compareSnap || compareSnap === today) return [];
+  const results = [];
+  Object.entries(sources).forEach(([srcKey, label]) => {
+    const todayMap = dailySnapshotRankMap(today, bucket, srcKey);
+    const compareMap = dailySnapshotRankMap(compareSnap, bucket, srcKey);
+    if(!todayMap || !compareMap) return;
+    Object.keys(todayMap).forEach(key => {
+      if(!(key in compareMap)){
+        const [title, artist] = key.split('|||');
+        results.push({ type: 'in', key, title: title || '', artist: artist || '', source: label });
+      }
+    });
+    Object.keys(compareMap).forEach(key => {
+      if(!(key in todayMap)){
+        const [title, artist] = key.split('|||');
+        results.push({ type: 'out', key, title: title || '', artist: artist || '', source: label });
+      }
+    });
+  });
+  return results;
+}
+
+function dailyDiffRowHtml(d){
+  const inStyle = d.type === 'in';
+  return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)">
+    <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;flex-shrink:0;background:${inStyle ? '#E3F7EC' : '#FDEAEA'};color:${inStyle ? '#0DA76B' : '#CC2222'}">${inStyle ? 'ENTRÉE' : 'SORTIE'}</span>
+    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.title)} — ${escHtml(d.artist)}</span>
+    <span style="color:var(--muted);font-size:10.5px;flex-shrink:0">${escHtml(d.source)}</span>
+  </div>`;
+}
+
+function renderDailyOverview(){
+  const container = document.getElementById('dailyOverviewContainer');
+  if(!container) return;
+  if(!dailySnapshotsLoaded){
+    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">⏳ Chargement des instantanés quotidiens…</div>';
+    return;
+  }
+  if(!DAILY_SNAPSHOT_URL){
+    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Aucune URL configurée — cliquez sur ⚙️ pour renseigner celle du script DailySnapshot.gs.</div>';
+    return;
+  }
+  if(dailySnapshots.length < 2){
+    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Pas encore assez d\'historique (au moins 2 jours nécessaires). Revenez demain, ou vérifiez que le déclencheur quotidien Apps Script est bien actif.</div>';
+    return;
+  }
+
+  const movers = computeDailyMovers();
+  const playlistDiff = computeDailyDiff('playlists', DAILY_PLAYLIST_SOURCES);
+  const radioDiff = computeDailyDiff('radios', DAILY_RADIO_SOURCES);
+  const compareLabel = dailyOverviewMode === 'semaine' ? 'vs moyenne des 7 jours précédents' : 'vs hier';
+  const activeStyle = 'border:1.5px solid #7C3AED;background:#7C3AED;color:#fff';
+  const inactiveStyle = 'border:1.5px solid var(--border);background:var(--white);color:var(--text2)';
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:6px">
+        <button onclick="dailyOverviewMode='jour';renderDailyOverview()" style="font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewMode === 'jour' ? activeStyle : inactiveStyle}">Jour</button>
+        <button onclick="dailyOverviewMode='semaine';renderDailyOverview()" style="font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewMode === 'semaine' ? activeStyle : inactiveStyle}">Semaine (moy. 7j)</button>
+      </div>
+      <span style="font-size:11px;color:var(--muted)">${escHtml(dailySnapshots[0].date)} · ${escHtml(compareLabel)}</span>
+    </div>
+
+    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:14px;box-shadow:var(--shadow)">
+      <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">📊 Classements — plus forts mouvements</div>
+      ${movers.length ? movers.map(m => `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(m.title)} — ${escHtml(m.artist)}</span>
+          <span style="color:var(--muted);flex-shrink:0">${escHtml(m.source)}</span>
+          <span style="font-weight:800;flex-shrink:0;white-space:nowrap;color:${m.delta > 0 ? '#0DA76B' : '#CC2222'}">${m.delta > 0 ? '▲' : '▼'} ${Math.round(m.rankBefore)} → ${m.rankToday}</span>
+        </div>`).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun mouvement notable</div>'}
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow)">
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">🎧 Playlists clés</div>
+        ${playlistDiff.length ? playlistDiff.map(dailyDiffRowHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun changement</div>'}
+      </div>
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow)">
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">📻 Radios internationales</div>
+        ${radioDiff.length ? radioDiff.map(dailyDiffRowHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun changement</div>'}
+      </div>
+    </div>`;
+}
+
 function goToWatchlistPage(){
   try{
     if(document.getElementById('pageDecision')?.style.display === 'none' || !document.getElementById('pageDecision')) toggleDecisionPage();
