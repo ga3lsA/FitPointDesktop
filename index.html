@@ -9893,6 +9893,7 @@ async function openTitleEvolutionModal(btn){
         ${buildEvoCard('Billboard Global', '🌐', chartsSeries.bbG200, {color:'#111111', invert:true, unit:'Rang', title, artist})}
       </div>`);
     }
+    sections.push(buildTevDailySection(title, artist));
     sections.push(`</div>`);
   }
 
@@ -11886,6 +11887,14 @@ function dedupeComiteTitles(){
     comiteSaveToStorage();
   }
 }
+/** Construit l'attribut data-evotitle (échappé pour un attribut HTML) utilisé
+ *  partout où un titre est cliquable pour ouvrir la fiche Song Full Metrics —
+ *  voir openTitleEvolutionModal. Centralise ce qui était dupliqué à chaque
+ *  endroit (recherche globale, Comité d'Écoute, Playlist, Veille...). */
+function evoAttr(title, artist){
+  return JSON.stringify({artist: artist || '', title: title || ''}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+}
+
 function comiteKey(title, artist){ return norm(artist||'') + '|||' + norm(title||''); }
 // Compatibilité ascendante : les entrées sauvegardées avant le rattachement
 // à la station active n'ont pas de champ .station — on les considère comme
@@ -20732,7 +20741,7 @@ async function renderHomeRadarSummary(){
     return;
   }
   el.innerHTML = rows.slice(0, MAX_SHOWN).map(({r, gains, totalGain}) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(13,167,107,.5);border-left:3px solid #0DA76B;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
+    <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title, r.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(13,167,107,.5);border-left:3px solid #0DA76B;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06);cursor:pointer">
       <div style="min-width:0;flex:1">
         <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
         <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')} · ${gains.length} signal${gains.length>1?'s':''}</div>
@@ -20871,6 +20880,72 @@ function dailySnapshotRankMap(snapshot, bucket, sourceKey){
   return map;
 }
 
+/** Recherche tolérante (titre/artiste normalisés, comme comiteKey) d'un
+ *  titre précis dans un instantané — les clés de l'instantané viennent d'un
+ *  scraping brut (casse/espacement pas forcément identiques aux champs FPA),
+ *  d'où la comparaison normalisée plutôt qu'une correspondance exacte. */
+function dailySnapshotFindRank(snapshot, bucket, sourceKey, title, artist){
+  const map = dailySnapshotRankMap(snapshot, bucket, sourceKey);
+  if(!map) return null;
+  const wanted = comiteKey(title, artist);
+  for(const rawKey in map){
+    const parts = rawKey.split('|||');
+    if(comiteKey(parts[0], parts[1]) === wanted) return map[rawKey];
+  }
+  return null;
+}
+
+/** Section "📅 Derniers jours" de la fiche Song Full Metrics — connecte
+ *  l'instantané quotidien (voir DailySnapshot.gs) à un titre précis :
+ *  tendance récente sur les classements couverts (complète le sparkline
+ *  hebdomadaire de Digital Metrics par un zoom sur les derniers jours) et
+ *  entrées/sorties récentes de Playlists clés / Radios internationales
+ *  (information absente du reste de la fiche). Renvoie une chaîne vide si
+ *  rien à signaler pour ce titre, ou si l'instantané n'est pas chargé —
+ *  section entièrement optionnelle, ne bloque jamais l'affichage du reste. */
+function buildTevDailySection(title, artist){
+  if(!dailySnapshotsLoaded || dailySnapshots.length < 2) return '';
+  const today = dailySnapshots[0];
+  const compare = dailySnapshots[Math.min(7, dailySnapshots.length - 1)];
+  if(!compare || compare === today) return '';
+  const rows = [];
+
+  Object.entries(DAILY_CHART_SOURCES).forEach(([srcKey, label]) => {
+    const rankToday = dailySnapshotFindRank(today, 'charts', srcKey, title, artist);
+    const rankBefore = dailySnapshotFindRank(compare, 'charts', srcKey, title, artist);
+    if(rankToday === null && rankBefore === null) return;
+    let valueHtml;
+    if(rankToday !== null && rankBefore !== null){
+      const delta = rankBefore - rankToday;
+      valueHtml = delta === 0 ? `#${rankToday} (stable)`
+        : `#${rankBefore} → #${rankToday} <span style="color:${delta > 0 ? '#0DA76B' : '#CC2222'}">(${delta > 0 ? '▲' : '▼'} ${Math.abs(delta)})</span>`;
+    } else if(rankToday !== null){
+      valueHtml = `#${rankToday} <span style="color:#0DA76B">(nouveau)</span>`;
+    } else {
+      valueHtml = `<span style="color:#CC2222">sorti</span> (était #${rankBefore})`;
+    }
+    rows.push(`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:11.5px"><span style="color:var(--text2)">${escHtml(label)}</span><span style="font-weight:700;color:var(--navy)">${valueHtml}</span></div>`);
+  });
+
+  [['playlists', DAILY_PLAYLIST_SOURCES], ['radios', DAILY_RADIO_SOURCES]].forEach(([bucket, sources]) => {
+    Object.entries(sources).forEach(([srcKey, label]) => {
+      const inToday = dailySnapshotFindRank(today, bucket, srcKey, title, artist) !== null;
+      const inCompare = dailySnapshotFindRank(compare, bucket, srcKey, title, artist) !== null;
+      if(inToday && !inCompare){
+        rows.push(`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:11.5px"><span style="color:var(--text2)">${escHtml(label)}</span><span style="font-weight:700;color:#0DA76B">Entrée récente</span></div>`);
+      } else if(!inToday && inCompare){
+        rows.push(`<div style="display:flex;justify-content:space-between;gap:8px;padding:4px 0;font-size:11.5px"><span style="color:var(--text2)">${escHtml(label)}</span><span style="font-weight:700;color:#CC2222">Sortie récente</span></div>`);
+      }
+    });
+  });
+
+  if(!rows.length) return '';
+  return `<div style="background:rgba(124,58,237,.04);border-radius:12px;padding:14px 16px;margin-top:10px">
+    <div style="margin-bottom:8px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">📅 Derniers jours (instantané quotidien — ${escHtml(today.date)} vs ${escHtml(compare.date)})</div>
+    ${rows.join('')}
+  </div>`;
+}
+
 /** Rang moyen sur une série d'instantanés (mode "Semaine") — sert de point
  *  de comparaison lissé plutôt qu'un simple J-1, pour ne pas être noyé sous
  *  le bruit quotidien des classements qui bougent beaucoup (Spotify,
@@ -20896,6 +20971,17 @@ function dailyAverageRankMap(snapshots, bucket, sourceKey, excludeFirst){
  *  glissante des 7 jours précédents (hors aujourd'hui). Les titres tout
  *  juste apparus (absents du point de comparaison) ne sont pas comptés
  *  comme un "mouvement" ici — voir computeDailyDiff pour les entrées. */
+/** Un titre du jour correspond-il à un titre déjà suivi en Veille ? Sert à
+ *  afficher un petit badge 🔭 dans la Vue d'ensemble quotidienne, pour
+ *  repérer d'un coup d'œil un mouvement sur un titre qu'on a déjà à l'œil —
+ *  les deux mécanismes restent sinon totalement indépendants (voir échange
+ *  précédent : "Vue d'ensemble" balaie tout, "Titres suivis" ne concerne que
+ *  ce qui a été ajouté manuellement). */
+function isWatchlisted(title, artist){
+  const key = comiteKey(title, artist);
+  return watchlistTitles.some(w => w.key === key);
+}
+
 function computeDailyMovers(){
   if(dailySnapshots.length < 2) return [];
   const today = dailySnapshots[0];
@@ -20952,8 +21038,10 @@ function computeDailyDiff(bucket, sources){
 
 function dailyDiffRowHtml(d){
   const inStyle = d.type === 'in';
-  return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border)">
+  const watched = isWatchlisted(d.title, d.artist);
+  return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(d.title, d.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border);cursor:pointer">
     <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;flex-shrink:0;background:${inStyle ? '#E3F7EC' : '#FDEAEA'};color:${inStyle ? '#0DA76B' : '#CC2222'}">${inStyle ? 'ENTRÉE' : 'SORTIE'}</span>
+    ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0">🔭</span>' : ''}
     <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.title)} — ${escHtml(d.artist)}</span>
     <span style="color:var(--muted);font-size:10.5px;flex-shrink:0">${escHtml(d.source)}</span>
   </div>`;
@@ -20994,8 +21082,8 @@ function renderDailyOverview(){
     <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:14px;box-shadow:var(--shadow)">
       <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">📊 Classements — plus forts mouvements</div>
       ${movers.length ? movers.map(m => `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(m.title)} — ${escHtml(m.artist)}</span>
+        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(m.title, m.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer">
+          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px">${isWatchlisted(m.title, m.artist) ? '<span title="Déjà suivi en Veille" style="flex-shrink:0">🔭</span>' : ''}${escHtml(m.title)} — ${escHtml(m.artist)}</span>
           <span style="color:var(--muted);flex-shrink:0">${escHtml(m.source)}</span>
           <span style="font-weight:800;flex-shrink:0;white-space:nowrap;color:${m.delta > 0 ? '#0DA76B' : '#CC2222'}">${m.delta > 0 ? '▲' : '▼'} ${Math.round(m.rankBefore)} → ${m.rankToday}</span>
         </div>`).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun mouvement notable</div>'}
@@ -21036,7 +21124,7 @@ function renderHomeWatchlistSummary(){
   const newCount = watchlistTitles.filter(w => watchlistHasNewSignalToday(w)).length;
   el.innerHTML = sorted.slice(0, MAX_SHOWN).map(w => {
     const isNew = watchlistHasNewSignalToday(w);
-    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid ${isNew?'rgba(13,167,107,.5)':'rgba(255,255,255,.15)'};border-left:3px solid ${isNew?'#0DA76B':'rgba(255,255,255,.25)'};border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
+    return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(w.title, w.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid ${isNew?'rgba(13,167,107,.5)':'rgba(255,255,255,.15)'};border-left:3px solid ${isNew?'#0DA76B':'rgba(255,255,255,.25)'};border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06);cursor:pointer">
       <div style="min-width:0;flex:1">
         <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(w.title))}</div>
         <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(w.artist))}</div>
@@ -21173,7 +21261,7 @@ function renderHomePotentielSummary(){
   const MAX_SHOWN = 6;
   el.innerHTML = pushRows.slice(0, MAX_SHOWN).map(r => {
     const mom = Math.round(getMom(r));
-    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(224,123,0,.45);border-left:3px solid #E07B00;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06)">
+    return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title, r.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(224,123,0,.45);border-left:3px solid #E07B00;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06);cursor:pointer">
       <div style="min-width:0;flex:1">
         <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
         <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')}${r.shzRank!==null?' · Shazam #'+r.shzRank:''}${r.inc!==null?' · Inc '+Math.round(r.inc)+'%':''}</div>
