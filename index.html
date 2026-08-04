@@ -20539,20 +20539,31 @@ function radarAirplayKey(title, artist){
   return norm(artist||'') + '|||' + norm(title||'');
 }
 
-/** Entrée airplay correspondant à un titre dans une map airplay donnée (avec repli fuzzy) */
+/** Entrée airplay correspondant à un titre dans une map airplay donnée (avec repli fuzzy).
+ *  CORRIGÉ (bug confirmé) : le repli flou ne vérifiait que la similarité du
+ *  TITRE, jamais l'artiste — un titre court ou générique (ex. "Dance",
+ *  sous-chaîne de "Dance Dance Dance" → similarité 0.9) pouvait donc matcher
+ *  n'importe quelle autre entrée contenant ce même mot, peu importe
+ *  l'artiste, attribuant à tort les passages d'un autre titre (ex. Barry
+ *  Can't Swim affiché comme diffusé sur Europe 2 alors qu'il ne l'a jamais
+ *  été — le vrai titre diffusé était un autre, avec "Dance" dans son nom).
+ *  Score combiné titre+artiste désormais requis, même logique que findInChart. */
 function radarFindAirplayEntry(airplayMap, title, artist){
   if(!airplayMap) return null;
   const k1 = radarAirplayKey(title, artist);
   if(airplayMap[k1]) return airplayMap[k1];
   const k2 = norm(title||'');
   if(airplayMap[k2]) return airplayMap[k2];
+  const nt = norm(title||''), na = norm(artist||'');
   let best = null, bestScore = 0;
-  const nt = norm(title||'');
   for(const [key, entry] of Object.entries(airplayMap)){
     if(!key.includes('|||')) continue;
-    const kt = key.split('|||')[1];
-    const s = similarity(nt, kt);
-    if(s > bestScore && s >= 0.75){ bestScore = s; best = entry; }
+    const [ka, kt] = key.split('|||');
+    const ts = similarity(nt, kt);
+    if(ts < 0.6) continue; // titre insuffisamment proche : jamais un match, quel que soit l'artiste
+    const as = na ? similarity(na, ka) : 0.5;
+    const score = ts * 0.6 + as * 0.4;
+    if(score > bestScore && score >= 0.6){ bestScore = score; best = entry; }
   }
   return best;
 }
@@ -20569,15 +20580,20 @@ function radarComputeDerivedRankMap(airplayMap, radioKey){
   withVal.forEach((e,i) => { rankMap[e.key] = i+1; });
   return rankMap;
 }
+/** Même correctif que radarFindAirplayEntry ci-dessus (vérification de
+ *  l'artiste ajoutée au repli flou, pas seulement le titre). */
 function radarLookupDerivedRank(rankMap, title, artist){
   const k1 = radarAirplayKey(title, artist);
   if(rankMap[k1] !== undefined) return rankMap[k1];
-  const nt = norm(title||'');
+  const nt = norm(title||''), na = norm(artist||'');
   let best = null, bestScore = 0;
   Object.keys(rankMap).forEach(k => {
-    const kt = k.split('|||')[1] || '';
-    const s = similarity(nt, kt);
-    if(s > bestScore && s >= 0.75){ bestScore = s; best = rankMap[k]; }
+    const [ka, kt] = k.split('|||');
+    const ts = similarity(nt, kt || '');
+    if(ts < 0.6) return;
+    const as = na ? similarity(na, ka || '') : 0.5;
+    const score = ts * 0.6 + as * 0.4;
+    if(score > bestScore && score >= 0.6){ bestScore = score; best = rankMap[k]; }
   });
   return best;
 }
