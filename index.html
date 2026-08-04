@@ -2027,6 +2027,12 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div id="chartDeezerGroupMenu" class="dec-group-menu" style="display:none;left:0">
         <button id="chartTabDzFR" onclick="switchChartTab('dzfr')" class="dec-subtab-item"><span class="dec-subtab-ic">🇫🇷</span>Deezer France</button>
         <button id="chartTabFH" onclick="switchChartTab('fh')" class="dec-subtab-item"><span class="dec-subtab-ic">🌱</span>Futurs Hits</button>
+        <button id="chartTabDzkp_titresmoment" onclick="switchChartTab('dzkp_titresmoment')" class="dec-subtab-item"><span class="dec-subtab-ic">🔥</span>Les Titres du Moment</button>
+        <button id="chartTabDzkp_globalhits" onclick="switchChartTab('dzkp_globalhits')" class="dec-subtab-item"><span class="dec-subtab-ic">🌍</span>Global Hits</button>
+        <button id="chartTabDzkp_rapstars" onclick="switchChartTab('dzkp_rapstars')" class="dec-subtab-item"><span class="dec-subtab-ic">🎤</span>Rapstars</button>
+        <button id="chartTabDzkp_deezerhits" onclick="switchChartTab('dzkp_deezerhits')" class="dec-subtab-item"><span class="dec-subtab-ic">⭐</span>Deezer Hits</button>
+        <button id="chartTabDzkp_bleublanc" onclick="switchChartTab('dzkp_bleublanc')" class="dec-subtab-item"><span class="dec-subtab-ic">🇫🇷</span>Bleu Blanc Hits</button>
+        <button id="chartTabDzkp_popallstars" onclick="switchChartTab('dzkp_popallstars')" class="dec-subtab-item"><span class="dec-subtab-ic">🎙️</span>Pop All Stars</button>
       </div>
     </div>
     <div style="width:1px;height:18px;background:var(--border);margin-right:4px;flex-shrink:0"></div>
@@ -4760,6 +4766,50 @@ async function loadFutursHitsChart(){
   if(typeof renderIedrHomeWidgets === 'function') renderIedrHomeWidgets();
 }
 
+// ── DEEZER — PLAYLISTS CLÉS (au-delà de Futurs Hits) ────────────────────
+// Mêmes mécanisme et proxy que Deezer France/Futurs Hits (juste l'ID de
+// playlist qui change) — généralisé ici pour ne pas dupliquer 6 fois le
+// même code. IDs de playlist vérifiés manuellement sur deezer.com (URL
+// /fr/playlist/<id>) au moment de l'ajout ; à revérifier si Deezer venait à
+// renommer/remplacer une de ces playlists éditoriales.
+const DEEZER_KEY_PLAYLISTS = [
+  { id: 'titresmoment', label: 'Les Titres du Moment', icon: '🔥', playlistId: '53362031' },
+  { id: 'globalhits',   label: 'Global Hits',           icon: '🌍', playlistId: '2098157264' },
+  { id: 'rapstars',     label: 'Rapstars',              icon: '🎤', playlistId: '3272614282' },
+  { id: 'deezerhits',   label: 'Deezer Hits',           icon: '⭐', playlistId: '1363560485' },
+  { id: 'bleublanc',    label: 'Bleu Blanc Hits',       icon: '🇫🇷', playlistId: '1189520191' },
+  { id: 'popallstars',  label: 'Pop All Stars',         icon: '🎙️', playlistId: '1282483245' },
+];
+
+let deezerKeyPlaylistData     = {}; // { id: {rang:{a,t}} }
+let deezerKeyPlaylistLoaded   = {}; // { id: bool }
+let deezerKeyPlaylistLoading  = {}; // { id: bool }
+let deezerKeyPlaylistDateUsed = {}; // { id: dateStr }
+
+/** Charge une des playlists clés Deezer (appelé à la demande, uniquement
+ *  depuis l'onglet Classements correspondant). */
+async function loadDeezerKeyPlaylist(id){
+  const def = DEEZER_KEY_PLAYLISTS.find(p => p.id === id);
+  if(!def || deezerKeyPlaylistLoading[id]) return;
+  deezerKeyPlaylistLoading[id] = true;
+  const tab = 'dzkp_' + id;
+  if(document.getElementById('chartPageSub') && activeChartTab === tab){
+    document.getElementById('chartPageSub').textContent = '⏳ Connexion à Deezer (' + def.label + ') en direct…';
+  }
+  const chart = await fetchDeezerPlaylistViaProxy(def.playlistId, 'https://api.deezer.com/playlist/' + def.playlistId);
+  if(chart){
+    deezerKeyPlaylistData[id] = chart;
+    deezerKeyPlaylistLoaded[id] = true;
+    deezerKeyPlaylistDateUsed[id] = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+    if(activeChartTab === tab) showToast('Playlist ' + def.label + ' chargée ✓','success');
+  } else if(activeChartTab === tab){
+    showToast('Connexion à Deezer impossible pour le moment — configurez le proxy ⚙️ ou réessayez plus tard','err');
+  }
+  deezerKeyPlaylistLoading[id] = false;
+  if(activeChartTab === tab) renderChartTable();
+  if(typeof renderIedrHomeWidgets === 'function') renderIedrHomeWidgets();
+}
+
 // ── APPLE MUSIC — Top 100 (flux officiel Apple Marketing Tools, multi-pays) ─
 // Flux JSON public officiel, gratuit, sans clé, mis à jour quotidiennement
 // par Apple — MAIS sans en-tête CORS (comme l'API Deezer). On passe donc
@@ -5525,6 +5575,9 @@ function chartGlobalSearchSources(){
   });
   if(deezerLoaded)     sources.push({label:'Deezer FR', chart: deezerData});
   if(futursHitsLoaded) sources.push({label:'Futurs Hits', chart: futursHitsData});
+  DEEZER_KEY_PLAYLISTS.forEach(p => {
+    if(deezerKeyPlaylistLoaded[p.id]) sources.push({label: p.label, chart: deezerKeyPlaylistData[p.id]});
+  });
   if(appleMusicState.us.loaded) sources.push({label:'Apple Music US', chart: appleMusicState.us.data});
   if(appleMusicState.fr.loaded) sources.push({label:'Apple Music FR', chart: appleMusicState.fr.data});
   if(itunesState.fr.loaded)     sources.push({label:'iTunes FR', chart: itunesState.fr.data});
@@ -6008,6 +6061,7 @@ function countLoadedAutoCharts(){
     // "génériques" historiques.
     ...keyPlaylists.map(p => !!p.fetchedAt),
     ...RADIO_TOP_SONGS_SOURCES.map(r => !!(radioTopSongsData[r.id] && radioTopSongsData[r.id].fetchedAt)),
+    ...DEEZER_KEY_PLAYLISTS.map(p => !!deezerKeyPlaylistLoaded[p.id]),
   ];
   total = flags.length;
   loaded = flags.filter(Boolean).length;
@@ -6071,6 +6125,7 @@ async function loadAllCharts(silent = false){
 
   if(!deezerLoaded)             tasks.push(loadDeezerChart());
   if(!futursHitsLoaded)         tasks.push(loadFutursHitsChart());
+  DEEZER_KEY_PLAYLISTS.forEach(p => { if(!deezerKeyPlaylistLoaded[p.id]) tasks.push(loadDeezerKeyPlaylist(p.id)); });
   if(!billboardGlobalLoaded)    tasks.push(loadBillboardGlobalChart());
   if(!billboardLoaded)          tasks.push(loadBillboardChart());
   if(!appleMusicState.us.loaded) tasks.push(loadAppleMusicChart('amus'));
@@ -9431,7 +9486,7 @@ function renderLifeCyclesPage(){
 
 /** Séries Classements hebdomadaires (Shazam, Spotify, Deezer, Apple Music US/FR, Billboard, Airplay par radio) — asynchrone, via Drive Sync */
 async function getTitleChartsSeries(title, artist){
-  const result = { shzFR: [], shzWW: [], spyFR: [], spBE: [], spSE: [], spNL: [], dzFR: [], bbUS: [], bbG200: [], amUS: [], amFR: [], itFR: [], yt: [], kpPlaylists: {}, radioCharts: {}, airplay: {}, airplayRank: {} };
+  const result = { shzFR: [], shzWW: [], spyFR: [], spBE: [], spSE: [], spNL: [], dzFR: [], bbUS: [], bbG200: [], amUS: [], amFR: [], itFR: [], yt: [], kpPlaylists: {}, dzkpPlaylists: {}, radioCharts: {}, airplay: {}, airplayRank: {} };
   AIRPLAY_RADIOS.forEach(rad => { result.airplay[rad.key] = []; result.airplayRank[rad.key] = null; });
 
   let mostRecentWeekAirplay = null; // table complète (tous titres) de la dernière semaine validée — nécessaire pour dériver un rang par volume
@@ -9527,6 +9582,13 @@ async function getTitleChartsSeries(title, artist){
     rd.tracks.forEach(t => { chart[t.rank] = { t: t.title, a: t.artist }; });
     const rk = findInChart(chart, title, artist);
     if(rk) result.radioCharts[src.id] = [{...todayPoint, val: rk}];
+  });
+  // Playlists clés Deezer (Les Titres du Moment, Global Hits, Rapstars,
+  // Deezer Hits, Bleu Blanc Hits, Pop All Stars) — même principe.
+  DEEZER_KEY_PLAYLISTS.forEach(p => {
+    if(!deezerKeyPlaylistLoaded[p.id]) return;
+    const rk = findInChart(deezerKeyPlaylistData[p.id], title, artist);
+    if(rk) result.dzkpPlaylists[p.id] = [{...todayPoint, val: rk}];
   });
   if(airplayLoaded){
     const found = radarFindAirplayEntry(airplayData, title, artist);
@@ -10679,8 +10741,8 @@ function switchChartTab(tab){
   const GENERIC_GROUPS = [
     { groupId:'chartShazamGroup',  tabs:['shzfr','shzww'],
       itemIds:{shzfr:'chartTabShzFR', shzww:'chartTabShzWW'} },
-    { groupId:'chartDeezerGroup',  tabs:['dzfr','fh'],
-      itemIds:{dzfr:'chartTabDzFR', fh:'chartTabFH'} },
+    { groupId:'chartDeezerGroup',  tabs:['dzfr','fh', ...DEEZER_KEY_PLAYLISTS.map(p => 'dzkp_' + p.id)],
+      itemIds:Object.assign({dzfr:'chartTabDzFR', fh:'chartTabFH'}, Object.fromEntries(DEEZER_KEY_PLAYLISTS.map(p => ['dzkp_' + p.id, 'chartTabDzkp_' + p.id]))) },
     { groupId:'chartAppleGroup',   tabs:['amus','amfr','itfr'],
       itemIds:{amus:'chartTabAmUS', amfr:'chartTabAmFR', itfr:'chartTabItFR'} },
     { groupId:'chartYoutubeGroup', tabs:['yt', ...KWORB_YOUTUBE_TABS],
@@ -10698,8 +10760,8 @@ function switchChartTab(tab){
       if(it) it.classList.toggle('active', tab === t);
     });
   });
-  // Masquer le panneau config proxy Deezer si on quitte Deezer France / Futurs Hits (panneau partagé)
-  if(tab !== 'dzfr' && tab !== 'fh'){
+  // Masquer le panneau config proxy Deezer si on quitte Deezer France / Futurs Hits / une playlist clé (panneau partagé)
+  if(tab !== 'dzfr' && tab !== 'fh' && !tab.startsWith('dzkp_')){
     const dp = document.getElementById('deezerProxyPanel');
     if(dp) dp.style.display = 'none';
   }
@@ -10727,6 +10789,11 @@ function switchChartTab(tab){
   if(tab === 'dzfr' && !deezerLoaded && !deezerLoading) loadDeezerChart();
   // Chargement à la demande de Futurs Hits (uniquement quand on visite l'onglet)
   if(tab === 'fh' && !futursHitsLoaded && !futursHitsLoading) loadFutursHitsChart();
+  // Chargement à la demande d'une playlist clé Deezer (uniquement quand on visite l'onglet)
+  if(tab.startsWith('dzkp_')){
+    const dzkpId = tab.slice(5);
+    if(!deezerKeyPlaylistLoaded[dzkpId] && !deezerKeyPlaylistLoading[dzkpId]) loadDeezerKeyPlaylist(dzkpId);
+  }
   // Chargement à la demande de Billboard Global 200 (uniquement quand on visite l'onglet)
   if(tab === 'bbg200' && !billboardGlobalLoaded && !billboardGlobalLoading) loadBillboardGlobalChart();
   // Chargement à la demande du classement Apple Music (uniquement quand on visite l'onglet)
@@ -11224,6 +11291,43 @@ function renderChartTable(){
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>`;
 
+  } else if(activeChartTab.startsWith('dzkp_')){
+    // ── Playlists clés Deezer (Les Titres du Moment, Global Hits, Rapstars, Deezer Hits, Bleu Blanc Hits, Pop All Stars) ──
+    const dzkpId = activeChartTab.slice(5);
+    const dzkpDef = DEEZER_KEY_PLAYLISTS.find(p => p.id === dzkpId);
+    const dzkpData = deezerKeyPlaylistData[dzkpId] || {};
+    const dzkpLabel = dzkpDef ? dzkpDef.label : 'Playlist';
+    titleEl.innerHTML = logoImg(LOGO_DEEZER, 'Deezer', 16) + ' ' + escHtml(dzkpLabel) + ' — Deezer';
+    isEmpty = !deezerKeyPlaylistLoaded[dzkpId] || Object.keys(dzkpData).length === 0;
+    if(!isEmpty){
+      subEl.textContent = (deezerKeyPlaylistDateUsed[dzkpId] ? 'données du ' + deezerKeyPlaylistDateUsed[dzkpId] : 'données live') + ' · ' + Object.keys(dzkpData).length + ' titres';
+      const e2RankMap = computeE2RankMap();
+      entries = Object.entries(dzkpData)
+        .map(([r,e]) => {
+          const title  = e.t||'';
+          const artist = e.a||'';
+          let e2rank = null;
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
+          return {rank:parseInt(r), title, artist, e2rank};
+        })
+        .sort((a,b)=>a.rank-b.rank);
+    } else if(deezerKeyPlaylistLoading[dzkpId]){
+      subEl.textContent = 'Connexion en cours…';
+    } else {
+      subEl.textContent = 'Playlist ' + dzkpLabel + ' non chargée';
+    }
+    importEl.innerHTML = `<button onclick="loadDeezerKeyPlaylist('${dzkpId}')" ${deezerKeyPlaylistLoading[dzkpId]?'disabled':''}
+      style="display:flex;align-items:center;gap:6px;background:#F3E8FF;border:1.5px solid #D8B4FE;border-radius:8px;padding:7px 13px;cursor:pointer;font-size:12px;font-weight:700;color:#7C3AED"
+      onmouseenter="this.style.background='#E9D5FF'" onmouseleave="this.style.background='#F3E8FF'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      ${deezerKeyPlaylistLoading[dzkpId] ? 'Connexion…' : (deezerKeyPlaylistLoaded[dzkpId] ? 'Actualiser' : 'Charger ' + dzkpLabel)}
+    </button>
+    <button onclick="toggleDeezerProxyPanel()" title="Configurer le proxy Deezer (partagé avec Deezer France / Futurs Hits)"
+      style="display:flex;align-items:center;justify-content:center;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;padding:0;flex-shrink:0;cursor:pointer;color:var(--text2)"
+      onmouseenter="this.style.borderColor='#D8B4FE';this.style.color='#7C3AED'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>`;
+
   } else if(activeChartTab === 'amus' || activeChartTab === 'amfr'){
     // ── Apple Music (US ou France) ──
     const amCountry = APPLE_MUSIC_TAB_COUNTRY[activeChartTab];
@@ -11502,6 +11606,14 @@ function renderChartTable(){
       hintEl.innerHTML = futursHitsLoading
         ? 'Connexion à la playlist Futurs Hits en cours…'
         : 'Connexion à Deezer indisponible pour le moment (même proxy que Deezer France, à configurer via ⚙️). Cliquez sur « Charger Futurs Hits » ci-dessus pour réessayer.';
+    else if(activeChartTab.startsWith('dzkp_')){
+      const dzkpId = activeChartTab.slice(5);
+      const dzkpDef = DEEZER_KEY_PLAYLISTS.find(p => p.id === dzkpId);
+      const dzkpLabel = dzkpDef ? dzkpDef.label : 'cette playlist';
+      hintEl.innerHTML = deezerKeyPlaylistLoading[dzkpId]
+        ? 'Connexion à la playlist ' + escHtml(dzkpLabel) + ' en cours…'
+        : 'Connexion à Deezer indisponible pour le moment (même proxy que Deezer France, à configurer via ⚙️). Cliquez sur « Charger ' + escHtml(dzkpLabel) + ' » ci-dessus pour réessayer.';
+    }
     else if(activeChartTab === 'amus' || activeChartTab === 'amfr')
       hintEl.innerHTML = appleMusicState[APPLE_MUSIC_TAB_COUNTRY[activeChartTab]].loading
         ? 'Connexion au classement ' + APPLE_MUSIC_TAB_LABEL[activeChartTab] + ' en cours…'
@@ -11582,7 +11694,7 @@ function renderChartTable(){
     const showE2R = airplayLoaded;
     hdrEl.style.gridTemplateColumns = showE2R ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
     hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span>' + (showE2R ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '') + '<span>LIENS</span>';
-  } else if((activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded){
+  } else if((activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab.startsWith('dzkp_') || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded){
     hdrEl.style.gridTemplateColumns = '26px 48px minmax(0,1fr) 64px 56px';
     hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span><span>LIENS</span>';
   } else if(activeChartTab === 'kwtop'){
@@ -12499,10 +12611,24 @@ function buildDigitalSnapshotSection(series, title, artist){
       </div>`;
     }).join('');
 
+  // Playlists clés Deezer où le titre est actuellement repéré — même principe.
+  const dzkpFoundBadgesFullMetrics = Object.entries(series.dzkpPlaylists || {})
+    .filter(([id, pts]) => pts && pts.length)
+    .map(([id, pts]) => {
+      const p = DEEZER_KEY_PLAYLISTS.find(x => x.id === id);
+      const label = p ? p.label : id;
+      const val = pts[pts.length - 1].val;
+      return `<div title="${escHtml(label)}" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:50px;max-width:90px">
+        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🟣 ${escHtml(label)}</span>
+        <span style="font-size:13px;font-weight:800;color:#A238FF">#${val}</span>
+      </div>`;
+    }).join('');
+
   const hasAnyData = series.shzFR.length || series.shzWW.length || series.spyFR.length || series.spBE.length || series.spSE.length || series.spNL.length || series.dzFR.length ||
     series.amFR.length || series.amUS.length || series.itFR.length || series.yt.length || series.bbUS.length || series.bbG200.length ||
     Object.values(series.kpPlaylists || {}).some(pts => pts.length) ||
     Object.values(series.radioCharts || {}).some(pts => pts.length) ||
+    Object.values(series.dzkpPlaylists || {}).some(pts => pts.length) ||
     Object.values(series.airplay).some(a => a.length);
 
   // Airplay LIVE (page Classement Live) : comparaison RANG contre RANG pour
@@ -12536,7 +12662,9 @@ function buildDigitalSnapshotSection(series, title, artist){
     ${kpFoundBadgesFullMetrics ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px">🎧 PLAYLISTS SPOTIFY CLÉS</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">${kpFoundBadgesFullMetrics}</div>` : ''}
     ${radioFoundBadgesFullMetrics ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px">📻 RADIOS CLÉS (TOP SONGS)</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">${radioFoundBadgesFullMetrics}</div>` : ''}`;
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${radioFoundBadgesFullMetrics}</div>` : ''}
+    ${dzkpFoundBadgesFullMetrics ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px">🟣 PLAYLISTS CLÉS DEEZER</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${dzkpFoundBadgesFullMetrics}</div>` : ''}`;
 }
 
 async function buildComiteCard(t, series, coverId){
@@ -16590,6 +16718,7 @@ const SPU_WEIGHTS = [
   { key:'shazam', label:'Shazam FR',            weight:5,  desc:'Classement Shazam France (inversé — si dispo)' },
   { key:'rg',     label:'Classement Général Radio', weight:5, desc:'Position dans le classement toutes radios confondues Muzicast (inversé — si dispo)' },
   { key:'fh',     label:'Top 10 Futurs Hits',       weight:5, desc:'Bonus si le titre est dans le Top 10 de la playlist éditoriale Deezer "Futurs Hits" (si dispo)' },
+  { key:'dzkp',   label:'Playlists clés Deezer',     weight:5, desc:'Bonus si le titre figure dans une ou plusieurs playlists éditoriales Deezer suivies (Les Titres du Moment, Global Hits, Rapstars, Deezer Hits, Bleu Blanc Hits, Pop All Stars)' },
 ];
 
 // Clés des radios concurrentes dans r.airplay
@@ -16688,6 +16817,16 @@ function computeSPU(rows){
       } else if(key==='fh' && typeof futursHitsLoaded !== 'undefined' && futursHitsLoaded && futursHitsData){
         const rank = findInChart(futursHitsData, r.title, r.artist);
         if(rank !== null) rawScore = rank <= 10 ? 1 : 0.3; // Top 10 = bonus plein, présent hors Top 10 = bonus partiel, absent = critère exclu
+
+      } else if(key==='dzkp'){
+        // Un seul critère consolidé plutôt que 6 critères séparés (un par
+        // playlist) pour ne pas sur-pondérer ce seul type de signal — le
+        // bonus augmente avec le nombre de playlists où le titre apparaît.
+        const loadedDzkp = DEEZER_KEY_PLAYLISTS.filter(p => deezerKeyPlaylistLoaded[p.id]);
+        if(loadedDzkp.length){
+          const matchCount = loadedDzkp.filter(p => findInChart(deezerKeyPlaylistData[p.id], r.title, r.artist) !== null).length;
+          rawScore = matchCount === 0 ? 0 : Math.min(1, 0.4 + matchCount * 0.2); // 1 playlist = 0.6, 2 = 0.8, 3+ = 1
+        }
       }
 
       if(rawScore !== null){
@@ -20994,10 +21133,15 @@ function isWatchlisted(title, artist){
   return watchlistTitles.some(w => w.key === key);
 }
 
+/** Mouvements de classement regroupés PAR TITRE (et non par titre+source) :
+ *  si "Passenger" bouge à la fois sur Apple Music et Shazam, c'est UNE carte
+ *  avec les deux lignes de détail, pas deux cartes séparées — l'utilisateur
+ *  voit tous les classements concernés d'un coup d'œil, sans avoir à
+ *  recouper plusieurs cartes ni à cliquer pour comprendre ce qui bouge. */
 function computeDailyMovers(){
   if(dailySnapshots.length < 2) return [];
   const today = dailySnapshots[0];
-  const movers = [];
+  const byKey = {};
   Object.entries(DAILY_CHART_SOURCES).forEach(([srcKey, label]) => {
     const todayMap = dailySnapshotRankMap(today, 'charts', srcKey);
     if(!todayMap) return;
@@ -21011,15 +21155,21 @@ function computeDailyMovers(){
       const delta = rankBefore - rankToday; // positif = progression (rang plus petit = mieux classé)
       if(Math.abs(delta) < 1) return;
       const [title, artist] = key.split('|||');
-      movers.push({ key, title: title || '', artist: artist || '', source: label, rankToday, rankBefore, delta });
+      if(!byKey[key]) byKey[key] = { title: title || '', artist: artist || '', signals: [] };
+      byKey[key].signals.push({ source: label, rankToday, rankBefore, delta });
     });
   });
-  return movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta)).slice(0, 12);
+  const grouped = Object.values(byKey).map(g => ({
+    ...g,
+    totalDelta: g.signals.reduce((s, x) => s + x.delta, 0),
+    maxAbsDelta: Math.max(...g.signals.map(x => Math.abs(x.delta))),
+  }));
+  return grouped.sort((a, b) => b.maxAbsDelta - a.maxAbsDelta).slice(0, 16);
 }
 
-/** Entrées/sorties pour les Playlists clés ou les Radios internationales —
- *  simple différence d'ensembles entre aujourd'hui et le point de
- *  comparaison (hier, ou il y a 7 jours en mode "Semaine"). */
+/** Entrées/sorties pour les Playlists clés ou les Radios internationales,
+ *  également regroupées PAR TITRE (un titre entré dans deux playlists le
+ *  même jour n'affiche qu'une carte, avec les deux lignes de détail). */
 function computeDailyDiff(bucket, sources){
   if(dailySnapshots.length < 2) return [];
   const today = dailySnapshots[0];
@@ -21027,7 +21177,7 @@ function computeDailyDiff(bucket, sources){
     ? (dailySnapshots[7] || dailySnapshots[dailySnapshots.length - 1])
     : dailySnapshots[1];
   if(!compareSnap || compareSnap === today) return [];
-  const results = [];
+  const byKey = {};
   Object.entries(sources).forEach(([srcKey, label]) => {
     const todayMap = dailySnapshotRankMap(today, bucket, srcKey);
     const compareMap = dailySnapshotRankMap(compareSnap, bucket, srcKey);
@@ -21035,27 +21185,71 @@ function computeDailyDiff(bucket, sources){
     Object.keys(todayMap).forEach(key => {
       if(!(key in compareMap)){
         const [title, artist] = key.split('|||');
-        results.push({ type: 'in', key, title: title || '', artist: artist || '', source: label });
+        if(!byKey[key]) byKey[key] = { title: title || '', artist: artist || '', events: [] };
+        byKey[key].events.push({ type:'in', source: label });
       }
     });
     Object.keys(compareMap).forEach(key => {
       if(!(key in todayMap)){
         const [title, artist] = key.split('|||');
-        results.push({ type: 'out', key, title: title || '', artist: artist || '', source: label });
+        if(!byKey[key]) byKey[key] = { title: title || '', artist: artist || '', events: [] };
+        byKey[key].events.push({ type:'out', source: label });
       }
     });
   });
-  return results;
+  return Object.values(byKey);
 }
 
-function dailyDiffRowHtml(d){
-  const inStyle = d.type === 'in';
-  const watched = isWatchlisted(d.title, d.artist);
-  return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(d.title, d.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px solid var(--border);cursor:pointer">
-    <span style="font-size:9px;font-weight:800;padding:2px 7px;border-radius:6px;flex-shrink:0;background:${inStyle ? '#E3F7EC' : '#FDEAEA'};color:${inStyle ? '#0DA76B' : '#CC2222'}">${inStyle ? 'ENTRÉE' : 'SORTIE'}</span>
-    ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0">🔭</span>' : ''}
-    <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(d.title)} — ${escHtml(d.artist)}</span>
-    <span style="color:var(--muted);font-size:10.5px;flex-shrink:0">${escHtml(d.source)}</span>
+/** Carte cliquable pour un titre de la Vue d'ensemble quotidienne — titre en
+ *  gras, artiste en dessous, pastille colorée récapitulative à droite, et
+ *  le DÉTAIL de chaque classement/playlist/radio concerné listé directement
+ *  sur la carte (pas besoin de cliquer pour le voir). Le clic reste
+ *  disponible pour ouvrir la fiche Song Full Metrics complète. */
+function dailyMoverCardHtml(g){
+  const watched = isWatchlisted(g.title, g.artist);
+  const positive = g.totalDelta > 0;
+  const detailHtml = g.signals.map(s => `
+    <div style="display:flex;justify-content:space-between;gap:6px;font-size:10.5px;padding:2px 0">
+      <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.source)}</span>
+      <span style="font-weight:700;flex-shrink:0;color:${s.delta > 0 ? '#0DA76B' : '#CC2222'}">${Math.round(s.rankBefore)}→${s.rankToday} (${s.delta > 0 ? '▲' : '▼'}${Math.abs(s.delta)})</span>
+    </div>`).join('');
+  return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(g.title, g.artist)}" title="Voir la fiche d'évolution complète"
+    style="padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--white);cursor:pointer;margin-bottom:8px;transition:border-color .15s,box-shadow .15s"
+    onmouseenter="this.style.borderColor='#7C3AED';this.style.boxShadow='0 2px 8px rgba(124,58,237,.12)'" onmouseleave="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px">
+          ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(g.title)}
+        </div>
+        <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.artist)}</div>
+      </div>
+      <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;background:${positive ? '#E3F7EC' : '#FDEAEA'};color:${positive ? '#0DA76B' : '#CC2222'}">${positive ? '▲' : '▼'} ${Math.abs(g.totalDelta)}</div>
+    </div>
+    <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">${detailHtml}</div>
+  </div>`;
+}
+
+function dailyDiffCardHtml(g){
+  const watched = isWatchlisted(g.title, g.artist);
+  const detailHtml = g.events.map(e => `
+    <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;padding:2px 0">
+      <span style="font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:6px;flex-shrink:0;background:${e.type === 'in' ? '#E3F7EC' : '#FDEAEA'};color:${e.type === 'in' ? '#0DA76B' : '#CC2222'}">${e.type === 'in' ? 'ENTRÉE' : 'SORTIE'}</span>
+      <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.source)}</span>
+    </div>`).join('');
+  const anyIn = g.events.some(e => e.type === 'in');
+  return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(g.title, g.artist)}" title="Voir la fiche d'évolution complète"
+    style="padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--white);cursor:pointer;margin-bottom:8px;transition:border-color .15s,box-shadow .15s"
+    onmouseenter="this.style.borderColor='#7C3AED';this.style.boxShadow='0 2px 8px rgba(124,58,237,.12)'" onmouseleave="this.style.borderColor='var(--border)';this.style.boxShadow='none'">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px">
+          ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(g.title)}
+        </div>
+        <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.artist)}</div>
+      </div>
+      <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;background:${anyIn ? '#E3F7EC' : '#FDEAEA'};color:${anyIn ? '#0DA76B' : '#CC2222'}">${g.events.length > 1 ? g.events.length + ' signaux' : (anyIn ? 'ENTRÉE' : 'SORTIE')}</div>
+    </div>
+    <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">${detailHtml}</div>
   </div>`;
 }
 
@@ -21082,6 +21276,8 @@ function renderDailyOverview(){
   const activeStyle = 'border:1.5px solid #7C3AED;background:#7C3AED;color:#fff';
   const inactiveStyle = 'border:1.5px solid var(--border);background:var(--white);color:var(--text2)';
 
+  const colStyle = 'background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;min-width:0';
+
   container.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div style="display:flex;gap:6px">
@@ -21091,24 +21287,20 @@ function renderDailyOverview(){
       <span style="font-size:11px;color:var(--muted)">${escHtml(dailySnapshots[0].date)} · ${escHtml(compareLabel)}</span>
     </div>
 
-    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:14px;box-shadow:var(--shadow)">
-      <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">📊 Classements — plus forts mouvements</div>
-      ${movers.length ? movers.map(m => `
-        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(m.title, m.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px;cursor:pointer">
-          <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:flex;align-items:center;gap:6px">${isWatchlisted(m.title, m.artist) ? '<span title="Déjà suivi en Veille" style="flex-shrink:0">🔭</span>' : ''}${escHtml(m.title)} — ${escHtml(m.artist)}</span>
-          <span style="color:var(--muted);flex-shrink:0">${escHtml(m.source)}</span>
-          <span style="font-weight:800;flex-shrink:0;white-space:nowrap;color:${m.delta > 0 ? '#0DA76B' : '#CC2222'}">${m.delta > 0 ? '▲' : '▼'} ${Math.round(m.rankBefore)} → ${m.rankToday}</span>
-        </div>`).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun mouvement notable</div>'}
-    </div>
-
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px">
-      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow)">
-        <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">🎧 Playlists clés</div>
-        ${playlistDiff.length ? playlistDiff.map(dailyDiffRowHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun changement</div>'}
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:14px;align-items:start">
+      <div style="${colStyle}">
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">📊 Classements</div>
+        ${movers.length ? movers.map(dailyMoverCardHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun mouvement notable</div>'}
       </div>
-      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 18px;box-shadow:var(--shadow)">
+
+      <div style="${colStyle}">
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">🎧 Playlists clés</div>
+        ${playlistDiff.length ? playlistDiff.map(dailyDiffCardHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun changement</div>'}
+      </div>
+
+      <div style="${colStyle}">
         <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">📻 Radios internationales</div>
-        ${radioDiff.length ? radioDiff.map(dailyDiffRowHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun changement</div>'}
+        ${radioDiff.length ? radioDiff.map(dailyDiffCardHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun changement</div>'}
       </div>
     </div>`;
 }
