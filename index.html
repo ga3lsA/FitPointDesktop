@@ -16009,7 +16009,17 @@ async function fetchRadio538TopSongs(){
     log.push({ proxy: '— parsing —', status: 'Format non reconnu (voir échantillon texte ci-dessous)' });
   }
 
-  radioTopSongsData['radio538'] = { tracks, rawSample: fullText.slice(0,8000), log, fetchedAt: new Date().toISOString() };
+  // Débogage positionnel du Top 10 : contrairement au texte à plat
+  // (fullText, ci-dessus), ce dump garde les coordonnées x/y RÉELLES de
+  // chaque fragment pdf.js pour les ~90 premiers items (zone du collage
+  // graphique du Top 10). Nécessaire pour distinguer un grand écart
+  // horizontal (= nouvelle colonne/nouveau titre) d'un simple espace entre
+  // deux mots d'un même titre — information perdue dès qu'on aplati tout en
+  // texte simple. But : coller ce dump ici pour reconstruire le Top 10 de
+  // façon fiable, comme cela avait été fait pour les rangs 11-50.
+  const top10PosDump = items.slice(0, 90).map(it => 'x=' + Math.round(it.x) + ' y=' + Math.round(it.y) + ' : ' + it.str).join('\n');
+
+  radioTopSongsData['radio538'] = { tracks, rawSample: fullText.slice(0,8000), top10PosDump, log, fetchedAt: new Date().toISOString() };
   radioTopSongsSaveToStorage();
   renderRadioChartsPanel();
   if(activeChartTab === 'radio_radio538') renderChartTable();
@@ -16095,6 +16105,9 @@ function renderRadioChartsPanel(){
     const rawSampleHtml = d && d.rawSample
       ? `<details style="margin-top:6px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer">Texte brut extrait (échantillon)</summary><pre style="font-size:10px;color:var(--text2);white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;max-height:280px;overflow:auto">${escHtml(d.rawSample)}</pre></details>`
       : '';
+    const top10PosDumpHtml = d && d.top10PosDump
+      ? `<details style="margin-top:6px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer">🎯 Positions x/y du Top 10 (pour finaliser l'extraction — à coller à Claude si demandé)</summary><pre style="font-size:9.5px;color:var(--text2);white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;max-height:280px;overflow:auto">${escHtml(d.top10PosDump)}</pre></details>`
+      : '';
     const cardIcon = src.logo ? `<img src="${src.logo}" alt="${escHtml(src.label)}" height="20" style="vertical-align:middle;object-fit:contain" onerror="this.replaceWith(document.createTextNode('📻'))">` : '📻';
     return `<div style="padding:16px 18px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
@@ -16109,6 +16122,7 @@ function renderRadioChartsPanel(){
       </div>
       ${logHtml ? `<details style="margin-top:10px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer">Détail par proxy</summary>${logHtml}</details>` : ''}
       ${rawSampleHtml}
+      ${top10PosDumpHtml}
     </div>`;
   }).join('');
 }
