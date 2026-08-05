@@ -20937,6 +20937,7 @@ async function renderHomeRadarSummary(){
         <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
         <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')} · ${gains.length} signal${gains.length>1?'s':''}</div>
       </div>
+      <span onclick="event.stopPropagation()" style="flex-shrink:0">${spotifyLink(r.artist, r.title)}</span>
       <div style="flex-shrink:0;text-align:center;padding:3px 10px;background:#0DA76B;border-radius:7px">
         <div style="font-size:12px;font-weight:800;color:#fff">+${totalGain}</div>
       </div>
@@ -21421,6 +21422,7 @@ function renderHomeWatchlistSummary(){
         <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(w.title))}</div>
         <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(w.artist))}</div>
       </div>
+      <span onclick="event.stopPropagation()" style="flex-shrink:0">${spotifyLink(w.artist, w.title)}</span>
       ${isNew ? '<div style="flex-shrink:0;font-size:9.5px;font-weight:800;color:#fff;background:#0DA76B;padding:3px 9px;border-radius:20px;white-space:nowrap">🎯 Nouveau</div>' : ''}
     </div>`;
   }).join('') + (watchlistTitles.length > MAX_SHOWN
@@ -21558,6 +21560,7 @@ function renderHomePotentielSummary(){
         <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
         <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')}${r.shzRank!==null?' · Shazam #'+r.shzRank:''}${r.inc!==null?' · Inc '+Math.round(r.inc)+'%':''}</div>
       </div>
+      <span onclick="event.stopPropagation()" style="flex-shrink:0">${spotifyLink(r.artist, r.title)}</span>
       <div style="flex-shrink:0;text-align:center;padding:3px 10px;background:#E07B00;border-radius:7px">
         <div style="font-size:12px;font-weight:800;color:#fff">${mom}</div>
       </div>
