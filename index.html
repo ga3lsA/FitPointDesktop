@@ -1807,9 +1807,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             <span id="tevMomentumDot" style="display:none;width:9px;height:9px;border-radius:50%;flex-shrink:0"></span>
             <div id="tevTitle" style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy);line-height:1.2"></div>
             <a id="tevPlayBadge" href="#" target="_blank" rel="noopener" title="Écouter sur Spotify" onclick="return openSpotifyPopup(this.href)"
-              style="display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:16px;height:14px;text-decoration:none;transition:filter .15s"
+              style="display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:19px;height:17px;text-decoration:none;transition:filter .15s"
               onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
             </a>
           </div>
           <div id="tevArtist" style="font-size:13px;color:var(--text2);margin-top:3px"></div>
@@ -6972,9 +6972,9 @@ function openSpotifyPopup(url){
 function spotifyLink(artist, title){
   const q=encodeURIComponent((artist||'')+' '+title);
   return `<a href="https://open.spotify.com/search/${q}" onclick="return openSpotifyPopup(this.href)" title="Écouter sur Spotify"
-    style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:16px;height:14px;text-decoration:none;transition:filter .15s"
+    style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:19px;height:17px;text-decoration:none;transition:filter .15s"
     onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
   </a>`;
 }
 
@@ -7078,7 +7078,7 @@ function renderTable(){
   // Colonnes airplay : propres (E2, RFM) un peu plus larges, concurrentes très compactes
   // Shazam Monde et Nostalgie retirés du tableau principal (simplification lecture) —
   // ils restent disponibles dans l'onglet Airplay des Classements / Comité d'Écoute / Radar.
-  const BASE_COLS = '44px minmax(0,1fr) 132px 82px 44px';
+  const BASE_COLS = '44px 26px minmax(0,1fr) 132px 82px 44px';
   const spyColStr  = spotifyLoaded ? ' 38px' : '';  // colonne SPY conditionnelle
   const MAIN_TABLE_RADIOS = AIRPLAY_RADIOS.filter(r => r.key !== 'nost');
   const apColsStr = airplayLoaded ? MAIN_TABLE_RADIOS.map(r => r.own ? '36px' : '32px').join(' ') : '';
@@ -7107,7 +7107,7 @@ function renderTable(){
     >${r.label}${arrow}</span>`;
   }).join('') : '';
   hdrEl.innerHTML =
-    '<span>RNK</span><span>TITRE / ARTISTE</span><span>QUADRANT</span><span>FIT SCORE</span>' +
+    '<span>RNK</span><span></span><span>TITRE / ARTISTE</span><span>QUADRANT</span><span>FIT SCORE</span>' +
     '<span title="Shazam France Top 200" style="cursor:help;font-size:9px">🇫🇷SHZ</span>' +
     (spotifyLoaded ? '<span title="Spotify France Weekly/Daily Top 200" style="cursor:help;font-size:9px;color:#1DB954">🎵SPY</span>' : '') +
     apHdrCells;
@@ -7125,14 +7125,12 @@ function renderTable(){
 
     return `<div class="grid-row" style="padding:9px 12px;border-radius:8px;background:${c.rowBg};border:1.5px solid ${r.isAnchor?c.rowBorder:'var(--border)'};box-shadow:${r.isAnchor?'var(--shadow)':'none'}">
       <span style="color:var(--muted);font-size:11px;font-weight:600">${r.isAnchor?'⚓':r.rnk||'–'}</span>
+      ${spotifyLink(r.artist, r.title)}
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${JSON.stringify({artist:r.artist, title:r.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;')}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
           onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(r.title)}${r.isAnchor?'<span style="font-size:9px;background:var(--cyan-light);color:#007B87;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:700">ANCHOR</span>':''}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:1px;display:flex;align-items:center;gap:6px">
-          <span>${escHtml(r.artist)}</span>
-          ${spotifyLink(r.artist, r.title)}
-        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">${escHtml(r.artist)}</div>
       </div>
       <div><span class="tag" style="background:${c.badgeBg};color:${c.badgeText};border:1px solid ${c.rowBorder}">${c.label}</span></div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 6px;background:${fs.bg};border:1px solid ${fs.border};border-radius:8px">
@@ -11921,9 +11919,9 @@ function renderChartRow(e){
     const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent((e.artist||'') + ' ' + (e.title||''));
     const evoAttrYt = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
     const ytPlayBadge = `<a href="${ytUrl}" target="_blank" rel="noopener" title="Regarder sur YouTube"
-      style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:#FF0000;border-radius:4px;width:16px;height:14px;text-decoration:none;transition:filter .15s"
+      style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:#FF0000;border-radius:4px;width:19px;height:17px;text-decoration:none;transition:filter .15s"
       onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
     </a>`;
     return `<div style="display:grid;grid-template-columns:${gridColsYt};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#FFCDD2':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
