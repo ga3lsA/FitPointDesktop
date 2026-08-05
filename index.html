@@ -20953,15 +20953,16 @@ let dailySnapshotsLoaded = false;
 let dailyOverviewMode = 'jour'; // 'jour' (vs hier) | 'semaine' (vs moyenne glissante des 7 jours précédents)
 
 // Sources couvertes par l'instantané quotidien (voir DailySnapshot.gs pour
-// le détail de récupération). Spotify (charts.spotify.com et Playlists clés
-// Spotify) est volontairement absent : bloqué côté serveur (nécessite
-// l'exécution JS d'un vrai navigateur, voir échanges précédents), donc pas
-// automatisable via un déclencheur Apps Script — reste en rafraîchissement
-// manuel comme aujourd'hui. Radio 538 (PDF) est également absent pour
-// l'instant : à ajouter plus tard si besoin, l'extraction pdf.js n'est pas
-// directement portable en Apps Script.
-const DAILY_CHART_SOURCES    = { apple_fr: 'Apple Music France', shazam_fr: 'Shazam France', shazam_ww: 'Shazam Monde' };
-const DAILY_PLAYLIST_SOURCES = { deezer_top_france: 'Deezer Top France', deezer_futurs_hits: 'Deezer Futurs Hits' };
+// le détail de récupération). "spotify_fr" passe par kworb.net (miroir
+// public du classement, sans session bloquée) — ce n'est PAS le classement
+// officiel charts.spotify.com ni les Playlists clés Spotify elles-mêmes
+// (RapCaviar, New Music Friday...), qui restent hors de portée d'un script
+// non-interactif (nécessitent l'exécution JS d'un vrai navigateur, voir
+// échanges précédents) et donc en rafraîchissement manuel comme aujourd'hui.
+// Radio 538 (PDF) est également absent pour l'instant : à ajouter plus tard
+// si besoin, l'extraction pdf.js n'est pas directement portable en Apps Script.
+const DAILY_CHART_SOURCES    = { apple_fr: 'Apple Music France', shazam_fr: 'Shazam France', shazam_ww: 'Shazam Monde', spotify_fr: 'Spotify France' };
+const DAILY_PLAYLIST_SOURCES = { deezer_top_france: 'Deezer Top France', deezer_futurs_hits: 'Deezer Futurs Hits', titresmoment: 'Les Titres du Moment', globalhits: 'Global Hits', rapstars: 'Rapstars', deezerhits: 'Deezer Hits', bleublanc: 'Bleu Blanc Hits', popallstars: 'Pop All Stars' };
 const DAILY_RADIO_SOURCES    = { capital_fm: 'Capital FM (UK)', z100: 'Z100 New York', kiis1027: 'KIIS 102.7 Los Angeles' };
 
 function configDailySnapshotUrl(){
