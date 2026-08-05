@@ -21201,15 +21201,45 @@ function computeDailyMovers(){
 /** Entrées/sorties pour les Playlists clés ou les Radios internationales,
  *  également regroupées PAR TITRE (un titre entré dans deux playlists le
  *  même jour n'affiche qu'une carte, avec les deux lignes de détail). */
-function computeDailyDiff(bucket, sources){
+/** Libellé affiché pour une clé de source playlist — d'abord le dictionnaire
+ *  Deezer (fixe), puis pour une clé "spotify_<id>", recherche dans les
+ *  Playlists clés Spotify réellement suivies (keyPlaylists, IDs propres à
+ *  chaque utilisateur — voir DailySnapshot.gs) et repli sur la liste des
+ *  10 playlists par défaut si elle a été retirée depuis. À défaut, la clé
+ *  brute (mieux qu'un vide, permet quand même de comprendre de quoi il
+ *  s'agit le temps de rafraîchir). */
+function dailyPlaylistLabel(srcKey){
+  if(DAILY_PLAYLIST_SOURCES[srcKey]) return DAILY_PLAYLIST_SOURCES[srcKey];
+  if(DAILY_RADIO_SOURCES[srcKey]) return DAILY_RADIO_SOURCES[srcKey];
+  if(srcKey.startsWith('spotify_')){
+    const id = srcKey.slice(8);
+    const kp = keyPlaylists.find(p => p.id === id);
+    if(kp) return kp.label;
+    const def = DEFAULT_KEY_PLAYLISTS.find(p => p.id === id);
+    if(def) return def.label;
+    return 'Playlist Spotify';
+  }
+  return srcKey;
+}
+
+function computeDailyDiff(bucket){
   if(dailySnapshots.length < 2) return [];
   const today = dailySnapshots[0];
   const compareSnap = dailyOverviewMode === 'semaine'
     ? (dailySnapshots[7] || dailySnapshots[dailySnapshots.length - 1])
     : dailySnapshots[1];
   if(!compareSnap || compareSnap === today) return [];
+  // Découverte dynamique des sources présentes dans l'instantané (plutôt
+  // qu'une liste figée) — nécessaire pour les Playlists clés Spotify, dont
+  // les identifiants varient selon ce que chacun suit dans FPA (voir
+  // dailyPlaylistLabel pour la résolution du libellé affiché).
+  const srcKeys = new Set([
+    ...Object.keys((today && today[bucket]) || {}),
+    ...Object.keys((compareSnap && compareSnap[bucket]) || {}),
+  ]);
   const byKey = {};
-  Object.entries(sources).forEach(([srcKey, label]) => {
+  srcKeys.forEach(srcKey => {
+    const label = dailyPlaylistLabel(srcKey);
     const todayMap = dailySnapshotRankMap(today, bucket, srcKey);
     const compareMap = dailySnapshotRankMap(compareSnap, bucket, srcKey);
     if(!todayMap || !compareMap) return;
@@ -21301,8 +21331,8 @@ function renderDailyOverview(){
   }
 
   const movers = computeDailyMovers();
-  const playlistDiff = computeDailyDiff('playlists', DAILY_PLAYLIST_SOURCES);
-  const radioDiff = computeDailyDiff('radios', DAILY_RADIO_SOURCES);
+  const playlistDiff = computeDailyDiff('playlists');
+  const radioDiff = computeDailyDiff('radios');
   const compareLabel = dailyOverviewMode === 'semaine' ? 'vs moyenne des 7 jours précédents' : 'vs hier';
   const activeStyle = 'border:1.5px solid #7C3AED;background:#7C3AED;color:#fff';
   const inactiveStyle = 'border:1.5px solid var(--border);background:var(--white);color:var(--text2)';
