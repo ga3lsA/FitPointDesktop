@@ -1806,6 +1806,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="display:flex;align-items:center;gap:8px">
             <span id="tevMomentumDot" style="display:none;width:9px;height:9px;border-radius:50%;flex-shrink:0"></span>
             <div id="tevTitle" style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy);line-height:1.2"></div>
+            <a id="tevPlayBadge" href="#" target="_blank" rel="noopener" title="Écouter sur Spotify" onclick="return openSpotifyPopup(this.href)"
+              style="display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:16px;height:14px;text-decoration:none;transition:filter .15s"
+              onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+            </a>
           </div>
           <div id="tevArtist" style="font-size:13px;color:var(--text2);margin-top:3px"></div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-top:5px">📈 Song Full Metrics</div>
@@ -6967,9 +6972,9 @@ function openSpotifyPopup(url){
 function spotifyLink(artist, title){
   const q=encodeURIComponent((artist||'')+' '+title);
   return `<a href="https://open.spotify.com/search/${q}" onclick="return openSpotifyPopup(this.href)" title="Écouter sur Spotify"
-    style="display:inline-flex;align-items:center;color:var(--green-text);text-decoration:none;opacity:.75;flex-shrink:0"
-    onmouseenter="this.style.opacity=1" onmouseleave="this.style.opacity=.75">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.586 14.424a.623.623 0 0 1-.857.207c-2.348-1.435-5.304-1.76-8.785-.964a.623.623 0 1 1-.277-1.215c3.809-.87 7.077-.496 9.712 1.115.294.181.387.563.207.857zm1.223-2.722a.78.78 0 0 1-1.072.257c-2.687-1.652-6.785-2.131-9.965-1.166a.78.78 0 0 1-.973-.519.781.781 0 0 1 .519-.972c3.632-1.102 8.147-.568 11.234 1.328a.78.78 0 0 1 .257 1.072zm.105-2.835C14.692 8.95 9.375 8.775 6.297 9.71a.937.937 0 1 1-.543-1.794c3.532-1.072 9.404-.865 13.115 1.333a.936.936 0 0 1-1.955.618z"/></svg>
+    style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:16px;height:14px;text-decoration:none;transition:filter .15s"
+    onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
   </a>`;
 }
 
@@ -9820,6 +9825,8 @@ async function openTitleEvolutionModal(btn){
   document.getElementById('tevArtist').textContent = artist || '';
   document.getElementById('tevBody').innerHTML = '<div style="text-align:center;padding:50px;color:var(--muted);font-size:13px">⏳ Chargement de l\'historique complet…</div>';
   populateTevLogosRow();
+  const playBadge = document.getElementById('tevPlayBadge');
+  if(playBadge) playBadge.href = 'https://open.spotify.com/search/' + encodeURIComponent((artist||'') + ' ' + (title||''));
   modal.style.display = 'flex';
   document.body.style.overflow = 'hidden';
 
@@ -11674,35 +11681,35 @@ function renderChartTable(){
                user-select:none"
       >${r.label}${arrow}</span>`;
     }).join('');
-    hdrEl.style.gridTemplateColumns = '26px 48px minmax(0,1fr) ' + AIRPLAY_RADIOS_CHART.map(()=>'52px').join(' ');
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span>' + apCols;
+    hdrEl.style.gridTemplateColumns = '48px 24px 26px minmax(0,1fr) ' + AIRPLAY_RADIOS_CHART.map(()=>'52px').join(' ');
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + apCols;
   } else if(activeChartTab === 'spyfr' || KWORB_COUNTRY_TABS.includes(activeChartTab)){
-    const spyGridH = airplayLoaded ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
+    const spyGridH = airplayLoaded ? '48px 24px 26px minmax(0,1fr) 90px 36px 64px' : '48px 24px 26px minmax(0,1fr) 90px 36px';
     hdrEl.style.gridTemplateColumns = spyGridH;
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:#1DB954;font-weight:800;text-align:right">Streams</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:#1DB954;font-weight:800;text-align:right">Streams</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
   } else if(activeChartTab === 'yt' || KWORB_YOUTUBE_TABS.includes(activeChartTab)){
-    const ytGridH = airplayLoaded ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
+    const ytGridH = airplayLoaded ? '48px 24px 26px minmax(0,1fr) 90px 36px 64px' : '48px 24px 26px minmax(0,1fr) 90px 36px';
     hdrEl.style.gridTemplateColumns = ytGridH;
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:#FF0000;font-weight:800;text-align:right">Vues</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:#FF0000;font-weight:800;text-align:right">Vues</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
   } else if(activeChartTab.startsWith('kp_')){
     // ── Playlist Spotify clé — pas de streams/peak (non fournis par l'embed) ──
     const showE2KP = airplayLoaded;
-    hdrEl.style.gridTemplateColumns = showE2KP ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span>' + (showE2KP ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '') + '<span>LIENS</span>';
+    hdrEl.style.gridTemplateColumns = showE2KP ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + (showE2KP ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
   } else if(activeChartTab.startsWith('radio_')){
     // ── Radio clé (Top Songs) — pas de streams/peak (non fournis) ──
     const showE2R = airplayLoaded;
-    hdrEl.style.gridTemplateColumns = showE2R ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span>' + (showE2R ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '') + '<span>LIENS</span>';
+    hdrEl.style.gridTemplateColumns = showE2R ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + (showE2R ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
   } else if((activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab.startsWith('dzkp_') || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded){
-    hdrEl.style.gridTemplateColumns = '26px 48px minmax(0,1fr) 64px 56px';
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span><span>LIENS</span>';
+    hdrEl.style.gridTemplateColumns = '48px 24px 26px minmax(0,1fr) 64px';
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>';
   } else if(activeChartTab === 'kwtop'){
-    hdrEl.style.gridTemplateColumns = '26px 48px minmax(0,1fr) 40px';
-    hdrEl.innerHTML = '<span></span><span>#</span><span>ARTISTE</span><span></span>';
+    hdrEl.style.gridTemplateColumns = '48px 24px minmax(0,1fr)';
+    hdrEl.innerHTML = '<span>#</span><span></span><span>ARTISTE</span>';
   } else {
-    hdrEl.style.gridTemplateColumns = '26px 48px minmax(0,1fr) 120px';
-    hdrEl.innerHTML = '<span></span><span>#</span><span>TITRE / ARTISTE</span><span>LIENS</span>';
+    hdrEl.style.gridTemplateColumns = '48px 24px 26px minmax(0,1fr)';
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>';
   }
 
   bodyEl.innerHTML = entries.map(e => renderChartRow(e)).join('');
@@ -11768,20 +11775,18 @@ function renderChartRow(e){
     const rowBorder = isUnderAlert ? '#FFCCCC' : isOverAlert ? 'var(--green-border)' : 'var(--border)';
 
     const apCols = AIRPLAY_RADIOS_CHART.map((radio,idx)=>airplayCell(radio, ap, idx, {fontSize:'12px', extraAlerts:{isUnderAlert,isOverAlert,compareKey:compKey}})).join('');
-    const gridCols = '26px 48px minmax(0,1fr) ' + AIRPLAY_RADIOS_CHART.map(()=>'52px').join(' ');
+    const gridCols = '48px 24px 26px minmax(0,1fr) ' + AIRPLAY_RADIOS_CHART.map(()=>'52px').join(' ');
     const evoDataAttr = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
 
     return `<div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:${rowBg};border:1.5px solid ${rowBorder};margin-bottom:0">
-      ${comiteCheckbox(e.title, e.artist)}
       <div style="font-size:13px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">${e.rank}</div>
+      ${spotifyLink(e.artist, e.title)}
+      ${comiteCheckbox(e.title, e.artist)}
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoDataAttr}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
           onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${dispTitle}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px">
-          <span>${dispArtist}</span>
-          ${spotifyLink(e.artist, e.title)}
-        </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${dispArtist}</div>
       </div>
       ${apCols}
     </div>`;
@@ -11811,17 +11816,16 @@ function renderChartRow(e){
         e2Cell = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
-    const gridColsSpy = showE2spy ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
-    const spySearchUrl = 'https://open.spotify.com/search/' + encodeURIComponent((e.title||'') + ' ' + (e.artist||''));
+    const gridColsSpy = showE2spy ? '48px 24px 26px minmax(0,1fr) 90px 36px 64px' : '48px 24px 26px minmax(0,1fr) 90px 36px';
+    const evoAttrSpy = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
     return `<div style="display:grid;grid-template-columns:${gridColsSpy};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#A8E6CE':'var(--border)'};margin-bottom:0">
-      ${comiteCheckbox(e.title, e.artist)}
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
-      <div>
-        <a href="${spySearchUrl}" onclick="return openSpotifyPopup(this.href)" style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;text-decoration:none;display:flex;align-items:center;gap:5px"
-          onmouseenter="this.style.color='#1DB954'" onmouseleave="this.style.color='var(--navy)'">
-          ${e.title||''}
-          <svg width="10" height="10" viewBox="0 0 168 168" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;opacity:.5"><circle cx="84" cy="84" r="84" fill="#1DB954"/><path d="M84 46c-20.9 0-40.1 8.5-53.8 22.2l6.2 6.2C49.2 61.6 66 54 84 54s34.8 7.6 47.6 20.4l6.2-6.2C124.1 54.5 104.9 46 84 46zm0 19c-14.6 0-27.9 5.9-37.6 15.5l6.2 6.2C60.8 79.5 72 74.9 84 74.9s23.2 4.6 31.4 11.8l6.2-6.2C111.9 70.9 98.6 65 84 65zm0 19c-8.3 0-15.9 3.4-21.4 8.8l6.2 6.2C72.8 95.6 78.1 93 84 93s11.2 2.6 15.2 6l6.2-6.2C99.9 87.4 92.3 84 84 84zm0 19a8 8 0 1 0 0 16 8 8 0 0 0 0-16z" fill="white"/></svg>
-        </a>
+      ${spotifyLink(e.artist, e.title)}
+      ${comiteCheckbox(e.title, e.artist)}
+      <div style="min-width:0">
+        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrSpy}" title="Voir l'évolution complète de ce titre"
+          style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px">
           <span>${e.artist||''}</span>${peakHtml}
         </div>
@@ -11848,17 +11852,16 @@ function renderChartRow(e){
         e2CellKP = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
-    const gridColsKP = showE2KP ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
-    const kpSearchUrl = 'https://open.spotify.com/search/' + encodeURIComponent((e.title||'') + ' ' + (e.artist||''));
+    const gridColsKP = showE2KP ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
+    const evoAttrKP = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
     return `<div style="display:grid;grid-template-columns:${gridColsKP};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#A8E6CE':'var(--border)'};margin-bottom:0">
-      ${comiteCheckbox(e.title, e.artist)}
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
-      <div>
-        <a href="${kpSearchUrl}" onclick="return openSpotifyPopup(this.href)" style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;text-decoration:none;display:flex;align-items:center;gap:5px"
-          onmouseenter="this.style.color='#1DB954'" onmouseleave="this.style.color='var(--navy)'">
-          ${e.title||''}
-          <svg width="10" height="10" viewBox="0 0 168 168" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;opacity:.5"><circle cx="84" cy="84" r="84" fill="#1DB954"/><path d="M84 46c-20.9 0-40.1 8.5-53.8 22.2l6.2 6.2C49.2 61.6 66 54 84 54s34.8 7.6 47.6 20.4l6.2-6.2C124.1 54.5 104.9 46 84 46zm0 19c-14.6 0-27.9 5.9-37.6 15.5l6.2 6.2C60.8 79.5 72 74.9 84 74.9s23.2 4.6 31.4 11.8l6.2-6.2C111.9 70.9 98.6 65 84 65zm0 19c-8.3 0-15.9 3.4-21.4 8.8l6.2 6.2C72.8 95.6 78.1 93 84 93s11.2 2.6 15.2 6l6.2-6.2C99.9 87.4 92.3 84 84 84zm0 19a8 8 0 1 0 0 16 8 8 0 0 0 0-16z" fill="white"/></svg>
-        </a>
+      ${spotifyLink(e.artist, e.title)}
+      ${comiteCheckbox(e.title, e.artist)}
+      <div style="min-width:0">
+        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrKP}" title="Voir l'évolution complète de ce titre"
+          style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.artist||''}</div>
       </div>
       ${showE2KP ? e2CellKP : ''}
@@ -11878,17 +11881,16 @@ function renderChartRow(e){
         e2CellR = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
-    const gridColsR = showE2R ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
-    const rSearchUrl = 'https://open.spotify.com/search/' + encodeURIComponent((e.title||'') + ' ' + (e.artist||''));
+    const gridColsR = showE2R ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
+    const evoAttrR = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
     return `<div style="display:grid;grid-template-columns:${gridColsR};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#FFD9A0':'var(--border)'};margin-bottom:0">
-      ${comiteCheckbox(e.title, e.artist)}
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
-      <div>
-        <a href="${rSearchUrl}" onclick="return openSpotifyPopup(this.href)" style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;text-decoration:none;display:flex;align-items:center;gap:5px"
-          onmouseenter="this.style.color='#1DB954'" onmouseleave="this.style.color='var(--navy)'">
-          ${e.title||''}
-          <svg width="10" height="10" viewBox="0 0 168 168" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;opacity:.5"><circle cx="84" cy="84" r="84" fill="#1DB954"/><path d="M84 46c-20.9 0-40.1 8.5-53.8 22.2l6.2 6.2C49.2 61.6 66 54 84 54s34.8 7.6 47.6 20.4l6.2-6.2C124.1 54.5 104.9 46 84 46zm0 19c-14.6 0-27.9 5.9-37.6 15.5l6.2 6.2C60.8 79.5 72 74.9 84 74.9s23.2 4.6 31.4 11.8l6.2-6.2C111.9 70.9 98.6 65 84 65zm0 19c-8.3 0-15.9 3.4-21.4 8.8l6.2 6.2C72.8 95.6 78.1 93 84 93s11.2 2.6 15.2 6l6.2-6.2C99.9 87.4 92.3 84 84 84zm0 19a8 8 0 1 0 0 16 8 8 0 0 0 0-16z" fill="white"/></svg>
-        </a>
+      ${spotifyLink(e.artist, e.title)}
+      ${comiteCheckbox(e.title, e.artist)}
+      <div style="min-width:0">
+        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrR}" title="Voir l'évolution complète de ce titre"
+          style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.artist||''}</div>
       </div>
       ${showE2R ? e2CellR : ''}
@@ -11915,14 +11917,22 @@ function renderChartRow(e){
         e2CellYt = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
-    const gridColsYt = showE2yt ? '26px 48px minmax(0,1fr) 90px 36px 64px' : '26px 48px minmax(0,1fr) 90px 36px';
+    const gridColsYt = showE2yt ? '48px 24px 26px minmax(0,1fr) 90px 36px 64px' : '48px 24px 26px minmax(0,1fr) 90px 36px';
     const ytUrl = 'https://www.youtube.com/results?search_query=' + encodeURIComponent((e.artist||'') + ' ' + (e.title||''));
+    const evoAttrYt = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+    const ytPlayBadge = `<a href="${ytUrl}" target="_blank" rel="noopener" title="Regarder sur YouTube"
+      style="display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;background:#FF0000;border-radius:4px;width:16px;height:14px;text-decoration:none;transition:filter .15s"
+      onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+    </a>`;
     return `<div style="display:grid;grid-template-columns:${gridColsYt};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#FFCDD2':'var(--border)'};margin-bottom:0">
-      ${comiteCheckbox(e.title, e.artist)}
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
-      <div>
-        <a href="${ytUrl}" target="_blank" rel="noopener" style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;text-decoration:none"
-          onmouseenter="this.style.color='#FF0000'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</a>
+      ${ytPlayBadge}
+      ${comiteCheckbox(e.title, e.artist)}
+      <div style="min-width:0">
+        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrYt}" title="Voir l'évolution complète de ce titre"
+          style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px">
           <span>${e.artist||''}</span>${peakHtmlYt}
         </div>
@@ -11935,17 +11945,16 @@ function renderChartRow(e){
       ${showE2yt ? e2CellYt : ''}
     </div>`;
   } else if(activeChartTab === 'kwtop'){
-    // ── Top Artistes (Monde, kworb.net) — pas de titre, artiste seul ──
-    return `<div style="display:grid;grid-template-columns:26px 48px minmax(0,1fr) 40px;gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
-      <span></span>
+    // ── Top Artistes (Monde, kworb.net) — pas de titre, artiste seul, donc pas de case Comité ──
+    return `<div style="display:grid;grid-template-columns:48px 24px minmax(0,1fr);gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
-      <div style="font-size:12px;font-weight:700;color:var(--navy)">${e.artist||''}</div>
       ${spotifyLink(e.artist, '')}
+      <div style="font-size:12px;font-weight:700;color:var(--navy)">${e.artist||''}</div>
     </div>`;
   } else {
-    // Shazam FR ou WW
-    const showE2 = (activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded;
-    const gridCols = showE2 ? '26px 48px minmax(0,1fr) 64px 56px' : '26px 48px minmax(0,1fr) 120px';
+    // Shazam FR/WW, Deezer France, Futurs Hits, Playlists clés Deezer, Apple Music US/FR, iTunes FR, Billboard US/Global200, kworb radio
+    const showE2 = (activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab.startsWith('dzkp_') || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded;
+    const gridCols = showE2 ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
 
     let e2Cell = '';
     if(showE2){
@@ -11960,16 +11969,19 @@ function renderChartRow(e){
         e2Cell = `<div style="font-size:12px;color:var(--border);text-align:center" title="Absent du classement airplay ${activeStationRadioLabel()}">–</div>`;
       }
     }
+    const evoAttrGen = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
 
     return `<div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
-      ${comiteCheckbox(e.title, e.artist)}
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
-      <div>
-        <div style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3">${e.title||''}</div>
+      ${spotifyLink(e.artist, e.title)}
+      ${comiteCheckbox(e.title, e.artist)}
+      <div style="min-width:0">
+        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrGen}" title="Voir l'évolution complète de ce titre"
+          style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.artist||''}</div>
       </div>
       ${showE2 ? e2Cell : ''}
-      ${spotifyLink(e.artist, e.title)}
     </div>`;
   }
 }
@@ -21169,6 +21181,19 @@ function isWatchlisted(title, artist){
  *  avec les deux lignes de détail, pas deux cartes séparées — l'utilisateur
  *  voit tous les classements concernés d'un coup d'œil, sans avoir à
  *  recouper plusieurs cartes ni à cliquer pour comprendre ce qui bouge. */
+/** Logo de plateforme pour une clé de source de la Vue d'ensemble
+ *  quotidienne — résolu par préfixe de clé (fiable) plutôt que par le texte
+ *  du libellé (qui peut varier, notamment pour les Playlists clés Spotify). */
+function dailySourceLogo(srcKey){
+  if(srcKey === 'apple_fr') return LOGO_APPLEMUSIC;
+  if(srcKey === 'shazam_fr' || srcKey === 'shazam_ww') return LOGO_SHAZAM;
+  if(srcKey === 'spotify_fr' || srcKey.startsWith('spotify_')) return LOGO_SPOTIFY;
+  if(srcKey === 'capital_fm') return LOGO_RADIO_CAPITAL;
+  if(srcKey === 'z100') return LOGO_RADIO_Z100;
+  if(srcKey === 'kiis1027') return LOGO_RADIO_KIIS1027;
+  return LOGO_DEEZER; // deezer_top_france, deezer_futurs_hits, titresmoment, globalhits, rapstars, deezerhits, bleublanc, popallstars
+}
+
 function computeDailyMovers(){
   if(dailySnapshots.length < 2) return [];
   const today = dailySnapshots[0];
@@ -21187,7 +21212,7 @@ function computeDailyMovers(){
       if(Math.abs(delta) < 1) return;
       const [title, artist] = key.split('|||');
       if(!byKey[key]) byKey[key] = { title: title || '', artist: artist || '', signals: [] };
-      byKey[key].signals.push({ source: label, rankToday, rankBefore, delta });
+      byKey[key].signals.push({ source: label, srcKey, rankToday, rankBefore, delta });
     });
   });
   const grouped = Object.values(byKey).map(g => ({
@@ -21247,14 +21272,14 @@ function computeDailyDiff(bucket){
       if(!(key in compareMap)){
         const [title, artist] = key.split('|||');
         if(!byKey[key]) byKey[key] = { title: title || '', artist: artist || '', events: [] };
-        byKey[key].events.push({ type:'in', source: label });
+        byKey[key].events.push({ type:'in', source: label, srcKey });
       }
     });
     Object.keys(compareMap).forEach(key => {
       if(!(key in todayMap)){
         const [title, artist] = key.split('|||');
         if(!byKey[key]) byKey[key] = { title: title || '', artist: artist || '', events: [] };
-        byKey[key].events.push({ type:'out', source: label });
+        byKey[key].events.push({ type:'out', source: label, srcKey });
       }
     });
   });
@@ -21270,8 +21295,11 @@ function dailyMoverCardHtml(g){
   const watched = isWatchlisted(g.title, g.artist);
   const positive = g.totalDelta > 0;
   const detailHtml = g.signals.map(s => `
-    <div style="display:flex;justify-content:space-between;gap:6px;font-size:10.5px;padding:2px 0">
-      <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.source)}</span>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10.5px;padding:2px 0">
+      <span style="display:flex;align-items:center;gap:5px;min-width:0;color:var(--text2);overflow:hidden">
+        <img src="${dailySourceLogo(s.srcKey)}" alt="" style="width:12px;height:12px;object-fit:contain;flex-shrink:0;border-radius:2px">
+        <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.source)}</span>
+      </span>
       <span style="font-weight:700;flex-shrink:0;color:${s.delta > 0 ? '#0DA76B' : '#CC2222'}">${Math.round(s.rankBefore)}→${s.rankToday} (${s.delta > 0 ? '▲' : '▼'}${Math.abs(s.delta)})</span>
     </div>`).join('');
   return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(g.title, g.artist)}" title="Voir la fiche d'évolution complète"
@@ -21295,6 +21323,7 @@ function dailyDiffCardHtml(g){
   const detailHtml = g.events.map(e => `
     <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;padding:2px 0">
       <span style="font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:6px;flex-shrink:0;background:${e.type === 'in' ? '#E3F7EC' : '#FDEAEA'};color:${e.type === 'in' ? '#0DA76B' : '#CC2222'}">${e.type === 'in' ? 'ENTRÉE' : 'SORTIE'}</span>
+      <img src="${dailySourceLogo(e.srcKey)}" alt="" style="width:12px;height:12px;object-fit:contain;flex-shrink:0;border-radius:2px">
       <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.source)}</span>
     </div>`).join('');
   const anyIn = g.events.some(e => e.type === 'in');
