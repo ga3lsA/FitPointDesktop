@@ -2153,7 +2153,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
 
     <!-- Table header -->
-    <div id="chartTableHeader" style="display:none;padding:6px 14px;font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--muted);background:var(--bg);border-radius:7px;margin-bottom:4px;display:grid;grid-template-columns:48px minmax(0,1fr) 160px;gap:8px;align-items:center;position:sticky;top:108px;z-index:10"></div>
+    <div id="chartTableHeader" style="display:none;padding:8px 14px;font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--text2);background:var(--white);border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--cyan);margin-bottom:4px;display:grid;grid-template-columns:48px minmax(0,1fr) 160px;gap:8px;align-items:center;position:sticky;top:108px;z-index:10;box-shadow:0 3px 10px rgba(11,29,58,.08)"></div>
 
     <!-- Table body -->
     <div id="chartTableBody" style="display:flex;flex-direction:column;gap:3px"></div>
@@ -2841,7 +2841,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   <div id="driveSyncPanel" style="display:none"></div>
 
   <!-- Table header -->
-  <div id="tableHeader" style="gap:4px;padding:6px 12px;font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--muted);background:var(--bg);border-radius:7px;margin-bottom:4px;display:grid;position:sticky;top:68px;z-index:10">
+  <div id="tableHeader" style="gap:4px;padding:8px 12px;font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--text2);background:var(--white);border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--cyan);margin-bottom:4px;display:grid;position:sticky;top:68px;z-index:10;box-shadow:0 3px 10px rgba(11,29,58,.08)">
   </div>
   <div id="tableBody" style="display:flex;flex-direction:column;gap:3px"></div>
 
@@ -6758,7 +6758,7 @@ function liveRenderMainTable(){
   const gridCols = '38px 24px 26px minmax(0,1fr) ' + radioCols;
 
   const header = `
-    <div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:9px 12px;background:var(--bg);font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);position:sticky;top:108px;z-index:10;background:var(--bg)">
+    <div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:9px 12px;background:var(--white);font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);position:sticky;top:108px;z-index:10;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--cyan);box-shadow:0 3px 10px rgba(11,29,58,.08)">
       <div>#</div><div></div><div></div><div>Titre / Artiste</div>${AIRPLAY_RADIOS_CHART.map(r => {
         const active = liveSortKey === r.key;
         const arrow = active ? (liveSortDir === 1 ? ' ▲' : ' ▼') : '';
@@ -20154,20 +20154,20 @@ function embRenderTable(rows, isDelta){
   let thead = '<thead><tr>';
   EMB_META_COLS.forEach(c => {
     const active = embSortKey === c.key;
-    thead += `<th onclick="embSortBy('${c.key}')" style="position:sticky;top:108px;z-index:10;background:var(--bg);cursor:pointer;padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${active ? 'var(--navy)' : 'var(--text2)'};white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left">${embEsc(c.label)}${active ? (embSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
+    thead += `<th onclick="embSortBy('${c.key}')" style="position:sticky;top:108px;z-index:10;background:var(--white);cursor:pointer;padding:9px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${active ? 'var(--navy)' : 'var(--text2)'};white-space:nowrap;border-bottom:2.5px solid var(--cyan);text-align:left;box-shadow:0 3px 10px rgba(11,29,58,.08)">${embEsc(c.label)}${active ? (embSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
   });
-  thead += `<th style="position:sticky;top:108px;z-index:10;background:var(--purple-bg,#F3EEFF);padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--purple-text,#5B21B6);white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left" title="Correspondance avec le titre dans l'analyse Fit Point / Call Out en cours dans FPA">FPA Metrics</th>`;
-  thead += `<th style="position:sticky;top:108px;z-index:10;background:var(--bg);padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left" title="Présence dans les classements digitaux chargés (Shazam FR/Monde, Spotify France, Deezer France)">Digital Metrics</th>`;
+  thead += `<th style="position:sticky;top:108px;z-index:10;background:var(--purple-bg,#F3EEFF);padding:9px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--purple-text,#5B21B6);white-space:nowrap;border-bottom:2.5px solid var(--purple,#7C3AED);text-align:left;box-shadow:0 3px 10px rgba(11,29,58,.08)" title="Correspondance avec le titre dans l'analyse Fit Point / Call Out en cours dans FPA">FPA Metrics</th>`;
+  thead += `<th style="position:sticky;top:108px;z-index:10;background:var(--white);padding:9px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);white-space:nowrap;border-bottom:2.5px solid var(--cyan);text-align:left;box-shadow:0 3px 10px rgba(11,29,58,.08)" title="Présence dans les classements digitaux chargés (Shazam FR/Monde, Spotify France, Deezer France)">Digital Metrics</th>`;
   EMB_STATIONS.forEach(s => {
     const active = embSortKey === s.key;
     const logoSrc = embStationLogoSrc(s.key);
     const headerInner = logoSrc
       ? `<img src="${logoSrc}" alt="${embEsc(s.label)}" style="height:18px;max-width:58px;object-fit:contain;display:block">`
       : `<span>${embEsc(s.label)}</span>`;
-    thead += `<th onclick="embSortBy('${s.key}')" title="${embEsc(s.label)}" style="position:sticky;top:108px;z-index:10;background:${s.own ? 'var(--cyan-light)' : 'var(--bg)'};cursor:pointer;padding:6px 6px;font-size:9.5px;font-weight:800;color:${active ? 'var(--navy)' : (s.own ? 'var(--navy)' : 'var(--text2)')};white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:center"><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:22px">${headerInner}${active ? `<span>${embSortDir === 'asc' ? '▲' : '▼'}</span>` : ''}</div></th>`;
+    thead += `<th onclick="embSortBy('${s.key}')" title="${embEsc(s.label)}" style="position:sticky;top:108px;z-index:10;background:${s.own ? 'var(--cyan-light)' : 'var(--white)'};cursor:pointer;padding:7px 6px;font-size:9.5px;font-weight:800;color:${active ? 'var(--navy)' : (s.own ? 'var(--navy)' : 'var(--text2)')};white-space:nowrap;border-bottom:2.5px solid ${s.own ? 'var(--cyan)' : 'var(--cyan-mid)'};text-align:center;box-shadow:0 3px 10px rgba(11,29,58,.08)"><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:22px">${headerInner}${active ? `<span>${embSortDir === 'asc' ? '▲' : '▼'}</span>` : ''}</div></th>`;
   });
   const totalActive = embSortKey === 'total';
-  thead += `<th onclick="embSortBy('total')" style="position:sticky;top:108px;z-index:10;background:var(--navy);cursor:pointer;padding:8px 10px;font-size:10.5px;font-weight:800;color:#fff;white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:right">${isDelta ? 'Δ Total' : 'Total'}${totalActive ? (embSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
+  thead += `<th onclick="embSortBy('total')" style="position:sticky;top:108px;z-index:10;background:var(--navy);cursor:pointer;padding:9px 10px;font-size:10.5px;font-weight:800;color:#fff;white-space:nowrap;border-bottom:2.5px solid var(--cyan);text-align:right;box-shadow:0 3px 10px rgba(11,29,58,.08)">${isDelta ? 'Δ Total' : 'Total'}${totalActive ? (embSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
   thead += '</tr></thead>';
 
   let tbody = '<tbody>';
