@@ -312,7 +312,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);margin-bottom:14px">🔍 Historique par titre ou artiste</h2>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
         <input id="histTitleSearch" type="text" placeholder="Rechercher un titre ou artiste…" autofocus
-          style="flex:1;min-width:280px;font-size:15px;padding:14px 18px;border-radius:11px;border-width:2px" oninput="renderTitleHistory()">
+          style="flex:1;min-width:280px;font-size:15px;padding:14px 18px;border-radius:11px;border-width:2px" oninput="renderTitleHistoryDebounced()">
         <select id="histFilterRadio" style="font-size:12px;padding:12px 15px;border-radius:11px" onchange="renderTitleHistory()">
           <option value="">Tous les types</option>
         </select>
@@ -609,7 +609,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Filtres -->
       <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
-        <input id="compTitleSearch" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="renderCompPage()">
+        <input id="compTitleSearch" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="renderCompPageDebounced()">
         <select id="compSortKey" onchange="renderCompPage()" style="font-size:12px;padding:8px 13px;border-radius:9px">
           <option value="delta">Trier par Delta</option>
           <option value="score">Trier par Pot Score</option>
@@ -674,7 +674,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Filtres -->
       <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
-        <input id="burnTitleSearch" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="renderBurnPage()">
+        <input id="burnTitleSearch" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="renderBurnPageDebounced()">
         <select id="burnSortKey" onchange="renderBurnPage()" style="font-size:12px;padding:8px 13px;border-radius:9px">
           <option value="urgency">Trier par urgence</option>
           <option value="velocity">Trier par vélocité</option>
@@ -724,7 +724,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Filtres -->
       <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
-        <input id="polarSearch" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="renderPolarPage()">
+        <input id="polarSearch" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="renderPolarPageDebounced()">
         <select id="polarSort" onchange="renderPolarPage()" style="font-size:12px;padding:8px 13px;border-radius:9px">
           <option value="polar">Trier par Polarisation</option>
           <option value="signature">Trier par potentiel totémique (Pol. × Score)</option>
@@ -779,7 +779,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Filtres & sensibilité -->
       <div style="display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center">
-        <input id="shazIncSearch" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="renderShazIncPage()">
+        <input id="shazIncSearch" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="renderShazIncPageDebounced()">
         <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text2)">
           Sensibilité
           <select id="shazIncSensitivity" onchange="renderShazIncPage()" style="font-size:12px;padding:6px 8px;border-radius:7px">
@@ -1845,7 +1845,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   <div style="background:var(--white);border-bottom:1.5px solid var(--border);padding:0 40px;display:flex;align-items:center;gap:0;height:48px;position:sticky;top:60px;z-index:90;box-shadow:0 1px 6px rgba(11,29,58,.04)">
     <div id="rawDataSheetTabs" style="display:flex;align-items:center;gap:0;overflow-x:auto;flex:1;min-width:0"></div>
     <div style="flex-shrink:0;padding-left:16px;display:flex;align-items:center;gap:8px">
-      <input id="rawDataSearch" type="text" placeholder="Rechercher…" style="width:180px;font-size:12px;padding:6px 11px;border-radius:7px" oninput="renderRawDataTable()">
+      <input id="rawDataSearch" type="text" placeholder="Rechercher…" style="width:180px;font-size:12px;padding:6px 11px;border-radius:7px" oninput="renderRawDataTableDebounced()">
     </div>
   </div>
 
@@ -2091,7 +2091,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;margin-left:auto">
       <div style="position:relative">
         <input id="chartSearch" placeholder="Rechercher (tous classements)…" autocomplete="off"
-          oninput="renderChartTable(); renderChartGlobalSearch()"
+          oninput="chartSearchDebounced()"
           onfocus="renderChartGlobalSearch()"
           style="font-size:11px;padding:5px 9px;border-radius:7px;width:150px;max-width:100%;flex-shrink:1;box-sizing:border-box">
         <div id="chartGlobalSearchResults" style="display:none;position:absolute;top:36px;right:0;width:340px;max-height:420px;overflow-y:auto;background:var(--white);border:1.5px solid var(--border);border-radius:10px;box-shadow:var(--shadow);z-index:200"></div>
@@ -2153,7 +2153,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
 
     <!-- Table header -->
-    <div id="chartTableHeader" style="display:none;padding:6px 14px;font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--muted);background:var(--bg);border-radius:7px;margin-bottom:4px;display:grid;grid-template-columns:48px minmax(0,1fr) 160px;gap:8px;align-items:center"></div>
+    <div id="chartTableHeader" style="display:none;padding:6px 14px;font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--muted);background:var(--bg);border-radius:7px;margin-bottom:4px;display:grid;grid-template-columns:48px minmax(0,1fr) 160px;gap:8px;align-items:center;position:sticky;top:108px;z-index:10"></div>
 
     <!-- Table body -->
     <div id="chartTableBody" style="display:flex;flex-direction:column;gap:3px"></div>
@@ -2187,7 +2187,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </div>
       <!-- Filtres -->
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:18px">
-        <input id="embSearch" type="text" placeholder="Rechercher artiste ou titre…" oninput="embOnFilterChange()" style="width:220px;font-size:12px;padding:8px 12px;border-radius:9px">
+        <input id="embSearch" type="text" placeholder="Rechercher artiste ou titre…" oninput="embOnFilterChangeDebounced()" style="width:220px;font-size:12px;padding:8px 12px;border-radius:9px">
         <select id="embFilterGenre" onchange="embOnFilterChange()" style="font-size:12px;padding:8px 10px;border-radius:9px"><option value="ALL">Tous genres</option></select>
         <select id="embFilterSubgenre" onchange="embOnFilterChange()" style="font-size:12px;padding:8px 10px;border-radius:9px"><option value="ALL">Tous sous-genres</option></select>
         <select id="embFilterLangue" onchange="embOnFilterChange()" style="font-size:12px;padding:8px 10px;border-radius:9px"><option value="ALL">Toutes langues</option></select>
@@ -2198,7 +2198,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <option value="NO">Non suivis dans FPA</option>
         </select>
         <select id="embFilterStation" onchange="embOnFilterChange()" style="font-size:12px;padding:8px 10px;border-radius:9px"></select>
-        <input id="embFilterMinDiff" type="number" min="0" placeholder="Diff. min" oninput="embOnFilterChange()" style="width:88px;font-size:12px;padding:8px 10px;border-radius:9px">
+        <input id="embFilterMinDiff" type="number" min="0" placeholder="Diff. min" oninput="embOnFilterChangeDebounced()" style="width:88px;font-size:12px;padding:8px 10px;border-radius:9px">
         <button id="embE2ZeroBtn" onclick="embToggleE2ZeroFilter()" class="btn-ghost" title="Afficher uniquement les titres avec 0 diffusion sur Europe 2" style="font-size:11.5px;padding:7px 12px;border-radius:9px;border:1.5px solid var(--border)">🚫 Non diffusés sur Europe 2</button>
         <button onclick="embResetFilters()" class="btn-ghost" style="font-size:11.5px;padding:7px 12px;border-radius:9px">✕ Réinitialiser</button>
         <span id="embResultCount" style="font-size:11.5px;color:var(--muted);margin-left:auto;white-space:nowrap"></span>
@@ -2210,7 +2210,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button onclick="embOpenImport()" class="btn-primary" style="font-size:13px;padding:10px 20px;border-radius:9px">Importer un fichier</button>
       </div>
       <div id="embTableWrap" style="display:none">
-        <div id="embTableScroll" style="overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);background:var(--white)">
+        <div id="embTableScroll" style="overflow-x:auto;overflow-y:auto;max-height:65vh;border-radius:10px;border:1.5px solid var(--border);background:var(--white)">
           <div id="embTableBody"></div>
         </div>
         <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:14px">
@@ -2334,12 +2334,12 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div id="liveBody" style="display:none">
         <!-- Recherche -->
         <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
-          <input id="liveSearchInput" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="liveSetSearch(this.value)">
+          <input id="liveSearchInput" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="liveSetSearchDebounced(this.value)">
           <span id="liveResultCount" style="font-size:11.5px;color:var(--muted);white-space:nowrap"></span>
         </div>
 
         <!-- Tableau comparatif radio par radio -->
-        <div id="liveTableWrap" style="overflow-x:auto;border-radius:10px;border:1.5px solid var(--border);background:var(--white);margin-bottom:26px">
+        <div id="liveTableWrap" style="overflow-x:auto;overflow-y:auto;max-height:65vh;border-radius:10px;border:1.5px solid var(--border);background:var(--white);margin-bottom:26px">
           <div id="liveTableBody"></div>
         </div>
       </div>
@@ -2760,7 +2760,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
   <!-- Filtres -->
   <div style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;box-shadow:var(--shadow)">
-    <input id="searchBox" placeholder="Rechercher titre, artiste…" style="flex:1 1 150px;font-size:12px" oninput="renderTable()">
+    <input id="searchBox" placeholder="Rechercher titre, artiste…" style="flex:1 1 150px;font-size:12px" oninput="renderTableDebounced()">
     <select id="filterQ" onchange="renderTable()" style="font-size:12px">
       <option value="ALL">Tous quadrants</option>
       <option value="POWER_SONG">⚡ Power Song</option>
@@ -2841,7 +2841,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   <div id="driveSyncPanel" style="display:none"></div>
 
   <!-- Table header -->
-  <div id="tableHeader" style="gap:4px;padding:6px 12px;font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--muted);background:var(--bg);border-radius:7px;margin-bottom:4px;display:grid">
+  <div id="tableHeader" style="gap:4px;padding:6px 12px;font-size:10px;font-weight:800;letter-spacing:.07em;color:var(--muted);background:var(--bg);border-radius:7px;margin-bottom:4px;display:grid;position:sticky;top:68px;z-index:10">
   </div>
   <div id="tableBody" style="display:flex;flex-direction:column;gap:3px"></div>
 
@@ -6758,7 +6758,7 @@ function liveRenderMainTable(){
   const gridCols = '38px 24px 26px minmax(0,1fr) ' + radioCols;
 
   const header = `
-    <div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:9px 12px;background:var(--bg);font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);position:sticky;top:0;z-index:1">
+    <div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:9px 12px;background:var(--bg);font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);position:sticky;top:0;z-index:10;background:var(--bg)">
       <div>#</div><div></div><div></div><div>Titre / Artiste</div>${AIRPLAY_RADIOS_CHART.map(r => {
         const active = liveSortKey === r.key;
         const arrow = active ? (liveSortDir === 1 ? ' ▲' : ' ▼') : '';
@@ -9518,9 +9518,21 @@ async function getTitleChartsSeries(title, artist){
   if(DRIVE_SYNC_URL && chartsHistoryIndex.length){
     // Du plus ancien au plus récent, limité aux 20 dernières semaines sauvegardées
     const weeks = chartsHistoryIndex.slice(0, 20).slice().reverse();
-    for(const w of weeks){
-      let entry;
-      try{ entry = await loadChartsWeek(w.date); }catch(e){ continue; }
+    // Récupération en PARALLÈLE plutôt que séquentielle : la version
+    // précédente faisait `await loadChartsWeek(...)` À L'INTÉRIEUR de la
+    // boucle, donc attendait chaque semaine l'une après l'autre — jusqu'à
+    // 20 allers-retours Drive Sync à la suite, plusieurs secondes au tout
+    // premier titre consulté dans une session. loadChartsWeek() met chaque
+    // semaine en cache (chartsHistoryWeeks) après son premier chargement,
+    // d'où le symptôme observé : seule la PREMIÈRE fiche ouverte était
+    // lente, les suivantes instantanées (déjà en cache). Avec Promise.all,
+    // les 20 requêtes partent en même temps — le temps d'attente devient
+    // celui de la requête la plus lente, pas la somme des 20.
+    const entries = await Promise.all(weeks.map(w => loadChartsWeek(w.date).catch(() => null)));
+    for(let i = 0; i < weeks.length; i++){
+      const w = weeks[i];
+      const entry = entries[i];
+      if(!entry) continue;
       // Label court et lisible "S26" (numéro de semaine ISO) plutôt que le
       // texte complet "Semaine du 22 juin 2026" — l'ancien code tentait de
       // retirer ce préfixe via une regex qui cherchait "Sem." (abrégé) alors
@@ -11844,9 +11856,9 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrSpy}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px">
-          <span>${e.artist||''}</span>${peakHtml}
+          <span>${escHtml(e.artist||'')}</span>${peakHtml}
         </div>
       </div>
       <div style="text-align:right">
@@ -11880,8 +11892,8 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrKP}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.artist||''}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.artist||'')}</div>
       </div>
       ${showE2KP ? e2CellKP : ''}
     </div>`;
@@ -11909,8 +11921,8 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrR}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.artist||''}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.artist||'')}</div>
       </div>
       ${showE2R ? e2CellR : ''}
     </div>`;
@@ -11951,9 +11963,9 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrYt}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px">
-          <span>${e.artist||''}</span>${peakHtmlYt}
+          <span>${escHtml(e.artist||'')}</span>${peakHtmlYt}
         </div>
       </div>
       <div style="text-align:right">
@@ -11968,7 +11980,7 @@ function renderChartRow(e){
     return `<div style="display:grid;grid-template-columns:48px 24px minmax(0,1fr);gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
       ${spotifyLink(e.artist, '')}
-      <div style="font-size:12px;font-weight:700;color:var(--navy)">${e.artist||''}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(e.artist||'')}</div>
     </div>`;
   } else {
     // Shazam FR/WW, Deezer France, Futurs Hits, Playlists clés Deezer, Apple Music US/FR, iTunes FR, Billboard US/Global200, kworb radio
@@ -11997,8 +12009,8 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrGen}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${e.title||''}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${e.artist||''}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.artist||'')}</div>
       </div>
       ${showE2 ? e2Cell : ''}
     </div>`;
@@ -12055,9 +12067,33 @@ function comiteKey(title, artist){ return norm(artist||'') + '|||' + norm(title|
 // à la station active n'ont pas de champ .station — on les considère comme
 // Europe 2 (station principale historique de l'appli).
 function comiteEntryStation(t){ return t.station || 'EUROPE2'; }
+/** Recherche floue en repli pour l'appartenance Comité/Playlist — nécessaire
+ *  car le titre consulté peut venir d'une source externe (classement,
+ *  playlist tierce) où l'artiste est formulé différemment de celui utilisé
+ *  lors de l'ajout au Comité/à la Playlist (ordre des featurings, "&" vs
+ *  virgule, artiste additionnel non repris...). Sans ce repli, un titre
+ *  pourtant bien présent (et dont le rang airplay E2 s'affichait
+ *  correctement via la même logique floue ailleurs dans l'app) apparaissait
+ *  à tort comme "non ajouté" juste à cause d'un écart de formatage —
+ *  incohérence signalée sur "Deezer Hits" (Disiz/Melodrama, Shakira/Dai Dai,
+ *  Tame Impala/Dracula, Angèle/What You Want...). Même score combiné
+ *  titre+artiste que findInChart/radarFindAirplayEntry, pour rester cohérent
+ *  avec le reste de l'app. */
+function fuzzyMembershipMatch(list, title, artist, station){
+  const nt = norm(title || ''), na = norm(artist || '');
+  return list.some(t => {
+    if((t.station || 'EUROPE2') !== station) return false;
+    const ts = similarity(nt, norm(t.title || ''));
+    if(ts < 0.6) return false; // titre insuffisamment proche : jamais un match
+    const as = similarity(na, norm(t.artist || ''));
+    return (ts * 0.6 + as * 0.4) >= 0.6;
+  });
+}
+
 function isInComite(title, artist){
   const key = comiteKey(title, artist);
-  return comiteTitles.some(t => t.key === key && comiteEntryStation(t) === ACTIVE_STATION);
+  if(comiteTitles.some(t => t.key === key && comiteEntryStation(t) === ACTIVE_STATION)) return true;
+  return fuzzyMembershipMatch(comiteTitles, title, artist, ACTIVE_STATION);
 }
 
 /** Échappe une chaîne pour une utilisation sûre dans un attribut onclick="" à
@@ -12257,7 +12293,8 @@ function playlistSaveToStorage(){
 }
 function isInPlaylist(title, artist){
   const key = comiteKey(title, artist);
-  return playlistTitles.some(t => t.key === key && t.station === ACTIVE_STATION);
+  if(playlistTitles.some(t => t.key === key && t.station === ACTIVE_STATION)) return true;
+  return fuzzyMembershipMatch(playlistTitles, title, artist, ACTIVE_STATION);
 }
 
 function togglePlaylistTitle(title, artist){
@@ -14816,7 +14853,27 @@ function toggleDec360View(){
 /** Construit, pour chaque titre, l'ensemble des critères calculés par les
  *  différentes pages Décision — en réutilisant directement leurs fonctions
  *  de calcul (jamais de recalcul dupliqué). */
+// Cache de build360Rows() — recalculer le corpus 360° entier (SPU, quadrants
+// décision, bornes de normalisation...) à CHAQUE ouverture de fiche Song Full
+// Metrics est un vrai coût pour rien : ce résultat ne dépend que de
+// analysisResult (+ Burn/Polarisation/Potentiel), pas du titre cliqué. On le
+// garde en cache tant que analysisResult n'a pas changé de référence (le
+// code réassigne toujours `analysisResult = [...]` en bloc lors d'un nouveau
+// calcul plutôt que de le muter, donc comparer la référence suffit).
+// invalidate360RowsCache() est appelé explicitement aux points où
+// Burn/Polarisation/Potentiel sont recalculés, pour rester à jour même sans
+// nouveau Call Out.
+let _cached360Rows = null;
+let _cached360RowsFor = null;
+function invalidate360RowsCache(){ _cached360RowsFor = null; }
 function build360Rows(){
+  if(_cached360RowsFor === analysisResult && _cached360Rows) return _cached360Rows;
+  const result = build360RowsUncached();
+  _cached360Rows = result;
+  _cached360RowsFor = analysisResult;
+  return result;
+}
+function build360RowsUncached(){
   const baseRows = buildDecisionRows();
   if(!baseRows.length) return [];
 
@@ -16804,6 +16861,33 @@ function render360Table(){
    ══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Échappement HTML pour titres/artistes injectés dans innerHTML/attributs ── */
+/** Retarde l'exécution de fn jusqu'à ce que delay ms se soient écoulés sans
+ *  nouvel appel — évite de relancer un recalcul/réaffichage coûteux (grosse
+ *  liste filtrée) à chaque frappe dans un champ de recherche. N'affecte que
+ *  les variantes "Debounced" ci-dessous : les fonctions d'origine restent
+ *  synchrones et immédiates partout ailleurs où elles sont déjà appelées. */
+function debounce(fn, delay = 180){
+  let t;
+  return function(...args){
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), delay);
+  };
+}
+
+// Variantes différées des recherches/filtres sur grosses listes (voir
+// debounce() ci-dessus) — utilisées uniquement dans les attributs oninput
+// des champs de recherche correspondants, jamais ailleurs dans le code.
+const renderTableDebounced        = debounce(() => renderTable());
+const renderCompPageDebounced     = debounce(() => renderCompPage());
+const renderBurnPageDebounced     = debounce(() => renderBurnPage());
+const renderPolarPageDebounced    = debounce(() => renderPolarPage());
+const renderShazIncPageDebounced  = debounce(() => renderShazIncPage());
+const renderRawDataTableDebounced = debounce(() => renderRawDataTable());
+const renderTitleHistoryDebounced = debounce(() => renderTitleHistory());
+const embOnFilterChangeDebounced  = debounce(() => embOnFilterChange());
+const chartSearchDebounced        = debounce(() => { renderChartTable(); renderChartGlobalSearch(); });
+const liveSetSearchDebounced      = debounce((v) => liveSetSearch(v));
+
 function escHtml(str){
   if(str === null || str === undefined) return '';
   return String(str)
@@ -20070,20 +20154,20 @@ function embRenderTable(rows, isDelta){
   let thead = '<thead><tr>';
   EMB_META_COLS.forEach(c => {
     const active = embSortKey === c.key;
-    thead += `<th onclick="embSortBy('${c.key}')" style="position:sticky;top:0;background:var(--bg);cursor:pointer;padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${active ? 'var(--navy)' : 'var(--text2)'};white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left">${embEsc(c.label)}${active ? (embSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
+    thead += `<th onclick="embSortBy('${c.key}')" style="position:sticky;top:0;z-index:10;background:var(--bg);cursor:pointer;padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:${active ? 'var(--navy)' : 'var(--text2)'};white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left">${embEsc(c.label)}${active ? (embSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
   });
-  thead += `<th style="position:sticky;top:0;background:var(--purple-bg,#F3EEFF);padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--purple-text,#5B21B6);white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left" title="Correspondance avec le titre dans l'analyse Fit Point / Call Out en cours dans FPA">FPA Metrics</th>`;
-  thead += `<th style="position:sticky;top:0;background:var(--bg);padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left" title="Présence dans les classements digitaux chargés (Shazam FR/Monde, Spotify France, Deezer France)">Digital Metrics</th>`;
+  thead += `<th style="position:sticky;top:0;z-index:10;background:var(--purple-bg,#F3EEFF);padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--purple-text,#5B21B6);white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left" title="Correspondance avec le titre dans l'analyse Fit Point / Call Out en cours dans FPA">FPA Metrics</th>`;
+  thead += `<th style="position:sticky;top:0;z-index:10;background:var(--bg);padding:8px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--text2);white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:left" title="Présence dans les classements digitaux chargés (Shazam FR/Monde, Spotify France, Deezer France)">Digital Metrics</th>`;
   EMB_STATIONS.forEach(s => {
     const active = embSortKey === s.key;
     const logoSrc = embStationLogoSrc(s.key);
     const headerInner = logoSrc
       ? `<img src="${logoSrc}" alt="${embEsc(s.label)}" style="height:18px;max-width:58px;object-fit:contain;display:block">`
       : `<span>${embEsc(s.label)}</span>`;
-    thead += `<th onclick="embSortBy('${s.key}')" title="${embEsc(s.label)}" style="position:sticky;top:0;background:${s.own ? 'var(--cyan-light)' : 'var(--bg)'};cursor:pointer;padding:6px 6px;font-size:9.5px;font-weight:800;color:${active ? 'var(--navy)' : (s.own ? 'var(--navy)' : 'var(--text2)')};white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:center"><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:22px">${headerInner}${active ? `<span>${embSortDir === 'asc' ? '▲' : '▼'}</span>` : ''}</div></th>`;
+    thead += `<th onclick="embSortBy('${s.key}')" title="${embEsc(s.label)}" style="position:sticky;top:0;z-index:10;background:${s.own ? 'var(--cyan-light)' : 'var(--bg)'};cursor:pointer;padding:6px 6px;font-size:9.5px;font-weight:800;color:${active ? 'var(--navy)' : (s.own ? 'var(--navy)' : 'var(--text2)')};white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:center"><div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:22px">${headerInner}${active ? `<span>${embSortDir === 'asc' ? '▲' : '▼'}</span>` : ''}</div></th>`;
   });
   const totalActive = embSortKey === 'total';
-  thead += `<th onclick="embSortBy('total')" style="position:sticky;top:0;background:var(--navy);cursor:pointer;padding:8px 10px;font-size:10.5px;font-weight:800;color:#fff;white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:right">${isDelta ? 'Δ Total' : 'Total'}${totalActive ? (embSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
+  thead += `<th onclick="embSortBy('total')" style="position:sticky;top:0;z-index:10;background:var(--navy);cursor:pointer;padding:8px 10px;font-size:10.5px;font-weight:800;color:#fff;white-space:nowrap;border-bottom:1.5px solid var(--border);text-align:right">${isDelta ? 'Δ Total' : 'Total'}${totalActive ? (embSortDir === 'asc' ? ' ▲' : ' ▼') : ''}</th>`;
   thead += '</tr></thead>';
 
   let tbody = '<tbody>';
@@ -21372,6 +21456,16 @@ function computeDailyDiff(bucket){
  *  le DÉTAIL de chaque classement/playlist/radio concerné listé directement
  *  sur la carte (pas besoin de cliquer pour le voir). Le clic reste
  *  disponible pour ouvrir la fiche Song Full Metrics complète. */
+/** Formate un delta de rang pour l'affichage — arrondi à 1 décimale (les
+ *  comparaisons en mode "Semaine" se font contre une MOYENNE sur 7 jours,
+ *  donc un nombre à virgule ; sans arrondi, l'écran affichait des valeurs
+ *  du type "12.333333333333332"). Le ".0" est retiré pour les valeurs
+ *  entières (mode "Jour", où le delta est toujours un entier). */
+function fmtDelta(n){
+  const r = Math.round(n * 10) / 10;
+  return Number.isInteger(r) ? String(r) : r.toFixed(1);
+}
+
 function dailyMoverCardHtml(g){
   const watched = isWatchlisted(g.title, g.artist);
   const positive = g.totalDelta > 0;
@@ -21381,7 +21475,7 @@ function dailyMoverCardHtml(g){
         <img src="${dailySourceLogo(s.srcKey)}" alt="" style="width:12px;height:12px;object-fit:contain;flex-shrink:0;border-radius:2px">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.source)}</span>
       </span>
-      <span style="font-weight:700;flex-shrink:0;color:${s.delta > 0 ? '#0DA76B' : '#CC2222'}">${Math.round(s.rankBefore)}→${s.rankToday} (${s.delta > 0 ? '▲' : '▼'}${Math.abs(s.delta)})</span>
+      <span style="font-weight:700;flex-shrink:0;color:${s.delta > 0 ? '#0DA76B' : '#CC2222'}">${Math.round(s.rankBefore)}→${s.rankToday} (${s.delta > 0 ? '▲' : '▼'}${fmtDelta(Math.abs(s.delta))})</span>
     </div>`).join('');
   return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(g.title, g.artist)}" title="Voir la fiche d'évolution complète"
     style="padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;background:var(--white);cursor:pointer;margin-bottom:8px;transition:border-color .15s,box-shadow .15s"
@@ -21393,7 +21487,7 @@ function dailyMoverCardHtml(g){
         </div>
         <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.artist)}</div>
       </div>
-      <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;background:${positive ? '#E3F7EC' : '#FDEAEA'};color:${positive ? '#0DA76B' : '#CC2222'}">${positive ? '▲' : '▼'} ${Math.abs(g.totalDelta)}</div>
+      <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;background:${positive ? '#E3F7EC' : '#FDEAEA'};color:${positive ? '#0DA76B' : '#CC2222'}">${positive ? '▲' : '▼'} ${fmtDelta(Math.abs(g.totalDelta))}</div>
     </div>
     <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">${detailHtml}</div>
   </div>`;
