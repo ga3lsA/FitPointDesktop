@@ -2053,6 +2053,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button id="chartTabAmUS" onclick="switchChartTab('amus')" class="dec-subtab-item"><span class="dec-subtab-ic">🇺🇸</span>Apple Music US</button>
         <button id="chartTabAmFR" onclick="switchChartTab('amfr')" class="dec-subtab-item"><span class="dec-subtab-ic">🇫🇷</span>Apple Music France</button>
         <button id="chartTabItFR" onclick="switchChartTab('itfr')" class="dec-subtab-item"><span class="dec-subtab-ic">🛒</span>iTunes France</button>
+        <button id="chartTabAkp_tubesmoment" onclick="switchChartTab('akp_tubesmoment')" class="dec-subtab-item"><span class="dec-subtab-ic">🔥</span>Tubes du Moment</button>
+        <button id="chartTabAkp_lecode" onclick="switchChartTab('akp_lecode')" class="dec-subtab-item"><span class="dec-subtab-ic">🔑</span>Le Code</button>
+        <button id="chartTabAkp_hitsfrance" onclick="switchChartTab('akp_hitsfrance')" class="dec-subtab-item"><span class="dec-subtab-ic">🇫🇷</span>Hits Français</button>
       </div>
     </div>
     <div style="width:1px;height:18px;background:var(--border);margin-right:4px;flex-shrink:0"></div>
@@ -2550,13 +2553,20 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
   <!-- VUE D'ENSEMBLE : Radar, Veille, Quotas FR & Analyse de potentiel, résumés inline -->
   <div style="background:#0F2847;width:100%;padding:32px 40px 40px">
-    <div style="max-width:1400px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px">
+    <div style="max-width:1500px;margin:0 auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px">
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div style="font-size:14px;font-weight:800;color:#fff">🎯 Radar — titres en forte progression</div>
           <button onclick="goToRadarPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir le Radar →</button>
         </div>
         <div id="homeRadarSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:800;color:#fff">📅 Veille — plus fortes progressions</div>
+          <button onclick="goToDailyOverviewPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Vue d'ensemble →</button>
+        </div>
+        <div id="homeDailyOverviewSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
       </div>
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -2567,17 +2577,17 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </div>
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:14px;font-weight:800;color:#fff">📊 Quotas FR — du jour</div>
-          <button onclick="goToQuotasPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir les Quotas →</button>
-        </div>
-        <div id="homeQuotasSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
-      </div>
-      <div>
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div style="font-size:14px;font-weight:800;color:#fff">🚀 Titres à pousser</div>
           <button onclick="goToPotentielPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir l'analyse →</button>
         </div>
         <div id="homePotentielSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-size:14px;font-weight:800;color:#fff">📊 Quotas FR — du jour</div>
+          <button onclick="goToQuotasPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir les Quotas →</button>
+        </div>
+        <div id="homeQuotasSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
       </div>
     </div>
   </div>
@@ -3019,8 +3029,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.113';
-const FPA_BUILD_ISO = '2026-08-07T14:30:00+02:00';
+const FPA_VERSION   = 'v30.124';
+const FPA_BUILD_ISO = '2026-08-08T11:30:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -4904,6 +4914,334 @@ async function fetchAppleMusicViaProxy(country = 'us', type = 'most-played'){
 }
 
 /* ── Panneau de configuration du proxy Apple Music (URL Apps Script) ── */
+
+// ── APPLE MUSIC — PLAYLISTS CLÉS (Tubes du Moment, Le Code, Hits France) ──
+// Contrairement au Top 100 ci-dessus (flux JSON officiel Apple Marketing
+// Tools), Apple ne propose aucune API publique pour des playlists
+// arbitraires. On scrape donc la page d'intégration officielle de la
+// playlist (embed.music.apple.com/<pays>/playlist/<slug>/<id> — le code
+// <iframe> fourni par Apple via son bouton "Partager"), même mécanisme
+// générique (proxy Apps Script personnel + cascade de proxies CORS publics
+// en repli) déjà utilisé pour les Playlists Spotify clés — voir
+// fetchKeyPlaylistTracklist() plus bas dans ce fichier. Fonctionnalité
+// EXPÉRIMENTALE au même titre : le format de page d'Apple peut changer sans
+// préavis ; plusieurs stratégies d'extraction sont tentées.
+//
+// Contrairement à Deezer (ID de playlist numérique exploitable directement
+// via l'API REST publique), Apple ne fournit pas d'identifiant exploitable
+// côté client de cette façon : l'URL d'intégration de chaque playlist est
+// donc mémorisée en dur ci-dessous quand connue (fournie par Gaël), sinon
+// demandée une seule fois à l'utilisateur (bouton "Configurer l'URL" →
+// invite, qui accepte aussi bien l'URL nue que le code <iframe> complet
+// copié-collé depuis Apple Music) puis mémorisée en localStorage.
+const APPLE_KEY_PLAYLISTS = [
+  { id: 'tubesmoment', label: 'Tubes du Moment', icon: '🔥', defaultUrl: 'https://music.apple.com/fr/playlist/tubes-du-moment/pl.f4d106fed2bd41149aaacabb233eb5eb' },
+  { id: 'lecode',      label: 'Le Code',          icon: '🔑', defaultUrl: 'https://music.apple.com/fr/playlist/le-code/pl.084e56c4114a4a199e582aa7db6e7e56' },
+  { id: 'hitsfrance',  label: 'Hits Français',    icon: '🇫🇷', defaultUrl: 'https://music.apple.com/fr/playlist/hits-français/pl.4a51dbe8d63245ada8fcfdf59b046245' },
+];
+
+let appleKeyPlaylistData     = {}; // { id: {rang:{a,t}} }
+let appleKeyPlaylistRawSample = {}; // { id: string } — échantillon HTML brut, pour diagnostic
+let appleKeyPlaylistLog       = {}; // { id: [{proxy, status}] } — journal de chaque tentative, pour diagnostic
+let appleKeyPlaylistLoaded   = {}; // { id: bool }
+let appleKeyPlaylistLoading  = {}; // { id: bool }
+let appleKeyPlaylistDateUsed = {}; // { id: dateStr }
+
+function appleKeyPlaylistUrl(id){
+  const stored = localStorage.getItem('fpa_apple_kp_url_' + id);
+  if(stored) return stored;
+  const def = APPLE_KEY_PLAYLISTS.find(p => p.id === id);
+  return (def && def.defaultUrl) || '';
+}
+function setAppleKeyPlaylistUrl(id, url){
+  try{ localStorage.setItem('fpa_apple_kp_url_' + id, url); }catch(e){ /* quota localStorage, ignoré */ }
+}
+
+/** Extrait l'URL exploitable depuis la saisie utilisateur, qui peut être :
+ *  - l'URL nue (https://embed.music.apple.com/... ou https://music.apple.com/...)
+ *  - le code <iframe> complet copié-collé depuis le bouton "Partager" d'Apple
+ *    Music (on extrait alors l'attribut src="..."). */
+function extractAppleEmbedUrl(input){
+  const trimmed = (input || '').trim();
+  const srcMatch = trimmed.match(/src=["']([^"']+)["']/i);
+  const candidate = srcMatch ? srcMatch[1] : trimmed;
+  return /^https:\/\/(embed\.)?music\.apple\.com\//i.test(candidate) ? candidate : null;
+}
+
+/** Demande (à la première utilisation si aucune valeur par défaut n'est
+ *  connue, ou via "Changer l'URL") le code d'intégration ou l'URL de la
+ *  playlist Apple Music (bouton Partager → Copier le lien d'intégration,
+ *  depuis l'app ou music.apple.com). Accepte le code <iframe> complet ou
+ *  l'URL seule. Retourne l'URL extraite, ou null si annulé/vide/invalide. */
+function promptAppleKeyPlaylistUrl(id){
+  const def = APPLE_KEY_PLAYLISTS.find(p => p.id === id);
+  const label = def ? def.label : id;
+  const current = appleKeyPlaylistUrl(id);
+  const input = window.prompt(
+    'Code <iframe> ou URL d\'intégration de la playlist Apple Music « ' + label + ' » (bouton Partager → Copier le lien d\'intégration) :',
+    current
+  );
+  if(input === null) return null;
+  const url = extractAppleEmbedUrl(input);
+  if(!url){
+    if(input.trim()) showToast('URL Apple Music non reconnue — collez le code <iframe> complet ou une URL music.apple.com','err');
+    return null;
+  }
+  setAppleKeyPlaylistUrl(id, url);
+  return url;
+}
+
+/** Redemande l'URL d'une playlist clé Apple Music (bouton "Changer l'URL"
+ *  dans Classements — utile si la première saisie était incorrecte ou si
+ *  Apple a changé l'URL de la playlist) puis recharge immédiatement. */
+function reconfigureAppleKeyPlaylistUrl(id){
+  const url = promptAppleKeyPlaylistUrl(id);
+  if(!url) return;
+  appleKeyPlaylistLoaded[id] = false;
+  loadAppleKeyPlaylist(id);
+}
+
+/** Décode une fragment de chaîne JSON déjà capturé par regex (échappements
+ *  \", \/, \uXXXX...) en s'appuyant sur JSON.parse lui-même — plus fiable
+ *  qu'une liste de .replace() ad hoc pour couvrir tous les cas d'échappement. */
+function decodeJsonStringFragment(raw){
+  try{ return JSON.parse('"' + raw + '"'); }
+  catch(e){ return raw.replace(/\\"/g,'"').replace(/\\\//g,'/'); }
+}
+
+/** Recherche récursive et générique, dans n'importe quel objet JSON, d'un
+ *  tableau d'éléments au format MusicKit "API" (song/track) — reconnu par
+ *  la présence d'un champ "attributes" contenant à la fois "name" et
+ *  "artistName". Conservé en repli : la page d'intégration observée en
+ *  pratique (voir parseAppleMusicTrackLockups ci-dessous) utilise en fait
+ *  un format différent, propre à l'application web Svelte d'Apple. */
+function findMusicKitTracksInObject(obj, depth){
+  if(!obj || typeof obj !== 'object' || depth > 8) return null;
+  if(Array.isArray(obj)){
+    const looksLikeTracks = obj.length >= 3 && obj.every(x =>
+      x && typeof x === 'object' && x.attributes &&
+      typeof x.attributes.name === 'string' && typeof x.attributes.artistName === 'string'
+    );
+    if(looksLikeTracks) return obj;
+    for(const item of obj){
+      const found = findMusicKitTracksInObject(item, depth + 1);
+      if(found) return found;
+    }
+    return null;
+  }
+  for(const key of Object.keys(obj)){
+    const found = findMusicKitTracksInObject(obj[key], depth + 1);
+    if(found) return found;
+  }
+  return null;
+}
+
+/** Stratégie principale, basée sur la structure RÉELLEMENT observée sur
+ *  music.apple.com (confirmée sur un échantillon en conditions réelles) :
+ *  chaque titre de la playlist correspond à un objet marqué
+ *  "id":"track-lockup - <id playlist> - <id titre>", contenant directement
+ *  un champ "title" (le titre du morceau) et, plus loin dans le même objet,
+ *  un champ "artistName". Comme cet objet contient aussi de nombreux champs
+ *  imbriqués non pertinents (tertiaryLinks, actionMetrics...) avec parfois
+ *  leurs propres "title" (ex. "Titre - Single" dans un lien annexe), on
+ *  découpe le HTML en segments délimités par deux marqueurs "track-lockup"
+ *  consécutifs, et on ne prend que le PREMIER "title" et le PREMIER
+ *  "artistName" de chaque segment — le champ canonique de l'objet apparaît
+ *  toujours avant ses champs imbriqués dans le JSON sérialisé par Apple. */
+function parseAppleMusicTrackLockups(html){
+  const idRe = /"id":"track-lockup - [^"]* - \d+"/g;
+  const matches = [...html.matchAll(idRe)];
+  if(matches.length < 3) return null;
+  const tracks = [];
+  for(let i = 0; i < matches.length; i++){
+    const segStart = matches[i].index;
+    const segEnd = (i + 1 < matches.length) ? matches[i + 1].index : Math.min(html.length, segStart + 6000);
+    const segment = html.slice(segStart, segEnd);
+    const titleM = segment.match(/"title":"((?:[^"\\]|\\.)*)"/);
+    if(!titleM) continue;
+    const artistM = segment.match(/"artistName":"((?:[^"\\]|\\.)*)"/);
+    const title = decodeJsonStringFragment(titleM[1]);
+    const artist = artistM ? decodeJsonStringFragment(artistM[1]) : '';
+    if(title) tracks.push({ rank: tracks.length + 1, title, artist });
+  }
+  return tracks.length >= 3 ? tracks : null;
+}
+
+/** Extrait la tracklist depuis le HTML de la page d'intégration
+ *  (embed.music.apple.com) ou de la page publique d'une playlist Apple
+ *  Music. Stratégies tentées dans l'ordre :
+ *  1. parseAppleMusicTrackLockups — structure réellement observée (voir
+ *     commentaire ci-dessus), la plus fiable puisque vérifiée en conditions
+ *     réelles plutôt que supposée.
+ *  2. Recherche générique (findMusicKitTracksInObject) dans tout bloc JSON
+ *     valide trouvé dans un <script> — au cas où Apple servirait le format
+ *     MusicKit "API" classique sur certaines pages/versions.
+ *  3. JSON-LD schema.org (MusicPlaylist → track[]), présent sur les pages
+ *     publiques à des fins de référencement.
+ *  4. Repli heuristique final : paires "title"/"name" + "artistName"
+ *     trouvées n'importe où dans le HTML brut. */
+function parseAppleMusicPlaylistEmbed(html){
+  // Stratégie 1 : structure "track-lockup" réellement observée
+  try{
+    const tracks = parseAppleMusicTrackLockups(html);
+    if(tracks) return tracks;
+  }catch(e){ /* on tente la stratégie suivante */ }
+
+  // Stratégie 2 : recherche générique dans tous les blocs <script> JSON valides
+  try{
+    const scripts = [...html.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)];
+    for(const s of scripts){
+      const content = s[1].trim();
+      if(!content || (content[0] !== '{' && content[0] !== '[')) continue;
+      let data;
+      try{ data = JSON.parse(content); }catch(e){ continue; }
+      const rawTracks = findMusicKitTracksInObject(data, 0);
+      if(rawTracks && rawTracks.length){
+        const tracks = rawTracks.map((t, i) => ({
+          rank: i + 1,
+          title: t.attributes.name || '',
+          artist: t.attributes.artistName || ''
+        })).filter(t => t.title);
+        if(tracks.length) return tracks;
+      }
+    }
+  }catch(e){ /* format inattendu, on tente la stratégie suivante */ }
+
+  // Stratégie 3 : JSON-LD schema.org (MusicPlaylist)
+  try{
+    const blocks = [...html.matchAll(/<script type="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g)];
+    for(const b of blocks){
+      let data;
+      try{ data = JSON.parse(b[1]); }catch(e){ continue; }
+      const candidates = Array.isArray(data) ? data : [data];
+      for(const d of candidates){
+        const rawTracks = d && (d.track || d.tracks);
+        if(Array.isArray(rawTracks) && rawTracks.length){
+          const tracks = rawTracks.map((t, i) => ({
+            rank: i + 1,
+            title: (t && t.name) || (typeof t === 'string' ? t : '') || '',
+            artist: (t && t.byArtist && (t.byArtist.name || (Array.isArray(t.byArtist) ? t.byArtist.map(a => a.name).join(', ') : ''))) || ''
+          })).filter(t => t.title);
+          if(tracks.length) return tracks;
+        }
+      }
+    }
+  }catch(e){ /* format inattendu, on tente la stratégie suivante */ }
+
+  // Stratégie 4 (repli heuristique final) : paires "title"/"name" + "artistName"
+  // trouvées n'importe où dans le HTML brut.
+  try{
+    const re = /"(?:title|name)":"((?:[^"\\]|\\.)*)"[^}]*?"artistName":"((?:[^"\\]|\\.)*)"/g;
+    const tracks = [];
+    let m, i = 0;
+    while((m = re.exec(html)) !== null && tracks.length < 200){
+      const title  = decodeJsonStringFragment(m[1]);
+      const artist = decodeJsonStringFragment(m[2]);
+      if(title && artist){ tracks.push({ rank: ++i, title, artist }); }
+    }
+    if(tracks.length >= 5) return tracks;
+  }catch(e){ /* ... */ }
+
+  return null;
+}
+
+/** Le début d'une page music.apple.com (les 3000 premiers caractères) n'est
+ *  que du <head> (métadonnées, favicons...) — la liste des titres se trouve
+ *  bien plus loin dans le document, sérialisée pour l'hydratation de
+ *  l'application Svelte d'Apple. Plutôt que de tronquer aveuglément au
+ *  début, on cherche l'un des marqueurs probables d'un bloc de données et on
+ *  extrait un fragment centré autour, beaucoup plus utile pour le diagnostic. */
+function buildAppleHtmlDiagnosticExcerpt(html){
+  if(!html) return '';
+  const markers = ['"artistName"', '"trackList"', 'application/ld+json', 'serialized-server-data', '"tracks"'];
+  for(const marker of markers){
+    const idx = html.indexOf(marker);
+    if(idx !== -1){
+      const start = Math.max(0, idx - 400);
+      const end = Math.min(html.length, idx + 3600);
+      return '[Extrait autour de « ' + marker + ' », position ' + idx + ' sur ' + html.length + ' caractères au total]\n\n' + html.slice(start, end);
+    }
+  }
+  return '[Aucun marqueur de données reconnu dans les ' + html.length + ' caractères reçus — début de page (métadonnées) affiché à défaut]\n\n' + html.slice(0, 3000);
+}
+
+/** Même mécanisme que fetchKeyPlaylistTracklist (Spotify, plus bas dans ce
+ *  fichier) : proxy Apps Script personnel en priorité, repli sur la
+ *  cascade de proxies CORS publics. Accepte n'importe quelle URL
+ *  music.apple.com — le proxy générique ne connaît pas la plateforme. */
+async function fetchAppleKeyPlaylistTracklist(url){
+  const log = [];
+  let rawHtmlForDebug = '';
+
+  if(/^https:\/\//i.test(KWORB_APPS_SCRIPT_PROXY_URL || '')){
+    try{
+      // Délai rallongé (25s au lieu des 8s par défaut, adaptés à kworb.net) :
+      // les pages music.apple.com sont de lourdes applications JavaScript,
+      // bien plus longues à récupérer côté serveur qu'une page kworb toute
+      // simple — un premier test a confirmé un dépassement à 8s.
+      const html = await fetchKworbViaAppsScript(url, 25000);
+      if(html){
+        if(html.length > rawHtmlForDebug.length) rawHtmlForDebug = html;
+        const parsed = parseAppleMusicPlaylistEmbed(html);
+        if(parsed){
+          log.push({ proxy: 'Proxy Apps Script personnel', status: '✓ ' + parsed.length + ' titres extraits' });
+          return { tracks: parsed, rawSample: buildAppleHtmlDiagnosticExcerpt(rawHtmlForDebug), log };
+        }
+        log.push({ proxy: 'Proxy Apps Script personnel', status: 'Réponse reçue (' + html.length + ' car.) mais format non reconnu' });
+      } else {
+        log.push({ proxy: 'Proxy Apps Script personnel', status: lastKworbProxyError || 'Aucune réponse (cause inconnue)' });
+      }
+    }catch(e){
+      log.push({ proxy: 'Proxy Apps Script personnel', status: 'Erreur : ' + (e.message || e) });
+    }
+  } else {
+    log.push({ proxy: 'Proxy Apps Script personnel', status: 'Non configuré (bouton ⚙️ des Playlists Spotify clés, même proxy)' });
+  }
+
+  const { result, log: proxyLog } = await fetchDataViaProxyWithRaw(url, parseAppleMusicPlaylistEmbed, (raw) => {
+    if(raw.length > rawHtmlForDebug.length) rawHtmlForDebug = raw;
+  });
+  return { tracks: result, rawSample: buildAppleHtmlDiagnosticExcerpt(rawHtmlForDebug), log: log.concat(proxyLog) };
+}
+
+/** Charge une des playlists clés Apple Music (appelé à la demande,
+ *  uniquement depuis l'onglet Classements correspondant). Demande l'URL
+ *  une seule fois si elle n'est pas encore mémorisée. */
+async function loadAppleKeyPlaylist(id){
+  const def = APPLE_KEY_PLAYLISTS.find(p => p.id === id);
+  if(!def || appleKeyPlaylistLoading[id]) return;
+  let url = appleKeyPlaylistUrl(id);
+  if(!url){
+    url = promptAppleKeyPlaylistUrl(id);
+    if(!url) return;
+  }
+  appleKeyPlaylistLoading[id] = true;
+  const tab = 'akp_' + id;
+  if(document.getElementById('chartPageSub') && activeChartTab === tab){
+    document.getElementById('chartPageSub').textContent = '⏳ Connexion à Apple Music (' + def.label + ') en direct…';
+  }
+  const { tracks, rawSample, log } = await fetchAppleKeyPlaylistTracklist(url);
+  appleKeyPlaylistRawSample[id] = rawSample || '';
+  appleKeyPlaylistLog[id] = log || [];
+  if(tracks && tracks.length){
+    const chart = {};
+    tracks.forEach(t => { chart[t.rank] = { t: t.title, a: t.artist }; });
+    appleKeyPlaylistData[id] = chart;
+    appleKeyPlaylistLoaded[id] = true;
+    appleKeyPlaylistDateUsed[id] = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+    if(activeChartTab === tab) showToast('Playlist ' + def.label + ' chargée ✓','success');
+  } else if(activeChartTab === tab){
+    showToast('Connexion à Apple Music impossible pour le moment (fonctionnalité expérimentale) — configurez le proxy ⚙️ ou réessayez plus tard','err');
+  }
+  appleKeyPlaylistLoading[id] = false;
+  if(activeChartTab === tab) renderChartTable();
+  if(typeof renderIedrHomeWidgets === 'function') renderIedrHomeWidgets();
+}
+
+/** Redemande l'URL d'une playlist clé Apple Music (bouton "Changer l'URL"
+ *  dans Classements — utile si la première saisie était incorrecte ou si
+ *  Apple a changé l'URL de la playlist) puis recharge immédiatement.
+ *  (Définie plus haut, juste après promptAppleKeyPlaylistUrl.) */
 function toggleAppleMusicProxyPanel(){
   if(!requireAdmin()) return;
   const panel = document.getElementById('appleMusicProxyPanel');
@@ -6079,6 +6417,10 @@ function countLoadedAutoCharts(){
     ...keyPlaylists.map(p => !!p.fetchedAt),
     ...RADIO_TOP_SONGS_SOURCES.map(r => isFetchedToday(radioTopSongsData[r.id])),
     ...DEEZER_KEY_PLAYLISTS.map(p => !!deezerKeyPlaylistLoaded[p.id]),
+    // Playlists clés Apple Music : comptées seulement une fois l'URL
+    // configurée au moins une fois (sinon la barre de progression semblerait
+    // bloquée en permanence pour un utilisateur qui ne les utilise pas).
+    ...APPLE_KEY_PLAYLISTS.filter(p => appleKeyPlaylistUrl(p.id)).map(p => !!appleKeyPlaylistLoaded[p.id]),
   ];
   total = flags.length;
   loaded = flags.filter(Boolean).length;
@@ -6143,6 +6485,10 @@ async function loadAllCharts(silent = false){
   if(!deezerLoaded)             tasks.push(loadDeezerChart());
   if(!futursHitsLoaded)         tasks.push(loadFutursHitsChart());
   DEEZER_KEY_PLAYLISTS.forEach(p => { if(!deezerKeyPlaylistLoaded[p.id]) tasks.push(loadDeezerKeyPlaylist(p.id)); });
+  // Playlists clés Apple Music : uniquement celles déjà configurées (URL
+  // connue) — on ne veut jamais déclencher un prompt() bloquant depuis
+  // "Tout charger", qui doit rester un chargement silencieux en tâche de fond.
+  APPLE_KEY_PLAYLISTS.forEach(p => { if(appleKeyPlaylistUrl(p.id) && !appleKeyPlaylistLoaded[p.id]) tasks.push(loadAppleKeyPlaylist(p.id)); });
   if(!billboardGlobalLoaded)    tasks.push(loadBillboardGlobalChart());
   if(!billboardLoaded)          tasks.push(loadBillboardChart());
   if(!appleMusicState.us.loaded) tasks.push(loadAppleMusicChart('amus'));
@@ -9510,7 +9856,7 @@ function renderLifeCyclesPage(){
 
 /** Séries Classements hebdomadaires (Shazam, Spotify, Deezer, Apple Music US/FR, Billboard, Airplay par radio) — asynchrone, via Drive Sync */
 async function getTitleChartsSeries(title, artist){
-  const result = { shzFR: [], shzWW: [], spyFR: [], spBE: [], spSE: [], spNL: [], dzFR: [], bbUS: [], bbG200: [], amUS: [], amFR: [], itFR: [], yt: [], kpPlaylists: {}, dzkpPlaylists: {}, radioCharts: {}, airplay: {}, airplayRank: {} };
+  const result = { shzFR: [], shzWW: [], spyFR: [], spBE: [], spSE: [], spNL: [], dzFR: [], bbUS: [], bbG200: [], amUS: [], amFR: [], itFR: [], yt: [], kpPlaylists: {}, dzkpPlaylists: {}, akpPlaylists: {}, radioCharts: {}, airplay: {}, airplayRank: {} };
   AIRPLAY_RADIOS.forEach(rad => { result.airplay[rad.key] = []; result.airplayRank[rad.key] = null; });
 
   let mostRecentWeekAirplay = null; // table complète (tous titres) de la dernière semaine validée — nécessaire pour dériver un rang par volume
@@ -9625,6 +9971,12 @@ async function getTitleChartsSeries(title, artist){
     if(!deezerKeyPlaylistLoaded[p.id]) return;
     const rk = findInChart(deezerKeyPlaylistData[p.id], title, artist);
     if(rk) result.dzkpPlaylists[p.id] = [{...todayPoint, val: rk}];
+  });
+  // Playlists clés Apple Music (Tubes du Moment, Le Code, Hits France) — même principe.
+  APPLE_KEY_PLAYLISTS.forEach(p => {
+    if(!appleKeyPlaylistLoaded[p.id]) return;
+    const rk = findInChart(appleKeyPlaylistData[p.id], title, artist);
+    if(rk) result.akpPlaylists[p.id] = [{...todayPoint, val: rk}];
   });
   if(airplayLoaded){
     const found = radarFindAirplayEntry(airplayData, title, artist);
@@ -10781,8 +11133,8 @@ function switchChartTab(tab){
       itemIds:{shzfr:'chartTabShzFR', shzww:'chartTabShzWW'} },
     { groupId:'chartDeezerGroup',  tabs:['dzfr','fh', ...DEEZER_KEY_PLAYLISTS.map(p => 'dzkp_' + p.id)],
       itemIds:Object.assign({dzfr:'chartTabDzFR', fh:'chartTabFH'}, Object.fromEntries(DEEZER_KEY_PLAYLISTS.map(p => ['dzkp_' + p.id, 'chartTabDzkp_' + p.id]))) },
-    { groupId:'chartAppleGroup',   tabs:['amus','amfr','itfr'],
-      itemIds:{amus:'chartTabAmUS', amfr:'chartTabAmFR', itfr:'chartTabItFR'} },
+    { groupId:'chartAppleGroup',   tabs:['amus','amfr','itfr', ...APPLE_KEY_PLAYLISTS.map(p => 'akp_' + p.id)],
+      itemIds:Object.assign({amus:'chartTabAmUS', amfr:'chartTabAmFR', itfr:'chartTabItFR'}, Object.fromEntries(APPLE_KEY_PLAYLISTS.map(p => ['akp_' + p.id, 'chartTabAkp_' + p.id]))) },
     { groupId:'chartYoutubeGroup', tabs:['yt', ...KWORB_YOUTUBE_TABS],
       itemIds:Object.assign({yt:'chartTabYt_fr'}, Object.fromEntries(KWORB_YOUTUBE_TABS.map(t => [t, 'chartTabYt_' + t.slice(2)]))) },
   ];
@@ -10831,6 +11183,11 @@ function switchChartTab(tab){
   if(tab.startsWith('dzkp_')){
     const dzkpId = tab.slice(5);
     if(!deezerKeyPlaylistLoaded[dzkpId] && !deezerKeyPlaylistLoading[dzkpId]) loadDeezerKeyPlaylist(dzkpId);
+  }
+  // Chargement à la demande d'une playlist clé Apple Music (même principe)
+  if(tab.startsWith('akp_')){
+    const akpId = tab.slice(4);
+    if(!appleKeyPlaylistLoaded[akpId] && !appleKeyPlaylistLoading[akpId]) loadAppleKeyPlaylist(akpId);
   }
   // Chargement à la demande de Billboard Global 200 (uniquement quand on visite l'onglet)
   if(tab === 'bbg200' && !billboardGlobalLoaded && !billboardGlobalLoading) loadBillboardGlobalChart();
@@ -11402,6 +11759,46 @@ function renderChartTable(){
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>`;
 
+  } else if(activeChartTab.startsWith('akp_')){
+    // ── Playlists clés Apple Music (Tubes du Moment, Le Code, Hits France) ──
+    const akpId = activeChartTab.slice(4);
+    const akpDef = APPLE_KEY_PLAYLISTS.find(p => p.id === akpId);
+    const akpData = appleKeyPlaylistData[akpId] || {};
+    const akpLabel = akpDef ? akpDef.label : 'Playlist';
+    const akpUrl = appleKeyPlaylistUrl(akpId);
+    titleEl.innerHTML = logoImg(LOGO_APPLE_MONO, 'Apple Music', 16) + ' ' + escHtml(akpLabel) + ' — Apple Music';
+    isEmpty = !appleKeyPlaylistLoaded[akpId] || Object.keys(akpData).length === 0;
+    if(!isEmpty){
+      subEl.textContent = (appleKeyPlaylistDateUsed[akpId] ? 'données du ' + appleKeyPlaylistDateUsed[akpId] : 'données live') + ' · ' + Object.keys(akpData).length + ' titres · expérimental';
+      const e2RankMap = computeE2RankMap();
+      entries = Object.entries(akpData)
+        .map(([r,e]) => {
+          const title  = e.t||'';
+          const artist = e.a||'';
+          let e2rank = null;
+          if(airplayLoaded){ e2rank = findE2Rank(e2RankMap, title, artist); }
+          return {rank:parseInt(r), title, artist, e2rank};
+        })
+        .sort((a,b)=>a.rank-b.rank);
+    } else if(appleKeyPlaylistLoading[akpId]){
+      subEl.textContent = 'Connexion en cours…';
+    } else if(!akpUrl){
+      subEl.textContent = 'URL de la playlist ' + akpLabel + ' non renseignée';
+    } else {
+      subEl.textContent = 'Playlist ' + akpLabel + ' non chargée';
+    }
+    importEl.innerHTML = `<button onclick="loadAppleKeyPlaylist('${akpId}')" ${appleKeyPlaylistLoading[akpId]?'disabled':''}
+      style="display:flex;align-items:center;gap:6px;background:#F3F3F5;border:1.5px solid #D6D6DC;border-radius:8px;padding:7px 13px;cursor:pointer;font-size:12px;font-weight:700;color:#333338"
+      onmouseenter="this.style.background='#E6E6EA'" onmouseleave="this.style.background='#F3F3F5'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      ${appleKeyPlaylistLoading[akpId] ? 'Connexion…' : (appleKeyPlaylistLoaded[akpId] ? 'Actualiser' : (akpUrl ? 'Charger ' + akpLabel : 'Configurer URL'))}
+    </button>
+    <button onclick="reconfigureAppleKeyPlaylistUrl('${akpId}')" title="Changer l'URL de cette playlist (bouton Partager d'Apple Music → Copier le lien)"
+      style="display:flex;align-items:center;justify-content:center;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;padding:0;flex-shrink:0;cursor:pointer;color:var(--text2)"
+      onmouseenter="this.style.borderColor='#D6D6DC';this.style.color='#333338'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+    </button>`;
+
   } else if(activeChartTab === 'itfr'){
     // ── iTunes France — Top Ventes, même flux qu'Apple Music mais type=top-paid ──
     const itCountry = ITUNES_TAB_COUNTRY[activeChartTab];
@@ -11652,6 +12049,37 @@ function renderChartTable(){
         ? 'Connexion à la playlist ' + escHtml(dzkpLabel) + ' en cours…'
         : 'Connexion à Deezer indisponible pour le moment (même proxy que Deezer France, à configurer via ⚙️). Cliquez sur « Charger ' + escHtml(dzkpLabel) + ' » ci-dessus pour réessayer.';
     }
+    else if(activeChartTab.startsWith('akp_')){
+      const akpId = activeChartTab.slice(4);
+      const akpDef = APPLE_KEY_PLAYLISTS.find(p => p.id === akpId);
+      const akpLabel = akpDef ? akpDef.label : 'cette playlist';
+      const akpUrlHint = appleKeyPlaylistUrl(akpId);
+      const akpLogHint = appleKeyPlaylistLog[akpId] || [];
+      const akpRawHint = appleKeyPlaylistRawSample[akpId] || '';
+      let akpMsg;
+      if(appleKeyPlaylistLoading[akpId]){
+        akpMsg = 'Connexion à la playlist ' + escHtml(akpLabel) + ' en cours…';
+      } else if(!akpUrlHint){
+        akpMsg = 'URL non renseignée. Cliquez sur « Configurer l\'URL » ci-dessus et collez le lien de la playlist ' + escHtml(akpLabel) + ' (bouton Partager d\'Apple Music → Copier le lien).';
+      } else {
+        akpMsg = 'Connexion à Apple Music indisponible pour le moment — fonctionnalité expérimentale, le format de page Apple pouvant changer sans préavis. Configurez le proxy ⚙️ des Playlists Spotify clés (même proxy générique) ou cliquez sur « Actualiser » ci-dessus pour réessayer.';
+      }
+      // Diagnostic détaillé (journal par proxy + échantillon HTML brut), affiché
+      // uniquement après une tentative de chargement ratée — indispensable pour
+      // ajuster la stratégie d'extraction sans accès direct au test en conditions
+      // réelles (voir parseAppleMusicPlaylistEmbed).
+      const akpDiagHtml = (akpLogHint.length || akpRawHint)
+        ? `<details style="margin-top:10px;text-align:left;max-width:520px;margin-left:auto;margin-right:auto">
+            <summary style="cursor:pointer;font-size:11px;font-weight:700;color:var(--muted)">🔧 Détail technique (à copier si le problème persiste)</summary>
+            <div style="margin-top:8px;font-size:10.5px;color:var(--text2)">
+              ${akpLogHint.map(l => `<div style="padding:3px 0;border-bottom:1px solid var(--border)"><b>${escHtml(l.proxy)}</b> — ${escHtml(l.status)}</div>`).join('') || '<div>Aucune tentative enregistrée</div>'}
+              ${akpRawHint ? `<div style="margin-top:8px;font-weight:700">Échantillon HTML reçu (3000 premiers caractères) :</div>
+              <textarea readonly style="width:100%;height:120px;font-family:monospace;font-size:9.5px;margin-top:4px;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--bg)">${escHtml(akpRawHint)}</textarea>` : ''}
+            </div>
+          </details>`
+        : '';
+      hintEl.innerHTML = akpMsg + akpDiagHtml;
+    }
     else if(activeChartTab === 'amus' || activeChartTab === 'amfr')
       hintEl.innerHTML = appleMusicState[APPLE_MUSIC_TAB_COUNTRY[activeChartTab]].loading
         ? 'Connexion au classement ' + APPLE_MUSIC_TAB_LABEL[activeChartTab] + ' en cours…'
@@ -11732,7 +12160,7 @@ function renderChartTable(){
     const showE2R = airplayLoaded;
     hdrEl.style.gridTemplateColumns = showE2R ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
     hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + (showE2R ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
-  } else if((activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab.startsWith('dzkp_') || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded){
+  } else if((activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab.startsWith('dzkp_') || activeChartTab.startsWith('akp_') || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded){
     hdrEl.style.gridTemplateColumns = '48px 24px 26px minmax(0,1fr) 64px';
     hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>';
   } else if(activeChartTab === 'kwtop'){
@@ -11984,7 +12412,7 @@ function renderChartRow(e){
     </div>`;
   } else {
     // Shazam FR/WW, Deezer France, Futurs Hits, Playlists clés Deezer, Apple Music US/FR, iTunes FR, Billboard US/Global200, kworb radio
-    const showE2 = (activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab.startsWith('dzkp_') || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded;
+    const showE2 = (activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab.startsWith('dzkp_') || activeChartTab.startsWith('akp_') || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded;
     const gridCols = showE2 ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
 
     let e2Cell = '';
@@ -12692,11 +13120,25 @@ function buildDigitalSnapshotSection(series, title, artist){
       </div>`;
     }).join('');
 
+  // Playlists clés Apple Music où le titre est actuellement repéré — même principe.
+  const akpFoundBadgesFullMetrics = Object.entries(series.akpPlaylists || {})
+    .filter(([id, pts]) => pts && pts.length)
+    .map(([id, pts]) => {
+      const p = APPLE_KEY_PLAYLISTS.find(x => x.id === id);
+      const label = p ? p.label : id;
+      const val = pts[pts.length - 1].val;
+      return `<div title="${escHtml(label)}" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:50px;max-width:90px">
+        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🍎 ${escHtml(label)}</span>
+        <span style="font-size:13px;font-weight:800;color:#1D1D1F">#${val}</span>
+      </div>`;
+    }).join('');
+
   const hasAnyData = series.shzFR.length || series.shzWW.length || series.spyFR.length || series.spBE.length || series.spSE.length || series.spNL.length || series.dzFR.length ||
     series.amFR.length || series.amUS.length || series.itFR.length || series.yt.length || series.bbUS.length || series.bbG200.length ||
     Object.values(series.kpPlaylists || {}).some(pts => pts.length) ||
     Object.values(series.radioCharts || {}).some(pts => pts.length) ||
     Object.values(series.dzkpPlaylists || {}).some(pts => pts.length) ||
+    Object.values(series.akpPlaylists || {}).some(pts => pts.length) ||
     Object.values(series.airplay).some(a => a.length);
 
   // Airplay LIVE (page Classement Live) : comparaison RANG contre RANG pour
@@ -12732,7 +13174,9 @@ function buildDigitalSnapshotSection(series, title, artist){
     ${radioFoundBadgesFullMetrics ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px">📻 RADIOS CLÉS (TOP SONGS)</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">${radioFoundBadgesFullMetrics}</div>` : ''}
     ${dzkpFoundBadgesFullMetrics ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px">🟣 PLAYLISTS CLÉS DEEZER</div>
-    <div style="display:flex;flex-wrap:wrap;gap:6px">${dzkpFoundBadgesFullMetrics}</div>` : ''}`;
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${dzkpFoundBadgesFullMetrics}</div>` : ''}
+    ${akpFoundBadgesFullMetrics ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px">🍎 PLAYLISTS CLÉS APPLE MUSIC</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">${akpFoundBadgesFullMetrics}</div>` : ''}`;
 }
 
 async function buildComiteCard(t, series, coverId){
@@ -15247,6 +15691,22 @@ async function watchlistCheckOne(w){
     snapshot.kpPlaylists[p.id] = findInChart(chart, w.title, w.artist) || null;
   });
 
+  // Playlists clés Deezer (Les Titres du Moment, Global Hits, Rapstars,
+  // Deezer Hits, Bleu Blanc Hits, Pop All Stars) — même principe que les
+  // Playlists Spotify clés ci-dessus.
+  snapshot.dzkpPlaylists = {};
+  DEEZER_KEY_PLAYLISTS.forEach(p => {
+    if(!deezerKeyPlaylistLoaded[p.id]) return;
+    snapshot.dzkpPlaylists[p.id] = findInChart(deezerKeyPlaylistData[p.id], w.title, w.artist) || null;
+  });
+
+  // Playlists clés Apple Music (Tubes du Moment, Le Code, Hits Français) — même principe.
+  snapshot.akpPlaylists = {};
+  APPLE_KEY_PLAYLISTS.forEach(p => {
+    if(!appleKeyPlaylistLoaded[p.id]) return;
+    snapshot.akpPlaylists[p.id] = findInChart(appleKeyPlaylistData[p.id], w.title, w.artist) || null;
+  });
+
   if(airplayLoaded){
     const entry = radarFindAirplayEntry(airplayData, w.title, w.artist);
     snapshot.airplay = entry ? (parseInt(entry.rg) || true) : null;
@@ -15354,6 +15814,34 @@ function buildWatchlistCard(w){
         }).join('')
     : '';
 
+  // Playlists clés Deezer où le titre est repéré — même principe.
+  const dzkpFoundBadges = last?.dzkpPlaylists
+    ? Object.entries(last.dzkpPlaylists)
+        .filter(([id, v]) => watchlistSourceFound(v))
+        .map(([id, v]) => {
+          const p = DEEZER_KEY_PLAYLISTS.find(x => x.id === id);
+          const label = p ? p.label : id;
+          return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:#F3EAFB;border:1px solid #D9BFF2;min-width:38px;max-width:90px">
+        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🟣 ${escHtml(label)}</span>
+        <span style="font-size:11px;font-weight:800;color:#A238FF">#${v}</span>
+      </span>`;
+        }).join('')
+    : '';
+
+  // Playlists clés Apple Music où le titre est repéré — même principe.
+  const akpFoundBadges = last?.akpPlaylists
+    ? Object.entries(last.akpPlaylists)
+        .filter(([id, v]) => watchlistSourceFound(v))
+        .map(([id, v]) => {
+          const p = APPLE_KEY_PLAYLISTS.find(x => x.id === id);
+          const label = p ? p.label : id;
+          return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:#F1F1F3;border:1px solid #D1D1D6;min-width:38px;max-width:90px">
+        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🍎 ${escHtml(label)}</span>
+        <span style="font-size:11px;font-weight:800;color:#1D1D1F">#${v}</span>
+      </span>`;
+        }).join('')
+    : '';
+
   const currentBadges = last ? `
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
       ${watchlistSourceBadge('🍎', 'iTunes / Apple Music', last.itunes)}
@@ -15364,6 +15852,8 @@ function buildWatchlistCard(w){
       ${watchlistSourceBadge('📻', 'Airplay', last.airplay, true)}
       ${kworbFoundBadges}
       ${kpFoundBadges}
+      ${dzkpFoundBadges}
+      ${akpFoundBadges}
     </div>` : `<div style="font-size:11px;color:var(--muted);margin-top:8px">⏳ Pas encore vérifié — sera vérifié automatiquement, ou cliquez sur « 🔄 Vérifier maintenant »</div>`;
 
   const releaseInfo = last?.itunes?.releaseDate
@@ -15388,6 +15878,22 @@ function buildWatchlistCard(w){
         if(watchlistSourceFound(v)){
           const p = keyPlaylists.find(x => x.id === id);
           parts.push('🎧 ' + (p ? p.label : id) + ' #' + v);
+        }
+      });
+    }
+    if(h.dzkpPlaylists){
+      Object.entries(h.dzkpPlaylists).forEach(([id, v]) => {
+        if(watchlistSourceFound(v)){
+          const p = DEEZER_KEY_PLAYLISTS.find(x => x.id === id);
+          parts.push('🟣 ' + (p ? p.label : id) + ' #' + v);
+        }
+      });
+    }
+    if(h.akpPlaylists){
+      Object.entries(h.akpPlaylists).forEach(([id, v]) => {
+        if(watchlistSourceFound(v)){
+          const p = APPLE_KEY_PLAYLISTS.find(x => x.id === id);
+          parts.push('🍎 ' + (p ? p.label : id) + ' #' + v);
         }
       });
     }
@@ -16909,6 +17415,7 @@ const SPU_WEIGHTS = [
   { key:'rg',     label:'Classement Général Radio', weight:5, desc:'Position dans le classement toutes radios confondues Muzicast (inversé — si dispo)' },
   { key:'fh',     label:'Top 10 Futurs Hits',       weight:5, desc:'Bonus si le titre est dans le Top 10 de la playlist éditoriale Deezer "Futurs Hits" (si dispo)' },
   { key:'dzkp',   label:'Playlists clés Deezer',     weight:5, desc:'Bonus si le titre figure dans une ou plusieurs playlists éditoriales Deezer suivies (Les Titres du Moment, Global Hits, Rapstars, Deezer Hits, Bleu Blanc Hits, Pop All Stars)' },
+  { key:'akp',    label:'Playlists clés Apple Music',weight:5, desc:'Bonus si le titre figure dans une ou plusieurs playlists éditoriales Apple Music suivies (Tubes du Moment, Le Code, Hits France)' },
 ];
 
 // Clés des radios concurrentes dans r.airplay
@@ -17016,6 +17523,15 @@ function computeSPU(rows){
         if(loadedDzkp.length){
           const matchCount = loadedDzkp.filter(p => findInChart(deezerKeyPlaylistData[p.id], r.title, r.artist) !== null).length;
           rawScore = matchCount === 0 ? 0 : Math.min(1, 0.4 + matchCount * 0.2); // 1 playlist = 0.6, 2 = 0.8, 3+ = 1
+        }
+
+      } else if(key==='akp'){
+        // Même logique consolidée que 'dzkp' ci-dessus, pour les playlists
+        // éditoriales Apple Music suivies (Tubes du Moment, Le Code, Hits France).
+        const loadedAkp = APPLE_KEY_PLAYLISTS.filter(p => appleKeyPlaylistLoaded[p.id]);
+        if(loadedAkp.length){
+          const matchCount = loadedAkp.filter(p => findInChart(appleKeyPlaylistData[p.id], r.title, r.artist) !== null).length;
+          rawScore = matchCount === 0 ? 0 : Math.min(1, 0.4 + matchCount * 0.2);
         }
       }
 
@@ -21151,7 +21667,7 @@ let dailyTableSearch = '';           // filtre texte titre/artiste, mode Tableau
 // Radio 538 (PDF) est également absent pour l'instant : à ajouter plus tard
 // si besoin, l'extraction pdf.js n'est pas directement portable en Apps Script.
 const DAILY_CHART_SOURCES    = { apple_fr: 'Apple Music France', shazam_fr: 'Shazam France', shazam_ww: 'Shazam Monde', spotify_fr: 'Spotify France' };
-const DAILY_PLAYLIST_SOURCES = { deezer_top_france: 'Deezer Top France', deezer_futurs_hits: 'Deezer Futurs Hits', titresmoment: 'Les Titres du Moment', globalhits: 'Global Hits', rapstars: 'Rapstars', deezerhits: 'Deezer Hits', bleublanc: 'Bleu Blanc Hits', popallstars: 'Pop All Stars' };
+const DAILY_PLAYLIST_SOURCES = { deezer_top_france: 'Deezer Top France', deezer_futurs_hits: 'Deezer Futurs Hits', titresmoment: 'Les Titres du Moment', globalhits: 'Global Hits', rapstars: 'Rapstars', deezerhits: 'Deezer Hits', bleublanc: 'Bleu Blanc Hits', popallstars: 'Pop All Stars', apple_tubesmoment: 'Tubes du Moment', apple_lecode: 'Le Code', apple_hitsfrance: 'Hits Français' };
 const DAILY_RADIO_SOURCES    = { capital_fm: 'Capital FM (UK)', z100: 'Z100 New York', kiis1027: 'KIIS 102.7 Los Angeles' };
 
 function configDailySnapshotUrl(){
@@ -21361,8 +21877,16 @@ function isWatchlisted(title, artist){
 /** Logo de plateforme pour une clé de source de la Vue d'ensemble
  *  quotidienne — résolu par préfixe de clé (fiable) plutôt que par le texte
  *  du libellé (qui peut varier, notamment pour les Playlists clés Spotify). */
+/** Le logo Spotify (rond) paraît visuellement plus petit que les logos
+ *  Deezer/Apple Music (plus "pleins") à taille de boîte égale — on lui
+ *  donne donc une taille légèrement supérieure pour un rendu équilibré à
+ *  l'œil, plutôt qu'une égalité strictement numérique en pixels. */
+function dailyLogoSize(srcKey, base){
+  return (srcKey === 'spotify_fr' || srcKey.startsWith('spotify_')) ? Math.round(base * 1.3) : base;
+}
+
 function dailySourceLogo(srcKey){
-  if(srcKey === 'apple_fr') return LOGO_APPLEMUSIC;
+  if(srcKey === 'apple_fr' || srcKey.startsWith('apple_')) return LOGO_APPLE_MONO;
   if(srcKey === 'shazam_fr' || srcKey === 'shazam_ww') return LOGO_SHAZAM;
   if(srcKey === 'spotify_fr' || srcKey.startsWith('spotify_')) return LOGO_SPOTIFY;
   if(srcKey === 'capital_fm') return LOGO_RADIO_CAPITAL;
@@ -21371,7 +21895,7 @@ function dailySourceLogo(srcKey){
   return LOGO_DEEZER; // deezer_top_france, deezer_futurs_hits, titresmoment, globalhits, rapstars, deezerhits, bleublanc, popallstars
 }
 
-function computeDailyMovers(){
+function computeDailyMovers(limit = 16){
   if(dailySnapshots.length < 2) return [];
   const today = dailySnapshots[0];
   const byKey = {};
@@ -21397,7 +21921,7 @@ function computeDailyMovers(){
     totalDelta: g.signals.reduce((s, x) => s + x.delta, 0),
     maxAbsDelta: Math.max(...g.signals.map(x => Math.abs(x.delta))),
   }));
-  return grouped.sort((a, b) => b.maxAbsDelta - a.maxAbsDelta).slice(0, 16);
+  return grouped.sort((a, b) => b.maxAbsDelta - a.maxAbsDelta).slice(0, limit);
 }
 
 /** Entrées/sorties pour les Playlists clés ou les Radios internationales,
@@ -21484,7 +22008,7 @@ function dailyMoverCardHtml(g){
   const detailHtml = g.signals.map(s => `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10.5px;padding:2px 0">
       <span style="display:flex;align-items:center;gap:5px;min-width:0;color:var(--text2);overflow:hidden">
-        <img src="${dailySourceLogo(s.srcKey)}" alt="" style="width:12px;height:12px;object-fit:contain;flex-shrink:0;border-radius:2px">
+        <img src="${dailySourceLogo(s.srcKey)}" alt="" style="width:${dailyLogoSize(s.srcKey,16)}px;height:${dailyLogoSize(s.srcKey,16)}px;object-fit:contain;flex-shrink:0;border-radius:2px">
         <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(s.source)}</span>
       </span>
       <span style="font-weight:700;flex-shrink:0;color:${s.delta > 0 ? '#0DA76B' : '#CC2222'}">${Math.round(s.rankBefore)}→${s.rankToday} (${s.delta > 0 ? '▲' : '▼'}${fmtDelta(Math.abs(s.delta))})</span>
@@ -21510,7 +22034,7 @@ function dailyDiffCardHtml(g){
   const detailHtml = g.events.map(e => `
     <div style="display:flex;align-items:center;gap:6px;font-size:10.5px;padding:2px 0">
       <span style="font-size:8.5px;font-weight:800;padding:1px 6px;border-radius:6px;flex-shrink:0;background:${e.type === 'in' ? '#E3F7EC' : '#FDEAEA'};color:${e.type === 'in' ? '#0DA76B' : '#CC2222'}">${e.type === 'in' ? 'ENTRÉE' : 'SORTIE'}</span>
-      <img src="${dailySourceLogo(e.srcKey)}" alt="" style="width:12px;height:12px;object-fit:contain;flex-shrink:0;border-radius:2px">
+      <img src="${dailySourceLogo(e.srcKey)}" alt="" style="width:${dailyLogoSize(e.srcKey,16)}px;height:${dailyLogoSize(e.srcKey,16)}px;object-fit:contain;flex-shrink:0;border-radius:2px">
       <span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.source)}</span>
     </div>`).join('');
   const anyIn = g.events.some(e => e.type === 'in');
@@ -21585,7 +22109,7 @@ function dailyTableChartBadges(signals){
   if(!signals || !signals.length) return '<span style="color:var(--muted);font-size:11px">—</span>';
   return `<div style="display:flex;flex-wrap:wrap;gap:4px">` + signals.map(s => `
     <span title="${escHtml(s.source)} : ${Math.round(s.rankBefore)}→${s.rankToday}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:6px;background:${s.delta > 0 ? '#E3F7EC' : '#FDEAEA'};font-size:10px;font-weight:700;color:${s.delta > 0 ? '#0DA76B' : '#CC2222'};white-space:nowrap">
-      <img src="${dailySourceLogo(s.srcKey)}" alt="" style="width:11px;height:11px;object-fit:contain;border-radius:2px;flex-shrink:0">${s.delta > 0 ? '▲' : '▼'}${fmtDelta(Math.abs(s.delta))}
+      <img src="${dailySourceLogo(s.srcKey)}" alt="" style="width:${dailyLogoSize(s.srcKey,15)}px;height:${dailyLogoSize(s.srcKey,15)}px;object-fit:contain;border-radius:2px;flex-shrink:0">${s.delta > 0 ? '▲' : '▼'}${fmtDelta(Math.abs(s.delta))}
     </span>`).join('') + `</div>`;
 }
 
@@ -21595,7 +22119,7 @@ function dailyTableEventBadges(events){
   if(!events || !events.length) return '<span style="color:var(--muted);font-size:11px">—</span>';
   return `<div style="display:flex;flex-wrap:wrap;gap:4px">` + events.map(e => `
     <span title="${escHtml(e.source)}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:6px;background:${e.type === 'in' ? '#E3F7EC' : '#FDEAEA'};font-size:10px;font-weight:700;color:${e.type === 'in' ? '#0DA76B' : '#CC2222'};max-width:160px">
-      <img src="${dailySourceLogo(e.srcKey)}" alt="" style="width:11px;height:11px;object-fit:contain;border-radius:2px;flex-shrink:0">
+      <img src="${dailySourceLogo(e.srcKey)}" alt="" style="width:${dailyLogoSize(e.srcKey,15)}px;height:${dailyLogoSize(e.srcKey,15)}px;object-fit:contain;border-radius:2px;flex-shrink:0">
       <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.type === 'in' ? '+' : '−'} ${escHtml(e.source)}</span>
     </span>`).join('') + `</div>`;
 }
@@ -21768,6 +22292,17 @@ function goToWatchlistPage(){
   }catch(e){ /* navigation best-effort */ }
 }
 
+/** Ouvre l'onglet Veille directement en mode "Vue d'ensemble quotidienne"
+ *  (plutôt que "Titres suivis", le mode par défaut) — utilisé par le lien
+ *  de la 5ème colonne de la home. */
+function goToDailyOverviewPage(){
+  try{
+    if(document.getElementById('pageDecision')?.style.display === 'none' || !document.getElementById('pageDecision')) toggleDecisionPage();
+    switchDecTab('watchlist');
+    switchVeilleMode('daily');
+  }catch(e){ /* navigation best-effort */ }
+}
+
 /** Résumé Veille affiché directement sur la home — met en avant les titres
  *  avec un nouveau signal en tête de liste (même logique de tri que la page
  *  Veille elle-même), pour repérer d'un coup d'œil ce qui mérite un
@@ -21937,6 +22472,73 @@ function renderHomePotentielSummary(){
     : '');
 }
 
+/** Résumé "Veille — Vue d'ensemble quotidienne" affiché directement sur la
+ *  home : les 6 titres qui progressent dans le PLUS de classements
+ *  différents à la fois (Apple Music FR, Shazam FR, Shazam Monde, Spotify
+ *  FR — 4 sources possibles), et parmi ceux à breadth égale, la plus forte
+ *  progression cumulée. Tri à deux niveaux : nombre de classements où le
+ *  titre progresse (prioritaire), puis somme des progressions (départage) —
+ *  c'est la lecture "plusieurs signaux qui se recoupent en même temps" que
+ *  Gaël voulait ici, différente du tri par simple amplitude utilisé dans
+ *  l'onglet Classements de la page Veille elle-même.
+ *  Récupère automatiquement les instantanés si l'URL est configurée mais
+ *  pas encore chargée cette session (même principe que les autres résumés
+ *  de la home — Quotas FR, Radar...). */
+async function renderHomeDailyOverviewSummary(){
+  const el = document.getElementById('homeDailyOverviewSummary');
+  if(!el) return;
+  if(!DAILY_SNAPSHOT_URL){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Configurez l\'URL du script DailySnapshot (⚙️ dans l\'onglet Veille → Vue d\'ensemble quotidienne) pour voir apparaître le résumé ici.</div>';
+    return;
+  }
+  if(!dailySnapshotsLoaded){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">⏳ Récupération des instantanés quotidiens…</div>';
+    try{ await loadDailySnapshots(); }catch(e){ /* géré ci-dessous */ }
+  }
+  if(dailySnapshots.length < 2){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Pas encore assez d\'historique (au moins 2 jours nécessaires).</div>';
+    return;
+  }
+
+  // Non plafonné à 16 (contrairement à l'onglet Classements de la page
+  // Veille) : on veut le classement par breadth sur TOUS les mouvements du
+  // jour, pas seulement les 16 plus fortes amplitudes individuelles.
+  const movers = computeDailyMovers(Infinity);
+  const ranked = movers
+    .map(g => {
+      const rising = g.signals.filter(s => s.delta > 0);
+      return { ...g, risingCount: rising.length, risingTotal: rising.reduce((s,x)=>s+x.delta,0) };
+    })
+    .filter(g => g.risingCount >= 1)
+    .sort((a, b) => b.risingCount - a.risingCount || b.risingTotal - a.risingTotal)
+    .slice(0, 6);
+
+  if(!ranked.length){
+    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Aucune progression notable aujourd\'hui.</div>';
+    return;
+  }
+
+  el.innerHTML = ranked.map(g => {
+    const badges = g.signals.filter(s => s.delta > 0).map(s => `
+      <span title="${escHtml(s.source)} : ${Math.round(s.rankBefore)}→${s.rankToday}" style="display:inline-flex;align-items:center;gap:2px;padding:2px 5px;border-radius:5px;background:rgba(13,167,107,.18);font-size:9px;font-weight:800;color:#3DDC97;white-space:nowrap">
+        <img src="${dailySourceLogo(s.srcKey)}" alt="" style="width:${dailyLogoSize(s.srcKey,10)}px;height:${dailyLogoSize(s.srcKey,10)}px;object-fit:contain;flex-shrink:0">▲${fmtDelta(s.delta)}
+      </span>`).join('');
+    return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(g.title, g.artist)}" title="Voir la fiche d'évolution complète" style="padding:8px 12px;border:1.5px solid rgba(13,167,107,.4);border-left:3px solid #0DA76B;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06);cursor:pointer">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.title)}</div>
+          <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.artist)}</div>
+        </div>
+        <span onclick="event.stopPropagation()" style="flex-shrink:0">${spotifyLink(g.artist, g.title)}</span>
+        <div style="flex-shrink:0;text-align:center;padding:3px 9px;background:#0DA76B;border-radius:7px;white-space:nowrap">
+          <div style="font-size:11px;font-weight:800;color:#fff">${g.risingCount} classement${g.risingCount>1?'s':''}</div>
+        </div>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:6px">${badges}</div>
+    </div>`;
+  }).join('');
+}
+
 /** Rafraîchit les résumés de la home (Radar + Veille + Quotas FR + titres à
  *  pousser) — appelée au démarrage après le chargement automatique des
  *  classements, et à chaque fois que "Tout charger" termine sur la home. */
@@ -21946,6 +22548,7 @@ function updateHomeSummaries(){
   renderHomeWatchlistSummary();
   renderHomeQuotasSummary();
   renderHomePotentielSummary();
+  renderHomeDailyOverviewSummary();
 }
 
 
