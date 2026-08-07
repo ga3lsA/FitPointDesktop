@@ -3019,8 +3019,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.37';
-const FPA_BUILD_ISO = '2026-07-09T12:00:00+02:00';
+const FPA_VERSION   = 'v30.113';
+const FPA_BUILD_ISO = '2026-08-07T14:30:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -21129,6 +21129,18 @@ let dailySnapshots = [];        // [{date, charts:{}, playlists:{}, radios:{}}, 
 let dailySnapshotsLoaded = false;
 let dailyOverviewMode = 'jour'; // 'jour' (vs hier) | 'semaine' (vs moyenne glissante des 7 jours précédents)
 
+// ── Mode d'affichage "Tableau" de la Vue d'ensemble quotidienne (v30.112) ──
+// Alternative au mode Cartes existant, pour la lisibilité quand il y a
+// beaucoup de titres : une ligne par titre, colonnes triables (Classements /
+// Playlists clés / Radios / Mouvement global), au lieu d'une carte par
+// signal. N'affecte jamais le mode Cartes ni les données sous-jacentes —
+// purement une seconde façon de restituer movers/playlistDiff/radioDiff.
+let dailyOverviewViewMode = 'cards'; // 'cards' (existant) | 'table' (nouveau)
+let _dailyTableRows = [];            // lignes fusionnées par titre, reconstruites à chaque renderDailyOverview()
+let dailyTableSortKey = 'movement';  // 'title' | 'chart' | 'playlist' | 'radio' | 'movement'
+let dailyTableSortDir = -1;          // 1 = croissant, -1 = décroissant
+let dailyTableSearch = '';           // filtre texte titre/artiste, mode Tableau uniquement
+
 // Sources couvertes par l'instantané quotidien (voir DailySnapshot.gs pour
 // le détail de récupération). "spotify_fr" passe par kworb.net (miroir
 // public du classement, sans session bloquée) — ce n'est PAS le classement
@@ -21518,6 +21530,163 @@ function dailyDiffCardHtml(g){
   </div>`;
 }
 
+/** ── MODE TABLEAU (v30.112) ─────────────────────────────────────────────
+ *  Fusionne movers (Classements), playlistDiff (Playlists clés) et
+ *  radioDiff (Radios) — trois listes indépendantes groupées par titre
+ *  chacune côté computeDailyMovers/computeDailyDiff — en UNE ligne par
+ *  titre, pour permettre le tri global. Un même titre qui bouge à la fois
+ *  sur Shazam ET entre dans une playlist clé n'apparaît qu'une fois, avec
+ *  les deux informations côte à côte (au lieu de deux cartes dans deux
+ *  colonnes séparées comme en mode Cartes). */
+function mergeDailyOverviewRows(movers, playlistDiff, radioDiff){
+  const rows = {};
+  const ensure = (title, artist) => {
+    const k = comiteKey(title, artist);
+    if(!rows[k]) rows[k] = { key:k, title: title || '', artist: artist || '', chartSignals:[], playlistEvents:[], radioEvents:[], totalDelta:0 };
+    return rows[k];
+  };
+  movers.forEach(g => {
+    const r = ensure(g.title, g.artist);
+    r.chartSignals = g.signals;
+    r.totalDelta = g.totalDelta;
+  });
+  playlistDiff.forEach(g => { ensure(g.title, g.artist).playlistEvents = g.events; });
+  radioDiff.forEach(g => { ensure(g.title, g.artist).radioEvents = g.events; });
+  return Object.values(rows).map(r => ({
+    ...r,
+    sortChart: r.chartSignals.length ? Math.max(...r.chartSignals.map(s => Math.abs(s.delta))) : 0,
+    sortPlaylist: r.playlistEvents.length,
+    sortRadio: r.radioEvents.length,
+    sortMovement: Math.abs(r.totalDelta || 0) + r.playlistEvents.length * 3 + r.radioEvents.length * 5,
+  }));
+}
+
+function filteredSortedDailyTableRows(){
+  let rows = _dailyTableRows.slice();
+  const q = dailyTableSearch.trim().toLowerCase();
+  if(q) rows = rows.filter(r => (r.title + ' ' + r.artist).toLowerCase().includes(q));
+  const dir = dailyTableSortDir;
+  rows.sort((a, b) => {
+    switch(dailyTableSortKey){
+      case 'title':    return dir * a.title.localeCompare(b.title);
+      case 'chart':    return dir * (a.sortChart - b.sortChart);
+      case 'playlist': return dir * (a.sortPlaylist - b.sortPlaylist);
+      case 'radio':    return dir * (a.sortRadio - b.sortRadio);
+      default:         return dir * (a.sortMovement - b.sortMovement);
+    }
+  });
+  return rows;
+}
+
+/** Petites pastilles logo + delta pour les classements (Apple Music, Shazam,
+ *  Spotify...) — même dailySourceLogo() et même code couleur ▲/▼ que les
+ *  cartes existantes, juste condensé pour tenir dans une cellule. */
+function dailyTableChartBadges(signals){
+  if(!signals || !signals.length) return '<span style="color:var(--muted);font-size:11px">—</span>';
+  return `<div style="display:flex;flex-wrap:wrap;gap:4px">` + signals.map(s => `
+    <span title="${escHtml(s.source)} : ${Math.round(s.rankBefore)}→${s.rankToday}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:6px;background:${s.delta > 0 ? '#E3F7EC' : '#FDEAEA'};font-size:10px;font-weight:700;color:${s.delta > 0 ? '#0DA76B' : '#CC2222'};white-space:nowrap">
+      <img src="${dailySourceLogo(s.srcKey)}" alt="" style="width:11px;height:11px;object-fit:contain;border-radius:2px;flex-shrink:0">${s.delta > 0 ? '▲' : '▼'}${fmtDelta(Math.abs(s.delta))}
+    </span>`).join('') + `</div>`;
+}
+
+/** Pastilles logo + nom pour les entrées/sorties de Playlists clés ou
+ *  Radios internationales — même logique que dailyDiffCardHtml(), condensée. */
+function dailyTableEventBadges(events){
+  if(!events || !events.length) return '<span style="color:var(--muted);font-size:11px">—</span>';
+  return `<div style="display:flex;flex-wrap:wrap;gap:4px">` + events.map(e => `
+    <span title="${escHtml(e.source)}" style="display:inline-flex;align-items:center;gap:3px;padding:2px 6px;border-radius:6px;background:${e.type === 'in' ? '#E3F7EC' : '#FDEAEA'};font-size:10px;font-weight:700;color:${e.type === 'in' ? '#0DA76B' : '#CC2222'};max-width:160px">
+      <img src="${dailySourceLogo(e.srcKey)}" alt="" style="width:11px;height:11px;object-fit:contain;border-radius:2px;flex-shrink:0">
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e.type === 'in' ? '+' : '−'} ${escHtml(e.source)}</span>
+    </span>`).join('') + `</div>`;
+}
+
+function dailyTableMovementBadge(r){
+  if(r.chartSignals.length){
+    const positive = r.totalDelta > 0;
+    return `<span style="padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;background:${positive ? '#E3F7EC' : '#FDEAEA'};color:${positive ? '#0DA76B' : '#CC2222'}">${positive ? '▲' : '▼'} ${fmtDelta(Math.abs(r.totalDelta))}</span>`;
+  }
+  const netIn = r.playlistEvents.filter(e => e.type === 'in').length + r.radioEvents.filter(e => e.type === 'in').length;
+  const netOut = r.playlistEvents.filter(e => e.type === 'out').length + r.radioEvents.filter(e => e.type === 'out').length;
+  if(!netIn && !netOut) return '<span style="color:var(--muted);font-size:11px">—</span>';
+  return `<span style="font-size:11px;font-weight:700;color:var(--text2)">${netIn ? '+' + netIn : ''}${netIn && netOut ? ' / ' : ''}${netOut ? '−' + netOut : ''}</span>`;
+}
+
+function dailyTableRowHtml(r){
+  const watched = isWatchlisted(r.title, r.artist);
+  return `<tr data-evotitle="${evoAttr(r.title, r.artist)}" onclick="openTitleEvolutionModal(this)" title="Voir la fiche d'évolution complète"
+    style="cursor:pointer;border-top:1px solid var(--border)" onmouseenter="this.style.background='rgba(124,58,237,.04)'" onmouseleave="this.style.background=''">
+    <td style="padding:8px 4px 8px 10px" onclick="event.stopPropagation()">${spotifyLink(r.artist, r.title)}</td>
+    <td style="padding:8px 4px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</td>
+    <td style="padding:8px 10px 8px 4px;min-width:0;max-width:220px">
+      <div style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+        ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(r.title)}
+      </div>
+      <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist)}</div>
+    </td>
+    <td style="padding:8px 10px">${dailyTableChartBadges(r.chartSignals)}</td>
+    <td style="padding:8px 10px">${dailyTableEventBadges(r.playlistEvents)}</td>
+    <td style="padding:8px 10px">${dailyTableEventBadges(r.radioEvents)}</td>
+    <td style="padding:8px 10px;text-align:right">${dailyTableMovementBadge(r)}</td>
+  </tr>`;
+}
+
+/** Rebâtit UNIQUEMENT le corps du tableau (tri, filtre) — le champ de
+ *  recherche et l'en-tête ne sont jamais touchés par cette fonction, pour
+ *  ne jamais perdre le focus/curseur pendant la frappe dans le champ de
+ *  filtre. */
+function dailyOverviewTableRefreshBody(){
+  const tbody = document.getElementById('dailyOverviewTableBody');
+  if(!tbody) return;
+  const rows = filteredSortedDailyTableRows();
+  tbody.innerHTML = rows.length
+    ? rows.map(dailyTableRowHtml).join('')
+    : `<tr><td colspan="7" style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px">Aucun titre ne correspond à ce filtre.</td></tr>`;
+}
+
+/** Rebâtit l'en-tête (flèche de tri) + le corps — appelé au clic sur une
+ *  colonne. Le champ de recherche, lui, vit en dehors de #dailyOverviewTableArea. */
+function renderDailyOverviewTableArea(){
+  const area = document.getElementById('dailyOverviewTableArea');
+  if(!area) return;
+  const sortArrow = k => dailyTableSortKey === k ? (dailyTableSortDir === 1 ? ' ▲' : ' ▼') : '';
+  const th = (key, label, align) => `<th onclick="sortDailyOverviewTable('${key}')" style="cursor:pointer;text-align:${align || 'left'};padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:${dailyTableSortKey === key ? 'var(--navy)' : 'var(--muted)'};white-space:nowrap;user-select:none" title="Trier">${label}${sortArrow(key)}</th>`;
+  area.innerHTML = `<div style="border:1.5px solid var(--border);border-radius:12px;overflow:visible">
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;background:var(--white)">
+      <thead><tr style="background:var(--bg)">
+        <th style="width:26px;padding:8px 4px 8px 10px"></th>
+        <th style="width:26px;padding:8px 4px"></th>
+        ${th('title', 'Titre / Artiste')}
+        ${th('chart', '📊 Classements')}
+        ${th('playlist', '🎧 Playlists clés')}
+        ${th('radio', '📻 Radios')}
+        ${th('movement', 'Mouvement', 'right')}
+      </tr></thead>
+      <tbody id="dailyOverviewTableBody"></tbody>
+    </table>
+  </div>`;
+  dailyOverviewTableRefreshBody();
+}
+
+function sortDailyOverviewTable(key){
+  if(dailyTableSortKey === key) dailyTableSortDir *= -1;
+  else { dailyTableSortKey = key; dailyTableSortDir = key === 'title' ? 1 : -1; }
+  renderDailyOverviewTableArea();
+}
+
+function filterDailyOverviewTable(value){
+  dailyTableSearch = value || '';
+  dailyOverviewTableRefreshBody();
+}
+
+/** Bascule Cartes ↔ Tableau — relance simplement renderDailyOverview(),
+ *  qui recalcule movers/playlistDiff/radioDiff (peu coûteux, en mémoire)
+ *  puis choisit la vue à construire. N'affecte jamais dailyOverviewMode
+ *  (Jour/Semaine), ni le mode Cartes lui-même. */
+function toggleDailyOverviewView(mode){
+  dailyOverviewViewMode = mode;
+  renderDailyOverview();
+}
+
 function renderDailyOverview(){
   const container = document.getElementById('dailyOverviewContainer');
   if(!container) return;
@@ -21540,19 +21709,22 @@ function renderDailyOverview(){
   const compareLabel = dailyOverviewMode === 'semaine' ? 'vs moyenne des 7 jours précédents' : 'vs hier';
   const activeStyle = 'border:1.5px solid #7C3AED;background:#7C3AED;color:#fff';
   const inactiveStyle = 'border:1.5px solid var(--border);background:var(--white);color:var(--text2)';
+  const viewActiveStyle = 'border:1.5px solid var(--navy);background:var(--navy);color:#fff';
+  const viewInactiveStyle = 'border:1.5px solid var(--border);background:var(--white);color:var(--text2)';
 
   const colStyle = 'background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;min-width:0';
 
-  container.innerHTML = `
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-      <div style="display:flex;gap:6px">
-        <button onclick="dailyOverviewMode='jour';renderDailyOverview()" style="font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewMode === 'jour' ? activeStyle : inactiveStyle}">Jour</button>
-        <button onclick="dailyOverviewMode='semaine';renderDailyOverview()" style="font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewMode === 'semaine' ? activeStyle : inactiveStyle}">Semaine (moy. 7j)</button>
-      </div>
-      <span style="font-size:11px;color:var(--muted)">${escHtml(dailySnapshots[0].date)} · ${escHtml(compareLabel)}</span>
-    </div>
+  // Mode Tableau (v30.112) : une ligne par titre au lieu d'une carte par
+  // signal — voir mergeDailyOverviewRows(). Recalculé à chaque rendu, à
+  // partir des mêmes movers/playlistDiff/radioDiff que le mode Cartes.
+  _dailyTableRows = mergeDailyOverviewRows(movers, playlistDiff, radioDiff);
 
-    <div style="display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:14px;align-items:start">
+  const bodyHtml = dailyOverviewViewMode === 'table'
+    ? `<div style="margin-bottom:10px">
+         <input id="dailyTableSearchInput" type="search" oninput="filterDailyOverviewTable(this.value)" value="${escHtml(dailyTableSearch)}" placeholder="🔎 Filtrer par titre ou artiste…" style="width:260px;padding:6px 10px;border:1px solid var(--border);border-radius:7px;font-size:12px">
+       </div>
+       <div id="dailyOverviewTableArea"></div>`
+    : `<div style="display:grid;grid-template-columns:repeat(3,minmax(240px,1fr));gap:14px;align-items:start">
       <div style="${colStyle}">
         <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">📊 Classements</div>
         ${movers.length ? movers.map(dailyMoverCardHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun mouvement notable</div>'}
@@ -21568,6 +21740,25 @@ function renderDailyOverview(){
         ${radioDiff.length ? radioDiff.map(dailyDiffCardHtml).join('') : '<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun changement</div>'}
       </div>
     </div>`;
+
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:6px">
+          <button onclick="dailyOverviewMode='jour';renderDailyOverview()" style="font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewMode === 'jour' ? activeStyle : inactiveStyle}">Jour</button>
+          <button onclick="dailyOverviewMode='semaine';renderDailyOverview()" style="font-size:11px;padding:6px 14px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewMode === 'semaine' ? activeStyle : inactiveStyle}">Semaine (moy. 7j)</button>
+        </div>
+        <div style="display:flex;gap:6px;padding-left:14px;border-left:1.5px solid var(--border)">
+          <button onclick="toggleDailyOverviewView('cards')" title="Une carte par signal" style="font-size:11px;padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewViewMode === 'cards' ? viewActiveStyle : viewInactiveStyle}">🗂 Cartes</button>
+          <button onclick="toggleDailyOverviewView('table')" title="Une ligne par titre, colonnes triables" style="font-size:11px;padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewViewMode === 'table' ? viewActiveStyle : viewInactiveStyle}">📋 Tableau</button>
+        </div>
+      </div>
+      <span style="font-size:11px;color:var(--muted)">${escHtml(dailySnapshots[0].date)} · ${escHtml(compareLabel)}</span>
+    </div>
+
+    ${bodyHtml}`;
+
+  if(dailyOverviewViewMode === 'table') renderDailyOverviewTableArea();
 }
 
 function goToWatchlistPage(){
