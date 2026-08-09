@@ -2484,8 +2484,24 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
         <div id="uploadMsg" style="display:none;margin-top:0;padding:12px 16px;border-radius:10px;font-size:13px"></div>
 
-        <!-- Habs(R) -->
-        <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12)">
+        <!-- Upload optionnel : données individuelles pour suggestion auto des anchors — source Recherche, accent ambre -->
+        <div id="rawMatrixZone" style="padding:14px 16px;border-radius:12px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.03);border-left:3px solid #F0A020">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+            <div>
+              <div style="font-size:12px;font-weight:700;color:#fff">+ Données individuelles (facultatif)</div>
+              <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;line-height:1.5">Matrice brute par répondant → FPA vous propose automatiquement 1 à 3 titres anchor</div>
+            </div>
+            <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+              Choisir un fichier
+              <input id="rawMatrixInput" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleRawMatrixFile(event)">
+            </label>
+          </div>
+          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#F0A020;margin-top:8px">● RECHERCHE</div>
+          <div id="rawMatrixMsg" style="display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:11px;line-height:1.5"></div>
+        </div>
+
+        <!-- Habs(R) — source : IA (alimentée plus tard), accent rouge -->
+        <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #E5484D">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
             <div style="font-size:12.5px;font-weight:800;color:#fff">💫 Habs(R) — signature émotionnelle</div>
             <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
@@ -2493,6 +2509,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
               <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleHabsImport(this)">
             </label>
           </div>
+          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#E5484D;margin-top:6px">● IA</div>
           <div id="homeHabsInfo" style="font-size:10.5px;color:rgba(255,255,255,.4);margin-top:6px"></div>
         </div>
 
@@ -2513,20 +2530,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div id="homeLoadAllCount" style="font-size:10.5px;color:rgba(255,255,255,.5);margin-top:4px"></div>
         </div>
 
-        <!-- Upload optionnel : données individuelles pour suggestion auto des anchors -->
-        <div id="rawMatrixZone" style="padding:14px 16px;border-radius:12px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.03)">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
-            <div>
-              <div style="font-size:12px;font-weight:700;color:#fff">+ Données individuelles (facultatif)</div>
-              <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;line-height:1.5">Matrice brute par répondant → FPA vous propose automatiquement 1 à 3 titres anchor</div>
-            </div>
-            <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0">
-              Choisir un fichier
-              <input id="rawMatrixInput" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleRawMatrixFile(event)">
-            </label>
-          </div>
-          <div id="rawMatrixMsg" style="display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:11px;line-height:1.5"></div>
-        </div>
       </div>
     </div>
   </div>
