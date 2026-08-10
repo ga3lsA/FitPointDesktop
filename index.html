@@ -207,14 +207,34 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       Playlist
       <span id="playlistBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
     </button>
-    <button id="rawDataTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleRawDataPage()">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
-      Données
-    </button>
-    <button id="historyTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleHistoryPage()">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Historique
-      <span id="historyBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
+    <!-- Données et Historique restent des boutons réels (référencés par leur id un peu partout dans
+         le code : toggleRawDataPage()/toggleHistoryPage() manipulent directement leur style), mais
+         ne sont plus affichés dans la barre : ils sont désormais déclenchés depuis le menu déroulant
+         "Datas" ci-dessous, qui les proxy-clique. -->
+    <button id="rawDataTabBtn" class="btn-ghost" style="display:none" onclick="toggleRawDataPage()">Données</button>
+    <button id="historyTabBtn" class="btn-ghost" style="display:none" onclick="toggleHistoryPage()">Historique<span id="historyBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span></button>
+    <div style="position:relative;display:inline-block" id="datasDropdownWrap">
+      <button id="datasTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleDatasDropdown(event)">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+        Datas
+        <span id="datasBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
+        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-left:1px"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="datasDropdownMenu" style="display:none;position:fixed;background:var(--white);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:9999;min-width:150px;overflow:hidden">
+        <button class="btn-ghost" style="width:100%;text-align:left;font-size:11px;padding:9px 12px;border-radius:0;display:flex;align-items:center;gap:6px" onclick="closeDatasDropdown();document.getElementById('rawDataTabBtn').click()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
+          Données
+        </button>
+        <button class="btn-ghost" style="width:100%;text-align:left;font-size:11px;padding:9px 12px;border-radius:0;display:flex;align-items:center;gap:6px" onclick="closeDatasDropdown();document.getElementById('historyTabBtn').click()">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Historique
+          <span id="historyBadgeProxy" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center;margin-left:auto"></span>
+        </button>
+      </div>
+    </div>
+    <button id="analyseTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleAnalysePage()" title="Analyse exhaustive de la programmation musicale sur une semaine">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Analyse
     </button>
     <button id="quotasTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleQuotasPage()" title="Quotas de chansons francophones (Yacast)">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
@@ -1532,6 +1552,67 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   </div>
 </div>
 
+<!-- PAGE ANALYSE — programmation musicale exhaustive hebdomadaire ──────────── -->
+<div id="pageAnalyse" style="display:none">
+  <div style="max-width:1400px;margin:0 auto;padding:24px 16px 60px">
+
+    <!-- En-tête -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:flex-start;gap:14px">
+        <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--navy) 0%,rgba(11,29,58,.2) 100%);border-radius:4px;flex-shrink:0"></div>
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Programmation exhaustive · Yacast/Muzicast</div>
+          <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Analyse — <span id="analyseStationLabel">Europe 2</span></h2>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <input id="analyseWeekLabelInput" type="text" placeholder="Ex. S32" style="width:80px;font-size:12px;padding:8px 10px;border-radius:8px" title="Libellé de la semaine (modifiable)">
+        <button id="analyseSaveBtn" class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="analyseSaveWeekToHistory()" title="Archive les statistiques de cette semaine (local + Drive si configuré) pour comparaison future">💾 Enregistrer la semaine</button>
+        <input type="file" id="analyseFileInput" accept=".xlsx,.xls" style="display:none" onchange="analyseHandleFile(this)">
+        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="analyseTriggerImport()">📥 Importer le fichier hebdo</button>
+      </div>
+    </div>
+
+    <div id="analyseSaveProgressWrap" style="display:none;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <span id="analyseSaveProgressLabel" style="font-size:11px;color:var(--text2);font-weight:700">☁️ Sauvegarde sur Drive…</span>
+        <span id="analyseSaveProgressPct" style="font-size:11px;color:var(--muted)">0%</span>
+      </div>
+      <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden">
+        <div id="analyseSaveProgressBar" style="height:100%;width:0%;background:var(--cyan);border-radius:4px;transition:width .15s ease"></div>
+      </div>
+    </div>
+
+    <div id="analyseEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center">
+      Aucune programmation chargée pour <strong id="analyseEmptyStation">Europe 2</strong>. Importez le fichier « Zoom média » exhaustif (7j/24h) de la semaine via <strong>📥 Importer le fichier hebdo</strong>.
+    </div>
+
+    <div id="analyseContent" style="display:none">
+      <!-- Cartes stats (2 lignes x 3) + camembert genres, même hauteur -->
+      <div style="display:flex;gap:12px;align-items:stretch;margin-bottom:18px;flex-wrap:wrap">
+        <div id="analyseStatsArea" style="flex:2 1 420px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
+        <div id="analyseGenreChartArea" style="flex:1 1 260px"></div>
+      </div>
+
+      <!-- Filtre -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <input id="analyseFilterInput" type="text" placeholder="🔎 Filtrer par titre ou artiste…" oninput="analyseFilterText=this.value;renderAnalyseTableBody()" style="flex:1;max-width:320px;font-size:12px;padding:8px 12px;border-radius:8px">
+        <span id="analyseRowCount" style="font-size:11px;color:var(--muted)"></span>
+      </div>
+
+      <!-- Tableau -->
+      <div id="analyseTableArea" style="border:1.5px solid var(--border);border-radius:12px;overflow:visible"></div>
+    </div>
+
+    <!-- Historique / comparaison inter-semaines -->
+    <div style="margin-top:32px">
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy);margin-bottom:10px">📅 Historique des semaines archivées</div>
+      <div id="analyseHistoryArea"></div>
+    </div>
+
+  </div>
+</div>
+
 <!-- PAGE CATÉGORISATION AUTOMATIQUE ─────────────────────────────────────── -->
 <div id="pageCateg" style="display:none">
 
@@ -1797,7 +1878,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <!-- Header -->
     <div id="tevHeader" style="display:flex;flex-direction:column;padding:14px 24px;border-bottom:1.5px solid var(--border);flex-shrink:0">
       <div id="tevLogosRow" style="display:flex;align-items:center;justify-content:center;gap:28px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--border)"></div>
-      <div style="text-align:center;font-family:var(--font-display);font-size:16px;font-weight:800;letter-spacing:.03em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px">📈 Full Songs Metrics</div>
+      <div style="text-align:center;font-family:var(--font-display);font-size:14px;font-weight:800;letter-spacing:.34em;text-transform:uppercase;color:var(--cyan);margin-bottom:14px;width:100%">📈 Song Metrics</div>
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
         <div style="display:flex;align-items:center;gap:14px;min-width:0">
         <div id="tevCoverWrap" style="display:none;flex-shrink:0;width:112px;height:112px;border-radius:10px;overflow:hidden;background:var(--bg);border:1.5px solid var(--border)">
@@ -3294,15 +3375,15 @@ function goToFitScoreTable(){
 
 function goHome(){
   // Fermer toutes les pages overlay
-  ['pageRawData','pageHistory','pageCharts','pageDecision','pageCateg','pageComite','pagePlaylist','pageQuotas'].forEach(id=>{
+  ['pageRawData','pageHistory','pageCharts','pageDecision','pageCateg','pageComite','pagePlaylist','pageQuotas','pageAnalyse'].forEach(id=>{
     const el=document.getElementById(id); if(el)el.style.display='none';
   });
   // Reset les boutons overlay
-  ['rawDataTabBtn','historyTabBtn','chartsTabBtn','decisionTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn'].forEach(id=>{
+  ['rawDataTabBtn','historyTabBtn','chartsTabBtn','decisionTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn','analyseTabBtn'].forEach(id=>{
     const btn=document.getElementById(id);
     if(btn){btn.style.borderColor='';btn.style.color='';btn.style.background='';}
   });
-  rawDataPageOpen=false; historyPageOpen=false; chartsPageOpen=false; decisionPageOpen=false; categPageOpen=false; comitePageOpen=false; quotasPageOpen=false;
+  rawDataPageOpen=false; historyPageOpen=false; chartsPageOpen=false; decisionPageOpen=false; categPageOpen=false; comitePageOpen=false; quotasPageOpen=false; analysePageOpen=false;
   // Masquer les étapes et le bouton retour
   document.getElementById('steps').style.display='none';
   document.getElementById('backBtn').style.display='none';
@@ -8001,9 +8082,9 @@ function toggleRawDataPage(){
       if(hBtn){ hBtn.style.borderColor=''; hBtn.style.color=''; hBtn.style.background=''; }
     }
     // Fermer Décision, Catégorisation et Playlist si ouverts (masquage direct et inconditionnel)
-    decisionPageOpen = false; categPageOpen = false; comitePageOpen = false; playlistPageOpen = false; quotasPageOpen = false;
-    ['pageDecision','pageCateg','pageComite','pagePlaylist','pageQuotas'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
-    ['decisionTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn'].forEach(bid => { const b=document.getElementById(bid); if(b){ b.style.borderColor=''; b.style.color=''; b.style.background=''; } });
+    decisionPageOpen = false; categPageOpen = false; comitePageOpen = false; playlistPageOpen = false; quotasPageOpen = false; analysePageOpen = false;
+    ['pageDecision','pageCateg','pageComite','pagePlaylist','pageQuotas','pageAnalyse'].forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
+    ['decisionTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn','analyseTabBtn'].forEach(bid => { const b=document.getElementById(bid); if(b){ b.style.borderColor=''; b.style.color=''; b.style.background=''; } });
     ['pageUpload','pageConfig','pageResults'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
@@ -8019,10 +8100,12 @@ function toggleRawDataPage(){
     rawDataSortCol = null; rawDataSortDir = 'desc'; rawDataActiveSheet = 0;
     renderRawDataSheetTabs();
     renderRawDataTable();
+    syncDatasTabBtnStyle();
   } else {
     document.getElementById('pageRawData').style.display = 'none';
     btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
     restoreMainPage();
+    syncDatasTabBtnStyle();
   }
 }
 
@@ -8844,10 +8927,12 @@ function confirmSaveVague(){
 /* ── Badge compteur dans le bouton ── */
 function updateHistoryBadge(){
   const n = histLoad().length;
-  const badge = document.getElementById('historyBadge');
-  if(!badge) return;
-  badge.textContent = n;
-  badge.style.display = n > 0 ? 'inline-block' : 'none';
+  ['historyBadge','datasBadge','historyBadgeProxy'].forEach(id => {
+    const badge = document.getElementById(id);
+    if(!badge) return;
+    badge.textContent = n;
+    badge.style.display = n > 0 ? 'inline-block' : 'none';
+  });
 }
 
 /* ── Navigation page historique ── */
@@ -8912,11 +8997,72 @@ function toggleHistoryPage(){
     renderHistoryPage();
     populateHistRadioFilter();
     renderTitleHistory();
+    syncDatasTabBtnStyle();
   } else {
     document.getElementById('pageHistory').style.display = 'none';
     btn.style.borderColor=''; btn.style.color=''; btn.style.background='';
     restoreMainPage();
+    syncDatasTabBtnStyle();
   }
+}
+
+/** Le bouton "Données" et le bouton "Historique" sont désormais cachés (ils
+ *  ne sont déclenchés que via le menu déroulant "Datas"), donc leur style
+ *  actif/inactif habituel n'est jamais vu. Cette fonction reporte l'état
+ *  ouvert/fermé de l'une ou l'autre page sur le bouton "Datas" lui-même. */
+function syncDatasTabBtnStyle(){
+  const btn = document.getElementById('datasTabBtn');
+  if(!btn) return;
+  if(rawDataPageOpen || historyPageOpen){
+    btn.style.borderColor = 'var(--cyan)';
+    btn.style.color       = 'var(--navy)';
+    btn.style.background  = 'var(--cyan-light)';
+  } else {
+    btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
+  }
+}
+
+function positionDatasDropdown(){
+  const btn = document.getElementById('datasTabBtn');
+  const menu = document.getElementById('datasDropdownMenu');
+  if(!btn || !menu) return;
+  const rect = btn.getBoundingClientRect();
+  menu.style.top = (rect.bottom + 4) + 'px';
+  // Évite de déborder à droite de l'écran sur mobile (menu aligné à droite du bouton
+  // si l'alignement à gauche le ferait sortir du viewport).
+  const menuWidth = menu.offsetWidth || 150;
+  let left = rect.left;
+  if(left + menuWidth > window.innerWidth - 8) left = Math.max(8, window.innerWidth - menuWidth - 8);
+  menu.style.left = left + 'px';
+}
+
+function toggleDatasDropdown(ev){
+  if(ev) ev.stopPropagation();
+  const menu = document.getElementById('datasDropdownMenu');
+  if(!menu) return;
+  const willOpen = menu.style.display === 'none';
+  if(willOpen){
+    // display:block d'abord (offsetWidth utilisé pour le calcul a besoin que
+    // l'élément soit déjà rendu), puis on positionne.
+    menu.style.display = 'block';
+    positionDatasDropdown();
+    document.addEventListener('click', datasDropdownOutsideClick);
+    window.addEventListener('scroll', positionDatasDropdown, true);
+    window.addEventListener('resize', positionDatasDropdown);
+  } else {
+    closeDatasDropdown();
+  }
+}
+function closeDatasDropdown(){
+  const menu = document.getElementById('datasDropdownMenu');
+  if(menu) menu.style.display = 'none';
+  document.removeEventListener('click', datasDropdownOutsideClick);
+  window.removeEventListener('scroll', positionDatasDropdown, true);
+  window.removeEventListener('resize', positionDatasDropdown);
+}
+function datasDropdownOutsideClick(ev){
+  const wrap = document.getElementById('datasDropdownWrap');
+  if(wrap && !wrap.contains(ev.target)) closeDatasDropdown();
 }
 
 /* ── Render liste des vagues ── */
@@ -9302,6 +9448,14 @@ function toggleActiveStation(){
   if(typeof refreshAllMembershipButtons === 'function') refreshAllMembershipButtons();
   if(typeof comitePageOpen !== 'undefined' && comitePageOpen && typeof renderComitePage === 'function') renderComitePage();
   if(typeof playlistPageOpen !== 'undefined' && playlistPageOpen && typeof renderPlaylistPage === 'function') renderPlaylistPage();
+  // La page Analyse est également rattachée à la station active : recharger
+  // la semaine en cours (si une a déjà été importée pour cette station dans
+  // cette session) et rafraîchir stats/tableau/historique en conséquence.
+  if(typeof analysePageOpen !== 'undefined' && analysePageOpen && typeof renderAnalysePage === 'function'){
+    analyseRows = []; analyseWeekMeta = null;
+    if(typeof analyseLoadCurrentFromSession === 'function') analyseLoadCurrentFromSession();
+    renderAnalysePage();
+  }
   // Le résumé Call Out/OMT de la home est filtré par station active
   if(typeof renderHomePendingCard === 'function'){ renderHomePendingCard('callout'); renderHomePendingCard('omt'); }
 }
@@ -9824,6 +9978,949 @@ function getTitleVagueSeries(title, artist){
     raw[k] = deduped;
   });
   return raw;
+}
+
+/** Équivalent de getTitleVagueSeries() mais pour les vagues OMT (Fam Score /
+ *  Burn, cible Ensemble et cible Réguliers/P1) — utilisé par la page Analyse
+ *  pour assigner à chaque titre de la programmation exhaustive le dernier
+ *  chiffre de recherche connu, qu'il vienne du Call Out (Pot Score) ou de
+ *  l'OMT (Fam Score). Même algorithme de matching titre+artiste (60/40,
+ *  seuil 0.55) que getTitleVagueSeries, restreint aux vagues dont le type
+ *  contient "OMT".
+ *
+ *  IMPORTANT — contrairement au Call Out (une feuille "Ensemble" + une
+ *  feuille "Réguliers"), les fichiers OMT stockent le plus souvent Fam
+ *  Score Ensemble ET Fam Score P1 comme deux COLONNES de la même feuille
+ *  ("Total Fam Score" / "P1 Fam Score", idem pour Burn — voir
+ *  categNormalizeFromHistRow qui utilise la même détection). On cherche donc
+ *  d'abord ces deux colonnes distinctes dans chaque ligne ; si une seule
+ *  colonne Fam Score/Burn existe (repli feuilles séparées à la Call Out),
+ *  on se rabat sur isP1Sheet() pour savoir à quelle cible elle appartient. */
+function getTitleFamScoreSeries(title, artist){
+  const hist = histLoad().filter(v => isHistFixedRadio(v) && /\bOMT\b/i.test(v.type || ''));
+  const raw = { famTous:[], famP1:[], burnTous:[], burnP1:[] };
+  const nT = norm(title||''), nA = norm(artist||'');
+  hist.forEach(v => {
+    const matchingSheets = v.sheets.filter(sh => isHistFixedSheet(sh.sheetName));
+    const targetSheets = matchingSheets.length ? matchingSheets : (v.sheets[0] ? [v.sheets[0]] : []);
+    targetSheets.forEach(sh => {
+      sh.rows.forEach(r => {
+        const ts = similarity(nT, r.t||'');
+        const as = nA ? similarity(nA, r.a||'') : 0.5;
+        const score = ts*0.6 + as*0.4;
+        if(score < 0.55) return;
+        const point = { num: v.num || null, date: v.date || '', name: v.name, vagueName: v.name };
+        const scores = r.scores || {};
+        const keys = Object.keys(scores);
+        const famKeys  = keys.filter(k => normHistColKey(k).includes('FAM SCORE'));
+        const burnKeys = keys.filter(k => normHistColKey(k).includes('BURN'));
+
+        let famTotalKey  = famKeys.find(k => normHistColKey(k).includes('TOTAL'));
+        let famP1Key     = famKeys.find(k => normHistColKey(k).includes('P1'));
+        let burnTotalKey = burnKeys.find(k => normHistColKey(k).includes('TOTAL'));
+        let burnP1Key    = burnKeys.find(k => normHistColKey(k).includes('P1'));
+
+        // Repli "feuilles séparées" (une seule colonne Fam Score/Burn par
+        // ligne) : la cible est alors déterminée par la feuille elle-même.
+        if(!famTotalKey && !famP1Key && famKeys.length){
+          if(isP1Sheet(sh)) famP1Key = famKeys[0]; else famTotalKey = famKeys[0];
+        }
+        if(!burnTotalKey && !burnP1Key && burnKeys.length){
+          if(isP1Sheet(sh)) burnP1Key = burnKeys[0]; else burnTotalKey = burnKeys[0];
+        }
+
+        if(famTotalKey)  raw.famTous.push({...point, val: scores[famTotalKey]});
+        if(famP1Key)     raw.famP1.push({...point, val: scores[famP1Key]});
+        if(burnTotalKey) raw.burnTous.push({...point, val: scores[burnTotalKey]});
+        if(burnP1Key)    raw.burnP1.push({...point, val: scores[burnP1Key]});
+      });
+    });
+  });
+  Object.keys(raw).forEach(k => {
+    const seen = new Set(); const deduped = [];
+    raw[k].forEach(p => { if(!seen.has(p.name)){ seen.add(p.name); deduped.push(p); } });
+    deduped.sort(sortVagues);
+    raw[k] = deduped;
+  });
+  return raw;
+}
+
+/** Derniers chiffres de recherche connus pour un titre (Call Out + OMT
+ *  confondus) — utilisée par la page Analyse. Retourne null pour chaque
+ *  champ non trouvé plutôt que de planter si aucune vague ne matche. */
+/** Certaines cellules Burn (%) sont exportées par Excel comme une fraction
+ *  (0.143) plutôt que comme un nombre déjà en pourcentage (14.3) selon le
+ *  format de cellule d'origine — même ambiguïté que celle déjà gérée ailleurs
+ *  dans FPA (voir categNormalizeFromFileRow : `burn*(burn<=1?100:1)`). Sans
+ *  cette normalisation, un Burn OMT de 0.143 s'arrondit à 0 à l'affichage. */
+function analyseNormPct(v){
+  if(v === null || v === undefined) return null;
+  const n = Number(v);
+  if(isNaN(n)) return null;
+  return Math.abs(n) <= 1 ? n * 100 : n;
+}
+
+function analyseGetSearchScores(title, artist){
+  const co  = getTitleVagueSeries(title, artist);
+  const omt = getTitleFamScoreSeries(title, artist);
+  const last = arr => (arr && arr.length) ? arr[arr.length - 1].val : null;
+  return {
+    potTous:  last(co.potTous),
+    potP1:    last(co.potP1),
+    burnCOTous: analyseNormPct(last(co.burnTous)),
+    burnCOP1:   analyseNormPct(last(co.burnP1)),
+    famTous:  last(omt.famTous),
+    famP1:    last(omt.famP1),
+    burnOMTTous: analyseNormPct(last(omt.burnTous)),
+    burnOMTP1:   analyseNormPct(last(omt.burnP1))
+  };
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE ANALYSE — programmation musicale exhaustive hebdomadaire (Yacast/Muzicast)
+// ══════════════════════════════════════════════════════════════════════════
+let analyseRows = [];        // titres de la semaine actuellement affichée
+let analyseWeekMeta = null;  // { station, weekLabel, importedAt, fileName, sheetName }
+let analyseSortKey = 'rang';
+let analyseSortDir = 'asc';
+let analyseFilterText = '';
+
+const ANALYSE_HISTORY_KEY = 'fpa_analyse_history_v1';
+// Clé Drive — fichier distinct du reste (Classements, Playlist...), ne
+// contient QUE les statistiques hebdomadaires agrégées (petit payload,
+// fiable). Le détail complet de chaque semaine (tous les titres) n'est
+// volontairement PAS poussé sur Drive : ce même canal JSONP chunké a déjà
+// causé des corruptions silencieuses par le passé sur des payloads
+// granulaires par titre (voir historique du projet) — il reste donc en
+// cache local uniquement (voir analyseWeekLocalKey), disponible sur
+// l'appareil qui a fait l'enregistrement.
+const ANALYSE_DRIVE_KEY = 'analyse_history';
+let analyseDriveLoaded = false;   // évite de recharger Drive à chaque ouverture de page dans la session
+let analyseDriveSaving = false;
+
+function analyseLoadHistory(){
+  try{ return JSON.parse(localStorage.getItem(ANALYSE_HISTORY_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function analyseSaveHistory(h){
+  try{ localStorage.setItem(ANALYSE_HISTORY_KEY, JSON.stringify(h)); }catch(e){ /* quota localStorage, ignoré */ }
+}
+
+function analyseSlugifyWeekLabel(weekLabel){ return String(weekLabel || '').replace(/[^A-Za-z0-9_-]/g, '_'); }
+function analyseWeekLocalKey(stKey, weekLabel){ return 'fpa_analyse_week_' + stKey + '_' + analyseSlugifyWeekLabel(weekLabel); }
+
+function analyseSaveWeekDetailLocal(stKey, weekLabel, detail){
+  try{ localStorage.setItem(analyseWeekLocalKey(stKey, weekLabel), JSON.stringify(detail)); }
+  catch(e){ /* quota localStorage dépassé (plusieurs semaines volumineuses) — le
+             détail reste récupérable depuis Drive si configuré */ }
+}
+function analyseLoadWeekDetailLocal(stKey, weekLabel){
+  try{
+    const raw = localStorage.getItem(analyseWeekLocalKey(stKey, weekLabel));
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function analyseDeleteWeekDetailLocal(stKey, weekLabel){
+  try{ localStorage.removeItem(analyseWeekLocalKey(stKey, weekLabel)); }catch(e){}
+}
+
+/** Arrondit les décimales avant envoi Drive (discipline payload déjà en
+ *  vigueur ailleurs dans FPA — des flottants non arrondis alourdissent
+ *  inutilement le JSON chunké). Ne garde que les champs réellement affichés,
+ *  pour que le détail archivé reste aussi compact que possible. */
+function analyseRoundNum(v){ return (typeof v === 'number' && isFinite(v)) ? Math.round(v*10)/10 : (v===undefined?null:v); }
+function analyseCleanRowForSave(r){
+  return {
+    rang: r.rang, rangPrec: r.rangPrec, evolution: r.evolution,
+    artist: r.artist, title: r.title, genre: r.genre || '', label: r.label || '',
+    audTotale: r.audTotale != null ? Math.round(r.audTotale) : null,
+    nbDiffs: r.nbDiffs || 0, nbSem: r.nbSem, dateEntree: r.dateEntree || '',
+    search: r.search ? {
+      potTous: analyseRoundNum(r.search.potTous), potP1: analyseRoundNum(r.search.potP1),
+      burnCOTous: analyseRoundNum(r.search.burnCOTous), burnCOP1: analyseRoundNum(r.search.burnCOP1),
+      famTous: analyseRoundNum(r.search.famTous), famP1: analyseRoundNum(r.search.famP1),
+      burnOMTTous: analyseRoundNum(r.search.burnOMTTous), burnOMTP1: analyseRoundNum(r.search.burnOMTP1)
+    } : null,
+    fpa: r.fpa ? {
+      fit: analyseRoundNum(r.fpa.fit), spu: analyseRoundNum(r.fpa.spu), burn: analyseRoundNum(r.fpa.burn),
+      quadrant: r.fpa.quadrant || null, globalScore: r.fpa.globalScore != null ? Math.round(r.fpa.globalScore) : null
+    } : null
+  };
+}
+
+function analyseShowSaveProgress(label){
+  const wrap = document.getElementById('analyseSaveProgressWrap');
+  const bar  = document.getElementById('analyseSaveProgressBar');
+  const pct  = document.getElementById('analyseSaveProgressPct');
+  const lbl  = document.getElementById('analyseSaveProgressLabel');
+  if(!wrap) return;
+  wrap.style.display = 'block';
+  if(bar) bar.style.width = '0%';
+  if(pct) pct.textContent = '0%';
+  if(lbl) lbl.textContent = label || '☁️ Sauvegarde sur Drive…';
+}
+function analyseUpdateSaveProgress(done, total){
+  const bar = document.getElementById('analyseSaveProgressBar');
+  const pct = document.getElementById('analyseSaveProgressPct');
+  const p = total > 0 ? Math.round((done / total) * 100) : 100;
+  if(bar) bar.style.width = p + '%';
+  if(pct) pct.textContent = p + '%';
+}
+function analyseHideSaveProgress(delayMs){
+  const wrap = document.getElementById('analyseSaveProgressWrap');
+  if(!wrap) return;
+  setTimeout(() => { wrap.style.display = 'none'; }, delayMs || 400);
+}
+
+/** Sauvegarde l'historique Analyse (toutes stations confondues, uniquement
+ *  les stats agrégées) sur Drive Sync, dans son propre fichier — distinct de
+ *  celui des Classements/Playlist. La progression (chunk par chunk) alimente
+ *  la barre affichée dans la page. */
+async function analyseSaveHistoryToDrive(){
+  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  if(analyseDriveSaving) return { ok:false, reason:'in_progress' };
+  analyseDriveSaving = true;
+  analyseShowSaveProgress('☁️ Sauvegarde sur Drive…');
+  try{
+    const payload = JSON.stringify(analyseLoadHistory());
+    await driveCall('save', ANALYSE_DRIVE_KEY, payload, (done, total) => analyseUpdateSaveProgress(done, total));
+    analyseUpdateSaveProgress(1, 1);
+    analyseDriveLoaded = true; // ce qu'on vient d'envoyer est forcément à jour
+    return { ok:true };
+  }catch(e){
+    showToast('Erreur de sauvegarde Drive (Analyse) : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }finally{
+    analyseDriveSaving = false;
+    analyseHideSaveProgress();
+  }
+}
+
+/** Charge l'historique Analyse depuis Drive et le fusionne avec la version
+ *  locale (fusion par semaine : on garde l'entrée la plus récemment
+ *  enregistrée — Drive fait généralement foi car partagé entre postes, mais
+ *  on ne perd jamais une sauvegarde locale plus fraîche pas encore synchée). */
+async function analyseLoadHistoryFromDrive(){
+  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  try{
+    const r = await driveCall('load', ANALYSE_DRIVE_KEY);
+    if(!r || !r.data) { analyseDriveLoaded = true; return { ok:true, empty:true }; }
+    const remote = JSON.parse(r.data);
+    const local  = analyseLoadHistory();
+    const merged = {};
+    ['EUROPE2','RFM'].forEach(stKey => {
+      const byLabel = {};
+      (local[stKey]  || []).forEach(e => { byLabel[e.weekLabel] = e; });
+      (remote[stKey] || []).forEach(e => {
+        const cur = byLabel[e.weekLabel];
+        if(!cur || new Date(e.savedAt) > new Date(cur.savedAt)) byLabel[e.weekLabel] = e;
+      });
+      merged[stKey] = Object.values(byLabel).sort((a,b) => a.weekLabel.localeCompare(b.weekLabel, undefined, {numeric:true}));
+    });
+    analyseSaveHistory(merged);
+    analyseDriveLoaded = true;
+    return { ok:true };
+  }catch(e){
+    // "Introuvable" = pas encore de fichier sur Drive pour cette clé — normal au premier usage
+    if(!/ntrouvable/i.test(e.message||'')) console.warn('Analyse : échec chargement Drive —', e.message);
+    analyseDriveLoaded = true;
+    return { ok:false, reason:e.message };
+  }
+}
+function analyseStationKey(){ return ACTIVE_STATION === 'RFM' ? 'RFM' : 'EUROPE2'; }
+function analyseCurrentStorageKey(){ return 'fpa_analyse_current_' + analyseStationKey(); }
+
+/** La semaine en cours (potentiellement 500+ titres) est gardée en
+ *  sessionStorage — pas dans l'historique localStorage, qui ne conserve que
+ *  les statistiques agrégées (voir analyseSaveWeekToHistory) — pour que la
+ *  page Analyse retrouve son état si l'onglet est rechargé pendant la
+ *  session, sans faire grossir indéfiniment l'historique semaine après
+ *  semaine. */
+function analyseSaveCurrentToSession(){
+  try{ sessionStorage.setItem(analyseCurrentStorageKey(), JSON.stringify({ meta: analyseWeekMeta, rows: analyseRows })); }
+  catch(e){ /* fichier trop volumineux pour sessionStorage : reste en mémoire JS pour la session */ }
+}
+function analyseLoadCurrentFromSession(){
+  try{
+    const raw = sessionStorage.getItem(analyseCurrentStorageKey());
+    if(!raw) return false;
+    const parsed = JSON.parse(raw);
+    analyseWeekMeta = parsed.meta || null;
+    analyseRows = parsed.rows || [];
+    return analyseRows.length > 0;
+  }catch(e){ return false; }
+}
+
+function analyseNum(v){
+  if(v===null||v===undefined||v==='') return null;
+  const n = parseFloat(String(v).replace(',','.'));
+  return isNaN(n) ? null : n;
+}
+
+/** Parse le fichier Excel "Zoom média" exhaustif (Muzicast) — feuille TOP 40,
+ *  qui malgré son nom liste TOUS les titres diffusés dans la semaine (pas
+ *  seulement 40) : colonnes Rg, Evo, Rg-1, Artiste, Titre, Genre, Label,
+ *  Aud. Totale, Nb. Diffs, Nb. Sem. Les 4-5 premières lignes de la feuille
+ *  sont un bandeau de titre (station, "TOP 40"...), les en-têtes réels sont
+ *  détectés dynamiquement plutôt que supposés à une ligne fixe. */
+function analyseParseWorkbook(wb){
+  const sheetName = wb.SheetNames.find(n => /TOP\s*40/i.test(n)) || wb.SheetNames[0];
+  const ws = wb.Sheets[sheetName];
+  const raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+
+  let station = null;
+  for(let i=0;i<Math.min(8,raw.length);i++){
+    const line = (raw[i]||[]).filter(v=>v!=null).join(' ');
+    if(/RFM/i.test(line)){ station = 'RFM'; break; }
+    if(/EUROPE\s*2/i.test(line)){ station = 'EUROPE2'; break; }
+  }
+
+  let headerIdx = -1;
+  for(let i=0;i<raw.length;i++){
+    const row = (raw[i]||[]).map(c => (c==null?'':String(c)).trim().toLowerCase());
+    if(row.includes('rg') && row.includes('titre')){ headerIdx = i; break; }
+  }
+  if(headerIdx === -1) return { error: 'En-têtes Rg/Titre introuvables dans la feuille « ' + sheetName + ' ».' };
+
+  const headers = raw[headerIdx].map(c => (c==null?'':String(c)).trim());
+  const colIdx = name => headers.findIndex(h => h.toLowerCase() === name.toLowerCase());
+  const cRg = colIdx('Rg'), cEvo = colIdx('Evo'), cRg1 = colIdx('Rg-1'),
+        cArtiste = colIdx('Artiste'), cTitre = colIdx('Titre'),
+        cGenre = colIdx('Genre'), cLabel = colIdx('Label'),
+        cAud = colIdx('Aud. Totale'), cDiffs = colIdx('Nb. Diffs'), cSem = colIdx('Nb. Sem.');
+
+  if(cArtiste === -1 || cTitre === -1 || cDiffs === -1){
+    return { error: 'Colonnes Artiste / Titre / Nb. Diffs introuvables dans la feuille « ' + sheetName + ' ».' };
+  }
+
+  const rows = [];
+  for(let i=headerIdx+1;i<raw.length;i++){
+    const r = raw[i];
+    if(!r) continue;
+    const artist = r[cArtiste]!=null ? String(r[cArtiste]).trim() : '';
+    const title  = r[cTitre]!=null  ? String(r[cTitre]).trim()  : '';
+    if(!artist || !title) continue;
+    const rang = analyseNum(r[cRg]);
+    if(rang == null) continue;
+    const rg1raw = cRg1>=0 ? r[cRg1] : null;
+    rows.push({
+      rang,
+      rangPrec: (rg1raw === 'E' || rg1raw === 'RE') ? rg1raw : analyseNum(rg1raw),
+      evolution: cEvo>=0 ? analyseNum(r[cEvo]) : null,
+      artist, title,
+      genre: cGenre>=0 && r[cGenre] ? String(r[cGenre]).trim() : '',
+      label: cLabel>=0 && r[cLabel] ? String(r[cLabel]).trim() : '',
+      audTotale: cAud>=0 ? analyseNum(r[cAud]) : null,
+      nbDiffs: cDiffs>=0 ? (analyseNum(r[cDiffs]) || 0) : 0,
+      nbSem: cSem>=0 ? analyseNum(r[cSem]) : null,
+    });
+  }
+  if(!rows.length) return { error: 'Aucune ligne exploitable dans la feuille « ' + sheetName + ' ».' };
+  return { station, sheetName, rows };
+}
+
+function analyseTriggerImport(){
+  if(!requireAdmin()) return;
+  const input = document.getElementById('analyseFileInput');
+  if(input) input.click();
+}
+
+function analyseHandleFile(input){
+  const file = input.files && input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    try{
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      const parsed = analyseParseWorkbook(wb);
+      if(parsed.error){ showToast('❌ ' + parsed.error, 'err'); return; }
+      if(parsed.station && parsed.station !== analyseStationKey()){
+        showToast('⚠ Le fichier semble concerner ' + STATION_LABELS[parsed.station] + ' — la station active est ' + STATION_LABELS[analyseStationKey()] + '. Basculez la station (🔁 en haut) si besoin, ou l\'import sera rattaché à ' + STATION_LABELS[analyseStationKey()] + ' par défaut.', 'err');
+      }
+      analyseWeekMeta = {
+        station: analyseStationKey(),
+        weekLabel: analyseGuessWeekLabel(file.name),
+        importedAt: new Date().toISOString(),
+        fileName: file.name,
+        sheetName: parsed.sheetName
+      };
+      analyseRows = parsed.rows;
+      analyseEnrichRows();
+      analyseSaveCurrentToSession();
+      renderAnalysePage();
+      showToast('✓ ' + analyseRows.length + ' titres importés pour ' + STATION_LABELS[analyseStationKey()], 'success');
+    }catch(err){
+      showToast('Erreur de lecture du fichier : ' + err.message, 'err');
+      console.error(err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  input.value = '';
+}
+
+/** Devine un libellé de semaine à partir du nom de fichier (ex.
+ *  "export_zoom_media_32341" → semaine 32) ou, à défaut, retombe sur la
+ *  semaine calendaire ISO en cours. Reste éditable ensuite dans la page. */
+function analyseGuessWeekLabel(fileName){
+  const m = (fileName || '').match(/(\d{2})\d{2,4}/);
+  if(m){
+    const wk = parseInt(m[1], 10);
+    if(wk >= 1 && wk <= 53) return 'S' + wk;
+  }
+  const d = new Date();
+  const onejan = new Date(d.getFullYear(), 0, 1);
+  const week = Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
+  return 'S' + week;
+}
+
+/** Cherche, pour un titre, ses derniers scores FPA connus (Fit Score, SPU,
+ *  Burn, quadrant) en réutilisant directement le corpus 360° déjà calculé
+ *  par la page Décision (session en cours si un Call Out/OMT est chargé,
+ *  sinon dernière vague connue par titre dans l'historique — voir
+ *  buildDecisionRows). Même matching flou titre+artiste (60/40, seuil 0.55)
+ *  que le reste de l'app. */
+function analyseGetFpaScores(title, artist){
+  let rows;
+  try{ rows = build360Rows(); }catch(e){ return null; }
+  if(!rows || !rows.length) return null;
+  const nT = norm(title||''), nA = norm(artist||'');
+  let best = null, bestScore = 0;
+  rows.forEach(r => {
+    const ts = similarity(nT, norm(r.title||''));
+    const as = nA ? similarity(nA, norm(r.artist||'')) : 0.5;
+    const score = ts*0.6 + as*0.4;
+    if(score > bestScore && score >= 0.55){ bestScore = score; best = r; }
+  });
+  if(!best) return null;
+  return {
+    fit: best.fit != null ? best.fit : null,
+    spu: best.spu != null ? best.spu : null,
+    burn: best.burn != null ? best.burn : null,
+    quadrant: best.q || null,
+    globalScore: best.globalScore != null ? Math.round(best.globalScore) : null
+  };
+}
+
+/** Enrichit chaque ligne importée avec : les derniers chiffres de recherche
+ *  (Call Out/OMT), les derniers scores FPA connus, et — quand le champ est
+ *  vide dans les attributs du titre (Song Attributs / Full Metrics) — le
+ *  Genre et le Label lus du fichier, ainsi que la Date d'Entrée en playlist
+ *  déduite d'un « E » (entrée) en colonne Rg-1, le tout persisté dans le
+ *  store partagé songAttributes pour rester synchronisé avec Playlist et la
+ *  fiche Song Full Metrics. */
+function analyseEnrichRows(){
+  const stationField = analyseStationKey() === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+  analyseRows.forEach(row => {
+    row.search = analyseGetSearchScores(row.title, row.artist);
+    row.fpa = analyseGetFpaScores(row.title, row.artist);
+    const attrs = getSongAttributes(row.title, row.artist);
+    let changed = false;
+    if(!attrs.label && row.label){ attrs.label = row.label; changed = true; }
+    if(!attrs.genre && row.genre){ attrs.genre = row.genre; changed = true; }
+    if(!attrs[stationField] && row.rangPrec === 'E'){
+      attrs[stationField] = (analyseWeekMeta && analyseWeekMeta.importedAt) ? analyseWeekMeta.importedAt.slice(0,10) : '';
+      changed = true;
+    }
+    if(changed) songAttributesSaveToStorage();
+    row.label = attrs.label || row.label || '';
+    row.genre = attrs.genre || row.genre || '';
+    row.dateEntree = attrs[stationField] || '';
+  });
+}
+
+/** Édition inline Genre/Label/Date d'Entrée directement depuis le tableau
+ *  Analyse — répercutée dans le store partagé songAttributes (donc visible
+ *  aussi dans Playlist et la fiche Song Full Metrics). */
+function analyseUpdateAttr(input, title, artist, field){
+  updateSongAttribute(title, artist, field, input.value);
+  const row = analyseRows.find(r => r.title === title && r.artist === artist);
+  if(row){
+    if(field === 'genre') row.genre = input.value;
+    if(field === 'label') row.label = input.value;
+    if(field === 'dateEntreeEurope2' || field === 'dateEntreeRFM') row.dateEntree = input.value;
+  }
+  analyseSaveCurrentToSession();
+  if(field === 'genre') renderAnalyseGenreChart();
+}
+
+/** Statistiques hebdomadaires pondérées par le nombre de diffusions de
+ *  chaque titre (un titre diffusé 30 fois pèse plus qu'un titre diffusé une
+ *  fois) — moyennes Pot Score/Burn/Fam Score/Fit Score/SPU, nombre de titres
+ *  et d'artistes distincts, nombre d'artistes avec plusieurs titres
+ *  différents en rotation la même semaine. */
+/** Répartition des genres diffusés dans la semaine, pondérée par Nb. Diffs
+ *  (un titre diffusé 30 fois pèse plus qu'un titre diffusé 1 fois dans la
+ *  proportion du genre) — triée par poids décroissant. Les genres au-delà de
+ *  `maxSlices` sont regroupés dans "Autres" pour garder un graphique lisible
+ *  et un payload Drive léger. */
+function analyseComputeGenreDistribution(rows, maxSlices){
+  const byGenre = {};
+  let total = 0;
+  rows.forEach(r => {
+    const g = (r.genre || '').trim() || 'Non renseigné';
+    const w = r.nbDiffs || 0;
+    byGenre[g] = (byGenre[g] || 0) + w;
+    total += w;
+  });
+  let arr = Object.entries(byGenre).map(([genre, diffs]) => ({ genre, diffs }));
+  arr.sort((a, b) => b.diffs - a.diffs);
+  const cap = maxSlices || 12;
+  if(arr.length > cap){
+    const head = arr.slice(0, cap - 1);
+    const restDiffs = arr.slice(cap - 1).reduce((s, e) => s + e.diffs, 0);
+    arr = [...head, { genre: 'Autres', diffs: restDiffs }];
+  }
+  return arr.map(e => ({ ...e, pct: total > 0 ? (e.diffs / total * 100) : 0 }));
+}
+
+function analyseComputeStats(rows){
+  const wavg = getter => {
+    let sumW = 0, sumWV = 0;
+    rows.forEach(r => {
+      const v = getter(r);
+      if(v == null) return;
+      const w = r.nbDiffs || 0;
+      sumWV += v*w; sumW += w;
+    });
+    return sumW > 0 ? sumWV / sumW : null;
+  };
+  const artistCounts = {};
+  rows.forEach(r => { const k = norm(r.artist); artistCounts[k] = (artistCounts[k]||0) + 1; });
+  const multiArtistCount = Object.values(artistCounts).filter(c => c > 1).length;
+  return {
+    nbTitres: rows.length,
+    nbArtistes: Object.keys(artistCounts).length,
+    nbArtistesMultiTitres: multiArtistCount,
+    totalDiffs: rows.reduce((s,r) => s + (r.nbDiffs||0), 0),
+    avgPot:     wavg(r => r.search ? r.search.potTous : null),
+    avgBurnCO:  wavg(r => r.search ? r.search.burnCOTous : null),
+    avgFam:     wavg(r => r.search ? r.search.famTous : null),
+    avgBurnOMT: wavg(r => r.search ? r.search.burnOMTTous : null),
+    avgFit:     wavg(r => r.fpa ? r.fpa.fit : null),
+    avgSpu:     wavg(r => r.fpa ? r.fpa.spu : null),
+    genreDistribution: analyseComputeGenreDistribution(rows)
+  };
+}
+
+async function analyseSaveWeekToHistory(){
+  if(!analyseRows.length){ showToast('Aucune donnée à sauvegarder — importez d\'abord un fichier.', 'err'); return; }
+  const labelInput = document.getElementById('analyseWeekLabelInput');
+  const label = ((labelInput ? labelInput.value : '') || (analyseWeekMeta && analyseWeekMeta.weekLabel) || '').trim();
+  if(!label){ showToast('Renseignez un libellé de semaine avant de sauvegarder.', 'err'); return; }
+  if(analyseWeekMeta) analyseWeekMeta.weekLabel = label;
+  const stKey = analyseStationKey();
+
+  // 1) Index (statistiques agrégées) — utilisé par le tableau comparatif ET
+  //    synchronisé sur Drive (petit payload, fiable).
+  const history = analyseLoadHistory();
+  if(!history[stKey]) history[stKey] = [];
+  const stats = analyseComputeStats(analyseRows);
+  const entry = { weekLabel: label, savedAt: new Date().toISOString(), fileName: analyseWeekMeta ? analyseWeekMeta.fileName : '', stats };
+  const idx = history[stKey].findIndex(e => e.weekLabel === label);
+  if(idx >= 0) history[stKey][idx] = entry; else history[stKey].push(entry);
+  history[stKey].sort((a,b) => a.weekLabel.localeCompare(b.weekLabel, undefined, {numeric:true}));
+  analyseSaveHistory(history);
+
+  // 2) Détail complet (tous les titres) — LOCAL UNIQUEMENT, volontairement.
+  //    Pousser 500+ lignes par ce même canal JSONP chunké est exactement le
+  //    type de payload qui a déjà causé des corruptions silencieuses sur
+  //    Drive Sync par le passé pour des données granulaires par titre (voir
+  //    l'historique du projet — synchro des métriques par titre abandonnée
+  //    pour cette raison). Seules les statistiques agrégées (payload minuscule,
+  //    fiable) sont donc synchronisées sur Drive ; le détail reste local à
+  //    l'appareil qui a fait l'import, disponible instantanément ici.
+  const detail = { meta: { ...analyseWeekMeta, weekLabel: label }, rows: analyseRows.map(analyseCleanRowForSave) };
+  analyseSaveWeekDetailLocal(stKey, label, detail);
+
+  renderAnalyseHistoryPanel();
+
+  if(!DRIVE_SYNC_URL){
+    showToast('✓ Semaine ' + label + ' enregistrée localement (' + STATION_LABELS[stKey] + '). Configurez Drive Sync (Classements → Historique Drive) pour synchroniser les statistiques entre postes.', 'success');
+    return;
+  }
+  if(analyseDriveSaving) return;
+
+  const btn = document.getElementById('analyseSaveBtn');
+  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; btn.style.cursor = 'default'; }
+  const result = await analyseSaveHistoryToDrive();
+  if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
+  if(result.ok){
+    showToast('✓ Semaine ' + label + ' enregistrée — statistiques synchronisées sur ☁️ Drive, détail complet local à cet appareil (' + STATION_LABELS[stKey] + ')', 'success');
+  } else {
+    showToast('✓ Semaine ' + label + ' enregistrée localement, mais la synchro Drive des statistiques a échoué (' + (result.reason||'erreur inconnue') + ')', 'err');
+  }
+  renderAnalyseHistoryPanel();
+}
+
+/** Réaffiche une semaine archivée dans le tableau principal. Le détail
+ *  complet (tous les titres) n'est volontairement PAS synchronisé sur Drive
+ *  (voir le commentaire dans analyseSaveWeekToHistory) — il n'est donc
+ *  disponible que sur l'appareil qui a fait l'enregistrement, via le cache
+ *  local. Si absent (autre poste, ou cache navigateur vidé), on l'explique
+ *  clairement plutôt que de laisser croire à un bug. */
+function analyseViewArchivedWeek(stKey, weekLabel){
+  const detail = analyseLoadWeekDetailLocal(stKey, weekLabel);
+  if(!detail || !detail.rows || !detail.rows.length){
+    showToast('Détail indisponible pour « ' + weekLabel + ' » sur cet appareil — le détail complet des titres reste local à l\'appareil qui a fait l\'enregistrement (non synchronisé sur Drive, pour fiabilité). Seules les statistiques agrégées sont partagées entre postes. Réimportez le fichier de cette semaine ici si besoin du détail.', 'err');
+    return;
+  }
+  analyseWeekMeta = detail.meta;
+  analyseRows = detail.rows;
+  analyseSaveCurrentToSession();
+  renderAnalysePage();
+  showToast('✓ Semaine ' + weekLabel + ' affichée (' + STATION_LABELS[stKey] + ')', 'success');
+  const table = document.getElementById('analyseTableArea');
+  if(table) table.scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+async function analyseDeleteWeekFromHistory(stKey, weekLabel){
+  if(!confirm('Supprimer la semaine ' + weekLabel + ' de l\'historique Analyse ' + STATION_LABELS[stKey] + ' ?')) return;
+  const history = analyseLoadHistory();
+  if(!history[stKey]) return;
+  history[stKey] = history[stKey].filter(e => e.weekLabel !== weekLabel);
+  analyseSaveHistory(history);
+  analyseDeleteWeekDetailLocal(stKey, weekLabel);
+  renderAnalyseHistoryPanel();
+  if(DRIVE_SYNC_URL){
+    const result = await analyseSaveHistoryToDrive();
+    if(!result.ok) showToast('Semaine supprimée localement, mais la synchro Drive a échoué (' + (result.reason||'erreur inconnue') + ')', 'err');
+    renderAnalyseHistoryPanel();
+  }
+}
+
+/* ── Rendu ── */
+
+function analyseFmtScore(v){
+  return (v==null) ? '<span style="color:var(--muted)">—</span>' : Math.round(v);
+}
+
+function analyseSortedFilteredRows(){
+  let rows = analyseRows;
+  const f = (analyseFilterText||'').trim().toLowerCase();
+  if(f){
+    rows = rows.filter(r => r.title.toLowerCase().includes(f) || r.artist.toLowerCase().includes(f));
+  }
+  const dir = analyseSortDir === 'asc' ? 1 : -1;
+  const getVal = r => {
+    switch(analyseSortKey){
+      case 'rang':       return r.rang;
+      case 'nbDiffs':    return r.nbDiffs || 0;
+      case 'pot':        return (r.search && r.search.potTous) ?? null;
+      case 'fam':        return (r.search && r.search.famTous) ?? null;
+      case 'fit':        return (r.fpa && r.fpa.fit) ?? null;
+      case 'spu':        return (r.fpa && r.fpa.spu) ?? null;
+      case 'artist':     return r.artist.toLowerCase();
+      case 'title':      return r.title.toLowerCase();
+      case 'genre':      return (r.genre || '').toLowerCase();
+      case 'label':      return (r.label || '').toLowerCase();
+      case 'dateEntree': return r.dateEntree || '';
+      default:           return r.rang;
+    }
+  };
+  const isEmpty = v => v === null || v === undefined || v === '';
+  return [...rows].sort((a,b) => {
+    const va = getVal(a), vb = getVal(b);
+    const aEmpty = isEmpty(va), bEmpty = isEmpty(vb);
+    // Les valeurs manquantes vont toujours en fin de liste, quel que soit le
+    // sens du tri (sinon elles polluent le haut du classement en tri croissant).
+    if(aEmpty && !bEmpty) return 1;
+    if(bEmpty && !aEmpty) return -1;
+    if(aEmpty && bEmpty) return 0;
+    if(va < vb) return -1*dir;
+    if(va > vb) return 1*dir;
+    return 0;
+  });
+}
+
+function analyseSort(key){
+  if(analyseSortKey === key){ analyseSortDir = analyseSortDir === 'asc' ? 'desc' : 'asc'; }
+  else { analyseSortKey = key; analyseSortDir = (key==='rang') ? 'asc' : 'desc'; }
+  renderAnalyseTableArea();
+}
+
+function analyseRowHtml(r){
+  const evoIcon = (r.rangPrec === 'E' || r.rangPrec === 'RE')
+    ? '<span style="color:#0DA76B;font-weight:800;font-size:10px">' + (r.rangPrec === 'E' ? 'NOUVEAU' : 'RENTRÉE') + '</span>'
+    : (r.evolution != null
+        ? (r.evolution > 0
+            ? '<span style="color:#0DA76B;font-weight:800">▲ ' + Math.abs(r.evolution) + '</span>'
+            : (r.evolution < 0
+                ? '<span style="color:#CC2222;font-weight:800">▼ ' + Math.abs(r.evolution) + '</span>'
+                : '<span style="color:var(--muted)">=</span>'))
+        : '<span style="color:var(--muted)">—</span>');
+  const s = r.search || {};
+  const fpa = r.fpa || {};
+  const dateField = analyseStationKey() === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+  const tEsc = jsAttrEscape(r.title), aEsc = jsAttrEscape(r.artist);
+  return `<tr data-evotitle="${evoAttr(r.title, r.artist)}" onclick="openTitleEvolutionModal(this)" title="Voir la fiche d'évolution complète"
+    style="cursor:pointer;border-top:1px solid var(--border)" onmouseenter="this.style.background='rgba(124,58,237,.04)'" onmouseleave="this.style.background=''">
+    <td style="padding:8px 4px 8px 10px;text-align:right;font-weight:800;color:var(--navy);font-size:12.5px">${r.rang}</td>
+    <td style="padding:8px 4px;text-align:right;color:var(--muted);font-size:11px">${typeof r.rangPrec === 'number' ? r.rangPrec : (r.rangPrec||'')}</td>
+    <td style="padding:8px 4px" onclick="event.stopPropagation()">${spotifyLink(r.artist, r.title)}</td>
+    <td style="padding:8px 4px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</td>
+    <td style="padding:8px 10px;min-width:0;max-width:230px">
+      <div style="font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title)}</div>
+      <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist)}</div>
+    </td>
+    <td style="padding:8px 10px;text-align:center">${evoIcon}</td>
+    <td style="padding:8px 10px;text-align:right;font-weight:700">${r.nbDiffs}</td>
+    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${analyseFmtScore(s.potTous)}<span style="color:var(--muted);font-size:9px"> / ${analyseFmtScore(s.potP1)}</span></td>
+    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${analyseFmtScore(s.burnCOTous)}<span style="color:var(--muted);font-size:9px"> / ${analyseFmtScore(s.burnCOP1)}</span></td>
+    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${analyseFmtScore(s.famTous)}<span style="color:var(--muted);font-size:9px"> / ${analyseFmtScore(s.famP1)}</span></td>
+    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${analyseFmtScore(s.burnOMTTous)}<span style="color:var(--muted);font-size:9px"> / ${analyseFmtScore(s.burnOMTP1)}</span></td>
+    <td style="padding:8px 10px;text-align:right">${analyseFmtScore(fpa.fit)}</td>
+    <td style="padding:8px 10px;text-align:right">${analyseFmtScore(fpa.spu)}</td>
+    <td style="padding:6px 10px" onclick="event.stopPropagation()"><input value="${escHtml(r.genre||'')}" placeholder="Genre" onchange="analyseUpdateAttr(this,'${tEsc}','${aEsc}','genre')" style="width:100px;font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border)"></td>
+    <td style="padding:6px 10px" onclick="event.stopPropagation()"><input value="${escHtml(r.label||'')}" placeholder="Label" onchange="analyseUpdateAttr(this,'${tEsc}','${aEsc}','label')" style="width:110px;font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border)"></td>
+    <td style="padding:6px 10px" onclick="event.stopPropagation()"><input type="date" value="${escHtml(r.dateEntree||'')}" onchange="analyseUpdateAttr(this,'${tEsc}','${aEsc}','${dateField}')" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border)"></td>
+  </tr>`;
+}
+
+function renderAnalyseTableBody(){
+  const tbody = document.getElementById('analyseTableBody');
+  if(!tbody) return;
+  const rows = analyseSortedFilteredRows();
+  tbody.innerHTML = rows.length
+    ? rows.map(analyseRowHtml).join('')
+    : `<tr><td colspan="15" style="padding:22px;text-align:center;color:var(--muted);font-size:12.5px">Aucun titre ne correspond à ce filtre.</td></tr>`;
+  const countEl = document.getElementById('analyseRowCount');
+  if(countEl) countEl.textContent = rows.length + ' / ' + analyseRows.length + ' titre' + (analyseRows.length>1?'s':'');
+}
+
+function renderAnalyseTableArea(){
+  const area = document.getElementById('analyseTableArea');
+  if(!area) return;
+  const arrow = k => analyseSortKey === k ? (analyseSortDir === 'asc' ? ' ▲' : ' ▼') : '';
+  // Même langage visuel que les autres tableaux de classement FPA : en-tête
+  // collé sous le header applicatif fixe (68px), fond blanc, majuscules
+  // grasses, filet cyan épais, ombre portée légère.
+  const STICKY_TOP = '68px';
+  const baseThStyle = `position:sticky;top:${STICKY_TOP};z-index:10;background:var(--white);padding:9px 10px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;border-bottom:2.5px solid var(--cyan);box-shadow:0 3px 10px rgba(11,29,58,.08)`;
+  const th = (key, label, align) => `<th onclick="analyseSort('${key}')" style="${baseThStyle};text-align:${align||'left'};cursor:pointer;color:${analyseSortKey===key?'var(--navy)':'var(--text2)'};user-select:none" title="Trier">${label}${arrow(key)}</th>`;
+  const thPlain = (label, align, width) => `<th style="${baseThStyle};text-align:${align||'left'};color:var(--text2)${width?';width:'+width:''}">${label}</th>`;
+  area.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12.5px;background:var(--white)">
+    <thead><tr>
+      ${th('rang','Rg','right')}
+      ${thPlain('Rg-1','right')}
+      ${thPlain('', 'left', '22px')}
+      ${thPlain('', 'left', '22px')}
+      ${th('title','Titre / Artiste')}
+      ${thPlain('Évo.','center')}
+      ${th('nbDiffs','Nb. Diffs','right')}
+      ${th('pot','Pot Score Ens./P1','right')}
+      ${thPlain('Burn CO Ens./P1','right')}
+      ${th('fam','Fam Score Ens./P1','right')}
+      ${thPlain('Burn OMT Ens./P1','right')}
+      ${th('fit','Fit Score','right')}
+      ${th('spu','SPU','right')}
+      ${th('genre','Genre')}
+      ${th('label','Label')}
+      ${th('dateEntree',"Date d'entrée")}
+    </tr></thead>
+    <tbody id="analyseTableBody"></tbody>
+  </table>`;
+  renderAnalyseTableBody();
+}
+
+function analyseStatCard(label, value, sub){
+  return `<div style="padding:12px 14px;background:var(--white);border:1.5px solid var(--border);border-radius:10px">
+    <div style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:4px">${label}</div>
+    <div style="font-size:19px;font-weight:800;color:var(--navy)">${value}</div>
+    ${sub ? `<div style="font-size:10px;color:var(--muted);margin-top:2px">${sub}</div>` : ''}
+  </div>`;
+}
+
+function renderAnalyseStats(){
+  const area = document.getElementById('analyseStatsArea');
+  if(!area) return;
+  const stats = analyseComputeStats(analyseRows);
+  area.innerHTML = [
+    analyseStatCard('Titres différents', stats.nbTitres),
+    analyseStatCard('Artistes différents', stats.nbArtistes, stats.nbArtistesMultiTitres ? stats.nbArtistesMultiTitres + ' avec plusieurs titres' : ''),
+    analyseStatCard('Diffusions totales', stats.totalDiffs),
+    analyseStatCard('Pot Score moy.', analyseFmtScore(stats.avgPot), 'Burn CO : ' + analyseFmtScore(stats.avgBurnCO)),
+    analyseStatCard('Fam Score moy.', analyseFmtScore(stats.avgFam), 'Burn OMT : ' + analyseFmtScore(stats.avgBurnOMT)),
+    analyseStatCard('Fit Score moy.', analyseFmtScore(stats.avgFit), 'SPU moy. : ' + analyseFmtScore(stats.avgSpu))
+  ].join('');
+}
+
+const ANALYSE_GENRE_PALETTE = ['#00B8C8','#7C3AED','#E07B00','#0DA76B','#CC2222','#1E6FD9','#B05E00','#5B21B6','#0B1D3A','#F0A020','#0891B2','#94A3B8'];
+
+/** Génère un donut SVG (pas de dépendance graphique externe) à partir d'une
+ *  répartition [{genre,pct}]. Cas particulier : une seule part = cercle
+ *  plein (la formule d'arc classique dégénère quand start===end à 360°). */
+function analyseBuildGenreDonutSVG(dist, size){
+  size = size || 88;
+  const cx = size/2, cy = size/2, r = size/2 - 2, holeR = r * 0.58;
+  if(dist.length === 1){
+    return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${ANALYSE_GENRE_PALETTE[0]}"><title>${escHtml(dist[0].genre)} : 100%</title></circle>
+      <circle cx="${cx}" cy="${cy}" r="${holeR}" fill="var(--white)"/>
+    </svg>`;
+  }
+  let angleStart = -90;
+  const paths = dist.map((d, i) => {
+    const angle = (d.pct / 100) * 360;
+    const angleEnd = angleStart + angle;
+    const largeArc = angle > 180 ? 1 : 0;
+    const sr = angleStart * Math.PI/180, er = angleEnd * Math.PI/180;
+    const x1 = (cx + r*Math.cos(sr)).toFixed(2), y1 = (cy + r*Math.sin(sr)).toFixed(2);
+    const x2 = (cx + r*Math.cos(er)).toFixed(2), y2 = (cy + r*Math.sin(er)).toFixed(2);
+    const d0 = `M${cx},${cy} L${x1},${y1} A${r},${r} 0 ${largeArc} 1 ${x2},${y2} Z`;
+    angleStart = angleEnd;
+    return `<path d="${d0}" fill="${ANALYSE_GENRE_PALETTE[i % ANALYSE_GENRE_PALETTE.length]}"><title>${escHtml(d.genre)} : ${d.pct.toFixed(1)}%</title></path>`;
+  }).join('');
+  return `<svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">${paths}<circle cx="${cx}" cy="${cy}" r="${holeR}" fill="var(--white)"/></svg>`;
+}
+
+/** Camembert compact (donut + légende), calé sur la même hauteur que le bloc
+ *  de cartes stats (2 lignes) — volontairement discret. La répartition
+ *  complète (jusqu'à 12 genres) reste calculée et persistée telle quelle
+ *  dans stats.genreDistribution à chaque sauvegarde ; seule la vue ici est
+ *  condensée aux 5 genres principaux + "Autres" pour rester lisible en
+ *  petit format. */
+function renderAnalyseGenreChart(){
+  const area = document.getElementById('analyseGenreChartArea');
+  if(!area) return;
+  if(!analyseRows.length){ area.innerHTML = ''; return; }
+  const fullDist = analyseComputeGenreDistribution(analyseRows);
+  if(!fullDist.length){ area.innerHTML = ''; return; }
+  let dist = fullDist;
+  if(fullDist.length > 6){
+    const head = fullDist.slice(0, 5);
+    const restPct   = fullDist.slice(5).reduce((s,d) => s+d.pct, 0);
+    const restDiffs = fullDist.slice(5).reduce((s,d) => s+d.diffs, 0);
+    dist = [...head, { genre:'Autres', pct:restPct, diffs:restDiffs }];
+  }
+  const svg = analyseBuildGenreDonutSVG(dist, 84);
+  const legend = dist.map((d, i) => `
+    <div style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--text2);min-width:0">
+      <span style="width:7px;height:7px;border-radius:2px;background:${ANALYSE_GENRE_PALETTE[i % ANALYSE_GENRE_PALETTE.length]};flex-shrink:0"></span>
+      <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1" title="${escHtml(d.genre)}">${escHtml(d.genre)}</span>
+      <strong style="color:var(--navy);flex-shrink:0">${d.pct.toFixed(0)}%</strong>
+    </div>`).join('');
+  area.innerHTML = `<div style="height:100%;border:1.5px solid var(--border);border-radius:10px;padding:11px 13px;background:var(--white);display:flex;flex-direction:column;box-sizing:border-box">
+    <div style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;flex-shrink:0">🎼 Genres diffusés</div>
+    <div style="flex:1;display:flex;align-items:center;gap:12px;min-height:0">
+      <div style="flex-shrink:0;line-height:0">${svg}</div>
+      <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0;overflow:hidden">${legend}</div>
+    </div>
+  </div>`;
+}
+
+function analyseDriveStatusNote(){
+  if(!DRIVE_SYNC_URL){
+    return `<div style="padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted);margin-bottom:10px">☁️ Non synchronisé sur Drive — configurez la synchronisation dans <strong>Classements → Historique Drive</strong> pour partager les statistiques entre postes.</div>`;
+  }
+  return `<div style="padding:10px 14px;background:var(--cyan-light);border:1.5px solid var(--cyan-mid);border-radius:8px;font-size:11px;color:var(--navy);margin-bottom:10px">☁️ Statistiques synchronisées sur Drive (fichier dédié « analyse_history »). Le <strong>détail complet des titres</strong> reste local à chaque appareil (👁️ pour l'afficher) — volontairement non poussé sur Drive pour éviter tout risque de corruption avec un aussi gros volume de données.</div>`;
+}
+
+function renderAnalyseHistoryPanel(){
+  const area = document.getElementById('analyseHistoryArea');
+  if(!area) return;
+  const history = analyseLoadHistory();
+  const stKey = analyseStationKey();
+  const weeks = history[stKey] || [];
+  const statusNote = analyseDriveStatusNote();
+  if(!weeks.length){
+    area.innerHTML = statusNote + `<div style="padding:18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);text-align:center">Aucune semaine encore archivée pour ${STATION_LABELS[stKey]}. Cliquez sur « 💾 Enregistrer la semaine » une fois une programmation importée.</div>`;
+    return;
+  }
+  const isCurrent = w => analyseWeekMeta && analyseWeekMeta.weekLabel === w.weekLabel && analyseRows.length > 0;
+  const rows = weeks.map(w => `<tr onclick="analyseViewArchivedWeek('${stKey}','${jsAttrEscape(w.weekLabel)}')" title="Cliquer pour afficher cette semaine dans le tableau" style="border-top:1px solid var(--border);cursor:pointer;background:${isCurrent(w)?'var(--cyan-light)':'transparent'}" onmouseenter="this.style.background='rgba(124,58,237,.04)'" onmouseleave="this.style.background='${isCurrent(w)?'var(--cyan-light)':'transparent'}'">
+    <td style="padding:8px 4px 8px 10px;text-align:center" title="Afficher"><span style="font-size:13px">👁️</span></td>
+    <td style="padding:8px 10px;font-weight:700;color:var(--navy)">${escHtml(w.weekLabel)}</td>
+    <td style="padding:8px 10px;text-align:right">${w.stats.nbTitres}</td>
+    <td style="padding:8px 10px;text-align:right">${w.stats.nbArtistes}</td>
+    <td style="padding:8px 10px;text-align:right">${w.stats.nbArtistesMultiTitres}</td>
+    <td style="padding:8px 10px;text-align:right">${w.stats.totalDiffs}</td>
+    <td style="padding:8px 10px;text-align:right">${analyseFmtScore(w.stats.avgPot)}</td>
+    <td style="padding:8px 10px;text-align:right">${analyseFmtScore(w.stats.avgFam)}</td>
+    <td style="padding:8px 10px;text-align:right">${analyseFmtScore(w.stats.avgFit)}</td>
+    <td style="padding:8px 10px;text-align:right">${analyseFmtScore(w.stats.avgSpu)}</td>
+    <td style="padding:8px 10px;color:var(--muted);font-size:10.5px">${new Date(w.savedAt).toLocaleDateString('fr-FR')}</td>
+    <td style="padding:8px 10px;text-align:center" onclick="event.stopPropagation()"><button onclick="analyseDeleteWeekFromHistory('${stKey}','${jsAttrEscape(w.weekLabel)}')" title="Supprimer" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px">🗑️</button></td>
+  </tr>`).join('');
+  area.innerHTML = statusNote + `<div style="border:1.5px solid var(--border);border-radius:12px;overflow:visible">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--white)">
+      <thead><tr style="background:var(--bg)">
+        <th style="width:30px"></th>
+        <th style="padding:8px 10px;text-align:left;font-size:10px;color:var(--muted)">Semaine</th>
+        <th style="padding:8px 10px;text-align:right;font-size:10px;color:var(--muted)">Titres</th>
+        <th style="padding:8px 10px;text-align:right;font-size:10px;color:var(--muted)">Artistes</th>
+        <th style="padding:8px 10px;text-align:right;font-size:10px;color:var(--muted)">Artistes multi-titres</th>
+        <th style="padding:8px 10px;text-align:right;font-size:10px;color:var(--muted)">Diffusions</th>
+        <th style="padding:8px 10px;text-align:right;font-size:10px;color:var(--muted)">Pot Score moy.</th>
+        <th style="padding:8px 10px;text-align:right;font-size:10px;color:var(--muted)">Fam Score moy.</th>
+        <th style="padding:8px 10px;text-align:right;font-size:10px;color:var(--muted)">Fit Score moy.</th>
+        <th style="padding:8px 10px;text-align:right;font-size:10px;color:var(--muted)">SPU moy.</th>
+        <th style="padding:8px 10px;text-align:left;font-size:10px;color:var(--muted)">Archivé le</th>
+        <th style="width:30px"></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderAnalysePage(){
+  const stKey = analyseStationKey();
+  const stLabel = STATION_LABELS[stKey];
+  ['analyseStationLabel','analyseEmptyStation'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.textContent = stLabel;
+  });
+  const labelInput = document.getElementById('analyseWeekLabelInput');
+  if(labelInput) labelInput.value = (analyseWeekMeta && analyseWeekMeta.weekLabel) || '';
+
+  const hasData = analyseRows.length > 0;
+  const emptyBar = document.getElementById('analyseEmptyBar');
+  const content  = document.getElementById('analyseContent');
+  if(emptyBar) emptyBar.style.display = hasData ? 'none' : 'block';
+  if(content)  content.style.display  = hasData ? 'block' : 'none';
+
+  if(hasData){
+    renderAnalyseStats();
+    renderAnalyseGenreChart();
+    renderAnalyseTableArea();
+  }
+  renderAnalyseHistoryPanel();
+}
+
+function toggleAnalysePage(){
+  analysePageOpen = !analysePageOpen;
+  const btn = document.getElementById('analyseTabBtn');
+  if(analysePageOpen){
+    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false;
+    categPageOpen = false; comitePageOpen = false; playlistPageOpen = false; quotasPageOpen = false;
+    ['pageCharts','pageRawData','pageHistory','pageDecision','pageCateg','pageComite','pagePlaylist','pageQuotas','pageUpload','pageConfig','pageResults'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.style.display = 'none';
+    });
+    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn'].forEach(bid => {
+      const b = document.getElementById(bid); if(b){ b.style.borderColor=''; b.style.color=''; b.style.background=''; }
+    });
+    syncDatasTabBtnStyle();
+    const sel = document.getElementById('sheetSelectWrap'); if(sel) sel.style.display = 'none';
+    document.getElementById('steps').style.display   = 'none';
+    document.getElementById('backBtn').style.display = 'none';
+    document.getElementById('pageAnalyse').style.display = 'block';
+    btn.style.borderColor = 'var(--cyan)';
+    btn.style.color       = 'var(--navy)';
+    btn.style.background  = 'var(--cyan-light)';
+    if(!analyseRows.length) analyseLoadCurrentFromSession();
+    renderAnalysePage();
+    if(DRIVE_SYNC_URL && !analyseDriveLoaded){
+      analyseShowSaveProgress('☁️ Récupération de l\'historique Drive…');
+      analyseUpdateSaveProgress(1, 2);
+      analyseLoadHistoryFromDrive().then(() => {
+        analyseUpdateSaveProgress(2, 2);
+        analyseHideSaveProgress();
+        renderAnalyseHistoryPanel();
+      });
+    }
+  } else {
+    document.getElementById('pageAnalyse').style.display = 'none';
+    btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
+    restoreMainPage();
+  }
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -12916,7 +14013,8 @@ function songAttributesSaveToStorage(){
 }
 function getSongAttributes(title, artist){
   const key = comiteKey(title, artist);
-  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'' };
+  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'', genre:'' };
+  if(songAttributes[key].genre === undefined) songAttributes[key].genre = '';
   return songAttributes[key];
 }
 
@@ -15075,11 +16173,11 @@ function toggleDecisionPage(){
     // Fermer toutes les autres pages — masquage direct et inconditionnel,
     // sans dépendre de variables d'état (plus robuste que window[flag] qui
     // ne fonctionne pas avec des `let` déclarées au scope script classique).
-    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; categPageOpen = false; comitePageOpen = false; playlistPageOpen = false; quotasPageOpen = false;
-    ['pageCharts','pageRawData','pageHistory','pageCateg','pageComite','pagePlaylist','pageQuotas','pageUpload','pageConfig','pageResults'].forEach(id => {
+    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; categPageOpen = false; comitePageOpen = false; playlistPageOpen = false; quotasPageOpen = false; analysePageOpen = false;
+    ['pageCharts','pageRawData','pageHistory','pageCateg','pageComite','pagePlaylist','pageQuotas','pageUpload','pageConfig','pageResults','pageAnalyse'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
-    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn'].forEach(bid => {
+    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn','analyseTabBtn'].forEach(bid => {
       const b = document.getElementById(bid); if(b){ b.style.borderColor=''; b.style.color=''; b.style.background=''; }
     });
     const sel = document.getElementById('sheetSelectWrap'); if(sel) sel.style.display='none';
@@ -16898,8 +17996,8 @@ async function fetchRadio538TopSongs(){
 
   let fullText = '';
   let lines = [];
+  let items = [];
   try{
-    const items = [];
     const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise;
     for(let p = 1; p <= pdf.numPages; p++){
       const pg = await pdf.getPage(p);
@@ -19203,11 +20301,11 @@ function toggleCategPage(){
   categPageOpen = !categPageOpen;
   const btn = document.getElementById('categTabBtn');
   if(categPageOpen){
-    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false; comitePageOpen = false; playlistPageOpen = false; quotasPageOpen = false;
-    ['pageCharts','pageRawData','pageHistory','pageDecision','pageComite','pagePlaylist','pageQuotas','pageUpload','pageConfig','pageResults'].forEach(id => {
+    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false; comitePageOpen = false; playlistPageOpen = false; quotasPageOpen = false; analysePageOpen = false;
+    ['pageCharts','pageRawData','pageHistory','pageDecision','pageComite','pagePlaylist','pageQuotas','pageUpload','pageConfig','pageResults','pageAnalyse'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
-    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn'].forEach(bid => {
+    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','comiteTabBtn','playlistTabBtn','quotasTabBtn','analyseTabBtn'].forEach(bid => {
       const b = document.getElementById(bid); if(b){ b.style.borderColor=''; b.style.color=''; b.style.background=''; }
     });
     const sel = document.getElementById('sheetSelectWrap'); if(sel) sel.style.display='none';
@@ -19235,11 +20333,11 @@ function toggleComitePage(){
   comitePageOpen = !comitePageOpen;
   const btn = document.getElementById('comiteTabBtn');
   if(comitePageOpen){
-    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false; categPageOpen = false; playlistPageOpen = false; quotasPageOpen = false;
-    ['pageCharts','pageRawData','pageHistory','pageDecision','pageCateg','pagePlaylist','pageQuotas','pageUpload','pageConfig','pageResults'].forEach(id => {
+    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false; categPageOpen = false; playlistPageOpen = false; quotasPageOpen = false; analysePageOpen = false;
+    ['pageCharts','pageRawData','pageHistory','pageDecision','pageCateg','pagePlaylist','pageQuotas','pageUpload','pageConfig','pageResults','pageAnalyse'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
-    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','categTabBtn','playlistTabBtn','quotasTabBtn'].forEach(bid => {
+    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','categTabBtn','playlistTabBtn','quotasTabBtn','analyseTabBtn'].forEach(bid => {
       const b = document.getElementById(bid); if(b){ b.style.borderColor=''; b.style.color=''; b.style.background=''; }
     });
     const sel = document.getElementById('sheetSelectWrap'); if(sel) sel.style.display='none';
@@ -19264,11 +20362,11 @@ function togglePlaylistPage(){
   playlistPageOpen = !playlistPageOpen;
   const btn = document.getElementById('playlistTabBtn');
   if(playlistPageOpen){
-    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false; categPageOpen = false; comitePageOpen = false; quotasPageOpen = false;
-    ['pageCharts','pageRawData','pageHistory','pageDecision','pageCateg','pageComite','pageQuotas','pageUpload','pageConfig','pageResults'].forEach(id => {
+    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false; categPageOpen = false; comitePageOpen = false; quotasPageOpen = false; analysePageOpen = false;
+    ['pageCharts','pageRawData','pageHistory','pageDecision','pageCateg','pageComite','pageQuotas','pageUpload','pageConfig','pageResults','pageAnalyse'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
-    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','categTabBtn','comiteTabBtn','quotasTabBtn'].forEach(bid => {
+    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','categTabBtn','comiteTabBtn','quotasTabBtn','analyseTabBtn'].forEach(bid => {
       const b = document.getElementById(bid); if(b){ b.style.borderColor=''; b.style.color=''; b.style.background=''; }
     });
     const sel = document.getElementById('sheetSelectWrap'); if(sel) sel.style.display='none';
@@ -19293,6 +20391,7 @@ function togglePlaylistPage(){
    depuis le Google Sheet qui reçoit et parse les mails Yacast quotidiens.
    ══════════════════════════════════════════════════════════════════════ */
 let quotasPageOpen = false;
+let analysePageOpen = false;
 let quotasData = null;
 let quotasFetching = false;
 
@@ -19319,11 +20418,11 @@ function toggleQuotasPage(){
   quotasPageOpen = !quotasPageOpen;
   const btn = document.getElementById('quotasTabBtn');
   if(quotasPageOpen){
-    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false; categPageOpen = false; comitePageOpen = false; playlistPageOpen = false;
-    ['pageCharts','pageRawData','pageHistory','pageDecision','pageCateg','pageComite','pagePlaylist','pageUpload','pageConfig','pageResults'].forEach(id => {
+    chartsPageOpen = false; rawDataPageOpen = false; historyPageOpen = false; decisionPageOpen = false; categPageOpen = false; comitePageOpen = false; playlistPageOpen = false; analysePageOpen = false;
+    ['pageCharts','pageRawData','pageHistory','pageDecision','pageCateg','pageComite','pagePlaylist','pageUpload','pageConfig','pageResults','pageAnalyse'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
-    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn'].forEach(bid => {
+    ['chartsTabBtn','rawDataTabBtn','historyTabBtn','decisionTabBtn','categTabBtn','comiteTabBtn','playlistTabBtn','analyseTabBtn'].forEach(bid => {
       const b = document.getElementById(bid); if(b){ b.style.borderColor=''; b.style.color=''; b.style.background=''; }
     });
     const sel = document.getElementById('sheetSelectWrap'); if(sel) sel.style.display='none';
