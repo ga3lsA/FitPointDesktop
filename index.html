@@ -1565,12 +1565,41 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Analyse — <span id="analyseStationLabel">Europe 2</span></h2>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
-        <input id="analyseWeekLabelInput" type="text" placeholder="Ex. S32" style="width:80px;font-size:12px;padding:8px 10px;border-radius:8px" title="Libellé de la semaine (modifiable)">
+      <div id="analyseProgActions" style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <input id="analyseWeekLabelInput" type="text" placeholder="Ex. S32" style="width:70px;font-size:12px;padding:8px 10px;border-radius:8px" title="Libellé de la semaine (modifiable)">
+        <input id="analyseWeekStartInput" type="date" style="font-size:12px;padding:8px 10px;border-radius:8px" title="Date de début de semaine (pour la jointure avec l'audience digitale)">
+        <input id="analyseWeekEndInput" type="date" style="font-size:12px;padding:8px 10px;border-radius:8px" title="Date de fin de semaine">
         <button id="analyseSaveBtn" class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="analyseSaveWeekToHistory()" title="Archive les statistiques de cette semaine (local + Drive si configuré) pour comparaison future">💾 Enregistrer la semaine</button>
-        <input type="file" id="analyseFileInput" accept=".xlsx,.xls" style="display:none" onchange="analyseHandleFile(this)">
-        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="analyseTriggerImport()">📥 Importer le fichier hebdo</button>
+        <input type="file" id="analyseFileInput" accept=".xlsx,.xls" multiple style="display:none" onchange="analyseHandleFiles(this)">
+        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="analyseTriggerImport()">📥 Importer un ou plusieurs fichiers hebdo</button>
       </div>
+      <div id="digitalAudienceActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <input type="file" id="digitalAudienceFileInput" accept=".pdf" multiple style="display:none" onchange="digitalAudienceHandleFiles(this)">
+        <input type="file" id="digitalAudienceDMImportInput" accept=".json" style="display:none" onchange="digitalAudienceImportDMFile(this)">
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="digitalAudienceLoadHistoryFromDrive(true)" title="Recharge l'historique audience digitale depuis Drive Sync">☁️ Synchroniser Drive</button>
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="document.getElementById('digitalAudienceDMImportInput').click()" title="Importe un export JSON réalisé depuis Digital Monitoring (bouton « Exporter tout (.json) » de sa page Archives)">📤 Importer export Digital Monitoring (.json)</button>
+        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="digitalAudienceTriggerImport()">📥 Importer un ou plusieurs PDF Live Stats</button>
+      </div>
+      <div id="mediaActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="mediaLoadHistoryFromDrive(true)" title="Recharge Médiamétrie depuis Drive Sync">☁️ Synchroniser Drive</button>
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="document.getElementById('digitalAudienceDMImportInput').click()" title="Importe aussi le bloc Médiamétrie d'un export Digital Monitoring">📤 Importer export Digital Monitoring (.json)</button>
+        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="mediaAddPeriod()">+ Ajouter une vague</button>
+      </div>
+    </div>
+
+    <!-- Sous-onglets Analyse : Programmation musicale vs Audience digitale -->
+    <div style="display:flex;gap:6px;margin-bottom:18px;border-bottom:1.5px solid var(--border)">
+      <button id="analyseSubProgBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--navy)" onclick="analyseSetSubView('prog')">📊 Programmation musicale</button>
+      <button id="analyseSubAudienceBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('audience')">🎧 Audience digitale</button>
+      <button id="analyseSubMediaBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('media')">📡 Médiamétrie</button>
+      <button id="analyseSubCorrBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('corr')">🔗 Corrélation</button>
+    </div>
+
+    <div id="analyseProgContainer">
+
+    <!-- Import en masse (plusieurs fichiers hebdo à la fois) -->
+    <div id="analyseBulkImportWrap" style="display:none;margin-bottom:20px;padding:18px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">
+      <div id="analyseBulkImportArea"></div>
     </div>
 
     <div id="analyseSaveProgressWrap" style="display:none;margin-bottom:14px">
@@ -1608,6 +1637,107 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <div style="margin-top:32px">
       <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy);margin-bottom:10px">📅 Historique des semaines archivées</div>
       <div id="analyseHistoryArea"></div>
+    </div>
+
+    </div>
+
+    <!-- Sous-page Audience digitale (PDF Live Stats — Europe 2 / RFM) -->
+    <div id="analyseAudienceContainer" style="display:none">
+      <div id="digitalAudienceParseWrap" style="display:none;margin-bottom:20px;padding:18px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">
+        <div id="digitalAudienceParseArea"></div>
+      </div>
+      <div id="digitalAudienceEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center">
+        Aucune donnée d'audience digitale importée. Importez les PDF « Live Stats » hebdomadaires via <strong>📥 Importer un ou plusieurs PDF Live Stats</strong>, ou un export Digital Monitoring.
+      </div>
+
+      <div id="digitalAudienceDetailWrap" style="display:none">
+        <!-- Onglets station + sélecteur de semaine -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <div style="display:flex;gap:6px" id="digitalAudienceStationTabs"></div>
+          <select id="digitalAudienceWeekSelect" style="font-size:12px;padding:8px 12px;border-radius:8px" onchange="digitalAudienceUI.week=this.value;renderDigitalAudienceDetail()"></select>
+          <span id="digitalAudienceWeekCount" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
+        </div>
+
+        <!-- En-tête station -->
+        <div id="digitalAudienceStationHeader" style="display:flex;align-items:center;gap:12px;margin-bottom:16px"></div>
+
+        <!-- Cartes KPI (identiques à Digital Monitoring) -->
+        <div id="digitalAudienceKpiCards" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px"></div>
+
+        <!-- Contexte de la semaine -->
+        <div id="digitalAudienceContextArea" style="margin-bottom:18px"></div>
+
+        <!-- Courbe quotidienne -->
+        <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px">
+          <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Audience moyenne (5h-24h) — jour par jour</div>
+          <div style="position:relative;height:260px"><canvas id="digitalAudienceDailyChart"></canvas></div>
+        </div>
+
+        <!-- Historique hebdomadaire -->
+        <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px">
+          <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Historique — audience moyenne hebdomadaire</div>
+          <div style="position:relative;height:260px"><canvas id="digitalAudienceWeeklyChart"></canvas></div>
+        </div>
+
+        <!-- Tranches programme -->
+        <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;margin-bottom:24px">
+          <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Audience moyenne par tranche programme</div>
+          <div id="digitalAudienceTranchesTable"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">📅 Semaines archivées (toutes stations)</div>
+      </div>
+      <div id="digitalAudienceHistoryArea"></div>
+    </div>
+
+    <!-- Sous-page Corrélation programmation ↔ audience digitale -->
+    <div id="analyseCorrContainer" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <label style="font-size:11px;font-weight:700;color:var(--text2)">Station :</label>
+        <select id="corrStationSelect" style="font-size:12px;padding:7px 10px;border-radius:8px" onchange="corrStation=this.value;renderCorrPage()">
+          <option value="EUROPE2">Europe 2</option>
+          <option value="RFM">RFM</option>
+        </select>
+        <span style="font-size:11px;color:var(--muted);margin-left:auto">Jointure par numéro de semaine Yacast (approximatif si le libellé de la semaine n'est pas au format « S32 ») — corrigez la correspondance ligne par ligne si besoin.</span>
+      </div>
+
+      <div id="corrEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center">
+        Pas assez de données pour corréler : il faut au moins une semaine de programmation archivée <em>et</em> une semaine d'audience digitale importée pour cette station.
+      </div>
+
+      <div id="corrContent" style="display:none">
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin:6px 0 10px">🔗 Correspondance des semaines</div>
+        <div id="corrMatchTableArea" style="margin-bottom:26px"></div>
+
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin:6px 0 10px">📈 Matrice de corrélation (coefficient de Pearson)</div>
+        <div id="corrMatrixArea" style="margin-bottom:26px"></div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <div style="font-size:12px;font-weight:800;color:var(--navy)">🔬 Nuage de points</div>
+          <label style="font-size:11px;color:var(--text2)">Programmation (X) :
+            <select id="corrScatterX" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="renderCorrScatter()"></select>
+          </label>
+          <label style="font-size:11px;color:var(--text2)">Audience (Y) :
+            <select id="corrScatterY" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="renderCorrScatter()"></select>
+          </label>
+        </div>
+        <div id="corrScatterArea"></div>
+      </div>
+    </div>
+
+    <!-- Sous-page Médiamétrie (vagues, quinzaines/intermédiaires, historique) -->
+    <div id="analyseMediaContainer" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+        <div style="display:flex;gap:6px" id="mediaStationTabs"></div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Chaque vague (SO, ND, JM, AJ) affiche son résultat final publié (Ensemble, 5h-24h) avec ses évolutions N-1 et V-1. Les vagues en cours de suivi par quinzaine affichent leur détail directement dans leur propre panneau, juste en dessous. Les vagues archivées sans détail apparaissent dans le tableau historique, groupées par saison.</div>
+
+      <div id="mediaEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
+
+      <div id="mediaPeriodBlocks"></div>
+      <div id="mediaHistoryTableArea" style="margin-top:24px"></div>
     </div>
 
   </div>
@@ -3115,6 +3245,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   <button onclick="openFpaConfigModal()" title="Configuration — toutes les URLs (Drive, proxies, Daily Snapshot...)" style="background:none;border:none;color:var(--border);cursor:pointer;font-size:12px;padding:2px 4px;opacity:.6" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.6'">⚙️</button>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -10230,6 +10361,1495 @@ async function analyseLoadHistoryFromDrive(){
 function analyseStationKey(){ return ACTIVE_STATION === 'RFM' ? 'RFM' : 'EUROPE2'; }
 function analyseCurrentStorageKey(){ return 'fpa_analyse_current_' + analyseStationKey(); }
 
+// ══════════════════════════════════════════════════════════════════════════
+// SOUS-PAGE ANALYSE — AUDIENCE DIGITALE (import PDF "Live Stats" — Europe 2 / RFM)
+// ══════════════════════════════════════════════════════════════════════════
+// Parseur adapté depuis l'outil "Digital Monitoring" (pdf.js, résolution par
+// position des items plutôt que par regex pur pour Sessions/Visiteurs uniques
+// et la courbe quotidienne — voir commentaires détaillés sur chaque fonction).
+// Portée volontairement limitée à Europe 2 et RFM (les 2 stations gérées par
+// la section Analyse), contrairement à l'outil d'origine qui couvrait aussi
+// Europe 1.
+let analyseSubView = 'prog'; // 'prog' | 'audience'
+const DIGITAL_AUDIENCE_STATIONS = ['EUROPE2','RFM'];
+const DIGITAL_AUDIENCE_LOCAL_KEY = 'fpa_digital_audience_v1';
+const DIGITAL_AUDIENCE_DRIVE_KEY = 'digital_audience_history';
+let digitalAudienceHistory = { EUROPE2:{}, RFM:{} }; // { EUROPE2:{ '2026-06-01': {...} }, RFM:{...} }
+let digitalAudienceDriveLoaded = false;
+let digitalAudienceQueue = [];
+
+function analyseSetSubView(view){
+  analyseSubView = view;
+  const progBtn = document.getElementById('analyseSubProgBtn');
+  const audBtn  = document.getElementById('analyseSubAudienceBtn');
+  const corrBtn = document.getElementById('analyseSubCorrBtn');
+  const mediaBtn = document.getElementById('analyseSubMediaBtn');
+  const progC   = document.getElementById('analyseProgContainer');
+  const audC    = document.getElementById('analyseAudienceContainer');
+  const corrC   = document.getElementById('analyseCorrContainer');
+  const mediaC  = document.getElementById('analyseMediaContainer');
+  const progAct = document.getElementById('analyseProgActions');
+  const audAct  = document.getElementById('digitalAudienceActions');
+  const mediaAct = document.getElementById('mediaActions');
+  [[progBtn,'prog'],[audBtn,'audience'],[corrBtn,'corr'],[mediaBtn,'media']].forEach(([btn,v]) => {
+    if(!btn) return;
+    const active = v === view;
+    btn.style.borderBottomColor = active ? 'var(--navy)' : 'transparent';
+    btn.style.color = active ? '' : 'var(--muted)';
+  });
+  if(progC)   progC.style.display   = view==='prog'     ? 'block' : 'none';
+  if(audC)    audC.style.display    = view==='audience' ? 'block' : 'none';
+  if(corrC)   corrC.style.display   = view==='corr'      ? 'block' : 'none';
+  if(mediaC)  mediaC.style.display  = view==='media'     ? 'block' : 'none';
+  if(progAct) progAct.style.display = view==='prog'     ? 'flex'  : 'none';
+  if(audAct)  audAct.style.display  = view==='audience' ? 'flex'  : 'none';
+  if(mediaAct) mediaAct.style.display = view==='media'  ? 'flex'  : 'none';
+  if(view==='audience' || view==='corr'){
+    if(!digitalAudienceDriveLoaded){
+      digitalAudienceLoadLocal();
+      if(DRIVE_SYNC_URL) digitalAudienceLoadHistoryFromDrive(false).then(() => { if(view==='corr') renderCorrPage(); });
+    }
+  }
+  if(view==='media'){
+    if(!mediaDriveLoaded){
+      mediaLoadLocal();
+      if(DRIVE_SYNC_URL) mediaLoadHistoryFromDrive(false);
+    }
+  }
+  if(view==='audience') renderDigitalAudiencePage();
+  if(view==='media') renderMediaPage();
+  if(view==='corr'){
+    const sel = document.getElementById('corrStationSelect');
+    if(sel) sel.value = corrStation;
+    renderCorrPage();
+  }
+}
+
+function digitalAudienceLoadLocal(){
+  try{
+    const raw = localStorage.getItem(DIGITAL_AUDIENCE_LOCAL_KEY);
+    if(raw) digitalAudienceHistory = JSON.parse(raw);
+  }catch(e){ /* ignoré */ }
+  if(!digitalAudienceHistory.EUROPE2) digitalAudienceHistory.EUROPE2 = {};
+  if(!digitalAudienceHistory.RFM)     digitalAudienceHistory.RFM     = {};
+}
+function digitalAudienceSaveLocal(){
+  try{ localStorage.setItem(DIGITAL_AUDIENCE_LOCAL_KEY, JSON.stringify(digitalAudienceHistory)); }
+  catch(e){ /* quota localStorage, ignoré */ }
+}
+
+/** Sauvegarde l'historique complet (2 stations, données hebdo agrégées —
+ *  volume raisonnable, pas de détail par titre) sur Drive dans son propre
+ *  fichier, distinct de celui de la programmation (ANALYSE_DRIVE_KEY). */
+async function digitalAudienceSaveToDrive(){
+  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  try{
+    const payload = JSON.stringify(digitalAudienceHistory);
+    await driveCall('save', DIGITAL_AUDIENCE_DRIVE_KEY, payload);
+    return { ok:true };
+  }catch(e){
+    showToast('Erreur de sauvegarde Drive (Audience digitale) : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }
+}
+
+/** Charge depuis Drive et fusionne avec le cache local, semaine par semaine
+ *  (on garde l'entrée la plus récemment importée en cas de doublon). */
+async function digitalAudienceLoadHistoryFromDrive(manual){
+  if(!DRIVE_SYNC_URL){ if(manual) showToast('URL Drive Sync non configurée', 'err'); return { ok:false, reason:'no_url' }; }
+  try{
+    const r = await driveCall('load', DIGITAL_AUDIENCE_DRIVE_KEY);
+    digitalAudienceDriveLoaded = true;
+    if(!r || !r.data){ if(manual) renderDigitalAudiencePage(); return { ok:true, empty:true }; }
+    const remote = JSON.parse(r.data);
+    DIGITAL_AUDIENCE_STATIONS.forEach(stKey => {
+      const remoteSt = remote[stKey] || {};
+      const localSt  = digitalAudienceHistory[stKey] || (digitalAudienceHistory[stKey] = {});
+      Object.keys(remoteSt).forEach(weekStart => {
+        const remRec = remoteSt[weekStart];
+        const locRec = localSt[weekStart];
+        if(!locRec || new Date(remRec.importedAt||0) > new Date(locRec.importedAt||0)) localSt[weekStart] = remRec;
+      });
+    });
+    digitalAudienceSaveLocal();
+    if(manual) showToast('Historique audience digitale synchronisé depuis Drive', 'success');
+    renderDigitalAudiencePage();
+    return { ok:true };
+  }catch(e){
+    digitalAudienceDriveLoaded = true;
+    if(!/ntrouvable/i.test(e.message||'')) console.warn('Audience digitale : échec chargement Drive —', e.message);
+    if(manual) showToast('Erreur de synchronisation Drive : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }
+}
+
+function digitalAudienceTriggerImport(){ document.getElementById('digitalAudienceFileInput').click(); }
+function digitalAudienceHandleFiles(input){
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if(!files.length) return;
+  digitalAudienceQueue = files;
+  document.getElementById('digitalAudienceParseWrap').style.display = 'block';
+  digitalAudienceProcessNext();
+}
+
+async function digitalAudienceProcessNext(){
+  const area = document.getElementById('digitalAudienceParseArea');
+  if(!digitalAudienceQueue.length){
+    document.getElementById('digitalAudienceParseWrap').style.display = 'none';
+    renderDigitalAudiencePage();
+    return;
+  }
+  const file = digitalAudienceQueue.shift();
+  area.innerHTML = `<div style="font-size:12px;color:var(--text2)">⏳ Analyse de ${escHtml(file.name)}…</div>`;
+  try{
+    const data = await digitalAudienceExtractPdfData(file);
+    const parsed = digitalAudienceParsePdfText(data, file.name);
+    digitalAudienceShowReview(file.name, parsed);
+  }catch(err){
+    area.innerHTML = `<div style="font-size:12px;color:#CC2222">Échec de l'analyse de ${escHtml(file.name)} : ${escHtml(err.message)}</div>
+      <div style="margin-top:10px"><button class="btn-ghost" id="daudErrSkipBtn" style="font-size:11px;padding:7px 12px">Fichier suivant</button></div>`;
+    const sk = document.getElementById('daudErrSkipBtn');
+    if(sk) sk.onclick = digitalAudienceProcessNext;
+  }
+}
+
+async function digitalAudienceExtractPdfData(file){
+  if(window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const buf = await file.arrayBuffer();
+  const doc = await pdfjsLib.getDocument({data:buf}).promise;
+  let fullText = '';
+  const items = [];
+  for(let i=1;i<=doc.numPages;i++){
+    const page = await doc.getPage(i);
+    const content = await page.getTextContent();
+    for(const it of content.items){
+      if(it.str && it.str.trim()) items.push({ str: it.str, x: it.transform[4], y: it.transform[5], page: i });
+    }
+    fullText += content.items.map(it=>it.str).join(' ') + '\n';
+  }
+  return { text: fullText, items };
+}
+
+const DIGITAL_AUDIENCE_FR_MONTH = {janvier:1,fevrier:2,'février':2,mars:3,avril:4,mai:5,juin:6,juillet:7,aout:8,'août':8,septembre:9,octobre:10,novembre:11,decembre:12,'décembre':12};
+
+function digitalAudienceParseNumberFr(str){
+  if(str===undefined||str===null) return null;
+  const cleaned = String(str).replace(/[\s\u00A0]/g,'').replace(',', '.');
+  const n = parseFloat(cleaned);
+  return isNaN(n) ? null : n;
+}
+function digitalAudienceParsePctFr(str){
+  const n = digitalAudienceParseNumberFr(str);
+  return n===null ? null : n/100;
+}
+function digitalAudienceIsNumericChunk(str){
+  if(/[%:]/.test(str)) return false;
+  if(/\p{L}/u.test(str)) return false;
+  return /\d/.test(str);
+}
+function digitalAudienceParseGroupedInt(str){
+  if(str===undefined||str===null) return null;
+  const digits = String(str).replace(/\D/g,'');
+  return digits.length ? parseInt(digits,10) : null;
+}
+function digitalAudienceIsoFromDMY(str){
+  const m = str.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m) return null;
+  return m[3]+'-'+m[2]+'-'+m[1];
+}
+
+/** Sessions et Visiteurs uniques sont deux entiers séparés uniquement par des
+ *  espaces dans le texte à plat — indissociable du séparateur de milliers
+ *  interne (ex. "1 054 003 375 476"). Résolu via les positions x/y des items
+ *  pdf.js : on repère les colonnes "Sessions" / "Visiteurs" par leur en-tête,
+ *  puis on assigne chaque item numérique de la ligne de valeurs à la colonne
+ *  la plus proche. */
+function digitalAudienceParseSessionsUniques(items){
+  const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  const sessHdr = items.find(it => norm(it.str).includes('sessions'));
+  const visHdr = items.find(it => norm(it.str).includes('visiteurs'));
+  if(!sessHdr || !visHdr) return { sessions:null, uniques:null };
+  const durHdr = items.find(it => norm(it.str).includes('duree') && norm(it.str).includes('coute'));
+  const cols = [sessHdr.x, visHdr.x, durHdr ? durHdr.x : visHdr.x + 200];
+  const page = sessHdr.page;
+  const headerY = sessHdr.y;
+  const candidates = items.filter(it => it.page===page && it.y < headerY - 1 && it.y > headerY - 70);
+  const rows = {};
+  candidates.forEach(it=>{
+    const key = Math.round(it.y / 2) * 2;
+    if(!rows[key]) rows[key] = [];
+    rows[key].push(it);
+  });
+  let valueRow = null;
+  for(const key of Object.keys(rows).map(Number).sort((a,b)=>b-a)){
+    const rowItems = rows[key];
+    if(rowItems.some(it=>/\d/.test(it.str))){ valueRow = rowItems; break; }
+  }
+  if(!valueRow) return { sessions:null, uniques:null };
+  const buckets = [[],[],[]];
+  valueRow.forEach(it=>{
+    let best=0, bestDist=Infinity;
+    cols.forEach((c,i)=>{ const d = Math.abs(it.x-c); if(d<bestDist){ bestDist=d; best=i; } });
+    buckets[best].push(it);
+  });
+  const sessionsStr = buckets[0].sort((a,b)=>a.x-b.x).map(it=>it.str).join('');
+  const uniquesStr = buckets[1].sort((a,b)=>a.x-b.x).map(it=>it.str).join('');
+  return { sessions: digitalAudienceParseGroupedInt(sessionsStr), uniques: digitalAudienceParseGroupedInt(uniquesStr) };
+}
+
+/** Courbe quotidienne (5 barres lun-ven) — même ambiguïté de nombres adjacents
+ *  que le bloc KPI, x5, résolue de la même façon via les positions d'items :
+ *  on repère d'abord la ligne des 5 dates JJ/MM/AAAA (ancre fiable), puis on
+ *  associe à chaque date l'item numérique le plus proche au-dessus. */
+function digitalAudienceParseDailyFromItems(items){
+  const dateRe = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  const dateItems = items.filter(it => dateRe.test(it.str.trim()));
+  const byRow = {};
+  dateItems.forEach(it=>{
+    const key = it.page+'_'+Math.round(it.y/2)*2;
+    if(!byRow[key]) byRow[key] = [];
+    byRow[key].push(it);
+  });
+  let bestRow = null;
+  for(const key of Object.keys(byRow)){
+    if(byRow[key].length === 5){ bestRow = byRow[key]; break; }
+  }
+  if(!bestRow){
+    let bestDiff = Infinity;
+    for(const key of Object.keys(byRow)){
+      const n = byRow[key].length;
+      if(n>=4 && n<=7){ const diff = Math.abs(n-5); if(diff<bestDiff){ bestDiff = diff; bestRow = byRow[key]; } }
+    }
+  }
+  if(!bestRow) return [];
+  bestRow = bestRow.slice().sort((a,b)=>a.x-b.x);
+  const page = bestRow[0].page;
+  const dateY = bestRow[0].y;
+  let maxY = dateY + 320;
+  const titleItems = items.filter(it => it.page===page && it.y > dateY && /audience moyenne/i.test(it.str));
+  if(titleItems.length) maxY = Math.min(maxY, Math.min(...titleItems.map(it=>it.y)));
+  const band = items.filter(it => it.page===page && it.y > dateY+5 && it.y < maxY && digitalAudienceIsNumericChunk(it.str));
+  const minPlotX = bestRow[0].x - 15;
+  const colCounts = {};
+  band.forEach(it=>{ const xKey = Math.round(it.x/3)*3; colCounts[xKey] = (colCounts[xKey]||0) + 1; });
+  const axisCols = new Set(Object.keys(colCounts).map(Number).filter(x=>colCounts[x]>=3));
+  const candidates = band.filter(it => it.x >= minPlotX && !axisCols.has(Math.round(it.x/3)*3));
+  return bestRow.map(d=>{
+    const near = candidates.filter(it => Math.abs(it.x - d.x) < 40);
+    if(!near.length) return { date: digitalAudienceIsoFromDMY(d.str), value: null };
+    near.sort((a,b)=>a.y-b.y);
+    const nearestY = near[0].y;
+    const sameLabel = near.filter(t=>Math.abs(t.y-nearestY)<3).sort((a,b)=>a.x-b.x);
+    const valStr = sameLabel.map(t=>t.str).join('');
+    return { date: digitalAudienceIsoFromDMY(d.str), value: digitalAudienceParseGroupedInt(valStr) };
+  });
+}
+
+function digitalAudienceDetectStation(text, filename){
+  const t = (text+' '+filename).toLowerCase();
+  if(t.includes('europe 2') || t.includes('europe2')) return 'EUROPE2';
+  if(t.includes('rfm')) return 'RFM';
+  if(t.includes('europe 1') || t.includes('europe1')) return null; // hors périmètre Analyse (E1 non géré ici)
+  return null;
+}
+
+function digitalAudienceParsePdfText(data, filename){
+  const text = data.text;
+  const items = data.items || [];
+  const station = digitalAudienceDetectStation(text, filename);
+  const clean = text.replace(/\s+/g,' ');
+
+  let sessions=null, uniques=null, dureeSec=null, evolS1Sessions=null, evolS1Uniques=null, evol1anSessions=null, evol1anUniques=null;
+  try{
+    const posResult = digitalAudienceParseSessionsUniques(items);
+    sessions = posResult.sessions; uniques = posResult.uniques;
+  }catch(e){ console.error('Sessions/uniques parse failed', e); }
+  try{
+    const dureeMatch = clean.match(/par session\s*[\s\S]*?(\d{2}:\d{2})\s*Evol S-1/i);
+    if(dureeMatch){ const [mm,ss] = dureeMatch[1].split(':').map(Number); dureeSec = mm*60+ss; }
+  }catch(e){ console.error('Duree parse failed', e); }
+  try{
+    const evolS1Match = clean.match(/par session\s*[\s\S]*?Evol S-1\s*([-\d,]+)%\s*([-\d,]+)%/i);
+    if(evolS1Match){ evolS1Sessions = digitalAudienceParsePctFr(evolS1Match[1]); evolS1Uniques = digitalAudienceParsePctFr(evolS1Match[2]); }
+    const evol1anMatch = clean.match(/par session\s*[\s\S]*?Evol 1 an\s*([-\d,]+)%\s*([-\d,]+)%/i);
+    if(evol1anMatch){ evol1anSessions = digitalAudienceParsePctFr(evol1anMatch[1]); evol1anUniques = digitalAudienceParsePctFr(evol1anMatch[2]); }
+  }catch(e){ console.error('Evol percentages parse failed', e); }
+
+  let audienceMoyenne=null, evolS1Audience=null, evol1anAudience=null;
+  try{
+    const audMatch = clean.match(/Audience moyenne \(5h-24h\)\s*([\d\s\u00A0]+)\s*Evol S-1\s*([-\d,]+)%\s*Evol 1 an\s*([-\d,]+)%/i);
+    if(audMatch){
+      audienceMoyenne = digitalAudienceParseNumberFr(audMatch[1]);
+      evolS1Audience = digitalAudienceParsePctFr(audMatch[2]);
+      evol1anAudience = digitalAudienceParsePctFr(audMatch[3]);
+    }
+  }catch(e){ console.error('Audience moyenne block parse failed', e); }
+
+  let weekStart=null, weekEnd=null;
+  try{
+    const weekMatch = clean.match(/SEMAINE\s*DU\s*(\d{1,2})[a-z]*\s*(?:AU\s*(\d{1,2})\s*)?([A-ZÉÛÀ]+)\s*(\d{2,4})/i);
+    if(weekMatch){
+      const d1 = parseInt(weekMatch[1],10);
+      const d2 = weekMatch[2] ? parseInt(weekMatch[2],10) : d1;
+      const monthNorm = weekMatch[3].normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const monthNum = DIGITAL_AUDIENCE_FR_MONTH[monthNorm];
+      let year = parseInt(weekMatch[4],10);
+      if(year<100) year += 2000;
+      if(monthNum){
+        weekStart = year+'-'+String(monthNum).padStart(2,'0')+'-'+String(d1).padStart(2,'0');
+        weekEnd = year+'-'+String(monthNum).padStart(2,'0')+'-'+String(d2).padStart(2,'0');
+      }
+    }
+  }catch(e){ console.error('Week range parse failed', e); }
+
+  let daily = [];
+  try{ daily = digitalAudienceParseDailyFromItems(items); }catch(e){ console.error('Daily values parse failed', e); }
+
+  const tranches = [];
+  try{
+    const trancheRe = /(\d{1,2}h(?:\d{2})?-\d{1,2}h(?:\d{2})?(?:\d{2})?)\s+([A-Za-zÀ-ÿ' .]+?)?\s*([\d\s\u00A0]{3,7})\s+(-?[\d,]+)%\s+(-?[\d,]+)%/g;
+    let m;
+    while((m = trancheRe.exec(clean)) !== null){
+      const label = m[1].trim();
+      const programme = m[2] ? m[2].trim() : null;
+      const audience = digitalAudienceParseNumberFr(m[3]);
+      const evolS1 = digitalAudienceParsePctFr(m[4]);
+      const evol1an = digitalAudienceParsePctFr(m[5]);
+      if(audience!==null && label !== '5h-24h') tranches.push({tranche:label, programme: (programme && programme.length<40)?programme:undefined, audience, evolS1, evol1an});
+    }
+  }catch(e){ console.error('Tranches parse failed', e); }
+
+  const contexte = [];
+  try{
+    const ctxMatch = clean.match(/Op[ée]ration\s*:\s*(.+?)(?:Source\s*:|$)/i);
+    if(ctxMatch) contexte.push(ctxMatch[1].trim().slice(0,300));
+  }catch(e){ console.error('Contexte parse failed', e); }
+
+  return {
+    station, weekStart, weekEnd,
+    sessions, uniques, dureeSec, evolS1Sessions, evolS1Uniques, evol1anSessions, evol1anUniques,
+    audienceMoyenne, evolS1Audience, evol1anAudience,
+    daily, tranches, contexte
+  };
+}
+
+function digitalAudienceShowReview(filename, parsed){
+  const area = document.getElementById('digitalAudienceParseArea');
+  const stationOptions = DIGITAL_AUDIENCE_STATIONS.map(s=>`<option value="${s}" ${s===parsed.station?'selected':''}>${STATION_LABELS[s]}</option>`).join('');
+  const missingWarn = (!parsed.sessions || !parsed.weekStart) ?
+    `<div style="padding:8px 12px;border:1.5px solid #CC2222;border-radius:8px;color:#CC2222;font-size:11px;margin-bottom:10px">Certaines valeurs n'ont pas pu être détectées automatiquement (fichier Europe 1 ? hors périmètre). Vérifiez et corrigez avant d'archiver.</div>` : '';
+  area.innerHTML = `
+    ${missingWarn}
+    <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">📄 ${escHtml(filename)}</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Radio</label><select id="daudStationSelect" style="font-size:12px;padding:7px 10px;border-radius:8px">${stationOptions}</select></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Début de semaine</label><input type="date" id="daudWeekStartInput" value="${parsed.weekStart||''}" style="font-size:12px;padding:7px 10px;border-radius:8px"></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Fin de semaine</label><input type="date" id="daudWeekEndInput" value="${parsed.weekEnd||''}" style="font-size:12px;padding:7px 10px;border-radius:8px"></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Sessions &gt;30s</label><input type="number" id="daudSessionsInput" value="${parsed.sessions||''}" style="font-size:12px;padding:7px 10px;border-radius:8px;width:110px"></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Visiteurs uniques</label><input type="number" id="daudUniquesInput" value="${parsed.uniques||''}" style="font-size:12px;padding:7px 10px;border-radius:8px;width:110px"></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Audience moy. (5h-24h)</label><input type="number" id="daudAudienceInput" value="${parsed.audienceMoyenne||''}" style="font-size:12px;padding:7px 10px;border-radius:8px;width:110px"></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Durée moy. (sec)</label><input type="number" id="daudDureeInput" value="${parsed.dureeSec||''}" style="font-size:12px;padding:7px 10px;border-radius:8px;width:100px"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">${parsed.tranches.length} tranches programme détectées · ${parsed.daily.filter(d=>d.value!=null).length}/5 jours détectés</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" id="daudConfirmBtn" style="font-size:12px;padding:9px 16px">Archiver cette semaine</button>
+      <button class="btn-ghost" id="daudSkipBtn" style="font-size:11px;padding:9px 14px">Ignorer ce fichier</button>
+    </div>
+  `;
+  document.getElementById('daudSkipBtn').onclick = digitalAudienceProcessNext;
+  document.getElementById('daudConfirmBtn').onclick = async () => {
+    const station = document.getElementById('daudStationSelect').value;
+    const weekStart = document.getElementById('daudWeekStartInput').value;
+    const weekEnd = document.getElementById('daudWeekEndInput').value;
+    if(!station || !weekStart){ showToast('Radio et date de début requises', 'err'); return; }
+    const rec = {
+      weekStart, weekEnd,
+      sessions: parseFloat(document.getElementById('daudSessionsInput').value)||null,
+      uniques: parseFloat(document.getElementById('daudUniquesInput').value)||null,
+      dureeSec: parseFloat(document.getElementById('daudDureeInput').value)||null,
+      audienceMoyenne: parseFloat(document.getElementById('daudAudienceInput').value)||null,
+      evolS1Sessions: parsed.evolS1Sessions, evol1anSessions: parsed.evol1anSessions,
+      evolS1Uniques: parsed.evolS1Uniques, evol1anUniques: parsed.evol1anUniques,
+      evolS1Audience: parsed.evolS1Audience, evol1anAudience: parsed.evol1anAudience,
+      daily: parsed.daily, tranches: parsed.tranches, contexte: parsed.contexte,
+      filename, importedAt: new Date().toISOString()
+    };
+    if(!digitalAudienceHistory[station]) digitalAudienceHistory[station] = {};
+    digitalAudienceHistory[station][weekStart] = rec;
+    digitalAudienceSaveLocal();
+    showToast('✓ Semaine du ' + digitalAudienceFmtDate(weekStart) + ' archivée pour ' + STATION_LABELS[station], 'success');
+    if(DRIVE_SYNC_URL) digitalAudienceSaveToDrive();
+    digitalAudienceProcessNext();
+  };
+}
+
+function digitalAudienceFmtInt(n){ return (n===null||n===undefined||isNaN(n)) ? '—' : Math.round(n).toLocaleString('fr-FR'); }
+function digitalAudienceFmtDate(iso){ return formatDateFr(iso); }
+function digitalAudienceFmtDuration(sec){
+  if(sec===null||sec===undefined||isNaN(sec)) return '—';
+  const m = Math.floor(sec/60), s = Math.round(sec%60);
+  return m + 'min ' + String(s).padStart(2,'0') + 's';
+}
+function digitalAudienceEvolBadge(x){
+  if(x===null||x===undefined||isNaN(x)) return '<span style="color:var(--muted)">—</span>';
+  const pct = (x*100).toFixed(1) + '%';
+  const color = x>0.001 ? 'var(--green-text)' : (x<-0.001 ? '#CC2222' : 'var(--muted)');
+  const arrow = x>0.001 ? '▲' : (x<-0.001 ? '▼' : '—');
+  return `<span style="color:${color};font-weight:700">${arrow} ${pct}</span>`;
+}
+function digitalAudienceEvolChip(labelSuffix, x){
+  return `<div style="display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:10.5px;background:var(--bg);border-radius:6px;padding:3px 8px">
+    <span style="color:var(--muted);font-weight:700">${labelSuffix}</span>${digitalAudienceEvolBadge(x)}
+  </div>`;
+}
+
+/** État de la vue détail (station + semaine sélectionnées) — indépendant de
+ *  la sélection de station "programmation" (ACTIVE_STATION), car on veut
+ *  pouvoir consulter l'audience digitale d'une station sans changer la
+ *  station de référence de tout le reste de FPA. */
+let digitalAudienceUI = { station: 'EUROPE2', week: null };
+
+function digitalAudienceWeekKeys(stKey){ return Object.keys(digitalAudienceHistory[stKey]||{}).sort(); }
+
+function renderDigitalAudiencePage(){
+  const detailWrap = document.getElementById('digitalAudienceDetailWrap');
+  const emptyBar = document.getElementById('digitalAudienceEmptyBar');
+  const histArea = document.getElementById('digitalAudienceHistoryArea');
+  if(!detailWrap || !emptyBar || !histArea) return;
+
+  const anyData = DIGITAL_AUDIENCE_STATIONS.some(st => digitalAudienceWeekKeys(st).length > 0);
+  emptyBar.style.display = anyData ? 'none' : 'block';
+  detailWrap.style.display = anyData ? 'block' : 'none';
+  if(!anyData){ histArea.innerHTML = ''; return; }
+
+  // Si la station active n'a aucune semaine, bascule automatiquement sur
+  // celle qui en a (comme le fait Digital Monitoring en filigrane).
+  if(!digitalAudienceWeekKeys(digitalAudienceUI.station).length){
+    const withData = DIGITAL_AUDIENCE_STATIONS.find(st => digitalAudienceWeekKeys(st).length);
+    if(withData) digitalAudienceUI.station = withData;
+  }
+
+  renderDigitalAudienceDetail();
+  renderDigitalAudienceHistoryTable();
+}
+
+function renderDigitalAudienceDetail(){
+  const stKey = digitalAudienceUI.station;
+  const weeks = digitalAudienceWeekKeys(stKey);
+  if(!weeks.includes(digitalAudienceUI.week)) digitalAudienceUI.week = weeks.length ? weeks[weeks.length-1] : null;
+
+  // Onglets station
+  const tabsArea = document.getElementById('digitalAudienceStationTabs');
+  tabsArea.innerHTML = DIGITAL_AUDIENCE_STATIONS.map(st => {
+    const active = st === stKey;
+    return `<button class="btn-ghost" style="font-size:11.5px;padding:7px 14px;${active ? 'border-color:var(--cyan);color:var(--navy);background:var(--cyan-light)' : ''}" onclick="digitalAudienceUI.station='${st}';digitalAudienceUI.week=null;renderDigitalAudienceDetail();renderDigitalAudienceHistoryTable()">${STATION_ICONS[st]||'📻'} ${STATION_LABELS[st]}</button>`;
+  }).join('');
+
+  const weekSelect = document.getElementById('digitalAudienceWeekSelect');
+  weekSelect.innerHTML = weeks.slice().reverse().map(w => `<option value="${w}" ${w===digitalAudienceUI.week?'selected':''}>Semaine du ${digitalAudienceFmtDate(w)}</option>`).join('');
+  document.getElementById('digitalAudienceWeekCount').textContent = weeks.length + ' semaine(s) archivée(s) pour ' + STATION_LABELS[stKey];
+
+  document.getElementById('digitalAudienceStationHeader').innerHTML = `
+    <span style="font-size:22px">${STATION_ICONS[stKey]||'📻'}</span>
+    <div>
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">${STATION_LABELS[stKey]}</div>
+      <div style="font-size:11.5px;color:var(--muted)">${digitalAudienceUI.week ? 'Semaine du ' + digitalAudienceFmtDate(digitalAudienceUI.week) : ''}</div>
+    </div>`;
+
+  const kpiArea = document.getElementById('digitalAudienceKpiCards');
+  const ctxArea = document.getElementById('digitalAudienceContextArea');
+  const tranchesArea = document.getElementById('digitalAudienceTranchesTable');
+
+  if(!digitalAudienceUI.week){
+    kpiArea.innerHTML = ''; ctxArea.innerHTML = ''; tranchesArea.innerHTML = '';
+    digitalAudienceDestroyCharts();
+    return;
+  }
+  const rec = digitalAudienceHistory[stKey][digitalAudienceUI.week];
+
+  // ── Cartes KPI (mêmes 4 cartes que Digital Monitoring) ──
+  const kpiCard = (label, value, sub, evols) => `
+    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--cyan)"></div>
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">${escHtml(label)}</div>
+      <div style="font-size:22px;font-weight:800;color:var(--navy);margin-bottom:${evols?'8px':'2px'}">${value}</div>
+      ${sub ? `<div style="font-size:10.5px;color:var(--muted)">${sub}</div>` : ''}
+      ${evols ? `<div style="display:flex;gap:6px;margin-top:4px">${evols}</div>` : ''}
+    </div>`;
+  kpiArea.innerHTML =
+    kpiCard('Sessions &gt; 30s', digitalAudienceFmtInt(rec.sessions), '',
+      digitalAudienceEvolChip('vs S-1', rec.evolS1Sessions) + digitalAudienceEvolChip('vs 1 an', rec.evol1anSessions)) +
+    kpiCard('Visiteurs uniques', digitalAudienceFmtInt(rec.uniques), '',
+      digitalAudienceEvolChip('vs S-1', rec.evolS1Uniques) + digitalAudienceEvolChip('vs 1 an', rec.evol1anUniques)) +
+    kpiCard('Durée d\'écoute moyenne', digitalAudienceFmtDuration(rec.dureeSec), 'par session', '') +
+    kpiCard('Audience moyenne 5h-24h', digitalAudienceFmtInt(rec.audienceMoyenne), '',
+      digitalAudienceEvolChip('vs S-1', rec.evolS1Audience) + digitalAudienceEvolChip('vs 1 an', rec.evol1anAudience));
+
+  // ── Contexte de la semaine ──
+  const contexte = rec.contexte || [];
+  ctxArea.innerHTML = contexte.length ? `
+    <div style="background:var(--cyan-light);border:1.5px solid var(--cyan-mid);border-radius:10px;padding:12px 16px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);margin-bottom:6px">Contexte de la semaine</div>
+      ${contexte.map(c => `<div style="font-size:12px;color:var(--text2);margin-bottom:2px">${escHtml(c)}</div>`).join('')}
+    </div>` : '';
+
+  // ── Courbe quotidienne (Chart.js) ──
+  digitalAudienceRenderDailyChart(rec.daily || []);
+
+  // ── Historique hebdomadaire (Chart.js) — audience moyenne, toutes semaines archivées ──
+  const weeklySeries = digitalAudienceWeekKeys(stKey).map(w => ({ label: digitalAudienceFmtDate(w), value: digitalAudienceHistory[stKey][w].audienceMoyenne }));
+  digitalAudienceRenderWeeklyChart(weeklySeries);
+
+  // ── Tranches (tableau avec heatmap, comme Digital Monitoring) ──
+  const tranches = rec.tranches || [];
+  if(!tranches.length){
+    tranchesArea.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Aucune donnée de tranche pour cette semaine.</div>';
+  } else {
+    const heatBg = x => (x>0.02 ? 'var(--green-bg)' : (x<-0.02 ? '#FDEBEB' : 'transparent'));
+    const rows = tranches.map(t => `<tr>
+      <td style="padding:8px 12px;font-size:12px;font-weight:700;color:var(--navy)">${escHtml(t.tranche)}${t.programme ? ` <span style="color:var(--muted);font-weight:500">· ${escHtml(t.programme)}</span>` : ''}</td>
+      <td style="padding:8px 12px;font-size:12px;text-align:right">${digitalAudienceFmtInt(t.audience)}</td>
+      <td style="padding:8px 12px;text-align:right;background:${heatBg(t.evolS1)}">${digitalAudienceEvolBadge(t.evolS1)}</td>
+      <td style="padding:8px 12px;text-align:right;background:${heatBg(t.evol1an)}">${digitalAudienceEvolBadge(t.evol1an)}</td>
+    </tr>`).join('');
+    tranchesArea.innerHTML = `
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="border-bottom:1.5px solid var(--border)">
+          <th style="padding:8px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left">Tranche</th>
+          <th style="padding:8px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Audience</th>
+          <th style="padding:8px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Évol. S-1</th>
+          <th style="padding:8px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Évol. 1 an</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+}
+
+/** Instances Chart.js de la sous-page Audience digitale — détruites et
+ *  recréées à chaque rendu (même garde-fou que Digital Monitoring, pour
+ *  éviter l'erreur "Canvas is already in use" au changement de semaine). */
+let digitalAudienceCharts = {};
+function digitalAudienceSafeNewChart(canvasId, config){
+  try{
+    if(typeof Chart === 'undefined'){
+      console.error('Chart.js non chargé — graphique ignoré', canvasId);
+      return null;
+    }
+    const el = document.getElementById(canvasId);
+    if(!el) return null;
+    if(digitalAudienceCharts[canvasId]) digitalAudienceCharts[canvasId].destroy();
+    digitalAudienceCharts[canvasId] = new Chart(el, config);
+    return digitalAudienceCharts[canvasId];
+  }catch(err){
+    console.error('Échec du rendu du graphique', canvasId, err);
+    return null;
+  }
+}
+function digitalAudienceDestroyCharts(){
+  Object.values(digitalAudienceCharts).forEach(c => { try{ c.destroy(); }catch(e){} });
+  digitalAudienceCharts = {};
+}
+
+/** Courbe quotidienne — barres, même config visuelle que Digital Monitoring
+ *  (renderLive → liveDailyChart) : couleur station, coins arrondis. */
+function digitalAudienceRenderDailyChart(daily){
+  const pts = daily || [];
+  const stColor = 'rgba(0,184,200,1)';
+  digitalAudienceSafeNewChart('digitalAudienceDailyChart', {
+    type: 'bar',
+    data: {
+      labels: pts.map(d => digitalAudienceFmtDate(d.date).slice(0,5)),
+      datasets: [{ data: pts.map(d => d.value), backgroundColor: stColor, borderRadius: 6, maxBarThickness: 46 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display:false }, tooltip: { callbacks: { label: c => digitalAudienceFmtInt(c.parsed.y) } } },
+      scales: {
+        x: { ticks: { color:'#4A5E78' }, grid: { display:false } },
+        y: { ticks: { color:'#4A5E78', callback: v => digitalAudienceFmtInt(v) }, grid: { color:'#DDE3EE' } }
+      }
+    }
+  });
+}
+
+/** Historique hebdomadaire — courbe, même config que Digital Monitoring
+ *  (renderLive → liveWeeklyChart) : aire remplie, points, tension 0.3. */
+function digitalAudienceRenderWeeklyChart(series){
+  const stColor = 'rgba(0,184,200,1)';
+  digitalAudienceSafeNewChart('digitalAudienceWeeklyChart', {
+    type: 'line',
+    data: {
+      labels: series.map(s => s.label),
+      datasets: [{ data: series.map(s => s.value), borderColor: stColor, backgroundColor: 'rgba(0,184,200,0.13)', borderWidth: 2.5, pointRadius: 4, tension: 0.3, fill: true }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display:false }, tooltip: { callbacks: { label: c => digitalAudienceFmtInt(c.parsed.y) } } },
+      scales: {
+        x: { ticks: { color:'#4A5E78' }, grid: { color:'#DDE3EE' } },
+        y: { ticks: { color:'#4A5E78', callback: v => digitalAudienceFmtInt(v) }, grid: { color:'#DDE3EE' } }
+      }
+    }
+  });
+}
+
+function renderDigitalAudienceHistoryTable(){
+  const histArea = document.getElementById('digitalAudienceHistoryArea');
+  if(!histArea) return;
+  histArea.innerHTML = DIGITAL_AUDIENCE_STATIONS.map(stKey => {
+    const weeks = digitalAudienceWeekKeys(stKey).slice().reverse();
+    if(!weeks.length) return '';
+    const rows = weeks.map(w => {
+      const r = digitalAudienceHistory[stKey][w];
+      const isShown = stKey===digitalAudienceUI.station && w===digitalAudienceUI.week;
+      return `<tr style="${isShown?'background:var(--cyan-light)':''}">
+        <td style="padding:7px 10px;font-size:11.5px">${digitalAudienceFmtDate(w)}${r.weekEnd ? ' → ' + digitalAudienceFmtDate(r.weekEnd) : ''}</td>
+        <td style="padding:7px 10px;font-size:11.5px;text-align:right">${digitalAudienceFmtInt(r.sessions)}</td>
+        <td style="padding:7px 10px;font-size:11.5px;text-align:right">${digitalAudienceFmtInt(r.uniques)}</td>
+        <td style="padding:7px 10px;font-size:11.5px;text-align:right">${digitalAudienceFmtInt(r.audienceMoyenne)}</td>
+        <td style="padding:7px 10px;font-size:11.5px;text-align:right">${digitalAudienceEvolBadge(r.evolS1Audience)}</td>
+        <td style="padding:7px 10px;text-align:center;white-space:nowrap">
+          <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="digitalAudienceUI.station='${stKey}';digitalAudienceUI.week='${w}';renderDigitalAudienceDetail();renderDigitalAudienceHistoryTable();document.getElementById('digitalAudienceDetailWrap').scrollIntoView({behavior:'smooth',block:'start'})" title="Voir le détail de cette semaine">👁</button>
+          <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="digitalAudienceDeleteWeek('${stKey}','${w}')" title="Supprimer cette semaine">🗑</button>
+        </td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:22px">
+      <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:6px">${STATION_ICONS[stKey]||'📻'} ${STATION_LABELS[stKey]}</div>
+      <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
+        <thead><tr style="background:var(--bg)">
+          <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left">Semaine</th>
+          <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Sessions</th>
+          <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Uniques</th>
+          <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Aud. moy.</th>
+          <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Évol S-1</th>
+          <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)"></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+function digitalAudienceDeleteWeek(stKey, weekStart){
+  if(!confirm('Supprimer la semaine du ' + digitalAudienceFmtDate(weekStart) + ' (' + STATION_LABELS[stKey] + ') ?')) return;
+  if(digitalAudienceHistory[stKey]) delete digitalAudienceHistory[stKey][weekStart];
+  digitalAudienceSaveLocal();
+  if(DRIVE_SYNC_URL) digitalAudienceSaveToDrive();
+  renderDigitalAudiencePage();
+}
+
+/** Import en masse d'un export JSON réalisé depuis l'outil Digital
+ *  Monitoring (bouton « ⭳ Exporter tout (.json) » de sa page Archives).
+ *  Reprend le bloc `live` (Live Stats hebdo → Audience digitale) ET le bloc
+ *  `mediametrie` (vagues/quinzaines → Médiamétrie), uniquement Europe 2 / RFM
+ *  (portée d'Analyse) — Europe 1, hors périmètre, est ignoré silencieusement.
+ *  N'écrase jamais une entrée déjà présente (import antérieur potentiellement
+ *  corrigé à la main) : les entrées déjà connues sont comptées à part et
+ *  laissées telles quelles. */
+const DM_STATION_MAP = { europe2:'EUROPE2', rfm:'RFM' }; // europe1 volontairement absent (hors périmètre Analyse)
+
+async function digitalAudienceImportDMFile(input){
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file) return;
+  let data;
+  try{
+    const text = await file.text();
+    data = JSON.parse(text);
+  }catch(e){
+    showToast('Fichier JSON invalide', 'err');
+    return;
+  }
+  if(!data || typeof data !== 'object' || (!data.live && !data.mediametrie)){
+    showToast('Ce fichier ne contient pas de données « live » ou « médiamétrie » (Digital Monitoring) exploitables', 'err');
+    return;
+  }
+
+  let added = 0, skippedExisting = 0, skippedOutOfScope = 0;
+  if(data.live){
+    for(const [dmStation, weeks] of Object.entries(data.live)){
+      const stKey = DM_STATION_MAP[dmStation];
+      if(!stKey){ skippedOutOfScope += Object.keys(weeks||{}).length; continue; } // europe1
+      if(!digitalAudienceHistory[stKey]) digitalAudienceHistory[stKey] = {};
+      for(const [weekStart, rec] of Object.entries(weeks || {})){
+        if(digitalAudienceHistory[stKey][weekStart]){ skippedExisting++; continue; }
+        const weekEnd = rec.weekEnd || (Array.isArray(rec.daily) && rec.daily.length ? rec.daily[rec.daily.length-1].date : null);
+        digitalAudienceHistory[stKey][weekStart] = {
+          weekStart, weekEnd,
+          sessions: rec.sessions ?? null,
+          uniques: rec.uniques ?? null,
+          dureeSec: rec.dureeSec ?? null,
+          audienceMoyenne: rec.audienceMoyenne ?? null,
+          evolS1Sessions: rec.evolS1Sessions ?? null, evol1anSessions: rec.evol1anSessions ?? null,
+          evolS1Uniques: rec.evolS1Uniques ?? null, evol1anUniques: rec.evol1anUniques ?? null,
+          evolS1Audience: rec.evolS1Audience ?? null, evol1anAudience: rec.evol1anAudience ?? null,
+          daily: rec.daily || [], tranches: rec.tranches || [], contexte: rec.contexte || [],
+          filename: '(import Digital Monitoring — ' + (data.exportedAt ? data.exportedAt.slice(0,10) : '?') + ')',
+          importedAt: new Date().toISOString()
+        };
+        added++;
+      }
+    }
+  }
+
+  let mediaAdded = 0, mediaSkipped = 0, mediaOutOfScope = 0;
+  if(data.mediametrie){
+    mediaLoadLocal();
+    for(const [dmStation, stationData] of Object.entries(data.mediametrie)){
+      const stKey = DM_STATION_MAP[dmStation];
+      if(!stKey){ mediaOutOfScope += (stationData.periods||[]).length; continue; } // europe1
+      if(!mediaHistory[stKey]) mediaHistory[stKey] = { cibles: stationData.cibles || [], periods: [] };
+      if(!mediaHistory[stKey].cibles || !mediaHistory[stKey].cibles.length) mediaHistory[stKey].cibles = stationData.cibles || [];
+      (stationData.periods || []).forEach(p => {
+        const exists = mediaHistory[stKey].periods.find(e => e.id === p.id);
+        if(exists){ mediaSkipped++; return; }
+        mediaHistory[stKey].periods.push(p);
+        mediaAdded++;
+      });
+    }
+    mediaSaveLocal();
+  }
+
+  if(!added && !skippedExisting && !mediaAdded && !mediaSkipped){
+    showToast('Aucune donnée Europe 2/RFM exploitable trouvée dans cet export', 'err');
+    return;
+  }
+
+  const parts = [];
+  if(added || skippedExisting) parts.push(added + ' semaine(s) audience digitale importée(s)' + (skippedExisting ? ' (' + skippedExisting + ' déjà présente(s))' : ''));
+  if(mediaAdded || mediaSkipped) parts.push(mediaAdded + ' vague(s) Médiamétrie importée(s)' + (mediaSkipped ? ' (' + mediaSkipped + ' déjà présente(s))' : ''));
+  let msg = '✓ ' + parts.join(' · ');
+  if(skippedOutOfScope || mediaOutOfScope) msg += ' · Europe 1 ignoré (hors périmètre)';
+  showToast(msg, 'success');
+
+  renderDigitalAudiencePage();
+  if(analyseSubView === 'corr') renderCorrPage();
+  if(analyseSubView === 'media') renderMediaPage();
+
+  if(DRIVE_SYNC_URL){
+    if(added > 0) await digitalAudienceSaveToDrive();
+    if(mediaAdded > 0) await mediaSaveToDrive();
+    if(added > 0 || mediaAdded > 0) showToast('☁️ Import synchronisé sur Drive', 'success');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// MÉDIAMÉTRIE — vagues (SO/ND/JM/AJ), quinzaines/intermédiaires, historique
+// ══════════════════════════════════════════════════════════════════════════
+// Reprise à l'identique du module « Corrélation Live / Médiamétrie » de
+// Digital Monitoring : mêmes structures de données (cibles, périodes/vagues,
+// quinzaines par cible avec AC/PDA/DEA), mêmes règles d'évolution (N-1 :
+// même type de vague l'année précédente ; V-1 : vague chronologiquement
+// précédente), mêmes pastilles de type de vague (SO/ND/JM/AJ), même
+// distinction vagues-avec-quinzaines (panneau détaillé) vs vagues archivées
+// en résultat seul (tableau historique groupé par saison). La donnée
+// hebdomadaire d'audience digitale utilisée pour la moyenne "Live" par
+// quinzaine/vague vient ici de digitalAudienceHistory (le module Audience
+// digitale de FPA) plutôt que du store `live` propre à Digital Monitoring.
+const MEDIA_LOCAL_KEY = 'fpa_mediametrie_v1';
+const MEDIA_DRIVE_KEY = 'mediametrie_history';
+const MEDIA_WAVE_LABELS = { SO:'Septembre-Octobre', ND:'Novembre-Décembre', JM:'Janvier-Mars', AJ:'Avril-Juin' };
+const MEDIA_SEED = {"RFM": {"cibles": [{"key": "ensemble", "label": "Ensemble"}, {"key": "c2", "label": "25-59 ans"}, {"key": "c3", "label": "35-59 ans"}], "periods": [{"id": "2020-so", "label": "Septembre-Octobre 2020", "waveType": "SO", "year": 2020, "waves": [], "finalResult": {"AC": 4.1, "PDA": 3.6, "DEA": null}}, {"id": "2020-nd", "label": "Novembre-Décembre 2020", "waveType": "ND", "year": 2020, "waves": [], "finalResult": {"AC": 3.6, "PDA": 2.8, "DEA": null}}, {"id": "2021-jm", "label": "Janvier-Mars 2021", "waveType": "JM", "year": 2021, "waves": [], "finalResult": {"AC": 3.2, "PDA": 2.4, "DEA": null}}, {"id": "2021-aj", "label": "Avril-Juin 2021", "waveType": "AJ", "year": 2021, "waves": [], "finalResult": {"AC": 3.4, "PDA": 3, "DEA": null}}, {"id": "2021-so", "label": "Septembre-Octobre 2021", "waveType": "SO", "year": 2021, "waves": [], "finalResult": {"AC": 3.6, "PDA": 2.9, "DEA": null}}, {"id": "2021-nd", "label": "Novembre-Décembre 2021", "waveType": "ND", "year": 2021, "waves": [], "finalResult": {"AC": 3.7, "PDA": 2.8, "DEA": null}}, {"id": "2022-jm", "label": "Janvier-Mars 2022", "waveType": "JM", "year": 2022, "waves": [], "finalResult": {"AC": 3.1, "PDA": 2.5, "DEA": null}}, {"id": "2022-aj", "label": "Avril-Juin 2022", "waveType": "AJ", "year": 2022, "waves": [], "finalResult": {"AC": 3.3, "PDA": 2.8, "DEA": null}}, {"id": "2022-so", "label": "Septembre-Octobre 2022", "waveType": "SO", "year": 2022, "waves": [], "finalResult": {"AC": 3.1, "PDA": 2.9, "DEA": null}}, {"id": "2022-nd", "label": "Novembre-Décembre 2022", "waveType": "ND", "year": 2022, "waves": [], "finalResult": {"AC": 3.6, "PDA": 3, "DEA": null}}, {"id": "2023-jm", "label": "Janvier-Mars 2023", "waveType": "JM", "year": 2023, "waves": [], "finalResult": {"AC": 3.1, "PDA": 2.4, "DEA": null}}, {"id": "2023-aj", "label": "Avril-Juin 2023", "waveType": "AJ", "year": 2023, "waves": [], "finalResult": {"AC": 3, "PDA": 2.5, "DEA": null}}, {"id": "2023-so", "label": "Septembre-Octobre 2023", "waveType": "SO", "year": 2023, "waves": [], "finalResult": {"AC": 2.9, "PDA": 2.6, "DEA": null}}, {"id": "2023-nd", "label": "Novembre-Décembre 2023", "waveType": "ND", "year": 2023, "waves": [], "finalResult": {"AC": 3.3, "PDA": 2.7, "DEA": null}}, {"id": "2024-jm", "label": "Janvier-Mars 2024", "waveType": "JM", "year": 2024, "waves": [], "finalResult": {"AC": 3, "PDA": 2.6, "DEA": null}}, {"id": "2024-aj", "label": "Avril-Juin 2024", "waveType": "AJ", "year": 2024, "waves": [], "finalResult": {"AC": 3.1, "PDA": 2.6, "DEA": null}}, {"id": "2024-so", "label": "Septembre-Octobre 2024", "waveType": "SO", "year": 2024, "waves": [], "finalResult": {"AC": 3, "PDA": 2.5, "DEA": null}}, {"id": "2024-nd", "label": "Novembre-Décembre 2024", "waveType": "ND", "year": 2024, "waves": [], "finalResult": {"AC": 2.8, "PDA": 2.4, "DEA": null}}, {"id": "2025-jm", "label": "Janvier-Mars 2025", "waveType": "JM", "year": 2025, "waves": [], "finalResult": {"AC": 2.9, "PDA": 2.3, "DEA": null}}, {"id": "2025-aj", "label": "Avril-Juin 2025", "waveType": "AJ", "year": 2025, "waves": [], "finalResult": {"AC": 2.6, "PDA": 2.4, "DEA": null}}, {"id": "2025-so", "label": "Septembre-Octobre 2025", "waveType": "SO", "year": 2025, "waves": [], "finalResult": {"AC": 2.6, "PDA": 2.6, "DEA": null}}, {"id": "2025-nd", "label": "Novembre-Décembre 2025", "waveType": "ND", "year": 2025, "waves": [], "finalResult": {"AC": 2.8, "PDA": 2.1, "DEA": null}}, {"id": "2026-jm", "label": "Janvier-Mars 2026", "waveType": "JM", "year": 2026, "waves": [{"id": "q1", "label": "Q1", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.8, "PDA": 2.4, "DEA": 89}, "c2": {"AC": 3.1, "PDA": 2.5, "DEA": 84}, "c3": {"AC": 3.9, "PDA": 2.9, "DEA": 89}}}, {"id": "q2", "label": "Q2", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.9, "PDA": 2.4, "DEA": 90}, "c2": {"AC": 3.2, "PDA": 2.6, "DEA": 90}, "c3": {"AC": 3.8, "PDA": 2.7, "DEA": 87}}}, {"id": "q3", "label": "Q3", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.8, "PDA": 2.4, "DEA": 91}, "c2": {"AC": 2.9, "PDA": 2.5, "DEA": 92}, "c3": {"AC": 3.5, "PDA": 2.7, "DEA": 90}}}, {"id": "q4", "label": "Q4", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.7, "PDA": 2.3, "DEA": 89}, "c2": {"AC": 2.9, "PDA": 2.4, "DEA": 90}, "c3": {"AC": 3.4, "PDA": 2.6, "DEA": 89}}}, {"id": "q4c", "label": "Q4 corrigé", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.9, "PDA": 2.4, "DEA": null}, "c2": {"AC": 3.1, "PDA": 2.6, "DEA": null}, "c3": {"AC": 3.7, "PDA": 2.7, "DEA": null}}}, {"id": "q5c", "label": "Q5 corrigé", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.9, "PDA": 2.4, "DEA": 90}, "c2": {"AC": 3.2, "PDA": 2.5, "DEA": 87}, "c3": {"AC": 3.8, "PDA": 2.6, "DEA": 86}}}], "finalResult": {"AC": 2.9, "PDA": 2.4, "DEA": 90}}, {"id": "2026-aj", "label": "Avril-Juin 2026", "waveType": "AJ", "year": 2026, "waves": [{"id": "q1", "label": "Q1", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.6, "PDA": 2.5, "DEA": 107}, "c2": {"AC": 2.9, "PDA": 3.1, "DEA": 113}, "c3": {"AC": 3.3, "PDA": 3.0, "DEA": 110}}}, {"id": "q2", "label": "Q2", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.6, "PDA": 2.5, "DEA": 104}, "c2": {"AC": 2.9, "PDA": 3.0, "DEA": 112}, "c3": {"AC": 3.3, "PDA": 3.1, "DEA": 114}}}, {"id": "q3", "label": "Q3", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.7, "PDA": 2.4, "DEA": 101}, "c2": {"AC": 3.0, "PDA": 2.9, "DEA": 108}, "c3": {"AC": 3.4, "PDA": 2.9, "DEA": 105}}}, {"id": "q4", "label": "Q4", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.7, "PDA": 2.4, "DEA": 99}, "c2": {"AC": 3.0, "PDA": 2.9, "DEA": 105}, "c3": {"AC": 3.5, "PDA": 2.9, "DEA": 103}}}, {"id": "q5", "label": "Q5", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.8, "PDA": 2.5, "DEA": 101}, "c2": {"AC": 3.1, "PDA": 2.9, "DEA": 105}, "c3": {"AC": 3.5, "PDA": 3.0, "DEA": 106}}}], "finalResult": {"AC": 2.8, "PDA": 2.5, "DEA": 101}}]}, "EUROPE2": {"cibles": [{"key": "ensemble", "label": "Ensemble"}, {"key": "c2", "label": "25-49 ans"}, {"key": "c3", "label": "25-59 ans"}], "periods": [{"id": "2020-so", "label": "Septembre-Octobre 2020", "waveType": "SO", "year": 2020, "waves": [], "finalResult": {"AC": 3.4, "PDA": 2.1, "DEA": null}}, {"id": "2020-nd", "label": "Novembre-Décembre 2020", "waveType": "ND", "year": 2020, "waves": [], "finalResult": {"AC": 3, "PDA": 1.9, "DEA": null}}, {"id": "2021-jm", "label": "Janvier-Mars 2021", "waveType": "JM", "year": 2021, "waves": [], "finalResult": {"AC": 3, "PDA": 1.8, "DEA": null}}, {"id": "2021-aj", "label": "Avril-Juin 2021", "waveType": "AJ", "year": 2021, "waves": [], "finalResult": {"AC": 2.8, "PDA": 1.8, "DEA": null}}, {"id": "2021-so", "label": "Septembre-Octobre 2021", "waveType": "SO", "year": 2021, "waves": [], "finalResult": {"AC": 3, "PDA": 1.8, "DEA": null}}, {"id": "2021-nd", "label": "Novembre-Décembre 2021", "waveType": "ND", "year": 2021, "waves": [], "finalResult": {"AC": 2.8, "PDA": 1.6, "DEA": null}}, {"id": "2022-jm", "label": "Janvier-Mars 2022", "waveType": "JM", "year": 2022, "waves": [], "finalResult": {"AC": 2.8, "PDA": 1.6, "DEA": null}}, {"id": "2022-aj", "label": "Avril-Juin 2022", "waveType": "AJ", "year": 2022, "waves": [], "finalResult": {"AC": 2.8, "PDA": 1.8, "DEA": null}}, {"id": "2022-so", "label": "Septembre-Octobre 2022", "waveType": "SO", "year": 2022, "waves": [], "finalResult": {"AC": 2.6, "PDA": 1.6, "DEA": null}}, {"id": "2022-nd", "label": "Novembre-Décembre 2022", "waveType": "ND", "year": 2022, "waves": [], "finalResult": {"AC": 2.5, "PDA": 1.5, "DEA": null}}, {"id": "2023-jm", "label": "Janvier-Mars 2023", "waveType": "JM", "year": 2023, "waves": [], "finalResult": {"AC": 2.4, "PDA": 1.4, "DEA": null}}, {"id": "2023-aj", "label": "Avril-Juin 2023", "waveType": "AJ", "year": 2023, "waves": [], "finalResult": {"AC": 2.2, "PDA": 1.3, "DEA": null}}, {"id": "2023-so", "label": "Septembre-Octobre 2023", "waveType": "SO", "year": 2023, "waves": [], "finalResult": {"AC": 2.3, "PDA": 1.5, "DEA": null}}, {"id": "2023-nd", "label": "Novembre-Décembre 2023", "waveType": "ND", "year": 2023, "waves": [], "finalResult": {"AC": 2.2, "PDA": 1.3, "DEA": null}}, {"id": "2024-jm", "label": "Janvier-Mars 2024", "waveType": "JM", "year": 2024, "waves": [], "finalResult": {"AC": 2, "PDA": 1.1, "DEA": null}}, {"id": "2024-aj", "label": "Avril-Juin 2024", "waveType": "AJ", "year": 2024, "waves": [], "finalResult": {"AC": 1.9, "PDA": 1.2, "DEA": null}}, {"id": "2024-so", "label": "Septembre-Octobre 2024", "waveType": "SO", "year": 2024, "waves": [], "finalResult": {"AC": 1.6, "PDA": 1, "DEA": null}}, {"id": "2024-nd", "label": "Novembre-Décembre 2024", "waveType": "ND", "year": 2024, "waves": [], "finalResult": {"AC": 1.6, "PDA": 1, "DEA": null}}, {"id": "2025-jm", "label": "Janvier-Mars 2025", "waveType": "JM", "year": 2025, "waves": [], "finalResult": {"AC": 1.5, "PDA": 0.9, "DEA": null}}, {"id": "2025-aj", "label": "Avril-Juin 2025", "waveType": "AJ", "year": 2025, "waves": [], "finalResult": {"AC": 1.6, "PDA": 1, "DEA": null}}, {"id": "2025-so", "label": "Septembre-Octobre 2025", "waveType": "SO", "year": 2025, "waves": [], "finalResult": {"AC": 1.8, "PDA": 1.5, "DEA": null}}, {"id": "2025-nd", "label": "Novembre-Décembre 2025", "waveType": "ND", "year": 2025, "waves": [], "finalResult": {"AC": 1.9, "PDA": 1.6, "DEA": null}}, {"id": "2026-jm", "label": "Janvier-Mars 2026", "waveType": "JM", "year": 2026, "waves": [{"id": "q1", "label": "Q1", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.7, "PDA": 1.5, "DEA": 92}, "c2": {"AC": 2.6, "PDA": 2.5, "DEA": 95}, "c3": {"AC": 2.4, "PDA": 2.3, "DEA": 104}}}, {"id": "q2", "label": "Q2", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.8, "PDA": 1.5, "DEA": 89}, "c2": {"AC": 2.8, "PDA": 2.7, "DEA": 97}, "c3": {"AC": 2.5, "PDA": 2.3, "DEA": 101}}}, {"id": "q3", "label": "Q3", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.7, "PDA": 1.5, "DEA": 92}, "c2": {"AC": 2.6, "PDA": 2.9, "DEA": 106}, "c3": {"AC": 2.4, "PDA": 2.4, "DEA": 107}}}, {"id": "q4", "label": "Q4", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.8, "PDA": 1.6, "DEA": 98}, "c2": {"AC": 2.8, "PDA": 3.4, "DEA": 116}, "c3": {"AC": 2.6, "PDA": 2.7, "DEA": 113}}}, {"id": "q4c", "label": "Q4 corrigé", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.9, "PDA": 1.7, "DEA": null}, "c2": {"AC": 3.1, "PDA": 3.3, "DEA": null}, "c3": {"AC": 2.8, "PDA": 2.7, "DEA": null}}}, {"id": "q5c", "label": "Q5 corrigé", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.8, "PDA": 1.6, "DEA": 95}, "c2": {"AC": 2.9, "PDA": 3.0, "DEA": 105}, "c3": {"AC": 2.7, "PDA": 2.6, "DEA": 107}}}], "finalResult": {"AC": 1.8, "PDA": 1.6, "DEA": 95}}, {"id": "2026-aj", "label": "Avril-Juin 2026", "waveType": "AJ", "year": 2026, "waves": [{"id": "q1", "label": "Q1", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.9, "PDA": 1.8, "DEA": 101}, "c2": {"AC": 2.8, "PDA": 3.8, "DEA": 130}, "c3": {"AC": 2.7, "PDA": 3.1, "DEA": 120}}}, {"id": "q2", "label": "Q2", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.0, "PDA": 1.7, "DEA": 94}, "c2": {"AC": 3.0, "PDA": 3.2, "DEA": 104}, "c3": {"AC": 2.9, "PDA": 2.9, "DEA": 108}}}, {"id": "q3", "label": "Q3", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.9, "PDA": 1.7, "DEA": 94}, "c2": {"AC": 3.0, "PDA": 3.1, "DEA": 102}, "c3": {"AC": 2.8, "PDA": 2.9, "DEA": 111}}}, {"id": "q4", "label": "Q4", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.8, "PDA": 1.5, "DEA": 92}, "c2": {"AC": 2.8, "PDA": 2.8, "DEA": 98}, "c3": {"AC": 2.7, "PDA": 2.6, "DEA": 105}}}, {"id": "q5", "label": "Q5", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.7, "PDA": 1.4, "DEA": 92}, "c2": {"AC": 2.7, "PDA": 2.8, "DEA": 102}, "c3": {"AC": 2.6, "PDA": 2.5, "DEA": 105}}}], "finalResult": {"AC": 1.7, "PDA": 1.4, "DEA": 92}}]}};
+let mediaHistory = { EUROPE2: { cibles:[], periods:[] }, RFM: { cibles:[], periods:[] } };
+let mediaDriveLoaded = false;
+let mediaUI = { station: 'EUROPE2', collapsed: {} };
+
+function mediaLoadLocal(){
+  try{
+    const raw = localStorage.getItem(MEDIA_LOCAL_KEY);
+    if(raw){ mediaHistory = JSON.parse(raw); return; }
+  }catch(e){ /* ignoré */ }
+  // Première utilisation : on pré-remplit avec les données historiques
+  // réelles (2020→2026, saisies dans Digital Monitoring) plutôt que de
+  // partir d'un module vide.
+  mediaHistory = JSON.parse(JSON.stringify(MEDIA_SEED));
+  mediaSaveLocal();
+}
+function mediaSaveLocal(){
+  try{ localStorage.setItem(MEDIA_LOCAL_KEY, JSON.stringify(mediaHistory)); }
+  catch(e){ /* quota localStorage, ignoré */ }
+}
+async function mediaSaveToDrive(){
+  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  try{
+    await driveCall('save', MEDIA_DRIVE_KEY, JSON.stringify(mediaHistory));
+    return { ok:true };
+  }catch(e){
+    showToast('Erreur de sauvegarde Drive (Médiamétrie) : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }
+}
+async function mediaLoadHistoryFromDrive(manual){
+  if(!DRIVE_SYNC_URL){ if(manual) showToast('URL Drive Sync non configurée', 'err'); return { ok:false, reason:'no_url' }; }
+  try{
+    const r = await driveCall('load', MEDIA_DRIVE_KEY);
+    mediaDriveLoaded = true;
+    if(!r || !r.data){ if(manual) renderMediaPage(); return { ok:true, empty:true }; }
+    const remote = JSON.parse(r.data);
+    ['EUROPE2','RFM'].forEach(stKey => {
+      const remoteSt = remote[stKey];
+      if(!remoteSt) return;
+      const localSt = mediaHistory[stKey] || (mediaHistory[stKey] = { cibles:[], periods:[] });
+      if((!localSt.cibles || !localSt.cibles.length) && remoteSt.cibles) localSt.cibles = remoteSt.cibles;
+      (remoteSt.periods || []).forEach(rp => {
+        const idx = localSt.periods.findIndex(lp => lp.id === rp.id);
+        if(idx < 0) localSt.periods.push(rp); else localSt.periods[idx] = rp;
+      });
+    });
+    mediaSaveLocal();
+    if(manual) showToast('Médiamétrie synchronisée depuis Drive', 'success');
+    renderMediaPage();
+    return { ok:true };
+  }catch(e){
+    mediaDriveLoaded = true;
+    if(manual) showToast('Erreur de synchronisation Drive : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }
+}
+
+/* ---- Détection type de vague + année depuis un libellé libre ---- */
+function mediaDetectWaveTypeYear(label){
+  const yearMatch = /(20\d{2})/.exec(label||'');
+  const year = yearMatch ? parseInt(yearMatch[1],10) : null;
+  let waveType = null;
+  if(/septembre|octobre/i.test(label)) waveType = 'SO';
+  else if(/novembre|d[ée]cembre/i.test(label)) waveType = 'ND';
+  else if(/janvier|f[ée]vrier|mars/i.test(label)) waveType = 'JM';
+  else if(/avril|mai|juin/i.test(label)) waveType = 'AJ';
+  return { waveType, year };
+}
+function mediaWaveSortKey(period){
+  const monthMap = { SO:9, ND:11, JM:1, AJ:4 };
+  if(period.year && period.waveType && monthMap[period.waveType]!==undefined) return period.year*12 + monthMap[period.waveType];
+  return null;
+}
+function mediaSortedPeriods(stKey){
+  const data = mediaHistory[stKey];
+  return (data.periods||[]).map((p,idx) => ({p, idx, key:mediaWaveSortKey(p)}))
+    .sort((a,b) => {
+      if(a.key===null && b.key===null) return a.idx-b.idx;
+      if(a.key===null) return 1;
+      if(b.key===null) return -1;
+      return a.key-b.key;
+    }).map(x => x.p);
+}
+function mediaFindPrevChrono(stKey, period){
+  const key = mediaWaveSortKey(period);
+  if(key===null) return null;
+  let prev = null;
+  for(const p of mediaSortedPeriods(stKey)){
+    const k = mediaWaveSortKey(p);
+    if(k===null) continue;
+    if(k < key) prev = p; else break;
+  }
+  return prev;
+}
+function mediaFindSameTypePrevYear(stKey, period){
+  if(!period.waveType || !period.year) return null;
+  const data = mediaHistory[stKey];
+  return data.periods.find(p => p.waveType===period.waveType && p.year===period.year-1) || null;
+}
+function mediaEvolutionBadge(currentVal, comparisonPeriod, metric, tag){
+  const otherVal = comparisonPeriod && comparisonPeriod.finalResult ? comparisonPeriod.finalResult[metric] : null;
+  if(typeof currentVal !== 'number' || typeof otherVal !== 'number'){
+    return `<span style="display:inline-flex;gap:3px;align-items:center;font-size:9.5px;color:var(--muted)" title="Non disponible"><b>${tag}</b>–</span>`;
+  }
+  const delta = Math.round((currentVal-otherVal)*10)/10;
+  let color = 'var(--muted)', arrow = '＝';
+  if(delta>0){ color='var(--green-text)'; arrow='▲'; } else if(delta<0){ color='#CC2222'; arrow='▼'; }
+  const deltaStr = (delta>0?'+':'') + delta.toFixed(1).replace('.',',');
+  return `<span style="display:inline-flex;gap:3px;align-items:center;font-size:9.5px;color:${color};font-weight:700" title="vs ${escHtml(comparisonPeriod.label)} (${String(otherVal).replace('.',',')})"><b style="color:var(--muted);font-weight:800">${tag}</b>${arrow} ${deltaStr}</span>`;
+}
+function mediaWaveTypePill(period){
+  const colors = { SO:'#B85C00', ND:'#5B3FA8', JM:'#0B6E99', AJ:'#0DA76B' };
+  if(!period.waveType) return `<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:800;background:var(--bg);color:var(--muted);margin-right:6px">Vague</span>`;
+  const c = colors[period.waveType] || 'var(--muted)';
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:10px;font-weight:800;background:${c}1A;color:${c};margin-right:6px">${period.waveType} ${period.year}</span>`;
+}
+function mediaSeasonLabel(period){
+  if(!period.waveType || !period.year) return null;
+  return (period.waveType==='SO' || period.waveType==='ND') ? `Saison ${period.year}-${period.year+1}` : `Saison ${period.year-1}-${period.year}`;
+}
+
+/* ---- Moyenne Live (Audience digitale FPA) sur une plage de dates ---- */
+function mediaComputeLiveAvgForRange(stKey, start, end){
+  if(!start || !end) return null;
+  const weeks = Object.keys(digitalAudienceHistory[stKey] || {}).filter(w => {
+    const rec = digitalAudienceHistory[stKey][w];
+    return w >= start && (rec.weekEnd || w) <= end && rec.audienceMoyenne != null;
+  });
+  if(!weeks.length) return null;
+  const vals = weeks.map(w => digitalAudienceHistory[stKey][w].audienceMoyenne);
+  const avg = vals.reduce((s,v) => s+v, 0) / vals.length;
+  return { avg, count: weeks.length };
+}
+function mediaComputePeriodLiveAvg(stKey, period){
+  if(!period.waves || !period.waves.length) return null;
+  let minStart = null, maxEnd = null;
+  period.waves.forEach(w => {
+    if(w.dateStart && (!minStart || w.dateStart < minStart)) minStart = w.dateStart;
+    if(w.dateEnd && (!maxEnd || w.dateEnd > maxEnd)) maxEnd = w.dateEnd;
+  });
+  if(!minStart || !maxEnd) return null;
+  const calc = mediaComputeLiveAvgForRange(stKey, minStart, maxEnd);
+  return calc ? { ...calc, rangeStart:minStart, rangeEnd:maxEnd } : null;
+}
+function mediaPeriodLiveInnerHtml(stKey, period){
+  const liveAvg = mediaComputePeriodLiveAvg(stKey, period);
+  return liveAvg
+    ? `<div style="font-size:16px;font-weight:800;color:var(--navy)">${digitalAudienceFmtInt(liveAvg.avg)}</div><div style="font-size:9.5px;color:var(--muted)">${liveAvg.count} semaine(s) · ${digitalAudienceFmtDate(liveAvg.rangeStart)} → ${digitalAudienceFmtDate(liveAvg.rangeEnd)}</div>`
+    : `<div style="font-size:11px;color:var(--muted)">dates de quinzaines incomplètes</div>`;
+}
+function mediaLiveCellHtml(stKey, wave){
+  const calc = mediaComputeLiveAvgForRange(stKey, wave.dateStart, wave.dateEnd);
+  return calc
+    ? `<div style="font-size:12px;font-weight:700;color:var(--navy)">${digitalAudienceFmtInt(calc.avg)}</div><div style="font-size:9px;color:var(--muted)">${calc.count} sem.</div>`
+    : `<div style="font-size:10.5px;color:var(--muted)">${(wave.dateStart&&wave.dateEnd) ? 'aucune semaine live' : 'dates non saisies'}</div>`;
+}
+
+/* ---- Slug / id helpers ---- */
+function mediaSlugify(s){ return (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/(^-+|-+$)/g,'') || 'x'; }
+function mediaUniqueId(existingIds, base){ let id=base, n=2; while(existingIds.includes(id)){ id=base+'-'+n; n++; } return id; }
+function mediaNextWaveLabel(period){
+  let maxN = 0;
+  (period.waves||[]).forEach(w => { const m = /^Q(\d+)/i.exec(w.label||''); if(m) maxN = Math.max(maxN, parseInt(m[1],10)); });
+  return 'Q' + (maxN+1);
+}
+
+/* ---- CRUD période / quinzaine ---- */
+function mediaAddPeriod(){
+  if(!requireAdmin()) return;
+  const stKey = mediaUI.station;
+  const data = mediaHistory[stKey];
+  const label = prompt('Nom de la nouvelle vague (ex : "Juillet-Septembre 2026") :');
+  if(!label) return;
+  const id = mediaUniqueId(data.periods.map(p=>p.id), mediaSlugify(label));
+  const {waveType, year} = mediaDetectWaveTypeYear(label);
+  data.periods.push({ id, label, waveType, year, waves: [], finalResult:{AC:null,PDA:null,DEA:null} });
+  mediaSaveLocal();
+  if(DRIVE_SYNC_URL) mediaSaveToDrive();
+  renderMediaPage();
+}
+function mediaRemovePeriod(stKey, periodId){
+  const data = mediaHistory[stKey];
+  const period = data.periods.find(p=>p.id===periodId);
+  if(!period) return;
+  if(!confirm(`Supprimer la vague "${period.label}" et toutes ses quinzaines ?`)) return;
+  data.periods = data.periods.filter(p=>p.id!==periodId);
+  mediaSaveLocal();
+  if(DRIVE_SYNC_URL) mediaSaveToDrive();
+  renderMediaPage();
+}
+function mediaAddWave(stKey, periodId){
+  const data = mediaHistory[stKey];
+  const period = data.periods.find(p=>p.id===periodId);
+  if(!period) return;
+  const label = prompt('Nom de la quinzaine (ex : "Q6") :', mediaNextWaveLabel(period));
+  if(!label) return;
+  const id = mediaUniqueId((period.waves||[]).map(w=>w.id), mediaSlugify(label));
+  const cibles = {};
+  (data.cibles||[]).forEach(c => { cibles[c.key] = { AC:null, PDA:null, DEA:null }; });
+  if(!period.waves) period.waves = [];
+  period.waves.push({ id, label, dateStart:null, dateEnd:null, cibles });
+  mediaSaveLocal();
+  if(DRIVE_SYNC_URL) mediaSaveToDrive();
+  renderMediaPage();
+}
+function mediaRemoveWave(stKey, periodId, waveId){
+  const data = mediaHistory[stKey];
+  const period = data.periods.find(p=>p.id===periodId);
+  if(!period) return;
+  const wave = period.waves.find(w=>w.id===waveId);
+  if(!wave) return;
+  if(!confirm(`Supprimer la quinzaine "${wave.label}" ?`)) return;
+  period.waves = period.waves.filter(w=>w.id!==waveId);
+  mediaSaveLocal();
+  if(DRIVE_SYNC_URL) mediaSaveToDrive();
+  renderMediaPage();
+}
+function mediaUpdateFinal(periodId, metric, value){
+  const stKey = mediaUI.station;
+  const period = mediaHistory[stKey].periods.find(p=>p.id===periodId);
+  if(!period) return;
+  if(!period.finalResult) period.finalResult = {AC:null,PDA:null,DEA:null};
+  const n = value.trim()==='' ? null : parseFloat(value.replace(',','.'));
+  period.finalResult[metric] = (n==null || isNaN(n)) ? null : n;
+  mediaSaveLocal();
+  if(DRIVE_SYNC_URL) mediaSaveToDrive();
+}
+function mediaUpdateWaveMetric(periodId, waveId, cibleKey, metric, value){
+  const stKey = mediaUI.station;
+  const period = mediaHistory[stKey].periods.find(p=>p.id===periodId);
+  if(!period) return;
+  const wave = period.waves.find(w=>w.id===waveId);
+  if(!wave) return;
+  if(!wave.cibles[cibleKey]) wave.cibles[cibleKey] = {AC:null,PDA:null,DEA:null};
+  const n = value.trim()==='' ? null : parseFloat(value.replace(',','.'));
+  wave.cibles[cibleKey][metric] = (n==null || isNaN(n)) ? null : n;
+  mediaSaveLocal();
+  if(DRIVE_SYNC_URL) mediaSaveToDrive();
+}
+function mediaUpdateWaveDate(periodId, waveId, bound, value){
+  const stKey = mediaUI.station;
+  const period = mediaHistory[stKey].periods.find(p=>p.id===periodId);
+  if(!period) return;
+  const wave = period.waves.find(w=>w.id===waveId);
+  if(!wave) return;
+  if(bound==='start') wave.dateStart = value || null; else wave.dateEnd = value || null;
+  mediaSaveLocal();
+  if(DRIVE_SYNC_URL) mediaSaveToDrive();
+  renderMediaPage();
+}
+function mediaToggleCible(cibleKey){
+  const stKey = mediaUI.station;
+  if(!mediaUI.collapsed[stKey]) mediaUI.collapsed[stKey] = new Set();
+  const set = mediaUI.collapsed[stKey];
+  if(set.has(cibleKey)) set.delete(cibleKey); else set.add(cibleKey);
+  renderMediaPage();
+}
+
+function mediaFinalResultBlockHtml(stKey, period){
+  const fr = period.finalResult || {AC:null,PDA:null,DEA:null};
+  const prevChrono = mediaFindPrevChrono(stKey, period);
+  const prevYear = mediaFindSameTypePrevYear(stKey, period);
+  const metricBlock = (metric, label) => `
+    <div>
+      <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px">${label}</div>
+      <input type="text" inputmode="decimal" value="${fr[metric]==null?'':fr[metric]}" placeholder="–" style="width:70px;font-size:14px;font-weight:700;padding:5px 8px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateFinal('${period.id}','${metric}',this.value)">
+      <div style="display:flex;gap:8px;margin-top:4px">${mediaEvolutionBadge(fr[metric], prevYear, metric, 'N-1')}${mediaEvolutionBadge(fr[metric], prevChrono, metric, 'V-1')}</div>
+    </div>`;
+  return `
+    <div style="background:var(--cyan-light);border:1.5px solid var(--cyan-mid);border-radius:10px;padding:14px 16px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:800;color:var(--navy);margin-bottom:10px">Résultat final publié de la vague — Ensemble, 5h-24h</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        ${metricBlock('AC','AC (%)')}
+        ${metricBlock('PDA','PDA (%)')}
+        ${metricBlock('DEA','DEA')}
+        <div>
+          <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin-bottom:4px">Audience digitale live (moyenne vague)</div>
+          ${mediaPeriodLiveInnerHtml(stKey, period)}
+        </div>
+      </div>
+    </div>`;
+}
+
+function mediaRenderHistoryTable(stKey){
+  // Ordre antéchronologique (vague la plus récente en haut, la plus
+  // ancienne tout en bas) — inverse de mediaSortedPeriods qui trie du plus
+  // ancien au plus récent.
+  const sorted = mediaSortedPeriods(stKey).filter(p => !p.waves || p.waves.length===0).reverse();
+  let lastSeason = null;
+  const rows = sorted.map(period => {
+    const fr = period.finalResult || {AC:null,PDA:null,DEA:null};
+    const prevChrono = mediaFindPrevChrono(stKey, period);
+    const prevYear = mediaFindSameTypePrevYear(stKey, period);
+    const cellFor = metric => `<td style="padding:7px 10px">
+      <input type="text" inputmode="decimal" value="${fr[metric]==null?'':fr[metric]}" placeholder="–" style="width:56px;font-size:12px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateFinal('${period.id}','${metric}',this.value)">
+      <div style="display:flex;gap:6px;margin-top:3px">${mediaEvolutionBadge(fr[metric], prevYear, metric, 'N-1')}${mediaEvolutionBadge(fr[metric], prevChrono, metric, 'V-1')}</div>
+    </td>`;
+    let seasonRow = '';
+    const season = mediaSeasonLabel(period);
+    if(season && season !== lastSeason){ seasonRow = `<tr><td colspan="5" style="padding:10px;font-size:11px;font-weight:800;color:var(--navy);background:var(--bg)">${escHtml(season)}</td></tr>`; lastSeason = season; }
+    return `${seasonRow}<tr>
+      <td style="padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap">${mediaWaveTypePill(period)}${escHtml(period.label)}</td>
+      ${cellFor('AC')}${cellFor('PDA')}${cellFor('DEA')}
+      <td style="padding:7px 10px;text-align:right;white-space:nowrap">
+        <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaAddWave('${stKey}','${period.id}');renderMediaPage()">+ Quinzaines</button>
+        <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaRemovePeriod('${stKey}','${period.id}')" title="Supprimer cette vague">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
+  return `<div>
+    <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:4px">Vagues archivées (résultat final seul)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Résultat officiel publié — cible Ensemble, tranche 5h-24h — pour les vagues sans détail par quinzaine. Évolutions vs la même vague l'année précédente (N-1) et vs la vague précédente (V-1).</div>
+    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
+      <thead><tr style="background:var(--bg)">
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Vague</th>
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">AC (%)</th>
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">PDA (%)</th>
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">DEA</th>
+        <th style="padding:7px 10px"></th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune vague archivée</td></tr>'}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderMediaPage(){
+  const stKey = mediaUI.station;
+  const tabsArea = document.getElementById('mediaStationTabs');
+  tabsArea.innerHTML = ['EUROPE2','RFM'].map(st => {
+    const active = st === stKey;
+    return `<button class="btn-ghost" style="font-size:11.5px;padding:7px 14px;${active ? 'border-color:var(--cyan);color:var(--navy);background:var(--cyan-light)' : ''}" onclick="mediaUI.station='${st}';renderMediaPage()">${STATION_ICONS[st]||'📻'} ${STATION_LABELS[st]}</button>`;
+  }).join('');
+
+  const data = mediaHistory[stKey];
+  const emptyBar = document.getElementById('mediaEmptyBar');
+  const blocksArea = document.getElementById('mediaPeriodBlocks');
+  const histArea = document.getElementById('mediaHistoryTableArea');
+
+  if(!data || !data.periods || !data.periods.length){
+    emptyBar.style.display = 'block';
+    emptyBar.textContent = 'Aucune donnée Médiamétrie pour ' + STATION_LABELS[stKey] + '.';
+    blocksArea.innerHTML = ''; histArea.innerHTML = '';
+    return;
+  }
+  emptyBar.style.display = 'none';
+
+  const cibles = data.cibles || [];
+  if(!mediaUI.collapsed[stKey]){
+    const initial = new Set();
+    cibles.forEach(c => { if(/35-?\s*59/.test(c.label)) initial.add(c.key); });
+    mediaUI.collapsed[stKey] = initial;
+  }
+  const collapsed = mediaUI.collapsed[stKey];
+
+  const periodsWithWaves = mediaSortedPeriods(stKey).filter(p => p.waves && p.waves.length>0).reverse();
+  blocksArea.innerHTML = periodsWithWaves.map(period => {
+    const rows = period.waves.map(wave => {
+      let cibleCells = '';
+      cibles.forEach(c => {
+        if(collapsed.has(c.key)){ cibleCells += `<td style="padding:7px;text-align:center;color:var(--muted)">⋯</td>`; return; }
+        const v = wave.cibles[c.key] || {AC:null,PDA:null,DEA:null};
+        ['AC','PDA','DEA'].forEach(metric => {
+          cibleCells += `<td style="padding:5px"><input type="text" inputmode="decimal" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:48px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveMetric('${period.id}','${wave.id}','${c.key}','${metric}',this.value)"></td>`;
+        });
+      });
+      return `<tr>
+        <td style="padding:7px 10px;font-size:12px;font-weight:700">${escHtml(wave.label)}</td>
+        <td style="padding:5px"><input type="date" value="${wave.dateStart||''}" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','start',this.value)"></td>
+        <td style="padding:5px"><input type="date" value="${wave.dateEnd||''}" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','end',this.value)"></td>
+        ${cibleCells}
+        <td style="padding:7px 10px">${mediaLiveCellHtml(stKey, wave)}</td>
+        <td style="padding:7px 10px;text-align:center"><button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaRemoveWave('${stKey}','${period.id}','${wave.id}')" title="Supprimer cette quinzaine">🗑</button></td>
+      </tr>`;
+    }).join('');
+
+    const cibleHeadGroup = cibles.map(c => {
+      const isCollapsed = collapsed.has(c.key);
+      return `<th ${isCollapsed?'':'colspan="3"'} style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);cursor:pointer" onclick="mediaToggleCible('${c.key}')" title="${isCollapsed?'Déplier':'Replier'} ${escHtml(c.label)}">${isCollapsed?'▸':'▾'} ${escHtml(c.label)}</th>`;
+    }).join('');
+    const cibleSubHead = cibles.map(c => collapsed.has(c.key) ? `<th></th>` : `<th style="padding:5px;font-size:9px;color:var(--muted)">AC</th><th style="padding:5px;font-size:9px;color:var(--muted)">PDA</th><th style="padding:5px;font-size:9px;color:var(--muted)">DEA</th>`).join('');
+
+    return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:800;color:var(--navy)">${mediaWaveTypePill(period)}${escHtml(period.label)}</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="mediaAddWave('${stKey}','${period.id}')">+ Ajouter une quinzaine</button>
+          <button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="mediaRemovePeriod('${stKey}','${period.id}')">🗑 Supprimer la vague</button>
+        </div>
+      </div>
+      ${mediaFinalResultBlockHtml(stKey, period)}
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Détail par quinzaine (intermédiaire Médiamétrie). Saisissez les dates de la quinzaine pour calculer automatiquement l'audience live hebdomadaire moyenne sur la période correspondante. Cliquez sur l'en-tête d'une cible pour la replier/déplier.</div>
+      <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;min-width:600px">
+        <thead>
+          <tr style="background:var(--bg)"><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Quinzaine</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date début</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date fin</th>${cibleHeadGroup}<th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Live hebdo moy.</th><th rowspan="2"></th></tr>
+          <tr style="background:var(--bg)">${cibleSubHead}</tr>
+        </thead>
+        <tbody>${rows || `<tr><td colspan="${3+cibles.length*3+2}" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune quinzaine — ajoutez-en une ci-dessus</td></tr>`}</tbody>
+      </table>
+      </div>
+    </div>`;
+  }).join('');
+
+  histArea.innerHTML = mediaRenderHistoryTable(stKey);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CORRÉLATION — programmation musicale ↔ audience digitale brute
+// ══════════════════════════════════════════════════════════════════════════
+// Jointure : les semaines de programmation (analyseLoadHistory) ne portent
+// qu'un libellé texte libre (ex. "S32"), pas de date calendaire — contrairement
+// aux semaines d'audience digitale (weekStart/weekEnd réels, extraits du PDF).
+// On calcule donc, pour chaque semaine d'audience, un numéro de semaine
+// "équivalent Yacast" à partir de sa date (vendredi→jeudi, cf. règle FPA), et
+// on l'apparie automatiquement à la semaine de programmation dont le libellé
+// contient le même numéro (le plus proche en date de sauvegarde en cas
+// d'ambiguïté entre plusieurs années). Toute correspondance reste ensuite
+// modifiable manuellement ligne par ligne (persistée dans un mapping local),
+// car ce rapprochement automatique est une heuristique, pas une garantie.
+let corrStation = 'EUROPE2';
+const CORR_MANUAL_MAP_KEY = 'fpa_corr_manual_map_v1';
+
+function corrLoadManualMap(){
+  try{ return JSON.parse(localStorage.getItem(CORR_MANUAL_MAP_KEY) || '{}'); }catch(e){ return {}; }
+}
+function corrSaveManualMap(map){
+  try{ localStorage.setItem(CORR_MANUAL_MAP_KEY, JSON.stringify(map)); }catch(e){ /* ignoré */ }
+}
+function corrManualKey(stKey, weekStart){ return stKey + '::' + weekStart; }
+
+/** Numéro + année de semaine "façon Yacast" (vendredi→jeudi) pour une date
+ *  ISO donnée : on prend le vendredi de la semaine qui contient cette date
+ *  (ou la date elle-même si c'est déjà un vendredi), puis on calcule le
+ *  numéro de semaine ISO standard de ce vendredi comme approximation — la
+ *  découpe Fri→Thu de Yacast ne colle pas exactement à la semaine ISO
+ *  (lun→dim), mais reste la meilleure ancre disponible sans le numéro
+ *  imprimé sur l'export Yacast lui-même. */
+function corrYacastWeekOf(iso){
+  if(!iso) return null;
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return null;
+  const dow = d.getDay(); // 0=dim..6=sam
+  const daysSinceFriday = (dow - 5 + 7) % 7;
+  const friday = new Date(d); friday.setDate(d.getDate() - daysSinceFriday);
+  // Numéro de semaine ISO du vendredi ainsi obtenu
+  const target = new Date(friday.getTime());
+  target.setDate(target.getDate() + 3 - ((target.getDay() + 6) % 7));
+  const firstThursday = new Date(target.getFullYear(), 0, 4);
+  const weekNum = 1 + Math.round(((target - firstThursday) / 86400000 - 3 + ((firstThursday.getDay() + 6) % 7)) / 7);
+  return { week: weekNum, year: target.getFullYear() };
+}
+
+function corrExtractWeekNumber(label){
+  const m = String(label||'').match(/(\d{1,2})(?!.*\d)/);
+  if(!m) return null;
+  const n = parseInt(m[1], 10);
+  return (n>=1 && n<=53) ? n : null;
+}
+
+/** Construit la liste des semaines audience digitale pour la station, avec
+ *  pour chacune sa correspondance programmation (auto ou manuelle). */
+function corrBuildMatches(stKey){
+  const progHistory = (analyseLoadHistory()[stKey] || []).slice();
+  const audWeeks = Object.keys(digitalAudienceHistory[stKey] || {}).sort();
+  const manualMap = corrLoadManualMap();
+
+  return audWeeks.map(weekStart => {
+    const audRecord = digitalAudienceHistory[stKey][weekStart];
+    const mKey = corrManualKey(stKey, weekStart);
+    let progEntry = null, matchType = 'none';
+
+    if(manualMap[mKey]){
+      progEntry = progHistory.find(e => e.weekLabel === manualMap[mKey]) || null;
+      if(progEntry) matchType = 'manual';
+    }
+    if(!progEntry){
+      // 1) Correspondance par date réelle — prioritaire quand le fichier de
+      //    programmation a été importé avec une date (import récent, via
+      //    l'import unitaire ou en masse). Tolérance de 4 jours autour de la
+      //    date de la semaine d'audience pour absorber les décalages entre
+      //    la convention Yacast (vendredi→jeudi) et la semaine calendaire.
+      const dated = progHistory.filter(e => e.weekStart);
+      if(dated.length){
+        let best = null, bestDiff = Infinity;
+        dated.forEach(e => {
+          const diff = Math.abs(new Date(e.weekStart) - new Date(weekStart));
+          if(diff < bestDiff){ bestDiff = diff; best = e; }
+        });
+        if(best && bestDiff <= 4*86400000){ progEntry = best; matchType = 'date'; }
+      }
+    }
+    if(!progEntry){
+      // 2) Repli : correspondance heuristique par numéro de semaine (pour
+      //    les semaines de programmation archivées avant l'ajout des dates
+      //    réelles, qui n'ont qu'un libellé texte type « S32 »).
+      const yac = corrYacastWeekOf(weekStart);
+      if(yac){
+        const candidates = progHistory.filter(e => corrExtractWeekNumber(e.weekLabel) === yac.week);
+        if(candidates.length === 1){
+          progEntry = candidates[0]; matchType = 'auto';
+        } else if(candidates.length > 1){
+          // Ambiguïté (plusieurs années portant le même numéro de semaine) :
+          // on prend l'entrée dont la date de sauvegarde est la plus proche
+          // de la semaine d'audience, plutôt que de deviner au hasard.
+          candidates.sort((a,b) => Math.abs(new Date(a.savedAt) - new Date(weekStart)) - Math.abs(new Date(b.savedAt) - new Date(weekStart)));
+          progEntry = candidates[0]; matchType = 'auto-ambiguous';
+        }
+      }
+    }
+    return { weekStart, audRecord, progEntry, matchType };
+  });
+}
+
+
+function corrSetManualMatch(stKey, weekStart, weekLabel){
+  const map = corrLoadManualMap();
+  const key = corrManualKey(stKey, weekStart);
+  if(weekLabel) map[key] = weekLabel; else delete map[key];
+  corrSaveManualMap(map);
+  renderCorrPage();
+}
+
+const CORR_PROG_METRICS = [
+  { key:'totalDiffs', label:'Nb Diffs (total)' },
+  { key:'avgFit',     label:'Fit Score (moy. pondérée)' },
+  { key:'avgSpu',     label:'SPU (moy. pondérée)' },
+  { key:'avgPot',     label:'Pot Score (moy. pondérée)' },
+  { key:'avgFam',     label:'Fam Score (moy. pondérée)' },
+  { key:'avgBurnCO',  label:'Burn Call Out (moy. pondérée)' },
+  { key:'avgBurnOMT', label:'Burn OMT (moy. pondérée)' },
+];
+const CORR_AUD_METRICS = [
+  { key:'sessions',        label:'Sessions >30s' },
+  { key:'uniques',         label:'Visiteurs uniques' },
+  { key:'audienceMoyenne', label:'Audience moy. (5h-24h)' },
+  { key:'dureeSec',        label:'Durée moy. (sec)' },
+];
+
+/** Coefficient de corrélation de Pearson sur les paires (x,y) non nulles. */
+function corrPearson(pairs){
+  const pts = pairs.filter(p => p.x != null && p.y != null && !isNaN(p.x) && !isNaN(p.y));
+  const n = pts.length;
+  if(n < 3) return { r:null, n };
+  const mx = pts.reduce((s,p)=>s+p.x,0) / n;
+  const my = pts.reduce((s,p)=>s+p.y,0) / n;
+  let num = 0, dx2 = 0, dy2 = 0;
+  pts.forEach(p => { const dx = p.x-mx, dy = p.y-my; num += dx*dy; dx2 += dx*dx; dy2 += dy*dy; });
+  const denom = Math.sqrt(dx2*dy2);
+  return { r: denom > 0 ? num/denom : null, n };
+}
+
+function corrColorForR(r){
+  if(r === null) return 'var(--muted)';
+  const a = Math.abs(r);
+  if(a >= 0.6) return r > 0 ? '#0DA76B' : '#CC2222';
+  if(a >= 0.3) return r > 0 ? '#5B9E3F' : '#E07B00';
+  return 'var(--muted)';
+}
+
+function renderCorrPage(){
+  const stKey = corrStation;
+  const matches = corrBuildMatches(stKey);
+  const matched = matches.filter(m => m.progEntry);
+  const emptyBar = document.getElementById('corrEmptyBar');
+  const content  = document.getElementById('corrContent');
+  if(!emptyBar || !content) return;
+
+  if(matched.length < 1){
+    emptyBar.style.display = 'block';
+    content.style.display = 'none';
+    return;
+  }
+  emptyBar.style.display = 'none';
+  content.style.display = 'block';
+
+  // ── Tableau de correspondance ──
+  const progHistory = analyseLoadHistory()[stKey] || [];
+  const buildProgOptions = selectedLabel => {
+    let html = `<option value="" ${selectedLabel ? '' : 'selected'}>— aucune —</option>`;
+    progHistory.forEach(e => {
+      html += `<option value="${escHtml(e.weekLabel)}" ${e.weekLabel===selectedLabel ? 'selected' : ''}>${escHtml(e.weekLabel)}</option>`;
+    });
+    return html;
+  };
+  const matchLabel = { date:'✓ date exacte', auto:'✓ n° semaine', 'auto-ambiguous':'✓ n° semaine (ambigu)', manual:'✏️ manuel', none:'— non apparié —' };
+  const matchColor = { date:'#0DA76B', auto:'#5B9E3F', 'auto-ambiguous':'#E07B00', manual:'var(--cyan)', none:'var(--muted)' };
+  document.getElementById('corrMatchTableArea').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
+      <thead><tr style="background:var(--bg)">
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Semaine audience</th>
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Semaine programmation</th>
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Statut</th>
+      </tr></thead>
+      <tbody>
+        ${matches.map(m => `<tr>
+          <td style="padding:7px 10px;font-size:11.5px">${digitalAudienceFmtDate(m.weekStart)}${m.audRecord.weekEnd ? ' → ' + digitalAudienceFmtDate(m.audRecord.weekEnd) : ''}</td>
+          <td style="padding:7px 10px">
+            <select style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="corrSetManualMatch('${stKey}','${m.weekStart}',this.value)">
+              ${buildProgOptions(m.progEntry ? m.progEntry.weekLabel : null)}
+            </select>
+          </td>
+          <td style="padding:7px 10px;text-align:center;font-size:10.5px;font-weight:700;color:${matchColor[m.matchType]}">${matchLabel[m.matchType]}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `;
+
+  // ── Matrice de corrélation ──
+  const rows = matched.map(m => ({ prog: m.progEntry.stats, aud: m.audRecord }));
+  let matrixHtml = `<table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;font-size:11px">
+    <thead><tr style="background:var(--bg)">
+      <th style="padding:7px 10px;text-align:left;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Critère programmation \\ Audience</th>
+      ${CORR_AUD_METRICS.map(a => `<th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">${escHtml(a.label)}</th>`).join('')}
+    </tr></thead><tbody>`;
+  CORR_PROG_METRICS.forEach(p => {
+    matrixHtml += `<tr><td style="padding:7px 10px;font-weight:700;color:var(--navy)">${escHtml(p.label)}</td>`;
+    CORR_AUD_METRICS.forEach(a => {
+      const pairs = rows.map(r => ({ x: r.prog[p.key], y: r.aud[a.key] }));
+      const { r, n } = corrPearson(pairs);
+      const disp = r === null ? (n < 3 ? `n=${n}` : '—') : r.toFixed(2);
+      matrixHtml += `<td style="padding:7px 10px;text-align:center;font-weight:800;color:${corrColorForR(r)}" title="${n} semaine(s) appariée(s)">${disp}</td>`;
+    });
+    matrixHtml += '</tr>';
+  });
+  matrixHtml += '</tbody></table>';
+  if(matched.length < 3){
+    matrixHtml += `<div style="margin-top:8px;font-size:11px;color:var(--muted)">⚠ Seulement ${matched.length} semaine(s) appariée(s) — un coefficient de corrélation fiable nécessite au moins 3 à 5 semaines comparables. Continuez d'importer/archiver pour affiner.</div>`;
+  }
+  document.getElementById('corrMatrixArea').innerHTML = matrixHtml;
+
+  // ── Sélecteurs du nuage de points ──
+  const xSel = document.getElementById('corrScatterX');
+  const ySel = document.getElementById('corrScatterY');
+  if(xSel && !xSel.dataset.filled){
+    xSel.innerHTML = CORR_PROG_METRICS.map(p => `<option value="${p.key}">${escHtml(p.label)}</option>`).join('');
+    xSel.dataset.filled = '1';
+  }
+  if(ySel && !ySel.dataset.filled){
+    ySel.innerHTML = CORR_AUD_METRICS.map(a => `<option value="${a.key}">${escHtml(a.label)}</option>`).join('');
+    ySel.dataset.filled = '1';
+  }
+  window._corrMatchedRows = rows; // consommé par renderCorrScatter()
+  renderCorrScatter();
+}
+
+/** Nuage de points en SVG pur (pas de dépendance Chart.js dans FPA) avec
+ *  droite de régression linéaire simple, dans le même esprit que le
+ *  camembert genres de l'onglet Programmation (analyseBuildGenreDonutSVG). */
+function renderCorrScatter(){
+  const area = document.getElementById('corrScatterArea');
+  if(!area) return;
+  const rows = window._corrMatchedRows || [];
+  const xKey = document.getElementById('corrScatterX')?.value;
+  const yKey = document.getElementById('corrScatterY')?.value;
+  if(!xKey || !yKey || !rows.length){ area.innerHTML = ''; return; }
+  const pts = rows.map(r => ({ x: r.prog[xKey], y: r.aud[yKey] })).filter(p => p.x!=null && p.y!=null && !isNaN(p.x) && !isNaN(p.y));
+  if(pts.length < 2){
+    area.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:12px">Pas assez de points pour tracer un nuage.</div>';
+    return;
+  }
+  const W = 640, H = 320, M = { l:60, r:20, t:16, b:40 };
+  const xs = pts.map(p=>p.x), ys = pts.map(p=>p.y);
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const yMin = Math.min(...ys), yMax = Math.max(...ys);
+  const xRange = (xMax - xMin) || 1, yRange = (yMax - yMin) || 1;
+  const sx = v => M.l + ((v - xMin) / xRange) * (W - M.l - M.r);
+  const sy = v => H - M.b - ((v - yMin) / yRange) * (H - M.t - M.b);
+
+  const { r } = corrPearson(pts);
+  // Régression linéaire simple pour la droite de tendance
+  const n = pts.length;
+  const mx = xs.reduce((s,v)=>s+v,0)/n, my = ys.reduce((s,v)=>s+v,0)/n;
+  let num=0, den=0;
+  pts.forEach(p => { num += (p.x-mx)*(p.y-my); den += (p.x-mx)*(p.x-mx); });
+  const slope = den>0 ? num/den : 0;
+  const intercept = my - slope*mx;
+  const lineX1 = xMin, lineX2 = xMax;
+  const lineY1 = slope*lineX1 + intercept, lineY2 = slope*lineX2 + intercept;
+
+  const dots = pts.map(p => `<circle cx="${sx(p.x).toFixed(1)}" cy="${sy(p.y).toFixed(1)}" r="4.5" fill="var(--cyan)" fill-opacity="0.75" stroke="var(--navy)" stroke-width="0.5"/>`).join('');
+  const axisColor = 'var(--border)';
+  area.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;background:var(--white);border:1.5px solid var(--border);border-radius:10px">
+      <line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" stroke="${axisColor}" stroke-width="1"/>
+      <line x1="${M.l}" y1="${M.t}" x2="${M.l}" y2="${H-M.b}" stroke="${axisColor}" stroke-width="1"/>
+      <line x1="${sx(lineX1).toFixed(1)}" y1="${sy(lineY1).toFixed(1)}" x2="${sx(lineX2).toFixed(1)}" y2="${sy(lineY2).toFixed(1)}" stroke="${corrColorForR(r)}" stroke-width="2" stroke-dasharray="5,4"/>
+      ${dots}
+      <text x="${M.l}" y="${H-14}" font-size="10" fill="var(--muted)">${xMin.toLocaleString('fr-FR')}</text>
+      <text x="${W-M.r}" y="${H-14}" font-size="10" fill="var(--muted)" text-anchor="end">${xMax.toLocaleString('fr-FR')}</text>
+      <text x="${M.l-6}" y="${H-M.b+4}" font-size="10" fill="var(--muted)" text-anchor="end">${Math.round(yMin).toLocaleString('fr-FR')}</text>
+      <text x="${M.l-6}" y="${M.t+8}" font-size="10" fill="var(--muted)" text-anchor="end">${Math.round(yMax).toLocaleString('fr-FR')}</text>
+    </svg>
+    <div style="margin-top:6px;font-size:11px;color:var(--text2)">r = <strong style="color:${corrColorForR(r)}">${r===null?'—':r.toFixed(3)}</strong> sur ${pts.length} semaine(s) appariée(s)</div>
+  `;
+}
+
 /** La semaine en cours (potentiellement 500+ titres) est gardée en
  *  sessionStorage — pas dans l'historique localStorage, qui ne conserve que
  *  les statistiques agrégées (voir analyseSaveWeekToHistory) — pour que la
@@ -10316,7 +11936,8 @@ function analyseParseWorkbook(wb){
     });
   }
   if(!rows.length) return { error: 'Aucune ligne exploitable dans la feuille « ' + sheetName + ' ».' };
-  return { station, sheetName, rows };
+  const period = analyseExtractPeriodFromSheet(raw);
+  return { station, sheetName, rows, period };
 }
 
 function analyseTriggerImport(){
@@ -10325,9 +11946,21 @@ function analyseTriggerImport(){
   if(input) input.click();
 }
 
-function analyseHandleFile(input){
-  const file = input.files && input.files[0];
-  if(!file) return;
+function analyseHandleFiles(input){
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if(!files.length) return;
+  if(files.length === 1){
+    analyseHandleSingleFile(files[0]);
+  } else {
+    analyseBulkQueue = files.map(f => ({ file:f, status:'pending' }));
+    analyseBulkAutoMode = false;
+    document.getElementById('analyseBulkImportWrap').style.display = 'block';
+    analyseBulkProcessNext();
+  }
+}
+
+function analyseHandleSingleFile(file){
   const reader = new FileReader();
   reader.onload = function(ev){
     try{
@@ -10337,30 +11970,180 @@ function analyseHandleFile(input){
       if(parsed.station && parsed.station !== analyseStationKey()){
         showToast('⚠ Le fichier semble concerner ' + STATION_LABELS[parsed.station] + ' — la station active est ' + STATION_LABELS[analyseStationKey()] + '. Basculez la station (🔁 en haut) si besoin, ou l\'import sera rattaché à ' + STATION_LABELS[analyseStationKey()] + ' par défaut.', 'err');
       }
+      const info = analyseDetectWeekInfo(parsed.period, file.name);
       analyseWeekMeta = {
         station: analyseStationKey(),
-        weekLabel: analyseGuessWeekLabel(file.name),
+        weekLabel: info.weekLabel,
+        weekStart: info.weekStart, weekEnd: info.weekEnd,
         importedAt: new Date().toISOString(),
         fileName: file.name,
         sheetName: parsed.sheetName
       };
+      const labelInput = document.getElementById('analyseWeekLabelInput');
+      const startInput = document.getElementById('analyseWeekStartInput');
+      const endInput = document.getElementById('analyseWeekEndInput');
+      if(labelInput) labelInput.value = info.weekLabel;
+      if(startInput) startInput.value = info.weekStart;
+      if(endInput) endInput.value = info.weekEnd;
       analyseRows = parsed.rows;
       analyseEnrichRows();
       analyseSaveCurrentToSession();
       renderAnalysePage();
-      showToast('✓ ' + analyseRows.length + ' titres importés pour ' + STATION_LABELS[analyseStationKey()], 'success');
+      if(info.detected){
+        showToast('✓ ' + analyseRows.length + ' titres importés pour ' + STATION_LABELS[analyseStationKey()] + ' — semaine détectée via ' + info.source + ', vérifiez avant d\'enregistrer', 'success');
+      } else {
+        showToast('✓ ' + analyseRows.length + ' titres importés, mais la semaine n\'a pas pu être détectée automatiquement (ni dans le fichier, ni dans le nom) — renseignez le libellé et les dates manuellement avant d\'enregistrer', 'err');
+      }
     }catch(err){
       showToast('Erreur de lecture du fichier : ' + err.message, 'err');
       console.error(err);
     }
   };
   reader.readAsArrayBuffer(file);
-  input.value = '';
+}
+
+// ── Import en masse : plusieurs fichiers hebdo Yacast/Muzicast d'un coup ──
+// Chaque fichier est parsé indépendamment (sans toucher à analyseRows / au
+// tableau interactif de la station active), présenté en revue rapide
+// (station, libellé, dates réelles devinées depuis le nom de fichier —
+// éditables), puis archivé directement dans l'historique agrégé (mêmes
+// statistiques que la sauvegarde unitaire). Le détail complet par titre est
+// aussi mis en cache local par semaine (comme l'import unitaire), pour que
+// « 👁 Voir le détail » fonctionne aussi sur les semaines importées en masse.
+let analyseBulkQueue = [];
+let analyseBulkAutoMode = false;
+let analyseBulkResults = { archived:0, skipped:0, errors:0 };
+
+function analyseBulkProcessNext(){
+  const area = document.getElementById('analyseBulkImportArea');
+  if(!analyseBulkQueue.length){
+    const r = analyseBulkResults;
+    area.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--navy)">✓ Import terminé — ${r.archived} semaine(s) archivée(s)${r.skipped?', '+r.skipped+' ignorée(s)':''}${r.errors?', '+r.errors+' erreur(s)':''}.</div>
+      <div style="margin-top:10px"><button class="btn-ghost" style="font-size:11px;padding:7px 14px" onclick="document.getElementById('analyseBulkImportWrap').style.display='none'">Fermer</button></div>`;
+    analyseBulkResults = { archived:0, skipped:0, errors:0 };
+    renderAnalyseHistoryPanel();
+    if(DRIVE_SYNC_URL) analyseSaveHistoryToDrive();
+    return;
+  }
+  const total = analyseBulkQueue.length;
+  const item = analyseBulkQueue.shift();
+  area.innerHTML = `<div style="font-size:12px;color:var(--text2)">⏳ Analyse de ${escHtml(item.file.name)}… (${total} fichier(s) restant(s))</div>`;
+
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try{
+      const wb = XLSX.read(ev.target.result, {type:'array'});
+      const parsed = analyseParseWorkbook(wb);
+      if(parsed.error) throw new Error(parsed.error);
+      const stKey = parsed.station || analyseStationKey();
+      const info = analyseDetectWeekInfo(parsed.period, item.file.name);
+      const stats = analyseComputeStats(analyseEnrichRowsForBulk(parsed.rows, stKey, info.weekStart));
+      const preview = { file: item.file, rows: parsed.rows, stKey, label: info.weekLabel, weekStart: info.weekStart, weekEnd: info.weekEnd, stats, sheetName: parsed.sheetName, detected: info.detected, source: info.source };
+      if(analyseBulkAutoMode && info.detected){
+        analyseBulkArchive(preview, true);
+      } else {
+        analyseBulkShowReview(preview, total);
+      }
+    }catch(err){
+      analyseBulkResults.errors++;
+      area.innerHTML = `<div style="font-size:12px;color:#CC2222">❌ ${escHtml(item.file.name)} : ${escHtml(err.message)}</div>`;
+      setTimeout(analyseBulkProcessNext, 400);
+    }
+  };
+  reader.readAsArrayBuffer(item.file);
+}
+
+/** Version paramétrée d'analyseEnrichRows (sans toucher aux globales
+ *  analyseRows/analyseWeekMeta/ACTIVE_STATION) — utilisée par l'import en
+ *  masse pour que chaque fichier de la file puisse être enrichi (scores
+ *  FPA, recherche, genre/label/date d'entrée) indépendamment de la station
+ *  actuellement affichée à l'écran. */
+function analyseEnrichRowsForBulk(rows, stKey, importedDateStr){
+  const stationField = stKey === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+  rows.forEach(row => {
+    row.search = analyseGetSearchScores(row.title, row.artist);
+    row.fpa = analyseGetFpaScores(row.title, row.artist);
+    const attrs = getSongAttributes(row.title, row.artist);
+    let changed = false;
+    if(!attrs.label && row.label){ attrs.label = row.label; changed = true; }
+    if(!attrs.genre && row.genre){ attrs.genre = row.genre; changed = true; }
+    if(!attrs[stationField] && row.rangPrec === 'E'){ attrs[stationField] = importedDateStr || ''; changed = true; }
+    if(changed) songAttributesSaveToStorage();
+    row.label = attrs.label || row.label || '';
+    row.genre = attrs.genre || row.genre || '';
+    row.dateEntree = attrs[stationField] || '';
+  });
+  return rows;
+}
+
+function analyseBulkShowReview(preview, total){
+  const area = document.getElementById('analyseBulkImportArea');
+  const stationOptions = ['EUROPE2','RFM'].map(s => `<option value="${s}" ${s===preview.stKey?'selected':''}>${STATION_LABELS[s]}</option>`).join('');
+  const statusBanner = preview.detected
+    ? `<div style="padding:6px 12px;border:1.5px solid var(--green-text);border-radius:8px;color:var(--green-text);font-size:11px;margin-bottom:10px">✓ Semaine détectée via : ${escHtml(preview.source)} — vérifiez avant d'archiver</div>`
+    : `<div style="padding:8px 12px;border:1.5px solid #CC2222;border-radius:8px;color:#CC2222;font-size:11px;margin-bottom:10px">⚠ Semaine non détectée automatiquement (ni dans le contenu du fichier, ni dans son nom) — renseignez le libellé et les dates manuellement avant d'archiver.</div>`;
+  area.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:800;color:var(--navy)">📄 ${escHtml(preview.file.name)}</div>
+      <div style="font-size:11px;color:var(--muted)">${analyseBulkQueue.length} fichier(s) restant(s) après celui-ci</div>
+    </div>
+    ${statusBanner}
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Radio</label><select id="bulkStationSelect" style="font-size:12px;padding:7px 10px;border-radius:8px">${stationOptions}</select></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Libellé</label><input type="text" id="bulkLabelInput" value="${escHtml(preview.label||'')}" placeholder="Ex. S32" style="width:70px;font-size:12px;padding:7px 10px;border-radius:8px"></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Début de semaine</label><input type="date" id="bulkWeekStartInput" value="${preview.weekStart||''}" style="font-size:12px;padding:7px 10px;border-radius:8px"></div>
+      <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Fin de semaine</label><input type="date" id="bulkWeekEndInput" value="${preview.weekEnd||''}" style="font-size:12px;padding:7px 10px;border-radius:8px"></div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:12px">${preview.rows.length} titres · ${digitalAudienceFmtInt(preview.stats.totalDiffs)} diffusions totales · Fit Score moy. ${preview.stats.avgFit!=null?preview.stats.avgFit.toFixed(1):'—'}</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn-primary" id="bulkArchiveBtn" style="font-size:12px;padding:9px 16px">Archiver et continuer</button>
+      <button class="btn-ghost" id="bulkSkipBtn" style="font-size:11px;padding:9px 14px">Ignorer ce fichier</button>
+      <label style="font-size:11px;color:var(--text2);margin-left:auto;display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="bulkAutoModeCheck"> Archiver automatiquement les fichiers suivants dès que la semaine est détectée
+      </label>
+    </div>
+  `;
+  document.getElementById('bulkSkipBtn').onclick = () => { analyseBulkResults.skipped++; analyseBulkProcessNext(); };
+  document.getElementById('bulkArchiveBtn').onclick = () => {
+    preview.stKey = document.getElementById('bulkStationSelect').value;
+    preview.label = document.getElementById('bulkLabelInput').value.trim();
+    preview.weekStart = document.getElementById('bulkWeekStartInput').value;
+    preview.weekEnd = document.getElementById('bulkWeekEndInput').value;
+    if(!preview.label){ showToast('Libellé de semaine requis', 'err'); return; }
+    if(document.getElementById('bulkAutoModeCheck').checked) analyseBulkAutoMode = true;
+    analyseBulkArchive(preview, false);
+  };
+}
+
+function analyseBulkArchive(preview, silent){
+  const history = analyseLoadHistory();
+  if(!history[preview.stKey]) history[preview.stKey] = [];
+  const entry = {
+    weekLabel: preview.label, weekStart: preview.weekStart, weekEnd: preview.weekEnd,
+    savedAt: new Date().toISOString(), fileName: preview.file.name, stats: preview.stats
+  };
+  const idx = history[preview.stKey].findIndex(e => e.weekLabel === preview.label);
+  if(idx >= 0) history[preview.stKey][idx] = entry; else history[preview.stKey].push(entry);
+  history[preview.stKey].sort((a,b) => a.weekLabel.localeCompare(b.weekLabel, undefined, {numeric:true}));
+  analyseSaveHistory(history);
+
+  const detail = { meta: { station:preview.stKey, weekLabel:preview.label, weekStart:preview.weekStart, weekEnd:preview.weekEnd, fileName:preview.file.name, importedAt:new Date().toISOString(), sheetName:preview.sheetName }, rows: preview.rows.map(analyseCleanRowForSave) };
+  analyseSaveWeekDetailLocal(preview.stKey, preview.label, detail);
+
+  analyseBulkResults.archived++;
+  if(!silent){
+    showToast('✓ Semaine ' + preview.label + ' archivée (' + STATION_LABELS[preview.stKey] + ')', 'success');
+  }
+  analyseBulkProcessNext();
 }
 
 /** Devine un libellé de semaine à partir du nom de fichier (ex.
  *  "export_zoom_media_32341" → semaine 32) ou, à défaut, retombe sur la
- *  semaine calendaire ISO en cours. Reste éditable ensuite dans la page. */
+ *  semaine calendaire ISO en cours. Reste éditable ensuite dans la page.
+ *  N'est plus utilisée en priorité pour l'import (voir
+ *  analyseIsoWeekNumberOf, qui dérive le libellé de la date devinée pour
+ *  éviter toute confusion avec une année à 4 chiffres dans le nom de
+ *  fichier) — conservée comme repli si aucune date n'a pu être devinée. */
 function analyseGuessWeekLabel(fileName){
   const m = (fileName || '').match(/(\d{2})\d{2,4}/);
   if(m){
@@ -10372,6 +12155,134 @@ function analyseGuessWeekLabel(fileName){
   const week = Math.ceil((((d - onejan) / 86400000) + onejan.getDay() + 1) / 7);
   return 'S' + week;
 }
+
+/** Numéro de semaine ISO 8601 (lun→dim) d'une date donnée — utilisé pour
+ *  dériver un libellé de semaine cohérent avec les dates devinées/choisies,
+ *  plutôt que de re-regexer le nom de fichier indépendamment (source de bug :
+ *  une année à 4 chiffres comme "2026" dans le nom de fichier pouvait être
+ *  lue à tort comme "semaine 20"). */
+function analyseIsoWeekNumberOf(dateISO){
+  if(!dateISO) return null;
+  const d = new Date(dateISO + 'T00:00:00');
+  if(isNaN(d)) return null;
+  const target = new Date(d.getTime());
+  target.setDate(target.getDate() + 3 - ((target.getDay() + 6) % 7));
+  const firstThursday = new Date(target.getFullYear(), 0, 4);
+  return 1 + Math.round(((target - firstThursday) / 86400000 - 3 + ((firstThursday.getDay() + 6) % 7)) / 7);
+}
+/** Libellé de semaine dérivé d'une date (source de vérité unique — voir
+ *  ci-dessus), avec repli sur analyseGuessWeekLabel(fileName) si la date est
+ *  absente/invalide. */
+function analyseGuessWeekLabelFromDate(dateISO, fileName){
+  const wk = analyseIsoWeekNumberOf(dateISO);
+  return wk ? 'S' + wk : analyseGuessWeekLabel(fileName);
+}
+
+/** Bornes (lundi→dimanche) de la semaine ISO `week` de l'année `year`. */
+function analyseIsoWeekBoundsFor(year, week){
+  const jan4 = new Date(year, 0, 4);
+  const jan4Dow = (jan4.getDay() + 6) % 7;
+  const week1Monday = new Date(jan4); week1Monday.setDate(jan4.getDate() - jan4Dow);
+  const monday = new Date(week1Monday); monday.setDate(week1Monday.getDate() + (week-1)*7);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  return { weekStart: monday.toISOString().slice(0,10), weekEnd: sunday.toISOString().slice(0,10) };
+}
+/** Bornes (lundi→dimanche) de la semaine calendaire contenant une date. */
+function analyseIsoWeekBoundsForDate(d){
+  const dow = (d.getDay() + 6) % 7;
+  const monday = new Date(d); monday.setDate(d.getDate() - dow);
+  const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
+  return { weekStart: monday.toISOString().slice(0,10), weekEnd: sunday.toISOString().slice(0,10) };
+}
+
+/** Devine des dates calendaires (lundi→dimanche) à partir du nom de fichier
+ *  seul — cherche une date explicite (DD-MM-AAAA ou AAAA-MM-DD), sinon un
+ *  numéro de semaine explicite ("S32", "semaine 32"). Ne retombe PLUS
+ *  silencieusement sur la date du jour quand rien n'est trouvé (c'était la
+ *  cause du bug « toutes les semaines importées affichent la date du jour » :
+ *  quand le nom de fichier ne contient ni date ni numéro de semaine
+ *  reconnaissable, ce qui semble être le cas des exports Yacast de Gaël, la
+ *  fonction retombait sur aujourd'hui pour CHAQUE fichier, donnant
+ *  l'illusion — fausse — d'une date « détectée ». Retourne désormais
+ *  {weekStart:null, weekEnd:null} si rien n'est trouvé, pour que l'appelant
+ *  laisse les champs vides plutôt que d'afficher une fausse date plausible. */
+function analyseGuessWeekDates(fileName){
+  const name = fileName || '';
+  const dmy = name.match(/(\d{2})[-_.](\d{2})[-_.](\d{4})/);
+  if(dmy){
+    const d = new Date(+dmy[3], +dmy[2]-1, +dmy[1]);
+    if(!isNaN(d)) return analyseIsoWeekBoundsForDate(d);
+  }
+  const ymd = name.match(/(\d{4})[-_.](\d{2})[-_.](\d{2})/);
+  if(ymd){
+    const d = new Date(+ymd[1], +ymd[2]-1, +ymd[3]);
+    if(!isNaN(d)) return analyseIsoWeekBoundsForDate(d);
+  }
+  const wkMatch = name.match(/s(?:emaine)?[_\-\s]?(\d{1,2})(?!\d)/i);
+  if(wkMatch){
+    const wk = parseInt(wkMatch[1], 10);
+    if(wk >= 1 && wk <= 53) return analyseIsoWeekBoundsFor(new Date().getFullYear(), wk);
+  }
+  return { weekStart: null, weekEnd: null };
+}
+
+/** Convertit "JJ/MM/AAAA" en "AAAA-MM-JJ", ou null si le format ne colle pas. */
+function analyseParseDMYDate(str){
+  const m = String(str||'').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m) return null;
+  const d = new Date(+m[3], +m[2]-1, +m[1]);
+  if(isNaN(d)) return null;
+  return m[3] + '-' + m[2] + '-' + m[1];
+}
+
+/** Cherche une période/semaine imprimée DANS le contenu du fichier — bien
+ *  plus fiable que le nom de fichier, qui n'est pas toujours porteur d'une
+ *  date exploitable (export générique du portail Yacast/Muzicast). Scanne
+ *  les toutes premières lignes de la feuille (là où le fichier annonce
+ *  souvent la station ET la période), en cherchant :
+ *  1) une plage explicite "JJ/MM/AAAA ... JJ/MM/AAAA" (du/au, tiret, etc.)
+ *  2) à défaut, un numéro de semaine imprimé ("Semaine 32", "S32", "S 32")
+ *  Retourne null si rien de fiable n'est trouvé — mieux vaut des champs
+ *  vides à remplir à la main qu'une date plausible mais fausse. */
+function analyseExtractPeriodFromSheet(raw){
+  const text = raw.slice(0, 20).map(r => (r||[]).filter(v=>v!=null).join(' ')).join(' \n ');
+  const rangeMatch = text.match(/(\d{2}\/\d{2}\/\d{4})[^\d]{1,15}(\d{2}\/\d{2}\/\d{4})/);
+  if(rangeMatch){
+    const d1 = analyseParseDMYDate(rangeMatch[1]);
+    const d2 = analyseParseDMYDate(rangeMatch[2]);
+    if(d1 && d2) return { weekStart: d1, weekEnd: d2, weekLabel: null };
+  }
+  const wkMatch = text.match(/s(?:emaine)?\s*n?°?\s*[:\-]?\s*(\d{1,2})(?!\d)/i);
+  if(wkMatch){
+    const wk = parseInt(wkMatch[1], 10);
+    if(wk >= 1 && wk <= 53) return { weekLabel: 'S' + wk, weekStart: null, weekEnd: null };
+  }
+  return null;
+}
+
+/** Détecteur unifié : privilégie la période imprimée DANS le fichier
+ *  (fiable), puis le nom de fichier, et ne renvoie jamais une date par
+ *  défaut inventée — si rien n'est détecté, les champs restent vides et
+ *  `detected` passe à false pour que l'écran de revue affiche clairement
+ *  qu'une saisie manuelle est nécessaire. */
+function analyseDetectWeekInfo(period, fileName){
+  if(period){
+    if(period.weekStart && period.weekEnd){
+      return { weekStart: period.weekStart, weekEnd: period.weekEnd, weekLabel: analyseGuessWeekLabelFromDate(period.weekStart, fileName), detected: true, source: 'contenu du fichier' };
+    }
+    if(period.weekLabel){
+      const wk = parseInt(period.weekLabel.replace(/\D/g,''), 10);
+      const bounds = analyseIsoWeekBoundsFor(new Date().getFullYear(), wk);
+      return { weekStart: bounds.weekStart, weekEnd: bounds.weekEnd, weekLabel: period.weekLabel, detected: true, source: 'n° de semaine imprimé dans le fichier (année supposée : à vérifier)' };
+    }
+  }
+  const fnDates = analyseGuessWeekDates(fileName);
+  if(fnDates.weekStart){
+    return { weekStart: fnDates.weekStart, weekEnd: fnDates.weekEnd, weekLabel: analyseGuessWeekLabelFromDate(fnDates.weekStart, fileName), detected: true, source: 'nom de fichier' };
+  }
+  return { weekStart: '', weekEnd: '', weekLabel: '', detected: false, source: null };
+}
+
 
 /** Cherche, pour un titre, ses derniers scores FPA connus (Fit Score, SPU,
  *  Burn, quadrant) en réutilisant directement le corpus 360° déjà calculé
@@ -10505,9 +12416,13 @@ function analyseComputeStats(rows){
 async function analyseSaveWeekToHistory(){
   if(!analyseRows.length){ showToast('Aucune donnée à sauvegarder — importez d\'abord un fichier.', 'err'); return; }
   const labelInput = document.getElementById('analyseWeekLabelInput');
+  const startInput = document.getElementById('analyseWeekStartInput');
+  const endInput = document.getElementById('analyseWeekEndInput');
   const label = ((labelInput ? labelInput.value : '') || (analyseWeekMeta && analyseWeekMeta.weekLabel) || '').trim();
   if(!label){ showToast('Renseignez un libellé de semaine avant de sauvegarder.', 'err'); return; }
-  if(analyseWeekMeta) analyseWeekMeta.weekLabel = label;
+  const weekStart = (startInput ? startInput.value : '') || (analyseWeekMeta && analyseWeekMeta.weekStart) || '';
+  const weekEnd = (endInput ? endInput.value : '') || (analyseWeekMeta && analyseWeekMeta.weekEnd) || '';
+  if(analyseWeekMeta){ analyseWeekMeta.weekLabel = label; analyseWeekMeta.weekStart = weekStart; analyseWeekMeta.weekEnd = weekEnd; }
   const stKey = analyseStationKey();
 
   // 1) Index (statistiques agrégées) — utilisé par le tableau comparatif ET
@@ -10515,7 +12430,7 @@ async function analyseSaveWeekToHistory(){
   const history = analyseLoadHistory();
   if(!history[stKey]) history[stKey] = [];
   const stats = analyseComputeStats(analyseRows);
-  const entry = { weekLabel: label, savedAt: new Date().toISOString(), fileName: analyseWeekMeta ? analyseWeekMeta.fileName : '', stats };
+  const entry = { weekLabel: label, weekStart, weekEnd, savedAt: new Date().toISOString(), fileName: analyseWeekMeta ? analyseWeekMeta.fileName : '', stats };
   const idx = history[stKey].findIndex(e => e.weekLabel === label);
   if(idx >= 0) history[stKey][idx] = entry; else history[stKey].push(entry);
   history[stKey].sort((a,b) => a.weekLabel.localeCompare(b.weekLabel, undefined, {numeric:true}));
