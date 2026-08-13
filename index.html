@@ -9636,12 +9636,23 @@ function fitRetroFindAnchorsForDate(stationKey, date, typeKey){
 
 /** Pot Score "Tous" d'une ligne archivée — même matching souple que le reste
  *  de l'historique (voir isHistFixedScore / HIST_FIXED_SCORE). */
+/** Pot Score "Tous"/Ensemble d'une ligne archivée Call Out — matching souple
+ *  (voir isPotScoreLike, utilisé partout ailleurs dans FPA pour l'affichage
+ *  du Pot Score) plutôt que le filtre strict isHistFixedScore ("POT SCORE
+ *  TOUS" exact) qui ratait silencieusement toute variante de libellé de
+ *  colonne différente (« Pot Score Ensemble », etc.) — des titres pourtant
+ *  affichés avec un Pot Score correct ailleurs dans l'appli se retrouvaient
+ *  sans aucun Fit Score recalculé, faute de correspondance ici. Préfère la
+ *  variante "Tous"/"Ensemble" si plusieurs colonnes Pot Score coexistent sur
+ *  la même ligne (cas rare, une feuille Call Out ne portant normalement
+ *  qu'une seule cible à la fois). */
 function fitRetroGetPotScore(scores){
   if(!scores) return null;
-  for(const k of Object.keys(scores)){
-    if(isHistFixedScore(k)){ const v = parseFloat(scores[k]); if(!isNaN(v)) return v; }
-  }
-  return null;
+  const keys = Object.keys(scores).filter(k => isPotScoreLike(k));
+  if(!keys.length) return null;
+  const preferred = keys.find(k => normHistColKey(k).includes('TOUS') || normHistColKey(k).includes('ENSEMBLE')) || keys[0];
+  const v = parseFloat(scores[preferred]);
+  return isNaN(v) ? null : v;
 }
 
 /** Fam Score d'une ligne archivée OMT — même logique de matching que
