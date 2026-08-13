@@ -344,6 +344,46 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
     <div style="border-top:1.5px solid var(--border);margin-bottom:20px"></div>
 
+    <!-- ── Reconstruction rétroactive du Fit Score (vagues archivées sans Fit Score) ── -->
+    <div style="margin-bottom:20px;padding:16px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+        <div>
+          <div style="font-size:12px;font-weight:800;color:var(--navy)">🎯 Fit Score rétroactif</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Recalcule le Fit Score et le Quadrant des vagues déjà archivées (Call Out sur Pot Score, OMT sur Fam Score), à partir de ce qui est déjà présent dans l'historique — sans réimporter de fichier.</div>
+        </div>
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="fitRetroToggleConfig()">⚙️ Anchors historiques</button>
+      </div>
+
+      <div id="fitRetroConfigWrap" style="display:none;margin-bottom:14px;padding-top:10px;border-top:1.5px solid var(--border)">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:10px">Renseigne, pour chaque station, les changements d'anchor au fil du temps — « à partir de quelle date, quel(s) titre(s) anchor(s) ». Le recalcul choisira automatiquement la bonne période pour chaque vague selon sa date.</div>
+        <div id="fitRetroConfigArea"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <label style="font-size:11px;color:var(--text2)">Portée :
+          <select id="fitRetroScopeSelect" style="font-size:11.5px;padding:6px 10px;border-radius:6px">
+            <option value="all">Tout (Call Out + OMT)</option>
+            <option value="co">Call Out uniquement</option>
+            <option value="omt">OMT uniquement</option>
+          </select>
+        </label>
+        <button class="btn-primary" id="fitRetroRunBtn" style="font-size:12px;padding:9px 16px" onclick="fitRetroRunUI()">🔄 Recalculer le Fit Score et le Quadrant</button>
+        <div id="fitRetroProgressWrap" style="display:none;flex:1;min-width:200px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+            <span id="fitRetroProgressLabel" style="font-size:11px;color:var(--text2);font-weight:700">⏳ Préparation…</span>
+            <span id="fitRetroProgressPct" style="font-size:11px;color:var(--muted)"></span>
+          </div>
+          <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden">
+            <div id="fitRetroProgressBar" style="height:100%;width:0%;background:var(--cyan);border-radius:4px;transition:width .15s ease"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="fitRetroReportWrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1.5px solid var(--border)">
+        <div id="fitRetroReportArea"></div>
+      </div>
+    </div>
+
     <!-- ── Vagues enregistrées — listing compact, secondaire ── -->
     <div>
       <div style="margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -1593,6 +1633,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <button id="analyseSubAudienceBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('audience')">🎧 Audience digitale</button>
       <button id="analyseSubMediaBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('media')">📡 Médiamétrie</button>
       <button id="analyseSubCorrBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('corr')">🔗 Corrélation</button>
+      <button id="analyseSubGraphBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('graph')">📈 Graphiques</button>
     </div>
 
     <div id="analyseProgContainer">
@@ -1617,6 +1658,15 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
 
     <div id="analyseContent" style="display:none">
+      <!-- Bandeau : quelle semaine est actuellement affichée (libellé + dates) -->
+      <div id="analyseCurrentWeekBanner" style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--cyan-light);border:1.5px solid var(--cyan-mid);border-radius:10px;margin-bottom:16px">
+        <span style="font-size:16px">📄</span>
+        <div>
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Semaine affichée</div>
+          <div id="analyseCurrentWeekLabel" style="font-size:14px;font-weight:800;color:var(--navy)">—</div>
+        </div>
+      </div>
+
       <!-- Cartes stats (2 lignes x 3) + camembert genres, même hauteur -->
       <div style="display:flex;gap:12px;align-items:stretch;margin-bottom:18px;flex-wrap:wrap">
         <div id="analyseStatsArea" style="flex:2 1 420px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
@@ -1635,7 +1685,30 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
     <!-- Historique / comparaison inter-semaines -->
     <div style="margin-top:32px">
-      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy);margin-bottom:10px">📅 Historique des semaines archivées</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">📅 Historique des semaines archivées</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="analyseDiagnoseLocalStorageUI()" title="Diagnostique pourquoi le détail de certaines semaines est introuvable en local">🔍 Diagnostiquer le stockage local</button>
+          <button class="btn-ghost" id="analyseRecalcBtn" style="font-size:11px;padding:8px 14px" onclick="analyseRecalculateAllArchivesUI()" title="Recalcule les scores Call Out/OMT/Fit Score des semaines déjà archivées, à partir de leur date réelle — sans réimporter les fichiers Excel">🔄 Recalculer les scores (semaines archivées)</button>
+        </div>
+      </div>
+      <div id="analyseRecalcProgressWrap" style="display:none;margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
+          <span id="analyseRecalcProgressLabel" style="font-size:11px;color:var(--text2);font-weight:700">⏳ Préparation…</span>
+          <span id="analyseRecalcProgressPct" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+        <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden">
+          <div id="analyseRecalcProgressBar" style="height:100%;width:0%;background:var(--cyan);border-radius:4px;transition:width .15s ease"></div>
+        </div>
+      </div>
+      <div id="analyseDiagReportWrap" style="display:none;margin-bottom:20px;padding:16px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">🔍 Diagnostic du stockage local</div>
+        <div id="analyseDiagReportArea"></div>
+      </div>
+      <div id="analyseRecalcReportWrap" style="display:none;margin-bottom:20px;padding:16px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">🔄 Résultat du recalcul</div>
+        <div id="analyseRecalcReportArea"></div>
+      </div>
       <div id="analyseHistoryArea"></div>
     </div>
 
@@ -1738,6 +1811,15 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <div id="mediaPeriodBlocks"></div>
       <div id="mediaHistoryTableArea" style="margin-top:24px"></div>
+    </div>
+
+    <!-- Sous-page Graphiques d'évolution (programmation ↔ audience digitale, par semaine) -->
+    <div id="analyseGraphContainer" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <div style="display:flex;gap:6px" id="graphStationTabs"></div>
+      </div>
+      <div id="graphEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
+      <div id="graphCardsArea" style="display:flex;flex-direction:column;gap:24px"></div>
     </div>
 
   </div>
@@ -2638,18 +2720,31 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
 
         <!-- Airplay : statut de référence + import complet (Général/Fortes/Faibles, hebdo + Live) — source Airplay, accent bleu -->
-        <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #3B82F6">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+        <div style="padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #3B82F6">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px">
             <div style="font-size:12.5px;font-weight:800;color:#fff">📻 Airplay</div>
             <span id="homeAirplayRefStatus" style="font-size:10.5px;color:rgba(255,255,255,.5)"></span>
           </div>
           <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#3B82F6;margin-bottom:6px">● AIRPLAY</div>
-          <div style="font-size:10.5px;color:rgba(255,255,255,.4);margin-bottom:8px">Général, Fortes Rotations, Faibles Rotations — type détecté automatiquement à l'import. Le badge « RÉFÉRENCE » indique celui utilisé partout dans FPA.</div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:4px">Hebdomadaire</div>
-          <div id="homeAirplayImportZone" style="margin-bottom:10px"></div>
+          <div id="homeAirplayImportZone" style="margin-bottom:8px"></div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:4px">Live (en cours de semaine)</div>
           <div id="homeLiveImportZone"></div>
         </div>
+
+        <!-- Programmation musicale (Analyse) — chargement direct depuis la home, Europe 2 et RFM, avec statut de la dernière semaine connue — source Programmation, accent violet -->
+        <div style="padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #7C3AED">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+            <div style="font-size:12.5px;font-weight:800;color:#fff">📊 Programmation musicale</div>
+            <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:6px 12px;border-radius:8px;cursor:pointer;white-space:nowrap">
+              Importer une/des semaine(s)
+              <input type="file" accept=".xlsx,.xls" multiple style="display:none" onchange="homeProgTriggerImport(this)">
+            </label>
+          </div>
+          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#7C3AED;margin-bottom:6px">● PROGRAMMATION</div>
+          <div id="homeProgLastWeeks" style="font-size:11px;line-height:1.7"></div>
+        </div>
+
       </div>
 
       <!-- Colonne droite : actions de chargement -->
@@ -9002,6 +9097,27 @@ function confirmSaveVague(){
   // S'assurer que rawDataAllSheets est à jour (cas : retour depuis résultats Fit Point)
   buildRawDataSheets();
 
+  // Le Fit Score n'est JAMAIS une colonne du fichier Call Out importé — il
+  // est recalculé par FPA à chaque vague (voir runAnalysis, fitPoint/stdDev
+  // propres à CETTE vague) et vivait uniquement dans analysisResult, jamais
+  // persisté dans l'historique. Conséquence concrète : la page Analyse ne
+  // pouvait donc jamais retrouver de Fit Score daté par vague (voir
+  // getTitleVagueSeries.fit, toujours vide). On l'injecte ici dans
+  // l'instantané archivé — comme une colonne "Fit Score" de plus — pour que,
+  // à partir de MAINTENANT, chaque vague conserve son propre Fit Score,
+  // exploitable plus tard avec la bonne contemporanéité (voir
+  // analyseNearestPriorEntry côté Analyse). Les vagues déjà archivées avant
+  // ce correctif n'ont toujours pas cette donnée et ne peuvent pas être
+  // corrigées rétroactivement (le calcul dépendait du fitPoint/stdDev de
+  // cette vague précise, non conservés non plus).
+  const fitByTitle = {};
+  if(analysisResult && analysisResult.length){
+    analysisResult.forEach(r => {
+      const key = norm(r.title||'') + '|||' + norm(r.artist||'');
+      if(r.fit != null) fitByTitle[key] = r.fit;
+    });
+  }
+
   const snapshot = {
     id   : Date.now(),
     name,
@@ -9038,9 +9154,12 @@ function confirmSaveVague(){
         const language = findVal(r,'LANGUAGE','LANGUE');
         const year     = findVal(r,'YEAR','ANNEE','ANNÉE');
         const rnk      = findVal(r,'RNK','RANK','POS');
+        const rowScores = extractScoresFromRow(r, s.headers);
+        const fitKey = norm(t) + '|||' + norm(a);
+        if(fitByTitle[fitKey] !== undefined) rowScores['Fit Score'] = fitByTitle[fitKey];
         return {
           a, t, cat, sound, language, year, rnk,
-          scores: extractScoresFromRow(r, s.headers)
+          scores: rowScores
         };
       })
     }))
@@ -9392,6 +9511,330 @@ function loadVagueForAnalysis(idx){
     showSheetSelector(validSheets);
   }
   showToast('Vague « ' + v.name + ' » chargée — configurez l\'analyse ci-dessous', 'success');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// FIT SCORE RÉTROACTIF — reconstruction pour les vagues Call Out archivées
+// AVANT le correctif qui persiste le Fit Score avec la vague (voir
+// confirmSaveVague). Le Pot Score de chaque titre est déjà dans l'historique
+// (colonne brute du fichier) — seuls le fitPoint (moyenne Pot Score des
+// anchors) et l'écart-type de la vague manquent pour recalculer le Fit
+// Score, exactement avec la même formule que runAnalysis/computeFitScore.
+// L'écart-type se recalcule directement depuis les Pot Score déjà archivés
+// (rien de perdu). Le fitPoint dépend des anchors utilisés à l'époque, qui
+// eux ne sont PAS archivés — d'où la petite table de configuration
+// "à partir de quelle date, quel(s) anchor(s)" que l'utilisateur renseigne
+// une fois, par station.
+// ══════════════════════════════════════════════════════════════════════════
+const FIT_RETRO_ANCHOR_KEY = 'fpa_anchor_periods_v1';
+
+/** Migration one-shot : l'ancienne structure était { e2:[...], rfm:[...] }
+ *  (périodes propres au Call Out uniquement, sans distinction OMT). On la
+ *  bascule vers { e2:{co:[...],omt:[]}, rfm:{co:[...],omt:[]} } dès la
+ *  première lecture après cette mise à jour — les anchors déjà saisis
+ *  restent affectés au Call Out (c'est ce qui fonctionnait), l'OMT démarre
+ *  vide et attend sa propre configuration. */
+function fitRetroMigrateConfig(cfg){
+  let migrated = false;
+  ['e2','rfm'].forEach(stKey => {
+    const v = cfg[stKey];
+    if(Array.isArray(v)){
+      cfg[stKey] = { co: v, omt: [] };
+      migrated = true;
+    } else if(!v || typeof v !== 'object'){
+      cfg[stKey] = { co: [], omt: [] };
+      migrated = true;
+    } else {
+      if(!Array.isArray(v.co)) { v.co = []; migrated = true; }
+      if(!Array.isArray(v.omt)) { v.omt = []; migrated = true; }
+    }
+  });
+  return migrated;
+}
+
+function fitRetroLoadConfig(){
+  let cfg;
+  try{ cfg = JSON.parse(localStorage.getItem(FIT_RETRO_ANCHOR_KEY) || '{}'); }
+  catch(e){ cfg = {}; }
+  if(fitRetroMigrateConfig(cfg)) fitRetroSaveConfig(cfg);
+  return cfg;
+}
+function fitRetroSaveConfig(cfg){
+  try{ localStorage.setItem(FIT_RETRO_ANCHOR_KEY, JSON.stringify(cfg)); }
+  catch(e){ showToast('Erreur de sauvegarde de la configuration anchors', 'err'); }
+}
+
+function fitRetroToggleConfig(){
+  const wrap = document.getElementById('fitRetroConfigWrap');
+  const show = wrap.style.display === 'none';
+  wrap.style.display = show ? 'block' : 'none';
+  if(show) fitRetroRenderConfig();
+}
+
+function fitRetroRenderConfig(){
+  const cfg = fitRetroLoadConfig();
+  const area = document.getElementById('fitRetroConfigArea');
+  const stations = [['e2','Europe 2'],['rfm','RFM']];
+  const types = [['co','📋 Call Out', '#00B8C8'],['omt','🎙️ OMT', '#5B3FA8']];
+  area.innerHTML = stations.map(([stKey,stLabel]) => {
+    const typeBlocks = types.map(([typeKey,typeLabel,color]) => {
+      const periods = (cfg[stKey][typeKey]||[]).slice().sort((a,b) => (a.dateFrom||'').localeCompare(b.dateFrom||''));
+      const rows = periods.map((p,i) => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <input type="date" value="${p.dateFrom||''}" style="font-size:11.5px;padding:6px 8px;border-radius:6px" onchange="fitRetroUpdatePeriod('${stKey}','${typeKey}',${i},'dateFrom',this.value)">
+        <input type="text" value="${escHtml(p.anchors ? p.anchors.join(', ') : '')}" placeholder="Titre(s) anchor, séparés par une virgule" style="flex:1;font-size:11.5px;padding:6px 8px;border-radius:6px" onchange="fitRetroUpdatePeriod('${stKey}','${typeKey}',${i},'anchors',this.value)">
+        <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="fitRetroRemovePeriod('${stKey}','${typeKey}',${i})">🗑</button>
+      </div>`).join('');
+      return `<div style="margin-bottom:10px;padding:10px 12px;background:var(--white);border-radius:8px;border-left:3px solid ${color}">
+        <div style="font-size:11px;font-weight:800;color:${color};margin-bottom:6px">${typeLabel}</div>
+        ${rows || '<div style="font-size:11px;color:var(--muted);margin-bottom:6px">Aucune période configurée</div>'}
+        <button class="btn-ghost" style="font-size:10.5px;padding:5px 10px" onclick="fitRetroAddPeriod('${stKey}','${typeKey}')">+ Ajouter une période</button>
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:16px">
+      <div style="font-size:11.5px;font-weight:800;color:var(--navy);margin-bottom:8px">${STATION_ICONS.EUROPE2||'📻'} ${escHtml(stLabel)}</div>
+      ${typeBlocks}
+    </div>`;
+  }).join('');
+}
+
+function fitRetroAddPeriod(stationKey, typeKey){
+  const cfg = fitRetroLoadConfig();
+  if(!cfg[stationKey][typeKey]) cfg[stationKey][typeKey] = [];
+  cfg[stationKey][typeKey].push({ dateFrom:'', anchors:[] });
+  fitRetroSaveConfig(cfg);
+  fitRetroRenderConfig();
+}
+function fitRetroRemovePeriod(stationKey, typeKey, idx){
+  const cfg = fitRetroLoadConfig();
+  if(cfg[stationKey][typeKey]) cfg[stationKey][typeKey].splice(idx,1);
+  fitRetroSaveConfig(cfg);
+  fitRetroRenderConfig();
+}
+function fitRetroUpdatePeriod(stationKey, typeKey, idx, field, value){
+  const cfg = fitRetroLoadConfig();
+  if(!cfg[stationKey][typeKey] || !cfg[stationKey][typeKey][idx]) return;
+  if(field === 'anchors') cfg[stationKey][typeKey][idx].anchors = value.split(',').map(s=>s.trim()).filter(Boolean);
+  else cfg[stationKey][typeKey][idx][field] = value;
+  fitRetroSaveConfig(cfg);
+}
+
+/** Anchors applicables à une date donnée, pour un type de vague (Call Out
+ *  ou OMT) — la période la plus récente dont dateFrom ≤ date de la vague
+ *  (sinon la plus ancienne connue en repli, pour ne pas laisser une vague
+ *  antérieure à la première période sans rien). Call Out et OMT ont chacun
+ *  leur propre liste de périodes, potentiellement avec des titres anchor
+ *  différents (méthodologies distinctes). */
+function fitRetroFindAnchorsForDate(stationKey, date, typeKey){
+  const cfg = fitRetroLoadConfig();
+  const periods = ((cfg[stationKey] && cfg[stationKey][typeKey]) || []).filter(p => p.dateFrom && p.anchors && p.anchors.length).slice().sort((a,b) => a.dateFrom.localeCompare(b.dateFrom));
+  if(!periods.length) return null;
+  if(!date) return periods[periods.length-1].anchors; // pas de date : dernière période connue par défaut
+  let applicable = null;
+  for(const p of periods){ if(p.dateFrom <= date) applicable = p; else break; }
+  return applicable ? applicable.anchors : periods[0].anchors; // vague antérieure à toute période connue → la plus ancienne, en repli
+}
+
+/** Pot Score "Tous" d'une ligne archivée — même matching souple que le reste
+ *  de l'historique (voir isHistFixedScore / HIST_FIXED_SCORE). */
+function fitRetroGetPotScore(scores){
+  if(!scores) return null;
+  for(const k of Object.keys(scores)){
+    if(isHistFixedScore(k)){ const v = parseFloat(scores[k]); if(!isNaN(v)) return v; }
+  }
+  return null;
+}
+
+/** Fam Score d'une ligne archivée OMT — même logique de matching que
+ *  getTitleFamScoreSeries (préfère la variante "Total", sinon la première
+ *  colonne "Fam Score" trouvée). */
+function fitRetroGetFamScore(scores){
+  if(!scores) return null;
+  const keys = Object.keys(scores).filter(k => normHistColKey(k).includes('FAM SCORE'));
+  if(!keys.length) return null;
+  const totalKey = keys.find(k => normHistColKey(k).includes('TOTAL')) || keys[0];
+  const v = parseFloat(scores[totalKey]);
+  return isNaN(v) ? null : v;
+}
+
+/** Burn (%) d'une ligne archivée, Call Out ou OMT indifféremment (même
+ *  colonne "Burn" générique, préfère la variante "Total") — normalisé en
+ *  pourcentage 0-100 comme le fait runAnalysis (`rb>1?rb:rb*100`). */
+function fitRetroGetBurn(scores){
+  if(!scores) return null;
+  const keys = Object.keys(scores).filter(k => normHistColKey(k).includes('BURN'));
+  if(!keys.length) return null;
+  const totalKey = keys.find(k => normHistColKey(k).includes('TOTAL')) || keys[0];
+  const v = parseFloat(scores[totalKey]);
+  if(isNaN(v)) return null;
+  return v > 1 ? v : v*100;
+}
+
+/** Seuils fixes communiqués par l'utilisateur (mêmes valeurs pour le seuil
+ *  Burn et le seuil Power Song) : Call Out 10%, OMT 30%. Contrairement au
+ *  Fit Point (anchors), ces seuils ne varient pas dans le temps — aucune
+ *  configuration supplémentaire n'est nécessaire pour reconstruire le
+ *  Quadrant complet des vagues archivées. */
+const FIT_RETRO_THRESHOLDS = { co: { burnPct:10, powerPct:10 }, omt: { burnPct:30, powerPct:30 } };
+
+/** Recalcule le Fit Score ET le Quadrant de toutes les lignes d'UNE vague
+ *  (Call Out sur Pot Score, OMT sur Fam Score), à partir de ce qui est déjà
+ *  archivé — même formule que runAnalysis (fitPoint = moyenne du score des
+ *  anchors, stdDev = écart-type population du corpus, seuil Power = top N%
+ *  du corpus, computeFitScore/computeQuadrant = mêmes fonctions). Modifie
+ *  `v` en place (row.scores['Fit Score'] et ['Quadrant']). Retourne un
+ *  rapport détaillé plutôt qu'un simple booléen, pour que l'appelant
+ *  explique précisément un éventuel échec. */
+function fitRetroRecalcVague(v, anchorTitles){
+  const isOmt = isOmtVague(v);
+  const getMetric = isOmt ? fitRetroGetFamScore : fitRetroGetPotScore;
+  const { burnPct, powerPct } = isOmt ? FIT_RETRO_THRESHOLDS.omt : FIT_RETRO_THRESHOLDS.co;
+
+  const sheet = v.sheets.find(sh => isHistFixedSheet(sh.sheetName)) || v.sheets[0];
+  if(!sheet || !sheet.rows.length) return { ok:false, reason:'Aucune feuille exploitable' };
+
+  const metricValues = sheet.rows.map(r => getMetric(r.scores)).filter(v => v != null);
+  if(metricValues.length < 3) return { ok:false, reason:'Pas assez de ' + (isOmt?'Fam Score':'Pot Score') + ' exploitables (' + metricValues.length + ')' };
+
+  const mean = metricValues.reduce((a,b)=>a+b,0) / metricValues.length;
+  const stdDev = Math.sqrt(metricValues.reduce((a,b)=>a+(b-mean)**2,0) / metricValues.length);
+  if(stdDev === 0) return { ok:false, reason:'Écart-type nul (tous les scores identiques)' };
+
+  const anchorScores = [];
+  let anchorsFound = [];
+  (anchorTitles||[]).forEach(a => {
+    const row = sheet.rows.find(r => (r.t||'').toUpperCase().includes(a.toUpperCase()));
+    if(row){ const s = getMetric(row.scores); if(s != null){ anchorScores.push(s); anchorsFound.push(a); } }
+  });
+  const fitPoint = anchorScores.length ? anchorScores.reduce((a,b)=>a+b,0)/anchorScores.length : mean+stdDev;
+  const anchorFallback = !anchorScores.length;
+
+  // Seuil Power Song = percentile (100-powerPct) du corpus de CETTE vague,
+  // exactement comme runAnalysis.
+  const sortedVals = [...metricValues].sort((a,b)=>a-b);
+  const idx = Math.floor(sortedVals.length*(1-powerPct/100));
+  const powerThreshold = sortedVals[Math.max(0,idx)];
+  const fitZoneLow = fitPoint - 1.5*stdDev;
+  const hst = fitPoint - 2.0*stdDev;
+
+  let titresModifies = 0;
+  v.sheets.forEach(sh => {
+    sh.rows.forEach(r => {
+      const metric = getMetric(r.scores);
+      if(metric == null) return;
+      const burn = fitRetroGetBurn(r.scores) || 0;
+      const fit = Math.round(computeFitScore(metric, fitPoint, stdDev)*10)/10;
+      const quadrant = computeQuadrant(metric, burn, fitPoint, fitZoneLow, hst, burnPct, powerThreshold);
+      if(!r.scores) r.scores = {};
+      let changed = false;
+      if(r.scores['Fit Score'] !== fit){ r.scores['Fit Score'] = fit; changed = true; }
+      if(r.scores['Quadrant'] !== quadrant){ r.scores['Quadrant'] = quadrant; changed = true; }
+      if(changed) titresModifies++;
+    });
+  });
+
+  return { ok:true, isOmt, titresModifies, fitPoint:Math.round(fitPoint*100)/100, stdDev:Math.round(stdDev*100)/100, burnPct, powerPct, anchorsFound, anchorsRequested:anchorTitles||[], anchorFallback };
+}
+
+async function fitRetroRunUI(){
+  if(!requireAdmin()) return;
+  const cfg = fitRetroLoadConfig();
+  const hasAnyConfig = Object.values(cfg).some(st => st && (st.co.length || st.omt.length));
+  if(!hasAnyConfig){
+    showToast('Configure d\'abord au moins une période d\'anchors (⚙️ Anchors historiques) avant de lancer le recalcul.', 'err');
+    fitRetroToggleConfig();
+    return;
+  }
+  const scope = document.getElementById('fitRetroScopeSelect').value; // 'all' | 'co' | 'omt'
+  const scopeLabel = { all:'Call Out + OMT', co:'Call Out uniquement', omt:'OMT uniquement' }[scope];
+  if(!confirm('Recalculer le Fit Score et le Quadrant des vagues archivées (' + scopeLabel + '), à partir des anchors configurés et des seuils fixes (Call Out 10%, OMT 30%) ?')) return;
+
+  const btn = document.getElementById('fitRetroRunBtn');
+  const progWrap = document.getElementById('fitRetroProgressWrap');
+  const progLabel = document.getElementById('fitRetroProgressLabel');
+  const progPct = document.getElementById('fitRetroProgressPct');
+  const progBar = document.getElementById('fitRetroProgressBar');
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.6'; btn.style.cursor = 'not-allowed'; }
+  if(progWrap) progWrap.style.display = 'block';
+  document.getElementById('fitRetroReportWrap').style.display = 'none';
+
+  const history = histLoad();
+  const total = history.length;
+  let recalculated = 0, skipped = 0, weeksWithChanges = 0, outOfScope = 0;
+  const report = [];
+
+  for(let i = 0; i < total; i++){
+    const v = history[i];
+    if(progLabel) progLabel.textContent = `⏳ Recalcul en cours… (${i+1}/${total}) — ${v.name}`;
+    if(progPct) progPct.textContent = Math.round(((i+1)/total)*100) + '%';
+    if(progBar) progBar.style.width = Math.round(((i+1)/total)*100) + '%';
+    // Cède la main au navigateur toutes les quelques vagues pour que la
+    // barre de progression s'affiche réellement pendant le calcul (sinon,
+    // en JavaScript synchrone, rien ne se peint à l'écran avant la toute
+    // fin de la boucle, donnant l'impression que rien ne se passe).
+    if(i % 3 === 0) await new Promise(r => setTimeout(r, 0));
+
+    const isOmt = isOmtVague(v);
+    if(scope === 'co' && isOmt){ outOfScope++; continue; }
+    if(scope === 'omt' && !isOmt){ outOfScope++; continue; }
+
+    const radioKey = detectVagueRadio(v);
+    const stKey = radioKey === 'rfm' ? 'rfm' : (radioKey === 'e2' ? 'e2' : null);
+    if(!stKey){ skipped++; report.push({ name:v.name, date:v.date, status:'skip', reason:'Station non identifiée' }); continue; }
+    const typeKey = isOmt ? 'omt' : 'co';
+    const anchors = fitRetroFindAnchorsForDate(stKey, v.date, typeKey);
+    if(!anchors){ skipped++; report.push({ name:v.name, date:v.date, status:'skip', reason:'Aucune période d\'anchors ' + (isOmt?'OMT':'Call Out') + ' configurée pour ' + (stKey==='rfm'?'RFM':'Europe 2') }); continue; }
+    const result = fitRetroRecalcVague(v, anchors);
+    if(!result.ok){ skipped++; report.push({ name:v.name, date:v.date, status:'skip', reason:result.reason }); continue; }
+    recalculated++;
+    if(result.titresModifies > 0) weeksWithChanges++;
+    report.push({
+      name:v.name, date:v.date, status:'ok', isOmt:result.isOmt, titresModifies:result.titresModifies,
+      fitPoint:result.fitPoint, stdDev:result.stdDev, burnPct:result.burnPct, powerPct:result.powerPct,
+      anchorNote: result.anchorFallback ? '⚠ anchor(s) introuvable(s) dans cette vague, repli moyenne+écart-type' : ('anchors : ' + result.anchorsFound.join(', '))
+    });
+  }
+
+  histSave(history);
+
+  if(progLabel) progLabel.textContent = '✓ Terminé';
+  if(progPct) progPct.textContent = '100%';
+  if(progBar) progBar.style.width = '100%';
+  let msg = '✓ ' + recalculated + ' vague(s) recalculée(s)' + (skipped ? ' · ' + skipped + ' ignorée(s)' : '');
+  if(outOfScope) msg += ' · ' + outOfScope + ' hors périmètre (' + scopeLabel + ')';
+  showToast(msg, 'success');
+  fitRetroRenderReport({ recalculated, skipped, weeksWithChanges, report });
+  renderHistoryPage();
+
+  setTimeout(() => {
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
+    if(progWrap) progWrap.style.display = 'none';
+  }, 1200);
+}
+
+function fitRetroRenderReport(result){
+  const wrap = document.getElementById('fitRetroReportWrap');
+  const area = document.getElementById('fitRetroReportArea');
+  wrap.style.display = 'block';
+  const rows = result.report.map(r => {
+    const dateStr = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR') : '—';
+    if(r.status === 'skip'){
+      return `<tr><td style="padding:6px 10px;font-size:11px">${escHtml(r.name)}</td><td style="padding:6px 10px;font-size:11px">${dateStr}</td><td style="padding:6px 10px;font-size:10.5px;color:#CC2222;font-weight:700">⚠ Ignorée — ${escHtml(r.reason)}</td></tr>`;
+    }
+    const typeTag = r.isOmt ? '<span style="color:#5B3FA8;font-weight:800">[OMT]</span> ' : '<span style="color:#00B8C8;font-weight:800">[CO]</span> ';
+    return `<tr><td style="padding:6px 10px;font-size:11px">${typeTag}${escHtml(r.name)}</td><td style="padding:6px 10px;font-size:11px">${dateStr}</td><td style="padding:6px 10px;font-size:10.5px;color:var(--green-text);font-weight:700">✓ ${r.titresModifies} titre(s) · fitPoint=${r.fitPoint} · σ=${r.stdDev} · burn/power=${r.burnPct}% <span style="color:var(--muted);font-weight:500">(${escHtml(r.anchorNote)})</span></td></tr>`;
+  }).join('');
+  area.innerHTML = `
+    <div style="font-size:12px;margin-bottom:10px"><b style="color:var(--green-text)">${result.recalculated}</b> vague(s) recalculée(s) · <b style="color:#CC2222">${result.skipped}</b> ignorée(s)</div>
+    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
+      <thead><tr style="background:var(--white)">
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Vague</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Date</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Résultat</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Pense ensuite à relancer <b>🔄 Recalculer les scores (semaines archivées)</b> dans l'onglet Analyse → Programmation musicale, pour que ces Fit Score fraîchement reconstruits remontent dans tes semaines déjà importées.</div>
+  `;
 }
 
 function loadVagueIntoData(idx){
@@ -10191,19 +10634,53 @@ function analyseNormPct(v){
   return Math.abs(n) <= 1 ? n * 100 : n;
 }
 
-function analyseGetSearchScores(title, artist){
+/** Sélectionne, dans une série triée chronologiquement (voir sortVagues),
+ *  la vague CONTEMPORAINE d'une semaine de programmation donnée — c'est-à-
+ *  dire la dernière vague dont la date est ANTÉRIEURE OU ÉGALE à
+ *  referenceDate — plutôt que systématiquement la toute dernière vague
+ *  connue toutes dates confondues (biais d'anticipation : utiliser des
+ *  résultats de recherche postérieurs à la semaine analysée pour "expliquer"
+ *  une programmation passée). Si aucune vague datée n'existe encore à cette
+ *  date (programmation antérieure à la première recherche connue), retourne
+ *  null plutôt qu'une vague future — correct historiquement, même si ça
+ *  laisse le champ vide pour les toutes premières semaines archivées.
+ *  Si la série ne contient AUCUNE vague datée (saisie sans date), on ne peut
+ *  faire aucun choix temporel fiable : on retombe alors sur le comportement
+ *  historique (dernière vague connue), pour ne pas perdre toute donnée sur
+ *  un simple défaut de saisie de date. Sans referenceDate (semaine de
+ *  programmation elle-même non datée — cas des anciens imports), même repli. */
+function analyseNearestPriorEntry(series, referenceDate){
+  if(!series || !series.length) return null;
+  const dated = series.filter(p => p.date);
+  if(!dated.length || !referenceDate) return series[series.length - 1];
+  let prior = null;
+  for(const p of dated){
+    if(p.date <= referenceDate) prior = p; else break;
+  }
+  return prior; // null si la programmation est antérieure à toute recherche connue
+}
+
+function analyseGetSearchScores(title, artist, referenceDate){
   const co  = getTitleVagueSeries(title, artist);
   const omt = getTitleFamScoreSeries(title, artist);
-  const last = arr => (arr && arr.length) ? arr[arr.length - 1].val : null;
+  const pick = arr => { const e = analyseNearestPriorEntry(arr, referenceDate); return e ? e.val : null; };
   return {
-    potTous:  last(co.potTous),
-    potP1:    last(co.potP1),
-    burnCOTous: analyseNormPct(last(co.burnTous)),
-    burnCOP1:   analyseNormPct(last(co.burnP1)),
-    famTous:  last(omt.famTous),
-    famP1:    last(omt.famP1),
-    burnOMTTous: analyseNormPct(last(omt.burnTous)),
-    burnOMTP1:   analyseNormPct(last(omt.burnP1))
+    potTous:  pick(co.potTous),
+    potP1:    pick(co.potP1),
+    burnCOTous: analyseNormPct(pick(co.burnTous)),
+    burnCOP1:   analyseNormPct(pick(co.burnP1)),
+    famTous:  pick(omt.famTous),
+    famP1:    pick(omt.famP1),
+    burnOMTTous: analyseNormPct(pick(omt.burnTous)),
+    burnOMTP1:   analyseNormPct(pick(omt.burnP1)),
+    // Fit Score : colonne "Fit Score" présente telle quelle dans les fichiers
+    // Call Out (livrée par SCR/Steve Casey, propre à chaque vague — même
+    // convention que la fiche Song Full Metrics, voir buildEvoCard('Fit
+    // Score', ..., vagueSeries.fit)). Contrairement au Fit Score du corpus
+    // 360°/Décision (build360Rows), CELUI-CI est nativement daté par vague,
+    // donc directement exploitable par analyseNearestPriorEntry — c'est la
+    // source à privilégier pour la contemporanéité avec la semaine analysée.
+    fit: pick(co.fit)
   };
 }
 
@@ -10229,30 +10706,112 @@ const ANALYSE_DRIVE_KEY = 'analyse_history';
 let analyseDriveLoaded = false;   // évite de recharger Drive à chaque ouverture de page dans la session
 let analyseDriveSaving = false;
 
+/** Historique agrégé (statistiques par semaine, toutes stations) — migré
+ *  vers IndexedDB avec un cache mémoire synchrone devant, pour ne pas avoir
+ *  à convertir en async les ~18 endroits qui appellent analyseLoadHistory/
+ *  analyseSaveHistory dans tout le code. localStorage restait la seule
+ *  source pour CE bloc précis (contrairement au détail par titre, déjà migré
+ *  plus tôt) : plafonné à 5-10 Mo par le navigateur, un seul blob JSON
+ *  grandissant avec chaque semaine (et récemment alourdi par l'ajout des
+ *  critères P1 et de la répartition par genre) pouvait dépasser ce plafond
+ *  — l'échec d'écriture était alors avalé en silence (voir l'ancien
+ *  commentaire "quota localStorage, ignoré"), laissant les statistiques
+ *  fraîchement recalculées se perdre sans aucun avertissement. C'est
+ *  exactement le bug diagnostiqué en direct avec Gaël : le recalcul
+ *  produisait les bons chiffres en mémoire, mais l'enregistrement final
+ *  échouait silencieusement pour une partie des semaines Europe 2.
+ *  analyseLoadHistory()/analyseSaveHistory() restent synchrones (le cache
+ *  mémoire est rempli une fois au chargement de la page Analyse, voir
+ *  analyseHistoryCacheLoad appelé depuis toggleAnalysePage) — avant que le
+ *  cache soit prêt, repli direct sur localStorage/l'éventuel reliquat, pour
+ *  ne jamais renvoyer un historique vide par erreur. */
+let analyseHistoryCache = null;
+let analyseHistoryCacheReadyPromise = null;
+
+async function analyseHistoryCacheLoad(){
+  if(analyseHistoryCacheReadyPromise) return analyseHistoryCacheReadyPromise;
+  analyseHistoryCacheReadyPromise = (async () => {
+    try{
+      const fromIdb = await idbGet(ANALYSE_HISTORY_KEY);
+      if(fromIdb){ analyseHistoryCache = fromIdb; return; }
+    }catch(e){ /* IndexedDB indisponible — repli ci-dessous */ }
+    // Reliquat pré-migration (localStorage) : on le relit une dernière fois,
+    // on le bascule vers IndexedDB, puis on ne s'appuiera plus jamais sur
+    // localStorage pour ce bloc.
+    let legacy = {};
+    try{ legacy = JSON.parse(localStorage.getItem(ANALYSE_HISTORY_KEY) || '{}'); }catch(e){ legacy = {}; }
+    analyseHistoryCache = legacy;
+    try{ await idbSet(ANALYSE_HISTORY_KEY, legacy); localStorage.removeItem(ANALYSE_HISTORY_KEY); }catch(e){ /* migration réessayée à la prochaine sauvegarde */ }
+  })();
+  return analyseHistoryCacheReadyPromise;
+}
+
 function analyseLoadHistory(){
+  if(analyseHistoryCache !== null) return analyseHistoryCache;
+  // Cache pas encore chargé (accès très précoce, avant que
+  // analyseHistoryCacheLoad ait résolu) : repli synchrone direct sur
+  // localStorage pour ne jamais renvoyer undefined à l'appelant.
   try{ return JSON.parse(localStorage.getItem(ANALYSE_HISTORY_KEY) || '{}'); }
   catch(e){ return {}; }
 }
 function analyseSaveHistory(h){
-  try{ localStorage.setItem(ANALYSE_HISTORY_KEY, JSON.stringify(h)); }catch(e){ /* quota localStorage, ignoré */ }
+  analyseHistoryCache = h; // source de vérité immédiate pour tous les lecteurs synchrones
+  idbSet(ANALYSE_HISTORY_KEY, h).catch(e => console.error('Échec de sauvegarde IndexedDB (historique Analyse) :', e));
+  // Best-effort sur localStorage également (compat descendante) — son échec
+  // éventuel est désormais sans conséquence, IndexedDB fait foi.
+  try{ localStorage.setItem(ANALYSE_HISTORY_KEY, JSON.stringify(h)); }catch(e){ /* sans conséquence, voir ci-dessus */ }
 }
 
 function analyseSlugifyWeekLabel(weekLabel){ return String(weekLabel || '').replace(/[^A-Za-z0-9_-]/g, '_'); }
 function analyseWeekLocalKey(stKey, weekLabel){ return 'fpa_analyse_week_' + stKey + '_' + analyseSlugifyWeekLabel(weekLabel); }
 
-function analyseSaveWeekDetailLocal(stKey, weekLabel, detail){
-  try{ localStorage.setItem(analyseWeekLocalKey(stKey, weekLabel), JSON.stringify(detail)); }
-  catch(e){ /* quota localStorage dépassé (plusieurs semaines volumineuses) — le
-             détail reste récupérable depuis Drive si configuré */ }
-}
-function analyseLoadWeekDetailLocal(stKey, weekLabel){
+/** Retourne true/false — contrairement à avant, l'échec n'est plus avalé en
+ *  silence : voir les appelants (analyseSaveWeekToHistory, analyseBulkArchive)
+ *  qui avertissent désormais explicitement l'utilisateur en cas d'échec, au
+ *  moment même de l'enregistrement plutôt que de le découvrir plus tard en
+ *  essayant d'afficher le détail. Le détail n'est PAS récupérable depuis
+ *  Drive (volontairement local uniquement — voir le commentaire sur
+ *  analyseSaveWeekToHistory) : un échec ici est donc une vraie perte pour
+ *  cette semaine, pas un simple délai de synchro. */
+/** Stockage du détail par titre des semaines Analyse — migré vers IndexedDB
+ *  (même mécanisme générique que l'historique Call Out/OMT, voir idbGet/
+ *  idbSet) plutôt que localStorage. localStorage est plafonné à ~5-10 Mo
+ *  PAR LE NAVIGATEUR LUI-MÊME, quelle que soit la place disque disponible —
+ *  une limite fixe de l'API, non contournable — alors qu'IndexedDB n'a pas
+ *  ce plafond (typiquement des centaines de Mo, liés à l'espace disque
+ *  réel). C'est ce qui causait les échecs de sauvegarde du détail au bout
+ *  d'une vingtaine de semaines importées.
+ *  Toutes les fonctions sont désormais asynchrones — voir les appelants
+ *  (analyseBulkArchive, analyseSaveWeekToHistory, analyseRecalculateAllArchives,
+ *  analyseViewArchivedWeek) qui utilisent await. */
+async function analyseSaveWeekDetailLocal(stKey, weekLabel, detail){
   try{
-    const raw = localStorage.getItem(analyseWeekLocalKey(stKey, weekLabel));
-    return raw ? JSON.parse(raw) : null;
+    await idbSet(analyseWeekLocalKey(stKey, weekLabel), detail);
+    return true;
+  }catch(e){
+    return false; // quota disque réellement épuisé (rare avec IndexedDB), ou navigateur sans IndexedDB
+  }
+}
+async function analyseLoadWeekDetailLocal(stKey, weekLabel){
+  try{
+    const key = analyseWeekLocalKey(stKey, weekLabel);
+    const fromIdb = await idbGet(key);
+    if(fromIdb) return fromIdb;
+    // Repli one-shot : détail encore présent dans l'ancien stockage
+    // localStorage (semaines sauvegardées avant cette migration) — on le
+    // relit, puis on le bascule silencieusement vers IndexedDB pour ne plus
+    // jamais y retoucher ensuite.
+    const raw = localStorage.getItem(key);
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    idbSet(key, parsed).then(() => { try{ localStorage.removeItem(key); }catch(e){} }).catch(()=>{});
+    return parsed;
   }catch(e){ return null; }
 }
-function analyseDeleteWeekDetailLocal(stKey, weekLabel){
-  try{ localStorage.removeItem(analyseWeekLocalKey(stKey, weekLabel)); }catch(e){}
+async function analyseDeleteWeekDetailLocal(stKey, weekLabel){
+  const key = analyseWeekLocalKey(stKey, weekLabel);
+  try{ await idbDelete(key); }catch(e){}
+  try{ localStorage.removeItem(key); }catch(e){} // purge l'éventuel reliquat pré-migration
 }
 
 /** Arrondit les décimales avant envoi Drive (discipline payload déjà en
@@ -10301,6 +10860,315 @@ function analyseHideSaveProgress(delayMs){
   const wrap = document.getElementById('analyseSaveProgressWrap');
   if(!wrap) return;
   setTimeout(() => { wrap.style.display = 'none'; }, delayMs || 400);
+}
+
+/** Recalcule EN PLACE les scores Call Out/OMT/Fit Score de toutes les
+ *  semaines déjà archivées qui ont une date connue (weekStart) — sans
+ *  réimporter les fichiers Excel d'origine, puisque le détail complet par
+ *  titre (titre/artiste/diffs...) reste en cache local par semaine (voir
+ *  analyseSaveWeekDetailLocal). Utile après une évolution de la logique de
+ *  contemporanéité (voir analyseNearestPriorEntry) : recale les archives
+ *  existantes sur la bonne vague de recherche pour la date de CETTE semaine,
+ *  plutôt que celle qui était "la plus récente connue" au moment de
+ *  l'archivage initial.
+ *  Les semaines archivées AVANT l'ajout des dates réelles (pas de weekStart
+ *  stocké) sont ignorées ici — elles n'ont aucune date de référence
+ *  exploitable et nécessitent un vrai réimport si on veut les corriger. */
+async function analyseRecalculateAllArchives(onProgress){
+  await analyseHistoryCacheLoad(); // s'assure de travailler sur l'historique réellement à jour, pas un repli localStorage transitoire
+  const history = analyseLoadHistory();
+  let recalculated = 0, skippedNoDate = 0, skippedNoDetail = 0, weeksWithChanges = 0;
+  const report = [];
+
+  const allEntries = [];
+  ['EUROPE2','RFM'].forEach(stKey => (history[stKey]||[]).forEach(entry => allEntries.push({ stKey, entry })));
+  const total = allEntries.length;
+
+  for(let i = 0; i < allEntries.length; i++){
+    const { stKey, entry } = allEntries[i];
+    if(onProgress) onProgress(i+1, total, stKey + ' ' + entry.weekLabel);
+    if(!entry.weekStart){
+        skippedNoDate++;
+        report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: null, status: 'no-date', titresModifies: 0 });
+        continue;
+      }
+      const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
+      if(!detail || !detail.rows || !detail.rows.length){
+        skippedNoDetail++;
+        report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: entry.weekStart, status: 'no-detail', titresModifies: 0 });
+        continue;
+      }
+      const refDate = entry.weekEnd || entry.weekStart;
+      let titresModifies = 0;
+      detail.rows.forEach(row => {
+        const oldFit = row.fpa ? row.fpa.fit : null;
+        const oldPot = row.search ? row.search.potTous : null;
+        const oldFam = row.search ? row.search.famTous : null;
+        row.search = analyseGetSearchScores(row.title, row.artist, refDate);
+        row.fpa = analyseGetFpaScores(row.title, row.artist);
+        analyseApplyDatedFit(row);
+        const newFit = row.fpa ? row.fpa.fit : null;
+        if(oldFit !== newFit || oldPot !== row.search.potTous || oldFam !== row.search.famTous) titresModifies++;
+      });
+      const newStats = analyseComputeStats(detail.rows);
+      entry.stats = newStats;
+      detail.rows = detail.rows.map(analyseCleanRowForSave);
+      await analyseSaveWeekDetailLocal(stKey, entry.weekLabel, detail);
+      recalculated++;
+      if(titresModifies > 0) weeksWithChanges++;
+      report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: entry.weekStart, status: 'recalculated', titresModifies });
+  }
+  analyseSaveHistory(history);
+  if(DRIVE_SYNC_URL) await analyseSaveHistoryToDrive();
+
+  return { recalculated, skippedNoDate, skippedNoDetail, weeksWithChanges, report };
+}
+
+/** Diagnostic du stockage local pour les semaines Analyse — répond
+ *  précisément à « pourquoi le détail de telle semaine est introuvable ? »
+ *  sans se contenter de l'hypothèse « autre appareil » :
+ *  1) Espace localStorage utilisé/restant (le détail complet par titre est
+ *     volumineux — plusieurs dizaines de semaines à 40-500 titres peuvent
+ *     saturer le quota du navigateur, typiquement 5-10 Mo selon le
+ *     navigateur — auquel cas les sauvegardes échouent SILENCIEUSEMENT,
+ *     voir analyseSaveWeekDetailLocal qui avale l'erreur).
+ *  2) Pour chaque semaine sans détail trouvé à la clé exacte attendue,
+ *     recherche si une clé très proche existe déjà (libellé de semaine
+ *     modifié après le premier enregistrement du détail — la clé de
+ *     stockage est dérivée du libellé, donc un renommage casse le lien).
+ *  3) Test d'écriture réel (petite valeur) pour confirmer si le quota est
+ *     ACTUELLEMENT dépassé au moment du diagnostic. */
+async function analyseDiagnoseLocalStorage(){
+  // 1) Occupation totale de localStorage (estimation : somme clé+valeur en
+  //    caractères — un caractère JS ≈ 2 octets en UTF-16, l'unité de calcul
+  //    du quota réel du navigateur).
+  let totalChars = 0;
+  const allKeys = [];
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    const v = localStorage.getItem(k) || '';
+    totalChars += k.length + v.length;
+    allKeys.push({ key:k, size:v.length });
+  }
+  const totalBytes = totalChars * 2;
+  // Depuis la migration vers IndexedDB, le détail Analyse ne devrait plus
+  // apparaître ici que pour d'éventuels restes pré-migration (voir le repli
+  // automatique dans analyseLoadWeekDetailLocal, qui les bascule et les
+  // supprime dès leur première lecture).
+  const legacyWeekDetailKeys = allKeys.filter(e => e.key.startsWith('fpa_analyse_week_'));
+
+  // 2) Test d'écriture réel pour savoir si le quota localStorage est saturé
+  //    maintenant (n'affecte plus le détail Analyse depuis la migration,
+  //    mais reste pertinent pour tout le reste de FPA qui utilise encore
+  //    localStorage).
+  let quotaExceededNow = false;
+  try{
+    const testKey = '__fpa_quota_test__';
+    localStorage.setItem(testKey, 'x'.repeat(50000)); // ~100 Ko
+    localStorage.removeItem(testKey);
+  }catch(e){ quotaExceededNow = true; }
+
+  // 3) Détail Analyse réellement présent en IndexedDB (source actuelle).
+  let idbWeekDetailKeys = [];
+  try{
+    const { keys } = await idbGetAllEntries();
+    idbWeekDetailKeys = (keys||[]).filter(k => k.startsWith('fpa_analyse_week_'));
+  }catch(e){ /* IndexedDB indisponible — allKeys IDB reste vide, les semaines apparaîtront "manquantes" ci-dessous, ce qui est honnête dans ce cas */ }
+
+  // 4) Semaines archivées sans détail trouvable (ni en IndexedDB, ni en
+  //    reliquat localStorage pré-migration) — et recherche d'une clé proche
+  //    (même station) qui pourrait correspondre à un libellé renommé depuis.
+  const history = analyseLoadHistory();
+  const missing = [];
+  ['EUROPE2','RFM'].forEach(stKey => {
+    (history[stKey]||[]).forEach(entry => {
+      const expectedKey = analyseWeekLocalKey(stKey, entry.weekLabel);
+      const existsIdb = idbWeekDetailKeys.includes(expectedKey);
+      const existsLegacy = legacyWeekDetailKeys.some(e => e.key === expectedKey);
+      if(existsIdb || existsLegacy) return;
+      const prefix = 'fpa_analyse_week_' + stKey + '_';
+      const candidates = idbWeekDetailKeys.filter(k => k.startsWith(prefix)).length + legacyWeekDetailKeys.filter(e => e.key.startsWith(prefix)).length;
+      missing.push({ station:stKey, weekLabel:entry.weekLabel, expectedKey, nearbyKeysCount: candidates });
+    });
+  });
+
+  return {
+    totalBytes, totalKeys: allKeys.length,
+    weekDetailKeyCount: idbWeekDetailKeys.length,
+    legacyWeekDetailKeyCount: legacyWeekDetailKeys.length,
+    legacyWeekDetailBytes: legacyWeekDetailKeys.reduce((s,e)=>s+e.size,0) * 2,
+    quotaExceededNow,
+    missing,
+    // Plus gros consommateurs, TOUTES clés localStorage confondues (le
+    // détail Analyse n'y figure plus, sauf reliquat pré-migration) — pour
+    // identifier ce qui remplit réellement le quota localStorage partagé du
+    // navigateur (Comité d'Écoute, Playlist, Veille, Song Attributes,
+    // Genres, outils tiers éventuels...).
+    topKeys: allKeys.map(e => ({ key:e.key, bytes:e.size*2 })).sort((a,b) => b.bytes-a.bytes).slice(0,15)
+  };
+}
+
+async function analyseDiagnoseLocalStorageUI(){
+  const d = await analyseDiagnoseLocalStorage();
+  const wrap = document.getElementById('analyseDiagReportWrap');
+  const area = document.getElementById('analyseDiagReportArea');
+  wrap.style.display = 'block';
+
+  const mb = n => (n/1024/1024).toFixed(2) + ' Mo';
+  const quotaWarning = d.quotaExceededNow
+    ? `<div style="padding:10px 14px;border:1.5px solid #CC2222;border-radius:8px;color:#CC2222;font-size:12px;margin-bottom:12px">⚠ Le quota de stockage local de ce navigateur semble déjà saturé maintenant (test d'écriture de ~100 Ko échoué). C'est très probablement la cause : les enregistrements de détail de semaine échouent silencieusement une fois le quota atteint (le reste — libellé, stats agrégées — continue à se sauvegarder normalement, d'où le fait que la semaine apparaît bien dans l'historique mais sans détail).</div>`
+    : `<div style="padding:10px 14px;border:1.5px solid var(--green-text);border-radius:8px;color:var(--green-text);font-size:12px;margin-bottom:12px">Le quota ne semble pas saturé <em>actuellement</em> — mais il a pu l'être temporairement lors d'un import groupé passé (plusieurs semaines volumineuses sauvegardées d'affilée), sans que l'espace libéré depuis (suppressions, nettoyage) ne le montre plus maintenant.</div>`;
+
+  const missingRows = d.missing.map(m => `<tr>
+    <td style="padding:6px 10px;font-size:11.5px">${STATION_ICONS[m.station]||''} ${STATION_LABELS[m.station]||m.station}</td>
+    <td style="padding:6px 10px;font-size:11.5px;font-weight:700">${escHtml(m.weekLabel)}</td>
+    <td style="padding:6px 10px;font-size:10.5px;color:var(--muted);font-family:monospace">${escHtml(m.expectedKey)}</td>
+  </tr>`).join('');
+
+  area.innerHTML = `
+    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="font-size:12px">Stockage <code>localStorage</code> total : <b>${mb(d.totalBytes)}</b> (${d.totalKeys} clés)</div>
+      <div style="font-size:12px">Détail Analyse en IndexedDB (stockage actuel) : <b>${d.weekDetailKeyCount}</b> semaine(s)${d.legacyWeekDetailKeyCount ? ' <span style="color:var(--muted)">+ ' + d.legacyWeekDetailKeyCount + ' en reliquat localStorage (' + mb(d.legacyWeekDetailBytes) + ', migration automatique à la prochaine ouverture)</span>' : ''}</div>
+      <div style="font-size:12px">Semaines archivées sans détail retrouvé : <b style="color:#CC2222">${d.missing.length}</b></div>
+    </div>
+    <div style="padding:10px 14px;border:1.5px solid var(--cyan);border-radius:8px;color:var(--navy);font-size:12px;margin-bottom:12px">ℹ️ Depuis cette version, le détail des semaines Analyse est stocké en <b>IndexedDB</b> plutôt qu'en <code>localStorage</code> — un espace bien plus généreux (généralement des centaines de Mo), qui ne devrait plus jamais saturer en usage normal. Le test de quota ci-dessous ne concerne donc plus que le reste de FPA (Comité d'Écoute, Playlist, etc.), pas le détail Analyse.</div>
+    ${quotaWarning}
+    ${d.missing.length ? `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Semaines concernées (aucun détail trouvé, ni en IndexedDB ni en reliquat localStorage) :</div>
+    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px">
+      <thead><tr style="background:var(--white)">
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Station</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Semaine</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Clé recherchée</th>
+      </tr></thead>
+      <tbody>${missingRows}</tbody>
+    </table>
+    <div style="font-size:12px;color:var(--text2)">Le libellé (ex. « S32 ») sert de clé de stockage pour le détail. Si tu as modifié le libellé d'une semaine <em>après</em> l'avoir enregistrée une première fois (via le champ libellé du bandeau ou lors d'une revue d'import en masse), l'ancien détail reste sous l'ancienne clé et devient invisible sous le nouveau libellé. Pour les semaines archivées avant la migration vers IndexedDB et déjà touchées par le quota localStorage, le détail est malheureusement irrécupérable — seul un réimport le restaurera.</div>
+    ` : `<div style="font-size:12px;color:var(--green-text)">Toutes les semaines archivées ont leur détail retrouvé. ✓</div>`}
+
+    <div style="font-size:12px;font-weight:800;color:var(--navy);margin:18px 0 8px">📦 Plus gros consommateurs d'espace (toutes fonctionnalités FPA confondues)</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Le détail Analyse n'est qu'une partie du stockage local — Comité d'Écoute, Playlist, Song Attributes, Genres, etc. partagent le même espace navigateur (${mb(d.totalBytes)} au total). Ce navigateur peut aussi contenir des données d'<b>autres outils/artifacts</b> (préfixe différent de <code>fpa_</code>) qui n'ont rien à voir avec FPA — supprimables sans risque si tu ne les utilises plus.</div>
+    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
+      <thead><tr style="background:var(--white)">
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Clé</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Origine</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:right">Taille</th>
+        <th style="padding:6px 10px"></th>
+      </tr></thead>
+      <tbody>${d.topKeys.map(k => {
+        let origin, originColor;
+        if(k.key.startsWith('fpa_analyse_week_')){ origin = 'FPA — détail Analyse'; originColor = 'var(--cyan)'; }
+        else if(k.key.startsWith('fpa_')){ origin = 'FPA — autre module'; originColor = 'var(--navy)'; }
+        else if(k.key.startsWith('dm:') || k.key.startsWith('digital')){ origin = 'Digital Monitoring'; originColor = '#5B3FA8'; }
+        else { origin = '⚠ Outil tiers / inconnu'; originColor = '#CC2222'; }
+        return `<tr>
+          <td style="padding:6px 10px;font-size:11px;font-family:monospace">${escHtml(k.key)}</td>
+          <td style="padding:6px 10px;font-size:10.5px;font-weight:700;color:${originColor}">${origin}</td>
+          <td style="padding:6px 10px;font-size:11.5px;text-align:right;font-weight:700">${mb(k.bytes)}</td>
+          <td style="padding:6px 10px;text-align:center"><button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="analyseDeleteStorageKeyUI('${escHtml(k.key).replace(/'/g,"\\'")}', ${k.bytes})" title="Supprimer cette clé du stockage local">🗑</button></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>
+  `;
+}
+
+/** Supprime une clé localStorage arbitraire depuis le tableau de diagnostic
+ *  — avec confirmation renforcée si la clé appartient visiblement à FPA
+ *  (préfixe "fpa_") plutôt qu'à un outil tiers, pour éviter une suppression
+ *  accidentelle de donnée encore utile à l'application. */
+function analyseDeleteStorageKeyUI(key, bytes){
+  const mbStr = (bytes/1024/1024).toFixed(2) + ' Mo';
+  const isFpa = key.startsWith('fpa_');
+  const msg = isFpa
+    ? `Supprimer la clé FPA « ${key} » (${mbStr}) ? Cette clé appartient à FPA — vérifie qu'il ne s'agit pas d'une donnée dont tu as encore besoin avant de continuer.`
+    : `Supprimer « ${key} » (${mbStr}) ? Cette clé ne semble pas appartenir à FPA (probablement un autre outil/artifact utilisé dans ce même navigateur) — sans risque pour FPA si tu confirmes.`;
+  if(!confirm(msg)) return;
+  try{
+    localStorage.removeItem(key);
+    showToast('✓ Clé « ' + key + ' » supprimée (' + mbStr + ' libéré(s))', 'success');
+  }catch(e){
+    showToast('Erreur lors de la suppression : ' + e.message, 'err');
+  }
+  analyseDiagnoseLocalStorageUI();
+}
+
+function analyseRenderRecalcReport(result){
+  const area = document.getElementById('analyseRecalcReportArea');
+  const wrap = document.getElementById('analyseRecalcReportWrap');
+  if(!area || !wrap) return;
+  wrap.style.display = 'block';
+  const statusMeta = {
+    'recalculated':  { label:'✓ Recalculée', color:'#0DA76B' },
+    'no-date':       { label:'⚠ Pas de date connue — réimport nécessaire', color:'#CC2222' },
+    'no-detail':     { label:'⚠ Détail introuvable en local (autre appareil ?)', color:'#B85C00' }
+  };
+  const sorted = result.report.slice().sort((a,b) => {
+    if(a.station !== b.station) return a.station.localeCompare(b.station);
+    return (a.weekLabel||'').localeCompare(b.weekLabel||'', undefined, {numeric:true});
+  });
+  const rows = sorted.map(r => `<tr>
+    <td style="padding:6px 10px;font-size:11.5px">${STATION_ICONS[r.station]||''} ${STATION_LABELS[r.station]||r.station}</td>
+    <td style="padding:6px 10px;font-size:11.5px;font-weight:700">${escHtml(r.weekLabel||'—')}</td>
+    <td style="padding:6px 10px;font-size:11.5px">${r.weekStart ? digitalAudienceFmtDate(r.weekStart) : '—'}</td>
+    <td style="padding:6px 10px;font-size:11px;font-weight:700;color:${statusMeta[r.status].color}">${statusMeta[r.status].label}</td>
+    <td style="padding:6px 10px;font-size:11px;text-align:right">${r.status==='recalculated' ? (r.titresModifies>0 ? r.titresModifies+' titre(s) corrigé(s)' : '—') : ''}</td>
+  </tr>`).join('');
+  area.innerHTML = `
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="font-size:12px"><b style="color:#0DA76B">${result.recalculated}</b> recalculée(s) <span style="color:var(--muted)">(dont ${result.weeksWithChanges} avec des scores effectivement corrigés)</span></div>
+      <div style="font-size:12px"><b style="color:#CC2222">${result.skippedNoDate}</b> ignorée(s) — pas de date connue</div>
+      <div style="font-size:12px"><b style="color:#B85C00">${result.skippedNoDetail}</b> ignorée(s) — détail local introuvable</div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
+      <thead><tr style="background:var(--bg)">
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Station</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Semaine</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Date</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Statut</th>
+        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:right">Détail</th>
+      </tr></thead>
+      <tbody>${rows || '<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--muted)">Aucune semaine archivée</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+async function analyseRecalculateAllArchivesUI(){
+  if(!requireAdmin()) return;
+  if(!confirm('Recalculer les scores Call Out/OMT/Fit Score de toutes les semaines archivées, à partir de leur date réelle ? Les semaines sans date connue seront ignorées (elles nécessitent un réimport).')) return;
+
+  const btn = document.getElementById('analyseRecalcBtn');
+  const progWrap = document.getElementById('analyseRecalcProgressWrap');
+  const progLabel = document.getElementById('analyseRecalcProgressLabel');
+  const progPct = document.getElementById('analyseRecalcProgressPct');
+  const progBar = document.getElementById('analyseRecalcProgressBar');
+  if(btn){ btn.disabled = true; btn.style.opacity = '0.6'; btn.style.cursor = 'not-allowed'; }
+  if(progWrap) progWrap.style.display = 'block';
+  document.getElementById('analyseRecalcReportWrap').style.display = 'none';
+
+  const result = await analyseRecalculateAllArchives((current, total, label) => {
+    if(progLabel) progLabel.textContent = `⏳ Recalcul en cours… (${current}/${total}) — ${label}`;
+    const pct = Math.round((current/total)*100);
+    if(progPct) progPct.textContent = pct + '%';
+    if(progBar) progBar.style.width = pct + '%';
+  });
+
+  if(progLabel) progLabel.textContent = '✓ Terminé';
+  if(progPct) progPct.textContent = '100%';
+  if(progBar) progBar.style.width = '100%';
+
+  let msg = '✓ ' + result.recalculated + ' semaine(s) recalculée(s)';
+  if(result.weeksWithChanges) msg += ' · ' + result.weeksWithChanges + ' avaient des scores à corriger';
+  if(result.skippedNoDate) msg += ' · ' + result.skippedNoDate + ' ignorée(s) (pas de date connue)';
+  if(result.skippedNoDetail) msg += ' · ' + result.skippedNoDetail + ' ignorée(s) (détail local introuvable)';
+  showToast(msg, 'success');
+  analyseRenderRecalcReport(result);
+  renderAnalyseHistoryPanel();
+
+  setTimeout(() => {
+    if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
+    if(progWrap) progWrap.style.display = 'none';
+  }, 1200);
+  if(analyseSubView === 'corr') renderCorrPage();
 }
 
 /** Sauvegarde l'historique Analyse (toutes stations confondues, uniquement
@@ -10384,14 +11252,16 @@ function analyseSetSubView(view){
   const audBtn  = document.getElementById('analyseSubAudienceBtn');
   const corrBtn = document.getElementById('analyseSubCorrBtn');
   const mediaBtn = document.getElementById('analyseSubMediaBtn');
+  const graphBtn = document.getElementById('analyseSubGraphBtn');
   const progC   = document.getElementById('analyseProgContainer');
   const audC    = document.getElementById('analyseAudienceContainer');
   const corrC   = document.getElementById('analyseCorrContainer');
   const mediaC  = document.getElementById('analyseMediaContainer');
+  const graphC  = document.getElementById('analyseGraphContainer');
   const progAct = document.getElementById('analyseProgActions');
   const audAct  = document.getElementById('digitalAudienceActions');
   const mediaAct = document.getElementById('mediaActions');
-  [[progBtn,'prog'],[audBtn,'audience'],[corrBtn,'corr'],[mediaBtn,'media']].forEach(([btn,v]) => {
+  [[progBtn,'prog'],[audBtn,'audience'],[corrBtn,'corr'],[mediaBtn,'media'],[graphBtn,'graph']].forEach(([btn,v]) => {
     if(!btn) return;
     const active = v === view;
     btn.style.borderBottomColor = active ? 'var(--navy)' : 'transparent';
@@ -10401,6 +11271,7 @@ function analyseSetSubView(view){
   if(audC)    audC.style.display    = view==='audience' ? 'block' : 'none';
   if(corrC)   corrC.style.display   = view==='corr'      ? 'block' : 'none';
   if(mediaC)  mediaC.style.display  = view==='media'     ? 'block' : 'none';
+  if(graphC)  graphC.style.display  = view==='graph'     ? 'block' : 'none';
   if(progAct) progAct.style.display = view==='prog'     ? 'flex'  : 'none';
   if(audAct)  audAct.style.display  = view==='audience' ? 'flex'  : 'none';
   if(mediaAct) mediaAct.style.display = view==='media'  ? 'flex'  : 'none';
@@ -10410,6 +11281,10 @@ function analyseSetSubView(view){
       if(DRIVE_SYNC_URL) digitalAudienceLoadHistoryFromDrive(false).then(() => { if(view==='corr') renderCorrPage(); });
     }
   }
+  if(view==='graph' && !digitalAudienceDriveLoaded){
+    digitalAudienceLoadLocal();
+    if(DRIVE_SYNC_URL) digitalAudienceLoadHistoryFromDrive(false).then(() => { if(analyseSubView==='graph') renderGraphPage(); });
+  }
   if(view==='media'){
     if(!mediaDriveLoaded){
       mediaLoadLocal();
@@ -10418,6 +11293,7 @@ function analyseSetSubView(view){
   }
   if(view==='audience') renderDigitalAudiencePage();
   if(view==='media') renderMediaPage();
+  if(view==='graph') renderGraphPage();
   if(view==='corr'){
     const sel = document.getElementById('corrStationSelect');
     if(sel) sel.value = corrStation;
@@ -11561,6 +12437,359 @@ function renderMediaPage(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════
+// GRAPHIQUES D'ÉVOLUTION — Genre musical, Recherche, Fit Score, Exposition
+// ══════════════════════════════════════════════════════════════════════════
+// 4 courbes bâtons (Chart.js, même style animé que l'onglet Audience
+// digitale), chacune avec sa propre période (sélection de semaines) et son
+// propre critère, plus une option d'incrustation de l'audience digitale de
+// la semaine correspondante (axe secondaire, en courbe). Toutes les données
+// viennent des statistiques déjà archivées par semaine (analyseLoadHistory),
+// sauf le Genre musical qui utilise la répartition déjà calculée à
+// l'archivage (entry.stats.genreDistribution) — aucun rechargement du
+// détail complet par titre n'est nécessaire pour ces 4 graphiques.
+let graphUI = { station: 'EUROPE2' };
+let graphCharts = {};
+let graphFilters = {
+  genre:      { from:null, to:null, genres:[], showAudience:true, zoomed:false },
+  recherche:  { from:null, to:null, criterion:'potTous', showAudience:true, zoomed:false },
+  fit:        { from:null, to:null, showAudience:true, zoomed:false },
+  exposition: { from:null, to:null, metric:'totalDiffs', showAudience:true, zoomed:false }
+};
+const GRAPH_COLORS = ['#00B8C8','#7C3AED','#0DA76B','#E07B00','#CC2222','#5B3FA8','#0B6E99','#B85C00'];
+const RECHERCHE_CRITERIA = {
+  potTous:      { label:'Pot Score (Ensemble)',    field:'avgPot',        color:'#00B8C8' },
+  potP1:        { label:'Pot Score (P1)',          field:'avgPotP1',      color:'#0B6E99' },
+  burnCOTous:   { label:'Burn Call Out (Ensemble)',field:'avgBurnCO',     color:'#E07B00' },
+  burnCOP1:     { label:'Burn Call Out (P1)',       field:'avgBurnCOP1',   color:'#B85C00' },
+  famTous:      { label:'Fam Score (Ensemble)',     field:'avgFam',        color:'#7C3AED' },
+  famP1:        { label:'Fam Score (P1)',           field:'avgFamP1',      color:'#5B3FA8' },
+  burnOMTTous:  { label:'Burn OMT (Ensemble)',      field:'avgBurnOMT',    color:'#CC2222' },
+  burnOMTP1:    { label:'Burn OMT (P1)',            field:'avgBurnOMTP1',  color:'#8B1A1A' }
+};
+const EXPOSITION_METRICS = {
+  totalDiffs: { label:'Nb diffusions totales',   field:'totalDiffs', color:'#00B8C8' },
+  nbTitres:   { label:'Nb titres différents',    field:'nbTitres',   color:'#0DA76B' },
+  nbArtistes: { label:'Nb artistes différents',  field:'nbArtistes', color:'#E07B00' }
+};
+
+function graphSafeNewChart(canvasId, config){
+  try{
+    if(typeof Chart === 'undefined'){ console.error('Chart.js non chargé — graphique ignoré', canvasId); return null; }
+    const el = document.getElementById(canvasId);
+    if(!el) return null;
+    if(graphCharts[canvasId]) graphCharts[canvasId].destroy();
+    graphCharts[canvasId] = new Chart(el, config);
+    return graphCharts[canvasId];
+  }catch(err){ console.error('Échec du rendu du graphique', canvasId, err); return null; }
+}
+
+/** Semaines archivées de la station, triées chronologiquement (par date
+ *  réelle quand connue, sinon par libellé numérique en repli). */
+function graphAvailableWeeks(stKey){
+  return (analyseLoadHistory()[stKey]||[]).slice().sort((a,b) => {
+    if(a.weekStart && b.weekStart) return a.weekStart.localeCompare(b.weekStart);
+    return (a.weekLabel||'').localeCompare(b.weekLabel||'', undefined, {numeric:true});
+  });
+}
+function graphWeekRangeSlice(weeks, fromLabel, toLabel){
+  let fromIdx = weeks.findIndex(w=>w.weekLabel===fromLabel);
+  let toIdx = weeks.findIndex(w=>w.weekLabel===toLabel);
+  if(fromIdx===-1) fromIdx = 0;
+  if(toIdx===-1) toIdx = weeks.length-1;
+  const a = Math.min(fromIdx, toIdx), b = Math.max(fromIdx, toIdx);
+  return weeks.slice(a, b+1);
+}
+/** Tous les genres rencontrés sur l'historique complet de la station (pas
+ *  seulement la période sélectionnée), pour que le sélecteur reste stable
+ *  quelle que soit la période affichée. */
+function graphAllGenres(stKey){
+  const set = new Set();
+  graphAvailableWeeks(stKey).forEach(w => (w.stats && w.stats.genreDistribution || []).forEach(g => set.add(g.genre)));
+  return Array.from(set).sort((a,b) => a.localeCompare(b, 'fr'));
+}
+/** Audience digitale (moyenne 5h-24h) de la semaine d'audience la plus
+ *  proche de la date de cette semaine de programmation (± 4 jours — même
+ *  tolérance que la jointure de l'onglet Corrélation). */
+function graphAudienceForWeek(stKey, week){
+  if(!week.weekStart) return null;
+  const audWeeks = digitalAudienceHistory[stKey] || {};
+  if(audWeeks[week.weekStart]) return audWeeks[week.weekStart].audienceMoyenne;
+  let best = null, bestDiff = Infinity;
+  Object.keys(audWeeks).forEach(aw => {
+    const diff = Math.abs(new Date(aw) - new Date(week.weekStart));
+    if(diff < bestDiff){ bestDiff = diff; best = aw; }
+  });
+  return (best && bestDiff <= 4*86400000) ? audWeeks[best].audienceMoyenne : null;
+}
+
+/** Graphique mixte barres+courbe générique — un jeu de barres par série
+ *  fournie, plus une courbe d'audience digitale optionnelle sur axe
+ *  secondaire. Coins arrondis et animation d'entrée, même esprit visuel que
+ *  les graphiques de l'onglet Audience digitale. */
+/** Bornes d'axe automatiques pour l'option "zoom sur les variations" — plage
+ *  min/max des valeurs réellement présentes, avec 10% de marge de chaque
+ *  côté (jamais en dessous de 0 pour une série qui ne contient que des
+ *  valeurs positives, pour ne pas donner une impression trompeuse d'axe
+ *  négatif). Retourne null si moins de 2 valeurs numériques (pas assez pour
+ *  qu'un zoom ait du sens — on retombe alors sur l'échelle depuis 0). */
+function graphAutoScale(values){
+  const nums = values.filter(v => v != null && !isNaN(v));
+  if(nums.length < 2) return null;
+  const min = Math.min(...nums), max = Math.max(...nums);
+  if(min === max) return null; // valeur constante : le zoom n'apporterait rien
+  const pad = (max - min) * 0.1 || Math.abs(max)*0.05 || 1;
+  const allPositive = min >= 0;
+  return { min: allPositive ? Math.max(0, min - pad) : min - pad, max: max + pad };
+}
+
+function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, yLabel, zoomed){
+  const labels = weeks.map(w => w.weekLabel);
+  const datasets = barSeries.map((s,i) => ({
+    type:'bar', label:s.label, data:s.data,
+    backgroundColor: s.color || GRAPH_COLORS[i % GRAPH_COLORS.length],
+    borderRadius:6, maxBarThickness: barSeries.length>1 ? 26 : 42, yAxisID:'y'
+  }));
+  const audienceData = showAudience ? weeks.map(w => graphAudienceForWeek(stKey, w)) : null;
+  if(showAudience){
+    datasets.push({
+      type:'line', label:'Audience digitale', data: audienceData,
+      borderColor:'#0B6E99', backgroundColor:'rgba(11,110,153,0.10)',
+      borderWidth:2.5, pointRadius:3, pointBackgroundColor:'#0B6E99', tension:0.3, fill:false, yAxisID:'y1'
+    });
+  }
+
+  // Échelle : par défaut depuis 0 (lecture immédiate des ordres de grandeur).
+  // En mode zoom, chaque axe se cale sur sa propre plage de valeurs — utile
+  // quand les variations sont faibles par rapport à la valeur de base (ex.
+  // Fit Score qui oscille entre 60 et 65 : partir de 0 écrase la variation).
+  const yScale = { position:'left', title:{ display:true, text:yLabel, font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#DDE3EE' } };
+  const y1Scale = { position:'right', display: showAudience, title:{ display:true, text:'Audience digitale', font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ drawOnChartArea:false } };
+  if(zoomed){
+    const allBarValues = barSeries.flatMap(s => s.data);
+    const yRange = graphAutoScale(allBarValues);
+    if(yRange){ yScale.min = yRange.min; yScale.max = yRange.max; } else { yScale.beginAtZero = true; }
+    if(showAudience){
+      const y1Range = graphAutoScale(audienceData);
+      if(y1Range){ y1Scale.min = y1Range.min; y1Scale.max = y1Range.max; } else { y1Scale.beginAtZero = true; }
+    }
+  } else {
+    yScale.beginAtZero = true;
+    y1Scale.beginAtZero = true;
+  }
+
+  return graphSafeNewChart(canvasId, {
+    data: { labels, datasets },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      animation: { duration:900, easing:'easeOutQuart' },
+      interaction: { mode:'index', intersect:false },
+      plugins: {
+        legend: { display: barSeries.length>1 || showAudience, position:'bottom', labels:{ boxWidth:10, font:{size:10.5}, color:'#4A5E78' } },
+        tooltip: { callbacks: { label: c => `${c.dataset.label} : ${c.parsed.y==null?'—':c.parsed.y.toLocaleString('fr-FR')}` } }
+      },
+      scales: {
+        x: { ticks:{ color:'#4A5E78', font:{size:10} }, grid:{ display:false } },
+        y: yScale,
+        y1: y1Scale
+      }
+    }
+  });
+}
+
+function graphWeekOptionsHtml(weeks, selected){
+  return weeks.map(w => `<option value="${escHtml(w.weekLabel)}" ${w.weekLabel===selected?'selected':''}>${escHtml(w.weekLabel)}${w.weekStart?' ('+digitalAudienceFmtDate(w.weekStart)+')':''}</option>`).join('');
+}
+function graphWeekControlsHtml(key, weeks, from, to){
+  return `
+    <label style="font-size:11px;color:var(--text2)">De
+      <select id="graph${key}From" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="graphOnPeriodChange('${key}')">${graphWeekOptionsHtml(weeks, from)}</select>
+    </label>
+    <label style="font-size:11px;color:var(--text2)">à
+      <select id="graph${key}To" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="graphOnPeriodChange('${key}')">${graphWeekOptionsHtml(weeks, to)}</select>
+    </label>`;
+}
+function graphAudToggleHtml(key, checked){
+  return `<label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer">
+    <input type="checkbox" id="graph${key}AudToggle" ${checked?'checked':''} onchange="graphOnAudToggle('${key}')"> Audience digitale
+  </label>`;
+}
+function graphZoomToggleHtml(key, checked){
+  return `<label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto" title="Ajuste l'échelle sur la plage réelle des valeurs plutôt que de toujours partir de 0 — utile pour bien voir de petites variations">
+    <input type="checkbox" id="graph${key}ZoomToggle" ${checked?'checked':''} onchange="graphOnZoomToggle('${key}')"> 🔍 Zoomer sur les variations
+  </label>`;
+}
+function graphCardShell(key, title, subtitle){
+  return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px">
+    <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">${escHtml(title)}</div>
+    ${subtitle ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${escHtml(subtitle)}</div>` : '<div style="margin-bottom:10px"></div>'}
+    <div id="graph${key}Controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px"></div>
+    <div style="position:relative;height:300px"><canvas id="graph${key}Chart"></canvas></div>
+  </div>`;
+}
+
+function graphOnPeriodChange(key){
+  graphFilters[key].from = document.getElementById('graph'+key+'From').value;
+  graphFilters[key].to   = document.getElementById('graph'+key+'To').value;
+  graphRenderCard(key);
+}
+function graphOnAudToggle(key){
+  graphFilters[key].showAudience = document.getElementById('graph'+key+'AudToggle').checked;
+  graphRenderCard(key);
+}
+function graphOnZoomToggle(key){
+  graphFilters[key].zoomed = document.getElementById('graph'+key+'ZoomToggle').checked;
+  graphRenderCard(key);
+}
+function graphOnGenreChange(){
+  const sel = document.getElementById('graphgenreMulti');
+  graphFilters.genre.genres = Array.from(sel.selectedOptions).map(o => o.value);
+  graphRenderCard('genre');
+}
+function graphOnRechercheCriterionChange(){
+  graphFilters.recherche.criterion = document.getElementById('graphrechercheCriterion').value;
+  graphRenderCard('recherche');
+}
+function graphOnExpositionMetricChange(){
+  graphFilters.exposition.metric = document.getElementById('graphexpositionMetric').value;
+  graphRenderCard('exposition');
+}
+
+function graphRenderCard(key){
+  const stKey = graphUI.station;
+  const weeks = graphAvailableWeeks(stKey);
+  if(key==='genre')      graphRenderGenreCard(stKey, weeks);
+  if(key==='recherche')  graphRenderRechercheCard(stKey, weeks);
+  if(key==='fit')        graphRenderFitCard(stKey, weeks);
+  if(key==='exposition') graphRenderExpositionCard(stKey, weeks);
+}
+
+function graphRenderGenreCard(stKey, weeks){
+  const f = graphFilters.genre;
+  const allGenres = graphAllGenres(stKey);
+  const controls = document.getElementById('graphgenreControls');
+  controls.innerHTML = `
+    ${graphWeekControlsHtml('genre', weeks, f.from, f.to)}
+    <label style="font-size:11px;color:var(--text2)">Genre(s) :
+      <select id="graphgenreMulti" multiple size="${Math.max(2,Math.min(5,allGenres.length))}" style="font-size:11.5px;padding:5px 8px;border-radius:6px;min-width:170px;vertical-align:top" onchange="graphOnGenreChange()">
+        ${allGenres.map(g => `<option value="${escHtml(g)}" ${f.genres.includes(g)?'selected':''}>${escHtml(g)}</option>`).join('')}
+      </select>
+    </label>
+    ${graphAudToggleHtml('genre', f.showAudience)}
+    ${graphZoomToggleHtml('genre', f.zoomed)}
+  `;
+  const range = graphWeekRangeSlice(weeks, f.from, f.to);
+  const series = f.genres.map((g,i) => ({
+    label: g, color: ANALYSE_GENRE_PALETTE[i % ANALYSE_GENRE_PALETTE.length],
+    data: range.map(w => { const e = (w.stats.genreDistribution||[]).find(x => x.genre===g); return e ? Math.round(e.pct*10)/10 : 0; })
+  }));
+  if(!series.length){
+    const el = document.getElementById('graphgenreChart');
+    if(el){ const ctx = el.getContext && el.getContext('2d'); if(graphCharts['graphgenreChart']) graphCharts['graphgenreChart'].destroy(); }
+    return;
+  }
+  graphBuildMixedChart('graphgenreChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed);
+}
+
+function graphRenderRechercheCard(stKey, weeks){
+  const f = graphFilters.recherche;
+  const controls = document.getElementById('graphrechercheControls');
+  controls.innerHTML = `
+    ${graphWeekControlsHtml('recherche', weeks, f.from, f.to)}
+    <label style="font-size:11px;color:var(--text2)">Critère :
+      <select id="graphrechercheCriterion" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="graphOnRechercheCriterionChange()">
+        ${Object.entries(RECHERCHE_CRITERIA).map(([k,c]) => `<option value="${k}" ${f.criterion===k?'selected':''}>${escHtml(c.label)}</option>`).join('')}
+      </select>
+    </label>
+    ${graphAudToggleHtml('recherche', f.showAudience)}
+    ${graphZoomToggleHtml('recherche', f.zoomed)}
+  `;
+  const range = graphWeekRangeSlice(weeks, f.from, f.to);
+  const crit = RECHERCHE_CRITERIA[f.criterion];
+  const isBurn = /burn/i.test(f.criterion);
+  const series = [{ label: crit.label, color: crit.color, data: range.map(w => { const v = w.stats[crit.field]; return v==null ? null : Math.round(v*100)/100; }) }];
+  graphBuildMixedChart('graphrechercheChart', range, series, f.showAudience, stKey, crit.label + (isBurn ? ' (%)' : ''), f.zoomed);
+}
+
+function graphRenderFitCard(stKey, weeks){
+  const f = graphFilters.fit;
+  const controls = document.getElementById('graphfitControls');
+  controls.innerHTML = `
+    ${graphWeekControlsHtml('fit', weeks, f.from, f.to)}
+    ${graphAudToggleHtml('fit', f.showAudience)}
+    ${graphZoomToggleHtml('fit', f.zoomed)}
+  `;
+  const range = graphWeekRangeSlice(weeks, f.from, f.to);
+  const series = [
+    { label:'Fit Score', color:'#00B8C8', data: range.map(w => w.stats.avgFit==null?null:Math.round(w.stats.avgFit*10)/10) },
+    { label:'SPU',       color:'#7C3AED', data: range.map(w => w.stats.avgSpu==null?null:Math.round(w.stats.avgSpu*10)/10) }
+  ];
+  graphBuildMixedChart('graphfitChart', range, series, f.showAudience, stKey, 'Score (0-100)', f.zoomed);
+}
+
+function graphRenderExpositionCard(stKey, weeks){
+  const f = graphFilters.exposition;
+  const controls = document.getElementById('graphexpositionControls');
+  controls.innerHTML = `
+    ${graphWeekControlsHtml('exposition', weeks, f.from, f.to)}
+    <label style="font-size:11px;color:var(--text2)">Mesure :
+      <select id="graphexpositionMetric" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="graphOnExpositionMetricChange()">
+        ${Object.entries(EXPOSITION_METRICS).map(([k,c]) => `<option value="${k}" ${f.metric===k?'selected':''}>${escHtml(c.label)}</option>`).join('')}
+      </select>
+    </label>
+    ${graphAudToggleHtml('exposition', f.showAudience)}
+    ${graphZoomToggleHtml('exposition', f.zoomed)}
+  `;
+  const range = graphWeekRangeSlice(weeks, f.from, f.to);
+  const met = EXPOSITION_METRICS[f.metric];
+  const series = [{ label: met.label, color: met.color, data: range.map(w => w.stats[met.field] ?? 0) }];
+  graphBuildMixedChart('graphexpositionChart', range, series, f.showAudience, stKey, met.label, f.zoomed);
+}
+
+function renderGraphPage(){
+  const stKey = graphUI.station;
+  const tabsArea = document.getElementById('graphStationTabs');
+  tabsArea.innerHTML = ['EUROPE2','RFM'].map(st => {
+    const active = st === stKey;
+    return `<button class="btn-ghost" style="font-size:11.5px;padding:7px 14px;${active ? 'border-color:var(--cyan);color:var(--navy);background:var(--cyan-light)' : ''}" onclick="graphUI.station='${st}';renderGraphPage()">${STATION_ICONS[st]||'📻'} ${STATION_LABELS[st]}</button>`;
+  }).join('');
+
+  const weeks = graphAvailableWeeks(stKey);
+  const emptyBar = document.getElementById('graphEmptyBar');
+  const cardsArea = document.getElementById('graphCardsArea');
+  if(weeks.length < 2){
+    emptyBar.style.display = 'block';
+    emptyBar.textContent = 'Pas assez de semaines de programmation archivées pour ' + STATION_LABELS[stKey] + ' (minimum 2) pour tracer une évolution.';
+    cardsArea.innerHTML = '';
+    return;
+  }
+  emptyBar.style.display = 'none';
+
+  // Répare/initialise les périodes par défaut (semaine la plus ancienne →
+  // la plus récente) si elles ne pointent plus vers une semaine existante
+  // (ex. première ouverture, ou changement de station).
+  ['genre','recherche','fit','exposition'].forEach(k => {
+    const f = graphFilters[k];
+    if(!f.from || !weeks.some(w=>w.weekLabel===f.from)) f.from = weeks[0].weekLabel;
+    if(!f.to   || !weeks.some(w=>w.weekLabel===f.to))   f.to   = weeks[weeks.length-1].weekLabel;
+  });
+  if(!graphFilters.genre.genres.length){
+    graphFilters.genre.genres = graphAllGenres(stKey).slice(0, 3);
+  }
+
+  cardsArea.innerHTML = [
+    graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.'),
+    graphCardShell('recherche', 'Recherche', 'Résultats Call Out / OMT — Pot Score, Fam Score et leurs taux de Burn, cibles Ensemble et P1.'),
+    graphCardShell('fit', 'Fit Score', 'Fit Score et SPU moyens pondérés de la programmation.'),
+    graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.')
+  ].join('');
+
+  graphRenderGenreCard(stKey, weeks);
+  graphRenderRechercheCard(stKey, weeks);
+  graphRenderFitCard(stKey, weeks);
+  graphRenderExpositionCard(stKey, weeks);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
 // CORRÉLATION — programmation musicale ↔ audience digitale brute
 // ══════════════════════════════════════════════════════════════════════════
 // Jointure : les semaines de programmation (analyseLoadHistory) ne portent
@@ -12012,15 +13241,19 @@ function analyseHandleSingleFile(file){
 // « 👁 Voir le détail » fonctionne aussi sur les semaines importées en masse.
 let analyseBulkQueue = [];
 let analyseBulkAutoMode = false;
-let analyseBulkResults = { archived:0, skipped:0, errors:0 };
+let analyseBulkResults = { archived:0, skipped:0, errors:0, detailFailed:0, detailFailedWeeks:[] };
 
 function analyseBulkProcessNext(){
   const area = document.getElementById('analyseBulkImportArea');
   if(!analyseBulkQueue.length){
     const r = analyseBulkResults;
+    const detailWarning = r.detailFailed
+      ? `<div style="margin-top:10px;padding:10px 14px;border:1.5px solid #CC2222;border-radius:8px;color:#CC2222;font-size:12px">⚠ Le DÉTAIL par titre de ${r.detailFailed} semaine(s) n'a pas pu être sauvegardé (quota de stockage du navigateur atteint) : ${escHtml(r.detailFailedWeeks.join(', '))}. Les statistiques agrégées de ces semaines restent correctes, mais leur détail (recalcul, affichage titre par titre) est indisponible. Utilisez « 🔍 Diagnostiquer le stockage local » pour plus de détails.</div>`
+      : '';
     area.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--navy)">✓ Import terminé — ${r.archived} semaine(s) archivée(s)${r.skipped?', '+r.skipped+' ignorée(s)':''}${r.errors?', '+r.errors+' erreur(s)':''}.</div>
+      ${detailWarning}
       <div style="margin-top:10px"><button class="btn-ghost" style="font-size:11px;padding:7px 14px" onclick="document.getElementById('analyseBulkImportWrap').style.display='none'">Fermer</button></div>`;
-    analyseBulkResults = { archived:0, skipped:0, errors:0 };
+    analyseBulkResults = { archived:0, skipped:0, errors:0, detailFailed:0, detailFailedWeeks:[] };
     renderAnalyseHistoryPanel();
     if(DRIVE_SYNC_URL) analyseSaveHistoryToDrive();
     return;
@@ -12037,7 +13270,7 @@ function analyseBulkProcessNext(){
       if(parsed.error) throw new Error(parsed.error);
       const stKey = parsed.station || analyseStationKey();
       const info = analyseDetectWeekInfo(parsed.period, item.file.name);
-      const stats = analyseComputeStats(analyseEnrichRowsForBulk(parsed.rows, stKey, info.weekStart));
+      const stats = analyseComputeStats(analyseEnrichRowsForBulk(parsed.rows, stKey, info.weekStart, info.weekEnd || info.weekStart));
       const preview = { file: item.file, rows: parsed.rows, stKey, label: info.weekLabel, weekStart: info.weekStart, weekEnd: info.weekEnd, stats, sheetName: parsed.sheetName, detected: info.detected, source: info.source };
       if(analyseBulkAutoMode && info.detected){
         analyseBulkArchive(preview, true);
@@ -12058,11 +13291,25 @@ function analyseBulkProcessNext(){
  *  masse pour que chaque fichier de la file puisse être enrichi (scores
  *  FPA, recherche, genre/label/date d'entrée) indépendamment de la station
  *  actuellement affichée à l'écran. */
-function analyseEnrichRowsForBulk(rows, stKey, importedDateStr){
+/** Remplace le Fit Score "courant" (build360Rows, non daté) par le Fit
+ *  Score réellement contemporain de la semaine analysée quand la colonne
+ *  Call Out correspondante existe pour ce titre (voir le commentaire sur
+ *  analyseGetSearchScores.fit). Si aucune vague Call Out datée ne fournit ce
+ *  titre (ex. titre trop récent, jamais testé), on conserve le repli
+ *  build360Rows plutôt que de perdre la valeur. */
+function analyseApplyDatedFit(row){
+  if(row.search && row.search.fit != null){
+    if(!row.fpa) row.fpa = { fit:null, spu:null, burn:null, quadrant:null, globalScore:null };
+    row.fpa.fit = row.search.fit;
+  }
+}
+
+function analyseEnrichRowsForBulk(rows, stKey, importedDateStr, refDate){
   const stationField = stKey === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
   rows.forEach(row => {
-    row.search = analyseGetSearchScores(row.title, row.artist);
+    row.search = analyseGetSearchScores(row.title, row.artist, refDate !== undefined ? refDate : importedDateStr);
     row.fpa = analyseGetFpaScores(row.title, row.artist);
+    analyseApplyDatedFit(row);
     const attrs = getSongAttributes(row.title, row.artist);
     let changed = false;
     if(!attrs.label && row.label){ attrs.label = row.label; changed = true; }
@@ -12115,7 +13362,16 @@ function analyseBulkShowReview(preview, total){
   };
 }
 
-function analyseBulkArchive(preview, silent){
+async function analyseBulkArchive(preview, silent){
+  // Ré-enrichit avec la date éventuellement corrigée par l'utilisateur dans
+  // l'écran de revue (l'enrichissement initial dans analyseBulkProcessNext
+  // ne sert qu'à l'aperçu et se basait sur la date auto-détectée) — sans ce
+  // second passage, une correction manuelle de date n'aurait aucun effet sur
+  // les scores Call Out/OMT contemporains effectivement archivés.
+  const refDate = preview.weekEnd || preview.weekStart || null;
+  analyseEnrichRowsForBulk(preview.rows, preview.stKey, preview.weekStart, refDate);
+  preview.stats = analyseComputeStats(preview.rows);
+
   const history = analyseLoadHistory();
   if(!history[preview.stKey]) history[preview.stKey] = [];
   const entry = {
@@ -12128,7 +13384,18 @@ function analyseBulkArchive(preview, silent){
   analyseSaveHistory(history);
 
   const detail = { meta: { station:preview.stKey, weekLabel:preview.label, weekStart:preview.weekStart, weekEnd:preview.weekEnd, fileName:preview.file.name, importedAt:new Date().toISOString(), sheetName:preview.sheetName }, rows: preview.rows.map(analyseCleanRowForSave) };
-  analyseSaveWeekDetailLocal(preview.stKey, preview.label, detail);
+  const detailSaved = await analyseSaveWeekDetailLocal(preview.stKey, preview.label, detail);
+  if(!detailSaved){
+    analyseBulkResults.detailFailed++;
+    analyseBulkResults.detailFailedWeeks.push(preview.label);
+    // Le quota est très probablement plein pour de bon à partir d'ici (le
+    // stockage ne se libère pas tout seul) — poursuivre l'import en masse
+    // reviendrait à accumuler des échecs silencieux sur toutes les semaines
+    // suivantes. On arrête l'archivage automatique et on prévient tout de
+    // suite plutôt que de laisser l'utilisateur le découvrir à la fin.
+    analyseBulkAutoMode = false;
+    showToast('⚠ Quota de stockage local atteint — le détail de « ' + preview.label + ' » n\'a pas pu être sauvegardé. Archivage automatique interrompu. Libérez de l\'espace (voir 🔍 Diagnostiquer le stockage local) avant de continuer.', 'err');
+  }
 
   analyseBulkResults.archived++;
   if(!silent){
@@ -12321,9 +13588,15 @@ function analyseGetFpaScores(title, artist){
  *  fiche Song Full Metrics. */
 function analyseEnrichRows(){
   const stationField = analyseStationKey() === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+  // Date de référence pour la contemporanéité Call Out/OMT (voir
+  // analyseNearestPriorEntry) : fin de la semaine de programmation si connue,
+  // sinon début de semaine ; à défaut (semaine non datée), null — dans ce
+  // cas analyseGetSearchScores retombe sur le dernier chiffre connu.
+  const refDate = (analyseWeekMeta && (analyseWeekMeta.weekEnd || analyseWeekMeta.weekStart)) || null;
   analyseRows.forEach(row => {
-    row.search = analyseGetSearchScores(row.title, row.artist);
+    row.search = analyseGetSearchScores(row.title, row.artist, refDate);
     row.fpa = analyseGetFpaScores(row.title, row.artist);
+    analyseApplyDatedFit(row);
     const attrs = getSongAttributes(row.title, row.artist);
     let changed = false;
     if(!attrs.label && row.label){ attrs.label = row.label; changed = true; }
@@ -12404,9 +13677,13 @@ function analyseComputeStats(rows){
     nbArtistesMultiTitres: multiArtistCount,
     totalDiffs: rows.reduce((s,r) => s + (r.nbDiffs||0), 0),
     avgPot:     wavg(r => r.search ? r.search.potTous : null),
+    avgPotP1:   wavg(r => r.search ? r.search.potP1 : null),
     avgBurnCO:  wavg(r => r.search ? r.search.burnCOTous : null),
+    avgBurnCOP1: wavg(r => r.search ? r.search.burnCOP1 : null),
     avgFam:     wavg(r => r.search ? r.search.famTous : null),
+    avgFamP1:   wavg(r => r.search ? r.search.famP1 : null),
     avgBurnOMT: wavg(r => r.search ? r.search.burnOMTTous : null),
+    avgBurnOMTP1: wavg(r => r.search ? r.search.burnOMTP1 : null),
     avgFit:     wavg(r => r.fpa ? r.fpa.fit : null),
     avgSpu:     wavg(r => r.fpa ? r.fpa.spu : null),
     genreDistribution: analyseComputeGenreDistribution(rows)
@@ -12424,6 +13701,14 @@ async function analyseSaveWeekToHistory(){
   const weekEnd = (endInput ? endInput.value : '') || (analyseWeekMeta && analyseWeekMeta.weekEnd) || '';
   if(analyseWeekMeta){ analyseWeekMeta.weekLabel = label; analyseWeekMeta.weekStart = weekStart; analyseWeekMeta.weekEnd = weekEnd; }
   const stKey = analyseStationKey();
+
+  // Ré-enrichit avec la date éventuellement corrigée dans les champs du
+  // bandeau (l'enrichissement fait à l'import se basait sur la date
+  // auto-détectée, pas forcément celle finalement retenue) — analyseWeekMeta
+  // vient d'être mis à jour ci-dessus, donc ce second passage relit la bonne
+  // date de référence. Sinon une correction manuelle de date n'aurait aucun
+  // effet sur les scores Call Out/OMT contemporains réellement archivés.
+  analyseEnrichRows();
 
   // 1) Index (statistiques agrégées) — utilisé par le tableau comparatif ET
   //    synchronisé sur Drive (petit payload, fiable).
@@ -12445,9 +13730,14 @@ async function analyseSaveWeekToHistory(){
   //    fiable) sont donc synchronisées sur Drive ; le détail reste local à
   //    l'appareil qui a fait l'import, disponible instantanément ici.
   const detail = { meta: { ...analyseWeekMeta, weekLabel: label }, rows: analyseRows.map(analyseCleanRowForSave) };
-  analyseSaveWeekDetailLocal(stKey, label, detail);
+  const detailSaved = await analyseSaveWeekDetailLocal(stKey, label, detail);
 
   renderAnalyseHistoryPanel();
+
+  if(!detailSaved){
+    showToast('⚠ Semaine ' + label + ' enregistrée (statistiques agrégées OK), mais le DÉTAIL par titre n\'a pas pu être sauvegardé localement — quota de stockage du navigateur probablement atteint. Utilisez « 🔍 Diagnostiquer le stockage local » pour vérifier. Le détail de cette semaine ne sera pas disponible pour le recalcul ou l\'affichage détaillé.', 'err');
+    return;
+  }
 
   if(!DRIVE_SYNC_URL){
     showToast('✓ Semaine ' + label + ' enregistrée localement (' + STATION_LABELS[stKey] + '). Configurez Drive Sync (Classements → Historique Drive) pour synchroniser les statistiques entre postes.', 'success');
@@ -12473,8 +13763,8 @@ async function analyseSaveWeekToHistory(){
  *  disponible que sur l'appareil qui a fait l'enregistrement, via le cache
  *  local. Si absent (autre poste, ou cache navigateur vidé), on l'explique
  *  clairement plutôt que de laisser croire à un bug. */
-function analyseViewArchivedWeek(stKey, weekLabel){
-  const detail = analyseLoadWeekDetailLocal(stKey, weekLabel);
+async function analyseViewArchivedWeek(stKey, weekLabel){
+  const detail = await analyseLoadWeekDetailLocal(stKey, weekLabel);
   if(!detail || !detail.rows || !detail.rows.length){
     showToast('Détail indisponible pour « ' + weekLabel + ' » sur cet appareil — le détail complet des titres reste local à l\'appareil qui a fait l\'enregistrement (non synchronisé sur Drive, pour fiabilité). Seules les statistiques agrégées sont partagées entre postes. Réimportez le fichier de cette semaine ici si besoin du détail.', 'err');
     return;
@@ -12494,7 +13784,7 @@ async function analyseDeleteWeekFromHistory(stKey, weekLabel){
   if(!history[stKey]) return;
   history[stKey] = history[stKey].filter(e => e.weekLabel !== weekLabel);
   analyseSaveHistory(history);
-  analyseDeleteWeekDetailLocal(stKey, weekLabel);
+  await analyseDeleteWeekDetailLocal(stKey, weekLabel);
   renderAnalyseHistoryPanel();
   if(DRIVE_SYNC_URL){
     const result = await analyseSaveHistoryToDrive();
@@ -12783,8 +14073,31 @@ function renderAnalysePage(){
   ['analyseStationLabel','analyseEmptyStation'].forEach(id => {
     const el = document.getElementById(id); if(el) el.textContent = stLabel;
   });
+  // Synchronise le bandeau (libellé + dates) ET les champs du formulaire
+  // avec la semaine réellement affichée (analyseWeekMeta) — jusqu'ici seul
+  // le libellé était mis à jour, pas les dates, ce qui pouvait laisser les
+  // champs "Début/Fin de semaine" afficher les dates d'une AUTRE semaine
+  // consultée juste avant (source de confusion : rien ne permettait de
+  // savoir avec certitude quelle semaine était réellement à l'écran).
   const labelInput = document.getElementById('analyseWeekLabelInput');
+  const startInput = document.getElementById('analyseWeekStartInput');
+  const endInput   = document.getElementById('analyseWeekEndInput');
   if(labelInput) labelInput.value = (analyseWeekMeta && analyseWeekMeta.weekLabel) || '';
+  if(startInput) startInput.value = (analyseWeekMeta && analyseWeekMeta.weekStart) || '';
+  if(endInput)   endInput.value   = (analyseWeekMeta && analyseWeekMeta.weekEnd) || '';
+
+  const banner = document.getElementById('analyseCurrentWeekBanner');
+  const bannerLabel = document.getElementById('analyseCurrentWeekLabel');
+  if(bannerLabel){
+    if(analyseWeekMeta && analyseWeekMeta.weekLabel){
+      const dateStr = (analyseWeekMeta.weekStart && analyseWeekMeta.weekEnd)
+        ? ` — du ${digitalAudienceFmtDate(analyseWeekMeta.weekStart)} au ${digitalAudienceFmtDate(analyseWeekMeta.weekEnd)}`
+        : (analyseWeekMeta.weekStart ? ` — à partir du ${digitalAudienceFmtDate(analyseWeekMeta.weekStart)}` : ' — dates non renseignées');
+      bannerLabel.textContent = STATION_LABELS[stKey] + ' · Semaine ' + analyseWeekMeta.weekLabel + dateStr;
+    } else {
+      bannerLabel.textContent = '—';
+    }
+  }
 
   const hasData = analyseRows.length > 0;
   const emptyBar = document.getElementById('analyseEmptyBar');
@@ -12822,6 +14135,16 @@ function toggleAnalysePage(){
     btn.style.background  = 'var(--cyan-light)';
     if(!analyseRows.length) analyseLoadCurrentFromSession();
     renderAnalysePage();
+    if(!analyseHistoryCacheReadyPromise){
+      analyseHistoryCacheLoad().then(() => {
+        // Le cache mémoire peut différer de ce qui était affiché en repli
+        // localStorage le temps du chargement — on rafraîchit la vue active
+        // pour être sûr de montrer les données réellement à jour.
+        renderAnalyseHistoryPanel();
+        if(analyseSubView === 'graph') renderGraphPage();
+        if(analyseSubView === 'corr') renderCorrPage();
+      });
+    }
     if(DRIVE_SYNC_URL && !analyseDriveLoaded){
       analyseShowSaveProgress('☁️ Récupération de l\'historique Drive…');
       analyseUpdateSaveProgress(1, 2);
@@ -25847,6 +27170,53 @@ function updateHomeSummaries(){
   renderHomeQuotasSummary();
   renderHomePotentielSummary();
   renderHomeDailyOverviewSummary();
+  renderHomeProgLastWeeks();
+}
+
+/** Import direct d'une ou plusieurs semaines de programmation musicale
+ *  depuis la home (Europe 2 et RFM confondus) — navigue vers Analyse →
+ *  Programmation musicale et réutilise le pipeline d'import en masse déjà
+ *  existant (analyseBulkQueue/analyseBulkProcessNext), qui auto-détecte la
+ *  station propre à chaque fichier. On force systématiquement ce chemin —
+ *  même pour un seul fichier — plutôt que le chemin d'import unitaire (qui
+ *  dépend lui de la station actuellement active), pour garantir un bon
+ *  routage quel que soit l'état de la home au moment du clic. */
+function homeProgTriggerImport(input){
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if(!files.length) return;
+  if(!analysePageOpen) toggleAnalysePage();
+  analyseSetSubView('prog');
+  analyseBulkQueue = files.map(f => ({ file:f, status:'pending' }));
+  analyseBulkAutoMode = false;
+  const wrap = document.getElementById('analyseBulkImportWrap');
+  if(wrap) wrap.style.display = 'block';
+  analyseBulkProcessNext();
+}
+
+/** Affiche, pour chaque station, la dernière semaine de programmation
+ *  archivée (libellé + dates si connues) — ou l'absence de semaine — sur la
+ *  home. S'appuie sur le même cache d'historique que la page Analyse (voir
+ *  analyseHistoryCacheLoad) : au tout premier chargement de la home (avant
+ *  toute ouverture de l'onglet Analyse dans cette session), on s'assure que
+ *  ce cache est bien peuplé pour ne pas afficher "aucune semaine" à tort. */
+async function renderHomeProgLastWeeks(){
+  const el = document.getElementById('homeProgLastWeeks');
+  if(!el) return;
+  await analyseHistoryCacheLoad();
+  el.innerHTML = ['EUROPE2','RFM'].map(stKey => {
+    const weeks = graphAvailableWeeks(stKey);
+    const icon = STATION_ICONS[stKey] || '📻';
+    const label = STATION_LABELS[stKey] || stKey;
+    if(!weeks.length){
+      return `<div style="color:rgba(255,255,255,.4)">${icon} ${escHtml(label)} : aucune semaine chargée</div>`;
+    }
+    const last = weeks[weeks.length-1];
+    const dateStr = (last.weekStart && last.weekEnd)
+      ? ` <span style="color:rgba(255,255,255,.45)">(${digitalAudienceFmtDate(last.weekStart)} → ${digitalAudienceFmtDate(last.weekEnd)})</span>`
+      : '';
+    return `<div style="color:#fff">${icon} ${escHtml(label)} : dernière semaine <b>${escHtml(last.weekLabel)}</b>${dateStr}</div>`;
+  }).join('');
 }
 
 
