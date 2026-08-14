@@ -12496,11 +12496,11 @@ function renderMediaPage(){
 let graphUI = { station: 'EUROPE2' };
 let graphCharts = {};
 let graphFilters = {
-  genre:      { from:null, to:null, genres:[], showAudience:true, zoomed:false, musicalFocus:false },
-  recherche:  { from:null, to:null, criterion:'potTous', showAudience:true, zoomed:false, musicalFocus:false },
-  fit:        { from:null, to:null, showAudience:true, zoomed:false, musicalFocus:false },
-  exposition: { from:null, to:null, metric:'totalDiffs', showAudience:true, zoomed:false, musicalFocus:false },
-  labels:     { from:null, to:null, mode:'major', labels:[], showAudience:true, zoomed:false, musicalFocus:false }
+  genre:      { from:null, to:null, genres:[], showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
+  recherche:  { from:null, to:null, criterion:'potTous', showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
+  fit:        { from:null, to:null, showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
+  exposition: { from:null, to:null, metric:'totalDiffs', showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
+  labels:     { from:null, to:null, mode:'major', labels:[], showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' }
 };
 const GRAPH_COLORS = ['#00B8C8','#7C3AED','#0DA76B','#E07B00','#CC2222','#5B3FA8','#0B6E99','#B85C00'];
 
@@ -12597,9 +12597,23 @@ function graphFindAudienceRecord(stKey, week){
   });
   return (best && bestDiff <= 4*86400000) ? audWeeks[best] : null;
 }
-function graphAudienceForWeek(stKey, week){
+/** Les 4 données d'audience digitale disponibles pour l'overlay des
+ *  graphiques d'évolution (un seul choix à la fois — l'ancien comportement
+ *  figé sur l'audience moyenne 5h-24h devient la valeur par défaut). Le
+ *  focus tranches musicales (cf. plus bas) ne s'applique qu'à l'audience
+ *  moyenne : sessions/uniques/durée ne sont mesurées qu'au global de la
+ *  semaine, pas par tranche horaire. */
+const AUDIENCE_METRICS = {
+  audienceMoyenne: { label:'Audience moyenne (5h-24h)', field:'audienceMoyenne', musicalCompatible:true },
+  sessions:        { label:'Sessions', field:'sessions', musicalCompatible:false },
+  uniques:         { label:'Visiteurs uniques', field:'uniques', musicalCompatible:false },
+  dureeSec:        { label:'Durée moyenne d\'écoute', field:'dureeSec', musicalCompatible:false, isDuration:true }
+};
+function graphAudienceForWeek(stKey, week, metric){
   const rec = graphFindAudienceRecord(stKey, week);
-  return rec ? rec.audienceMoyenne : null;
+  if(!rec) return null;
+  const field = (AUDIENCE_METRICS[metric] || AUDIENCE_METRICS.audienceMoyenne).field;
+  return rec[field] ?? null;
 }
 
 /** Tranches Europe 2 sans matinale ni talk (programme 100% musical) —
@@ -12644,17 +12658,19 @@ function graphAutoScale(values){
   return { min: allPositive ? Math.max(0, min - pad) : min - pad, max: max + pad };
 }
 
-function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, yLabel, zoomed, musicalFocus){
+function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, yLabel, zoomed, musicalFocus, audienceMetric){
   const labels = weeks.map(w => w.weekLabel);
   const datasets = barSeries.map((s,i) => ({
     type:'bar', label:s.label, data:s.data,
     backgroundColor: s.color || GRAPH_COLORS[i % GRAPH_COLORS.length],
     borderRadius:6, maxBarThickness: barSeries.length>1 ? 26 : 42, yAxisID:'y'
   }));
-  const useMusical = showAudience && musicalFocus && stKey==='EUROPE2';
-  const audienceGetter = useMusical ? graphAudienceMusicalForWeek : graphAudienceForWeek;
-  const audienceLabel = useMusical ? 'Audience digitale (tranches musicales)' : 'Audience digitale';
+  const metricCfg = AUDIENCE_METRICS[audienceMetric] || AUDIENCE_METRICS.audienceMoyenne;
+  const useMusical = showAudience && musicalFocus && stKey==='EUROPE2' && metricCfg.musicalCompatible;
+  const audienceGetter = useMusical ? graphAudienceMusicalForWeek : (stK, w) => graphAudienceForWeek(stK, w, audienceMetric);
+  const audienceLabel = metricCfg.label + (useMusical ? ' (tranches musicales)' : '');
   const audienceData = showAudience ? weeks.map(w => audienceGetter(stKey, w)) : null;
+  const fmtY1 = v => metricCfg.isDuration ? digitalAudienceFmtDuration(v) : (v==null ? '—' : v.toLocaleString('fr-FR'));
   if(showAudience){
     datasets.push({
       type:'line', label:audienceLabel, data: audienceData,
@@ -12668,7 +12684,7 @@ function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, y
   // quand les variations sont faibles par rapport à la valeur de base (ex.
   // Fit Score qui oscille entre 60 et 65 : partir de 0 écrase la variation).
   const yScale = { position:'left', title:{ display:true, text:yLabel, font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#DDE3EE' } };
-  const y1Scale = { position:'right', display: showAudience, title:{ display:true, text:audienceLabel, font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ drawOnChartArea:false } };
+  const y1Scale = { position:'right', display: showAudience, title:{ display:true, text:audienceLabel, font:{size:10.5} }, ticks:{ color:'#4A5E78', callback: metricCfg.isDuration ? (v => digitalAudienceFmtDuration(v)) : undefined }, grid:{ drawOnChartArea:false } };
   if(zoomed){
     const allBarValues = barSeries.flatMap(s => s.data);
     const yRange = graphAutoScale(allBarValues);
@@ -12690,7 +12706,10 @@ function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, y
       interaction: { mode:'index', intersect:false },
       plugins: {
         legend: { display: barSeries.length>1 || showAudience, position:'bottom', labels:{ boxWidth:10, font:{size:10.5}, color:'#4A5E78' } },
-        tooltip: { callbacks: { label: c => `${c.dataset.label} : ${c.parsed.y==null?'—':c.parsed.y.toLocaleString('fr-FR')}` } }
+        tooltip: { callbacks: { label: c => {
+          if(c.dataset.yAxisID === 'y1') return `${c.dataset.label} : ${fmtY1(c.parsed.y)}`;
+          return `${c.dataset.label} : ${c.parsed.y==null?'—':c.parsed.y.toLocaleString('fr-FR')}`;
+        } } }
       },
       scales: {
         x: { ticks:{ color:'#4A5E78', font:{size:10} }, grid:{ display:false } },
@@ -12718,10 +12737,27 @@ function graphAudToggleHtml(key, checked){
     <input type="checkbox" id="graph${key}AudToggle" ${checked?'checked':''} onchange="graphOnAudToggle('${key}')"> Audience digitale
   </label>`;
 }
+/** Choix de la donnée d'audience digitale affichée en overlay — sessions,
+ *  visiteurs uniques, durée moyenne d'écoute ou audience moyenne 5h-24h (une
+ *  seule à la fois, comme les 4 KPI de l'onglet Audience digitale). Désactivé
+ *  quand l'overlay est masqué, pour éviter de laisser croire qu'on peut
+ *  changer la donnée d'un graphique qui ne l'affiche pas. */
+function graphAudienceMetricSelectHtml(key, current, disabled){
+  const opts = Object.entries(AUDIENCE_METRICS).map(([k,m]) =>
+    `<option value="${k}" ${k===current?'selected':''}>${escHtml(m.label)}</option>`
+  ).join('');
+  return `<select id="graph${key}AudMetric" ${disabled?'disabled':''} onchange="graphOnAudienceMetricChange('${key}')"
+    style="font-size:11px;color:${disabled?'var(--muted)':'var(--text2)'};border:1.5px solid var(--border);border-radius:6px;padding:3px 6px;background:var(--white);cursor:${disabled?'default':'pointer'}">
+    ${opts}
+  </select>`;
+}
 /** Ne s'affiche que pour Europe 2 (les tranches RFM ne se découpent pas de
  *  la même façon) et seulement quand l'overlay "Audience digitale" est déjà
  *  actif — bascule la courbe entre moyenne 5h-24h et moyenne pondérée des
- *  seules tranches musicales (11h-15h30 + 18h-20h, sans matinale ni talk). */
+ *  seules tranches musicales (11h-15h30 + 18h-20h, sans matinale ni talk).
+ *  Non pertinent (et donc désactivé) pour les métriques sessions/uniques/
+ *  durée : elles ne sont mesurées qu'au global de la semaine, pas par
+ *  tranche horaire. */
 function graphMusicalToggleHtml(key, checked, disabled){
   return `<label style="font-size:11px;color:${disabled?'var(--muted)':'var(--text2)'};display:flex;align-items:center;gap:5px;cursor:${disabled?'default':'pointer'}" title="Isole l'audience sur les tranches 11h-15h30 et 18h-20h (sans matinale ni talk)">
     <input type="checkbox" id="graph${key}MusicalToggle" ${checked?'checked':''} ${disabled?'disabled':''} onchange="graphOnMusicalToggle('${key}')"> 🎵 Focus tranches musicales
@@ -12752,6 +12788,16 @@ function graphOnPeriodChange(key){
 }
 function graphOnAudToggle(key){
   graphFilters[key].showAudience = document.getElementById('graph'+key+'AudToggle').checked;
+  graphRenderCard(key);
+}
+function graphOnAudienceMetricChange(key){
+  const metric = document.getElementById('graph'+key+'AudMetric').value;
+  graphFilters[key].audienceMetric = metric;
+  // Le focus tranches musicales n'a de sens que pour l'audience moyenne
+  // (seule donnée disponible par tranche horaire) — on le désactive
+  // silencieusement pour les autres métriques plutôt que de laisser une
+  // case cochée sans effet.
+  if(!(AUDIENCE_METRICS[metric] || {}).musicalCompatible) graphFilters[key].musicalFocus = false;
   graphRenderCard(key);
 }
 function graphOnMusicalToggle(key){
@@ -12798,7 +12844,8 @@ function graphRenderGenreCard(stKey, weeks){
       </select>
     </label>
     ${graphAudToggleHtml('genre', f.showAudience)}
-    ${graphMusicalToggleHtml('genre', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
+    ${graphAudienceMetricSelectHtml('genre', f.audienceMetric, !f.showAudience)}
+    ${graphMusicalToggleHtml('genre', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience || !(AUDIENCE_METRICS[f.audienceMetric]||{}).musicalCompatible)}
     ${graphZoomToggleHtml('genre', f.zoomed)}
   `;
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
@@ -12811,7 +12858,7 @@ function graphRenderGenreCard(stKey, weeks){
     if(el){ const ctx = el.getContext && el.getContext('2d'); if(graphCharts['graphgenreChart']) graphCharts['graphgenreChart'].destroy(); }
     return;
   }
-  graphBuildMixedChart('graphgenreChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed, f.musicalFocus);
+  graphBuildMixedChart('graphgenreChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed, f.musicalFocus, f.audienceMetric);
 }
 
 function graphRenderRechercheCard(stKey, weeks){
@@ -12825,14 +12872,15 @@ function graphRenderRechercheCard(stKey, weeks){
       </select>
     </label>
     ${graphAudToggleHtml('recherche', f.showAudience)}
-    ${graphMusicalToggleHtml('recherche', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
+    ${graphAudienceMetricSelectHtml('recherche', f.audienceMetric, !f.showAudience)}
+    ${graphMusicalToggleHtml('recherche', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience || !(AUDIENCE_METRICS[f.audienceMetric]||{}).musicalCompatible)}
     ${graphZoomToggleHtml('recherche', f.zoomed)}
   `;
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
   const crit = RECHERCHE_CRITERIA[f.criterion];
   const isBurn = /burn/i.test(f.criterion);
   const series = [{ label: crit.label, color: crit.color, data: range.map(w => { const v = w.stats[crit.field]; return v==null ? null : Math.round(v*100)/100; }) }];
-  graphBuildMixedChart('graphrechercheChart', range, series, f.showAudience, stKey, crit.label + (isBurn ? ' (%)' : ''), f.zoomed, f.musicalFocus);
+  graphBuildMixedChart('graphrechercheChart', range, series, f.showAudience, stKey, crit.label + (isBurn ? ' (%)' : ''), f.zoomed, f.musicalFocus, f.audienceMetric);
 }
 
 function graphRenderFitCard(stKey, weeks){
@@ -12841,7 +12889,8 @@ function graphRenderFitCard(stKey, weeks){
   controls.innerHTML = `
     ${graphWeekControlsHtml('fit', weeks, f.from, f.to)}
     ${graphAudToggleHtml('fit', f.showAudience)}
-    ${graphMusicalToggleHtml('fit', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
+    ${graphAudienceMetricSelectHtml('fit', f.audienceMetric, !f.showAudience)}
+    ${graphMusicalToggleHtml('fit', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience || !(AUDIENCE_METRICS[f.audienceMetric]||{}).musicalCompatible)}
     ${graphZoomToggleHtml('fit', f.zoomed)}
   `;
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
@@ -12849,7 +12898,7 @@ function graphRenderFitCard(stKey, weeks){
     { label:'Fit Score', color:'#00B8C8', data: range.map(w => w.stats.avgFit==null?null:Math.round(w.stats.avgFit*10)/10) },
     { label:'SPU',       color:'#7C3AED', data: range.map(w => w.stats.avgSpu==null?null:Math.round(w.stats.avgSpu*10)/10) }
   ];
-  graphBuildMixedChart('graphfitChart', range, series, f.showAudience, stKey, 'Score (0-100)', f.zoomed, f.musicalFocus);
+  graphBuildMixedChart('graphfitChart', range, series, f.showAudience, stKey, 'Score (0-100)', f.zoomed, f.musicalFocus, f.audienceMetric);
 }
 
 function graphRenderExpositionCard(stKey, weeks){
@@ -12863,13 +12912,14 @@ function graphRenderExpositionCard(stKey, weeks){
       </select>
     </label>
     ${graphAudToggleHtml('exposition', f.showAudience)}
-    ${graphMusicalToggleHtml('exposition', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
+    ${graphAudienceMetricSelectHtml('exposition', f.audienceMetric, !f.showAudience)}
+    ${graphMusicalToggleHtml('exposition', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience || !(AUDIENCE_METRICS[f.audienceMetric]||{}).musicalCompatible)}
     ${graphZoomToggleHtml('exposition', f.zoomed)}
   `;
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
   const met = EXPOSITION_METRICS[f.metric];
   const series = [{ label: met.label, color: met.color, data: range.map(w => w.stats[met.field] ?? 0) }];
-  graphBuildMixedChart('graphexpositionChart', range, series, f.showAudience, stKey, met.label, f.zoomed, f.musicalFocus);
+  graphBuildMixedChart('graphexpositionChart', range, series, f.showAudience, stKey, met.label, f.zoomed, f.musicalFocus, f.audienceMetric);
 }
 
 function graphOnLabelsModeChange(){
@@ -12939,7 +12989,8 @@ function graphRenderLabelsCard(stKey, weeks){
     </label>` : ''}
     <button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="graphToggleLabelsManage()">⚙️ Gérer les majors</button>
     ${graphAudToggleHtml('labels', f.showAudience)}
-    ${graphMusicalToggleHtml('labels', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
+    ${graphAudienceMetricSelectHtml('labels', f.audienceMetric, !f.showAudience)}
+    ${graphMusicalToggleHtml('labels', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience || !(AUDIENCE_METRICS[f.audienceMetric]||{}).musicalCompatible)}
     ${graphZoomToggleHtml('labels', f.zoomed)}
   `;
 
@@ -12967,7 +13018,7 @@ function graphRenderLabelsCard(stKey, weeks){
     }));
   }
   if(!series.length) return;
-  graphBuildMixedChart('graphlabelsChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed, f.musicalFocus);
+  graphBuildMixedChart('graphlabelsChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed, f.musicalFocus, f.audienceMetric);
 }
 
 function renderGraphPage(){
@@ -18672,8 +18723,15 @@ async function exportPlaylistPDF(){
   // de rowH abaissé) pour garantir la tenue sur une page même avec une
   // playlist plus longue que d'habitude, plutôt que de risquer un débordement
   // sur une 2e page.
-  const groups = playlistCategoryGroups(stationTitles);
-  const totalRows = stationTitles.length;
+  // Les titres "Non classé" (catégorie vide ou non reconnue) ne sont jamais
+  // imprimés — à la différence de l'affichage dans l'app, qui doit les
+  // garder visibles pour permettre de leur assigner une catégorie.
+  const groups = playlistCategoryGroups(stationTitles).filter(g => g.cat !== 'Non classé');
+  const totalRows = groups.reduce((n, g) => n + g.items.length, 0);
+  if(!totalRows){
+    showToast('Aucun titre catégorisé dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' à exporter', 'err');
+    return;
+  }
   const TOP_MARGIN = 10, HEADER_LOGO_H = 13, COLBAND_H = 6, COLBAND_GAP = 2, FOOTER_RESERVE = 9;
   const GROUP_GAP = 1.6;
   const SAFETY_MARGIN = 6; // absorbe les marges de sécurité de checkPageBreak (voir plus bas) pour un calcul de rowH légèrement plus prudent
