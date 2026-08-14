@@ -1617,6 +1617,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <input type="file" id="digitalAudienceFileInput" accept=".pdf" multiple style="display:none" onchange="digitalAudienceHandleFiles(this)">
         <input type="file" id="digitalAudienceDMImportInput" accept=".json" style="display:none" onchange="digitalAudienceImportDMFile(this)">
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="digitalAudienceLoadHistoryFromDrive(true)" title="Recharge l'historique audience digitale depuis Drive Sync">☁️ Synchroniser Drive</button>
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px;border-color:#D97706;color:#D97706" onclick="digitalAudienceRepairCorruptedDurations()" title="Corrige les durées d'écoute importées avant le correctif du parsing HH:MM (ex. 41 min importées comme 41 secondes)">🔧 Réparer les durées corrompues</button>
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="document.getElementById('digitalAudienceDMImportInput').click()" title="Importe un export JSON réalisé depuis Digital Monitoring (bouton « Exporter tout (.json) » de sa page Archives)">📤 Importer export Digital Monitoring (.json)</button>
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="digitalAudienceTriggerImport()">📥 Importer un ou plusieurs PDF Live Stats</button>
       </div>
@@ -11331,6 +11332,47 @@ function digitalAudienceSaveLocal(){
   catch(e){ /* quota localStorage, ignoré */ }
 }
 
+/** Répare les durées d'écoute importées avec la régression de parsing
+ *  HH:MM/MM:SS (voir digitalAudienceParsePdfText) : la valeur corrompue est
+ *  toujours exactement 60× trop petite (hh*60+mm secondes au lieu de
+ *  hh*3600+mm*60), donc la multiplication par 60 est une réparation exacte,
+ *  pas une estimation — pas besoin de retrouver les PDF d'origine. Un seuil
+ *  de 600s (10 min) sépare de façon fiable les valeurs corrompues (quelques
+ *  dizaines de secondes) des valeurs correctes (plusieurs dizaines de
+ *  minutes, jamais aussi courtes pour ces sessions radio). */
+function digitalAudienceRepairCorruptedDurations(){
+  const REPAIR_THRESHOLD_SEC = 600;
+  const toFix = [];
+  DIGITAL_AUDIENCE_STATIONS.forEach(stKey => {
+    const weeks = digitalAudienceHistory[stKey] || {};
+    Object.keys(weeks).forEach(w => {
+      const rec = weeks[w];
+      if(rec.dureeSec != null && rec.dureeSec > 0 && rec.dureeSec < REPAIR_THRESHOLD_SEC){
+        toFix.push({ stKey, week: w, before: rec.dureeSec, after: rec.dureeSec * 60 });
+      }
+    });
+  });
+  if(!toFix.length){
+    showToast('Aucune durée corrompue détectée — rien à réparer', 'ok');
+    return;
+  }
+  const preview = toFix.slice(0, 8).map(f =>
+    `${STATION_LABELS[f.stKey]||f.stKey} — ${digitalAudienceFmtDate(f.week)} : ${digitalAudienceFmtDuration(f.before)} → ${digitalAudienceFmtDuration(f.after)}`
+  ).join('\n');
+  const more = toFix.length > 8 ? `\n… et ${toFix.length - 8} autre(s)` : '';
+  if(!confirm(`Réparer ${toFix.length} durée(s) d'écoute corrompue(s) (×60) ?\n\n${preview}${more}\n\nSauvegardé en local et sur Drive si configuré.`)) return;
+
+  toFix.forEach(f => { digitalAudienceHistory[f.stKey][f.week].dureeSec = f.after; });
+  digitalAudienceSaveLocal();
+  digitalAudienceSaveToDrive();
+  showToast(`${toFix.length} durée(s) réparée(s) (Europe 2 + RFM)`, 'ok');
+  if(typeof renderDigitalAudiencePage === 'function') renderDigitalAudiencePage();
+  if(typeof analyseSubView !== 'undefined'){
+    if(analyseSubView === 'corr' && typeof renderCorrPage === 'function') renderCorrPage();
+    if(analyseSubView === 'graph' && typeof renderGraphPage === 'function') renderGraphPage();
+  }
+}
+
 /** Sauvegarde l'historique complet (2 stations, données hebdo agrégées —
  *  volume raisonnable, pas de détail par titre) sur Drive dans son propre
  *  fichier, distinct de celui de la programmation (ANALYSE_DRIVE_KEY). */
@@ -11591,8 +11633,13 @@ function digitalAudienceParsePdfText(data, filename){
     sessions = posResult.sessions; uniques = posResult.uniques;
   }catch(e){ console.error('Sessions/uniques parse failed', e); }
   try{
-    const dureeMatch = clean.match(/par session\s*[\s\S]*?(\d{2}:\d{2})\s*Evol S-1/i);
-    if(dureeMatch){ const [mm,ss] = dureeMatch[1].split(':').map(Number); dureeSec = mm*60+ss; }
+    // Le PDF affiche la durée au format HH:MM (ex. "00:41" = 41 min, "01:03"
+    // = 1h03 = 63 min) — PAS MM:SS. Confondre les deux fait chuter la valeur
+    // d'un facteur ~60 (41 min devient 41 secondes). Voir digitalAudience
+    // RepairCorruptedDurations() plus bas pour la réparation de l'historique
+    // déjà importé avec cette régression.
+    const dureeMatch = clean.match(/par session\s*[\s\S]*?(\d{2}):(\d{2})\s*Evol S-1/i);
+    if(dureeMatch){ const hh = Number(dureeMatch[1]), mm = Number(dureeMatch[2]); dureeSec = hh*3600 + mm*60; }
   }catch(e){ console.error('Duree parse failed', e); }
   try{
     const evolS1Match = clean.match(/par session\s*[\s\S]*?Evol S-1\s*([-\d,]+)%\s*([-\d,]+)%/i);
