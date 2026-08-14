@@ -12496,11 +12496,11 @@ function renderMediaPage(){
 let graphUI = { station: 'EUROPE2' };
 let graphCharts = {};
 let graphFilters = {
-  genre:      { from:null, to:null, genres:[], showAudience:true, zoomed:false },
-  recherche:  { from:null, to:null, criterion:'potTous', showAudience:true, zoomed:false },
-  fit:        { from:null, to:null, showAudience:true, zoomed:false },
-  exposition: { from:null, to:null, metric:'totalDiffs', showAudience:true, zoomed:false },
-  labels:     { from:null, to:null, mode:'major', labels:[], showAudience:true, zoomed:false }
+  genre:      { from:null, to:null, genres:[], showAudience:true, zoomed:false, musicalFocus:false },
+  recherche:  { from:null, to:null, criterion:'potTous', showAudience:true, zoomed:false, musicalFocus:false },
+  fit:        { from:null, to:null, showAudience:true, zoomed:false, musicalFocus:false },
+  exposition: { from:null, to:null, metric:'totalDiffs', showAudience:true, zoomed:false, musicalFocus:false },
+  labels:     { from:null, to:null, mode:'major', labels:[], showAudience:true, zoomed:false, musicalFocus:false }
 };
 const GRAPH_COLORS = ['#00B8C8','#7C3AED','#0DA76B','#E07B00','#CC2222','#5B3FA8','#0B6E99','#B85C00'];
 
@@ -12582,19 +12582,46 @@ function graphAllGenres(stKey){
   graphAvailableWeeks(stKey).forEach(w => (w.stats && w.stats.genreDistribution || []).forEach(g => set.add(g.genre)));
   return Array.from(set).sort((a,b) => a.localeCompare(b, 'fr'));
 }
-/** Audience digitale (moyenne 5h-24h) de la semaine d'audience la plus
- *  proche de la date de cette semaine de programmation (± 4 jours — même
- *  tolérance que la jointure de l'onglet Corrélation). */
-function graphAudienceForWeek(stKey, week){
+/** Semaine d'audience digitale la plus proche de la date de cette semaine
+ *  de programmation (± 4 jours — même tolérance que la jointure de l'onglet
+ *  Corrélation), retournée en entier (utilisée aussi bien pour l'audience
+ *  moyenne 5h-24h que pour le focus tranches musicales ci-dessous). */
+function graphFindAudienceRecord(stKey, week){
   if(!week.weekStart) return null;
   const audWeeks = digitalAudienceHistory[stKey] || {};
-  if(audWeeks[week.weekStart]) return audWeeks[week.weekStart].audienceMoyenne;
+  if(audWeeks[week.weekStart]) return audWeeks[week.weekStart];
   let best = null, bestDiff = Infinity;
   Object.keys(audWeeks).forEach(aw => {
     const diff = Math.abs(new Date(aw) - new Date(week.weekStart));
     if(diff < bestDiff){ bestDiff = diff; best = aw; }
   });
-  return (best && bestDiff <= 4*86400000) ? audWeeks[best].audienceMoyenne : null;
+  return (best && bestDiff <= 4*86400000) ? audWeeks[best] : null;
+}
+function graphAudienceForWeek(stKey, week){
+  const rec = graphFindAudienceRecord(stKey, week);
+  return rec ? rec.audienceMoyenne : null;
+}
+
+/** Tranches Europe 2 sans matinale ni talk (programme 100% musical) —
+ *  11h-15h30 (Programme local) et 18h-20h (Cauet l'after) — avec leur durée
+ *  en heures pour une moyenne pondérée plutôt qu'une simple moyenne
+ *  arithmétique des deux tranches. */
+const EUROPE2_MUSICAL_TRANCHES = [
+  { tranche:'11h-15h30', hours:4.5 },
+  { tranche:'18h-20h',   hours:2 }
+];
+/** Audience moyenne pondérée sur les seules tranches purement musicales
+ *  d'Europe 2 — permet d'isoler l'effet de la programmation musicale de
+ *  celui des programmes parlés (matinale, talk) sur l'audience globale. */
+function graphAudienceMusicalForWeek(stKey, week){
+  const rec = graphFindAudienceRecord(stKey, week);
+  if(!rec || !rec.tranches) return null;
+  let sumWeighted = 0, sumHours = 0;
+  EUROPE2_MUSICAL_TRANCHES.forEach(mt => {
+    const t = rec.tranches.find(x => x.tranche === mt.tranche);
+    if(t && t.audience != null){ sumWeighted += t.audience * mt.hours; sumHours += mt.hours; }
+  });
+  return sumHours ? Math.round(sumWeighted / sumHours) : null;
 }
 
 /** Graphique mixte barres+courbe générique — un jeu de barres par série
@@ -12617,17 +12644,20 @@ function graphAutoScale(values){
   return { min: allPositive ? Math.max(0, min - pad) : min - pad, max: max + pad };
 }
 
-function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, yLabel, zoomed){
+function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, yLabel, zoomed, musicalFocus){
   const labels = weeks.map(w => w.weekLabel);
   const datasets = barSeries.map((s,i) => ({
     type:'bar', label:s.label, data:s.data,
     backgroundColor: s.color || GRAPH_COLORS[i % GRAPH_COLORS.length],
     borderRadius:6, maxBarThickness: barSeries.length>1 ? 26 : 42, yAxisID:'y'
   }));
-  const audienceData = showAudience ? weeks.map(w => graphAudienceForWeek(stKey, w)) : null;
+  const useMusical = showAudience && musicalFocus && stKey==='EUROPE2';
+  const audienceGetter = useMusical ? graphAudienceMusicalForWeek : graphAudienceForWeek;
+  const audienceLabel = useMusical ? 'Audience digitale (tranches musicales)' : 'Audience digitale';
+  const audienceData = showAudience ? weeks.map(w => audienceGetter(stKey, w)) : null;
   if(showAudience){
     datasets.push({
-      type:'line', label:'Audience digitale', data: audienceData,
+      type:'line', label:audienceLabel, data: audienceData,
       borderColor:'#0B6E99', backgroundColor:'rgba(11,110,153,0.10)',
       borderWidth:2.5, pointRadius:3, pointBackgroundColor:'#0B6E99', tension:0.3, fill:false, yAxisID:'y1'
     });
@@ -12638,7 +12668,7 @@ function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, y
   // quand les variations sont faibles par rapport à la valeur de base (ex.
   // Fit Score qui oscille entre 60 et 65 : partir de 0 écrase la variation).
   const yScale = { position:'left', title:{ display:true, text:yLabel, font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#DDE3EE' } };
-  const y1Scale = { position:'right', display: showAudience, title:{ display:true, text:'Audience digitale', font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ drawOnChartArea:false } };
+  const y1Scale = { position:'right', display: showAudience, title:{ display:true, text:audienceLabel, font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ drawOnChartArea:false } };
   if(zoomed){
     const allBarValues = barSeries.flatMap(s => s.data);
     const yRange = graphAutoScale(allBarValues);
@@ -12688,6 +12718,15 @@ function graphAudToggleHtml(key, checked){
     <input type="checkbox" id="graph${key}AudToggle" ${checked?'checked':''} onchange="graphOnAudToggle('${key}')"> Audience digitale
   </label>`;
 }
+/** Ne s'affiche que pour Europe 2 (les tranches RFM ne se découpent pas de
+ *  la même façon) et seulement quand l'overlay "Audience digitale" est déjà
+ *  actif — bascule la courbe entre moyenne 5h-24h et moyenne pondérée des
+ *  seules tranches musicales (11h-15h30 + 18h-20h, sans matinale ni talk). */
+function graphMusicalToggleHtml(key, checked, disabled){
+  return `<label style="font-size:11px;color:${disabled?'var(--muted)':'var(--text2)'};display:flex;align-items:center;gap:5px;cursor:${disabled?'default':'pointer'}" title="Isole l'audience sur les tranches 11h-15h30 et 18h-20h (sans matinale ni talk)">
+    <input type="checkbox" id="graph${key}MusicalToggle" ${checked?'checked':''} ${disabled?'disabled':''} onchange="graphOnMusicalToggle('${key}')"> 🎵 Focus tranches musicales
+  </label>`;
+}
 function graphZoomToggleHtml(key, checked){
   return `<label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto" title="Ajuste l'échelle sur la plage réelle des valeurs plutôt que de toujours partir de 0 — utile pour bien voir de petites variations">
     <input type="checkbox" id="graph${key}ZoomToggle" ${checked?'checked':''} onchange="graphOnZoomToggle('${key}')"> 🔍 Zoomer sur les variations
@@ -12713,6 +12752,10 @@ function graphOnPeriodChange(key){
 }
 function graphOnAudToggle(key){
   graphFilters[key].showAudience = document.getElementById('graph'+key+'AudToggle').checked;
+  graphRenderCard(key);
+}
+function graphOnMusicalToggle(key){
+  graphFilters[key].musicalFocus = document.getElementById('graph'+key+'MusicalToggle').checked;
   graphRenderCard(key);
 }
 function graphOnZoomToggle(key){
@@ -12755,6 +12798,7 @@ function graphRenderGenreCard(stKey, weeks){
       </select>
     </label>
     ${graphAudToggleHtml('genre', f.showAudience)}
+    ${graphMusicalToggleHtml('genre', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
     ${graphZoomToggleHtml('genre', f.zoomed)}
   `;
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
@@ -12767,7 +12811,7 @@ function graphRenderGenreCard(stKey, weeks){
     if(el){ const ctx = el.getContext && el.getContext('2d'); if(graphCharts['graphgenreChart']) graphCharts['graphgenreChart'].destroy(); }
     return;
   }
-  graphBuildMixedChart('graphgenreChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed);
+  graphBuildMixedChart('graphgenreChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed, f.musicalFocus);
 }
 
 function graphRenderRechercheCard(stKey, weeks){
@@ -12781,13 +12825,14 @@ function graphRenderRechercheCard(stKey, weeks){
       </select>
     </label>
     ${graphAudToggleHtml('recherche', f.showAudience)}
+    ${graphMusicalToggleHtml('recherche', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
     ${graphZoomToggleHtml('recherche', f.zoomed)}
   `;
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
   const crit = RECHERCHE_CRITERIA[f.criterion];
   const isBurn = /burn/i.test(f.criterion);
   const series = [{ label: crit.label, color: crit.color, data: range.map(w => { const v = w.stats[crit.field]; return v==null ? null : Math.round(v*100)/100; }) }];
-  graphBuildMixedChart('graphrechercheChart', range, series, f.showAudience, stKey, crit.label + (isBurn ? ' (%)' : ''), f.zoomed);
+  graphBuildMixedChart('graphrechercheChart', range, series, f.showAudience, stKey, crit.label + (isBurn ? ' (%)' : ''), f.zoomed, f.musicalFocus);
 }
 
 function graphRenderFitCard(stKey, weeks){
@@ -12796,6 +12841,7 @@ function graphRenderFitCard(stKey, weeks){
   controls.innerHTML = `
     ${graphWeekControlsHtml('fit', weeks, f.from, f.to)}
     ${graphAudToggleHtml('fit', f.showAudience)}
+    ${graphMusicalToggleHtml('fit', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
     ${graphZoomToggleHtml('fit', f.zoomed)}
   `;
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
@@ -12803,7 +12849,7 @@ function graphRenderFitCard(stKey, weeks){
     { label:'Fit Score', color:'#00B8C8', data: range.map(w => w.stats.avgFit==null?null:Math.round(w.stats.avgFit*10)/10) },
     { label:'SPU',       color:'#7C3AED', data: range.map(w => w.stats.avgSpu==null?null:Math.round(w.stats.avgSpu*10)/10) }
   ];
-  graphBuildMixedChart('graphfitChart', range, series, f.showAudience, stKey, 'Score (0-100)', f.zoomed);
+  graphBuildMixedChart('graphfitChart', range, series, f.showAudience, stKey, 'Score (0-100)', f.zoomed, f.musicalFocus);
 }
 
 function graphRenderExpositionCard(stKey, weeks){
@@ -12817,12 +12863,13 @@ function graphRenderExpositionCard(stKey, weeks){
       </select>
     </label>
     ${graphAudToggleHtml('exposition', f.showAudience)}
+    ${graphMusicalToggleHtml('exposition', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
     ${graphZoomToggleHtml('exposition', f.zoomed)}
   `;
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
   const met = EXPOSITION_METRICS[f.metric];
   const series = [{ label: met.label, color: met.color, data: range.map(w => w.stats[met.field] ?? 0) }];
-  graphBuildMixedChart('graphexpositionChart', range, series, f.showAudience, stKey, met.label, f.zoomed);
+  graphBuildMixedChart('graphexpositionChart', range, series, f.showAudience, stKey, met.label, f.zoomed, f.musicalFocus);
 }
 
 function graphOnLabelsModeChange(){
@@ -12892,6 +12939,7 @@ function graphRenderLabelsCard(stKey, weeks){
     </label>` : ''}
     <button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="graphToggleLabelsManage()">⚙️ Gérer les majors</button>
     ${graphAudToggleHtml('labels', f.showAudience)}
+    ${graphMusicalToggleHtml('labels', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience)}
     ${graphZoomToggleHtml('labels', f.zoomed)}
   `;
 
@@ -12919,7 +12967,7 @@ function graphRenderLabelsCard(stKey, weeks){
     }));
   }
   if(!series.length) return;
-  graphBuildMixedChart('graphlabelsChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed);
+  graphBuildMixedChart('graphlabelsChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed, f.musicalFocus);
 }
 
 function renderGraphPage(){
@@ -12954,10 +13002,10 @@ function renderGraphPage(){
   }
 
   cardsArea.innerHTML = [
-    graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.'),
     graphCardShell('recherche', 'Recherche', 'Résultats Call Out / OMT — Pot Score, Fam Score et leurs taux de Burn, cibles Ensemble et P1.'),
     graphCardShell('fit', 'Fit Score', 'Fit Score et SPU moyens pondérés de la programmation.'),
     graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.'),
+    graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.'),
     graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
   ].join('');
 
@@ -18614,13 +18662,16 @@ async function exportPlaylistPDF(){
   // entre artiste/titre/labels. "Catégorie Précédente" en plus de la
   // maquette d'origine (voir t.ancienneCategorie, déjà tracée ailleurs dans
   // l'app à chaque changement de catégorie — pas besoin de recalcul).
-  const cols = { numW: 7, artW: 33, titW: 40, catW: 15, prevCatW: 15, entW: 18 };
+  const cols = { numW: 7, artW: 37, titW: 40, catW: 15, prevCatW: 15, entW: 18 };
   cols.labW = CW - (cols.numW + cols.artW + cols.titW + cols.catW + cols.prevCatW + cols.entW);
 
   // ── Dimensionnement ADAPTATIF pour tenir sur UNE SEULE page A4 quel que
   // soit le nombre de titres : plus la playlist est longue, plus les lignes
   // et les polices se resserrent automatiquement (dans des bornes qui
-  // restent lisibles à l'impression).
+  // restent lisibles à l'impression). Bornes volontairement larges (plancher
+  // de rowH abaissé) pour garantir la tenue sur une page même avec une
+  // playlist plus longue que d'habitude, plutôt que de risquer un débordement
+  // sur une 2e page.
   const groups = playlistCategoryGroups(stationTitles);
   const totalRows = stationTitles.length;
   const TOP_MARGIN = 10, HEADER_LOGO_H = 13, COLBAND_H = 6, COLBAND_GAP = 2, FOOTER_RESERVE = 9;
@@ -18628,9 +18679,13 @@ async function exportPlaylistPDF(){
   const SAFETY_MARGIN = 6; // absorbe les marges de sécurité de checkPageBreak (voir plus bas) pour un calcul de rowH légèrement plus prudent
   const overhead = TOP_MARGIN + HEADER_LOGO_H + COLBAND_H + COLBAND_GAP + FOOTER_RESERVE + SAFETY_MARGIN + (groups.length * GROUP_GAP);
   const availableForRows = PH - overhead;
-  const rowH = Math.max(3.6, Math.min(6.2, availableForRows / totalRows));
-  const fontMain  = Math.max(5.5, Math.min(8, rowH * 1.28));   // artiste / titre / catégorie
-  const fontSmall = Math.max(5,   fontMain - 1.4);             // catégorie précédente / date / label
+  const rowH = Math.max(2.6, Math.min(7.4, availableForRows / totalRows));
+  // Ratio rowH→police relevé (1.28 → 1.62) : à interligne (rowH) égal, le
+  // texte remplit davantage la ligne — police plus grande, moins d'espace
+  // perdu au-dessus/en-dessous de chaque ligne, sans rien changer à la tenue
+  // sur une page (rowH, seul déterminant du nombre de pages, est inchangé).
+  const fontMain  = Math.max(6,   Math.min(9.5, rowH * 1.62));   // artiste / titre / catégorie
+  const fontSmall = Math.max(5.2, fontMain - 1.4);             // catégorie précédente / date / label
 
   let y = 0;
   let pageNum = 1;
@@ -18674,11 +18729,19 @@ async function exportPlaylistPDF(){
 
     y += HEADER_LOGO_H + 2;
 
-    // Bandeau de colonnes (rose, comme le modèle)
+    // Bandeau de colonnes (rose, comme le modèle). Taille ajustée
+    // automatiquement au libellé le plus contraint ("CAT. PRECED." dans une
+    // colonne étroite) pour ne jamais chevaucher la colonne voisine, même
+    // quand la police des lignes grandit sur une playlist courte.
     doc.setFillColor(...COL_PINK);
     doc.rect(ML, y, CW, COLBAND_H, 'F');
     doc.setFont('helvetica','bold');
-    doc.setFontSize(Math.min(7.5, fontMain));
+    const bandFontSize = Math.min(
+      fontMain, 7.5,
+      fitPdfFontSize(doc, 'CAT. PRECED.', cols.prevCatW - 1.5, 7.5, 4.5),
+      fitPdfFontSize(doc, 'CATEGORIE', cols.catW - 1.5, 7.5, 4.5)
+    );
+    doc.setFontSize(bandFontSize);
     doc.setTextColor(255, 255, 255);
     let cx = ML + cols.numW;
     const bandBaseline = y + COLBAND_H/2 + 1.1;
@@ -18719,13 +18782,19 @@ async function exportPlaylistPDF(){
       const color = PLAYLIST_CAT_COLORS[cat] || PLAYLIST_CAT_DEFAULT_COLOR;
       const prevCat = (t.ancienneCategorie || '').toUpperCase().trim();
       let x = ML;
-      const baseline = y + rowH/2 + fontMain/2.8;
+      // Deux baselines distinctes : une par taille de police. Utiliser la
+      // baseline calculée pour fontMain sur du texte en fontSmall décale
+      // visuellement ce texte vers le bas (l'écart entre les deux tailles) —
+      // c'était la cause du décalage de la catégorie (et des autres colonnes
+      // en petite police) par rapport à la ligne artiste/titre.
+      const baseline      = y + rowH/2 + fontMain/2.8;
+      const baselineSmall = y + rowH/2 + fontSmall/2.8;
 
       // Numéro (rouge, remis à 1 à chaque nouvelle catégorie)
       doc.setFont('helvetica','bold');
       doc.setFontSize(fontSmall);
       doc.setTextColor(200, 30, 30);
-      doc.text(String(idx + 1), x + cols.numW/2, baseline, {align:'center'});
+      doc.text(String(idx + 1), x + cols.numW/2, baselineSmall, {align:'center'});
       x += cols.numW;
 
       // Artiste — MAJUSCULES, gras
@@ -18746,7 +18815,7 @@ async function exportPlaylistPDF(){
       doc.setFont('helvetica','bold');
       doc.setFontSize(fontSmall);
       doc.setTextColor(30, 40, 30);
-      doc.text(cat || '—', x + cols.catW/2, baseline, {align:'center'});
+      doc.text(cat || '—', x + cols.catW/2, baselineSmall, {align:'center'});
       x += cols.catW;
 
       // Catégorie précédente — texte seul (pas de fond coloré, pour bien la
@@ -18755,18 +18824,18 @@ async function exportPlaylistPDF(){
       // et discrète sinon (rien de nouveau à signaler).
       doc.setFont('helvetica', prevCat && prevCat !== cat ? 'bold' : 'normal');
       doc.setTextColor(...(prevCat && prevCat !== cat ? COL_CHANGE : COL_MUTED2));
-      doc.text(prevCat || '—', x + cols.prevCatW/2, baseline, {align:'center'});
+      doc.text(prevCat || '—', x + cols.prevCatW/2, baselineSmall, {align:'center'});
       x += cols.prevCatW;
 
       // Date d'entrée — police réduite (info secondaire)
       doc.setFont('helvetica','normal');
       doc.setFontSize(fontSmall);
       doc.setTextColor(...COL_TEXT);
-      doc.text(formatDateFr(t.dateEntree) || '—', x + cols.entW/2, baseline, {align:'center'});
+      doc.text(formatDateFr(t.dateEntree) || '—', x + cols.entW/2, baselineSmall, {align:'center'});
       x += cols.entW;
 
       // Label — police réduite (info secondaire)
-      doc.text(truncateForPdf(doc, t.label || '—', cols.labW - 3), x + cols.labW/2, baseline, {align:'center'});
+      doc.text(truncateForPdf(doc, t.label || '—', cols.labW - 3), x + cols.labW/2, baselineSmall, {align:'center'});
 
       y += rowH;
     });
