@@ -11549,6 +11549,36 @@ function digitalAudienceDetectStation(text, filename){
   return null;
 }
 
+/** Bloc "Contexte de la semaine" (texte après "Opération :") — extrait via
+ *  les positions d'items plutôt que par regex pur sur le texte à plat : dans
+ *  l'ordre de lecture pdf.js, "Opération : ..." n'est pas toujours suivi de
+ *  "Source :" (le camembert "Répartition du volume d'écoute" ou le titre de
+ *  la page suivante peuvent s'intercaler avant), ce qui faisait déborder la
+ *  capture regex sur du texte parasite. On regroupe ici les items sous
+ *  "Opération" tant que l'écart vertical entre deux lignes reste faible
+ *  (< 25pt, texte du même bloc) — un écart plus large signale qu'on est
+ *  sorti de l'encadré "Contexte" (ex. vers "Source :", bien plus bas). */
+function digitalAudienceParseContexte(items){
+  const opItem = items.find(it => /Op[ée]ration\s*:/i.test(it.str));
+  if(!opItem) return [];
+  const below = items.filter(it => it.page===opItem.page && it.y <= opItem.y + 2).sort((a,b)=>b.y-a.y);
+  const lines = [];
+  let lastY = null;
+  for(const it of below){
+    if(lastY !== null && (lastY - it.y) > 25) break;
+    let line = lines.find(l => Math.abs(l.y - it.y) < 3);
+    if(!line){ line = { y: it.y, items: [] }; lines.push(line); }
+    line.items.push(it);
+    lastY = it.y;
+  }
+  const text = lines
+    .map(l => l.items.sort((a,b) => a.x-b.x).map(t => t.str).join(' '))
+    .join(' ')
+    .replace(/^Op[ée]ration\s*:\s*/i, '')
+    .trim();
+  return text ? [text.slice(0,300)] : [];
+}
+
 function digitalAudienceParsePdfText(data, filename){
   const text = data.text;
   const items = data.items || [];
@@ -11615,11 +11645,8 @@ function digitalAudienceParsePdfText(data, filename){
     }
   }catch(e){ console.error('Tranches parse failed', e); }
 
-  const contexte = [];
-  try{
-    const ctxMatch = clean.match(/Op[ée]ration\s*:\s*(.+?)(?:Source\s*:|$)/i);
-    if(ctxMatch) contexte.push(ctxMatch[1].trim().slice(0,300));
-  }catch(e){ console.error('Contexte parse failed', e); }
+  let contexte = [];
+  try{ contexte = digitalAudienceParseContexte(items); }catch(e){ console.error('Contexte parse failed', e); }
 
   return {
     station, weekStart, weekEnd,
