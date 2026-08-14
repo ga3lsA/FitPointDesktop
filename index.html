@@ -9233,6 +9233,12 @@ function toggleHistoryPage(){
       const qBtn = document.getElementById('quotasTabBtn');
       if(qBtn){ qBtn.style.borderColor=''; qBtn.style.color=''; qBtn.style.background=''; }
     }
+    if(analysePageOpen){
+      analysePageOpen = false;
+      document.getElementById('pageAnalyse').style.display = 'none';
+      const anBtn = document.getElementById('analyseTabBtn');
+      if(anBtn){ anBtn.style.borderColor=''; anBtn.style.color=''; anBtn.style.background=''; }
+    }
     ['pageUpload','pageConfig','pageResults'].forEach(id => {
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
@@ -12448,25 +12454,56 @@ function renderMediaPage(){
 }
 
 // ══════════════════════════════════════════════════════════════════════════
-// GRAPHIQUES D'ÉVOLUTION — Genre musical, Recherche, Fit Score, Exposition
+// GRAPHIQUES D'ÉVOLUTION — Genre musical, Recherche, Fit Score, Exposition,
+// Labels/Majors
 // ══════════════════════════════════════════════════════════════════════════
-// 4 courbes bâtons (Chart.js, même style animé que l'onglet Audience
+// 5 courbes bâtons (Chart.js, même style animé que l'onglet Audience
 // digitale), chacune avec sa propre période (sélection de semaines) et son
 // propre critère, plus une option d'incrustation de l'audience digitale de
 // la semaine correspondante (axe secondaire, en courbe). Toutes les données
 // viennent des statistiques déjà archivées par semaine (analyseLoadHistory),
-// sauf le Genre musical qui utilise la répartition déjà calculée à
-// l'archivage (entry.stats.genreDistribution) — aucun rechargement du
-// détail complet par titre n'est nécessaire pour ces 4 graphiques.
+// sauf le Genre musical et Labels/Majors qui utilisent la répartition déjà
+// calculée à l'archivage (entry.stats.genreDistribution/labelDistribution)
+// — aucun rechargement du détail complet par titre n'est nécessaire pour
+// ces graphiques.
 let graphUI = { station: 'EUROPE2' };
 let graphCharts = {};
 let graphFilters = {
   genre:      { from:null, to:null, genres:[], showAudience:true, zoomed:false },
   recherche:  { from:null, to:null, criterion:'potTous', showAudience:true, zoomed:false },
   fit:        { from:null, to:null, showAudience:true, zoomed:false },
-  exposition: { from:null, to:null, metric:'totalDiffs', showAudience:true, zoomed:false }
+  exposition: { from:null, to:null, metric:'totalDiffs', showAudience:true, zoomed:false },
+  labels:     { from:null, to:null, mode:'major', labels:[], showAudience:true, zoomed:false }
 };
 const GRAPH_COLORS = ['#00B8C8','#7C3AED','#0DA76B','#E07B00','#CC2222','#5B3FA8','#0B6E99','#B85C00'];
+
+/** Affectation label → major (Sony/Universal/Warner/Indé), persistée et
+ *  réutilisée automatiquement à chaque nouvelle semaine — l'utilisateur
+ *  n'a besoin de catégoriser un label qu'une seule fois. Un label non
+ *  encore affecté reste dans un panier "Non affecté" distinct d'"Indé"
+ *  (Indé est un choix explicite, pas une valeur par défaut). */
+const LABEL_MAJOR_KEY = 'fpa_label_major_map_v1';
+const MAJORS = ['Sony','Universal','Warner','Indé'];
+const MAJOR_COLORS = { Sony:'#E07B00', Universal:'#0B6E99', Warner:'#CC2222', 'Indé':'#0DA76B', 'Non affecté':'#8A94A6' };
+
+function labelMajorLoadMap(){
+  try{ return JSON.parse(localStorage.getItem(LABEL_MAJOR_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function labelMajorSaveMap(map){
+  try{ localStorage.setItem(LABEL_MAJOR_KEY, JSON.stringify(map)); }
+  catch(e){ showToast('Erreur de sauvegarde de l\'affectation labels → majors', 'err'); }
+}
+/** Tous les labels rencontrés sur l'historique complet de la station (pas
+ *  seulement la période sélectionnée), pour que les sélecteurs restent
+ *  stables quelle que soit la période affichée — même principe que
+ *  graphAllGenres. */
+function graphAllLabels(stKey){
+  const set = new Set();
+  graphAvailableWeeks(stKey).forEach(w => (w.stats && w.stats.labelDistribution || []).forEach(l => set.add(l.label)));
+  return Array.from(set).sort((a,b) => a.localeCompare(b, 'fr'));
+}
+
 const RECHERCHE_CRITERIA = {
   potTous:      { label:'Pot Score (Ensemble)',    field:'avgPot',        color:'#00B8C8' },
   potP1:        { label:'Pot Score (P1)',          field:'avgPotP1',      color:'#0B6E99' },
@@ -12629,11 +12666,15 @@ function graphZoomToggleHtml(key, checked){
     <input type="checkbox" id="graph${key}ZoomToggle" ${checked?'checked':''} onchange="graphOnZoomToggle('${key}')"> 🔍 Zoomer sur les variations
   </label>`;
 }
-function graphCardShell(key, title, subtitle){
+function graphCardShell(key, title, subtitle, withManagePanel){
   return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px">
     <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">${escHtml(title)}</div>
     ${subtitle ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${escHtml(subtitle)}</div>` : '<div style="margin-bottom:10px"></div>'}
     <div id="graph${key}Controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px"></div>
+    ${withManagePanel ? `<div id="graphLabelsManageWrap" style="display:none;margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px">
+      <div style="font-size:11.5px;font-weight:800;color:var(--navy);margin-bottom:8px">⚙️ Affectation des labels aux majors</div>
+      <div id="graphLabelsManageArea"></div>
+    </div>` : ''}
     <div style="position:relative;height:300px"><canvas id="graph${key}Chart"></canvas></div>
   </div>`;
 }
@@ -12672,6 +12713,7 @@ function graphRenderCard(key){
   if(key==='recherche')  graphRenderRechercheCard(stKey, weeks);
   if(key==='fit')        graphRenderFitCard(stKey, weeks);
   if(key==='exposition') graphRenderExpositionCard(stKey, weeks);
+  if(key==='labels')     graphRenderLabelsCard(stKey, weeks);
 }
 
 function graphRenderGenreCard(stKey, weeks){
@@ -12756,6 +12798,103 @@ function graphRenderExpositionCard(stKey, weeks){
   graphBuildMixedChart('graphexpositionChart', range, series, f.showAudience, stKey, met.label, f.zoomed);
 }
 
+function graphOnLabelsModeChange(){
+  graphFilters.labels.mode = document.getElementById('graphlabelsMode').value;
+  graphRenderCard('labels');
+}
+function graphOnLabelsChange(){
+  const sel = document.getElementById('graphlabelsMulti');
+  graphFilters.labels.labels = Array.from(sel.selectedOptions).map(o => o.value);
+  graphRenderCard('labels');
+}
+function graphToggleLabelsManage(){
+  const wrap = document.getElementById('graphLabelsManageWrap');
+  const show = wrap.style.display === 'none';
+  wrap.style.display = show ? 'block' : 'none';
+  if(show) graphRenderLabelsManage();
+}
+/** Panneau d'affectation label → major, réutilisé au fil des semaines : la
+ *  liste couvre tous les labels rencontrés dans l'historique de la station,
+ *  chacun avec un sélecteur simple. Toute modification est immédiatement
+ *  persistée (voir labelMajorSaveMap) et redessine le graphique si la vue
+ *  "par major" est active. */
+function graphRenderLabelsManage(){
+  const stKey = graphUI.station;
+  const area = document.getElementById('graphLabelsManageArea');
+  const map = labelMajorLoadMap();
+  const allLabels = graphAllLabels(stKey);
+  if(!allLabels.length){
+    area.innerHTML = '<div style="font-size:11.5px;color:var(--muted)">Aucun label rencontré pour l\'instant sur cette station.</div>';
+    return;
+  }
+  const rows = allLabels.map(label => {
+    const current = map[label] || '';
+    const options = ['<option value="">— Non affecté —</option>'].concat(
+      MAJORS.map(m => `<option value="${m}" ${current===m?'selected':''}>${m}</option>`)
+    ).join('');
+    return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;font-size:11.5px;font-weight:600">${escHtml(label)}</div>
+      <select style="font-size:11px;padding:4px 8px;border-radius:6px" onchange="graphAssignLabelMajor('${escHtml(label).replace(/'/g,"\\'")}', this.value)">${options}</select>
+    </div>`;
+  }).join('');
+  area.innerHTML = `<div style="max-height:280px;overflow-y:auto">${rows}</div>`;
+}
+function graphAssignLabelMajor(label, major){
+  const map = labelMajorLoadMap();
+  if(major) map[label] = major; else delete map[label];
+  labelMajorSaveMap(map);
+  graphRenderCard('labels');
+}
+
+function graphRenderLabelsCard(stKey, weeks){
+  const f = graphFilters.labels;
+  const allLabels = graphAllLabels(stKey);
+  const controls = document.getElementById('graphlabelsControls');
+  controls.innerHTML = `
+    ${graphWeekControlsHtml('labels', weeks, f.from, f.to)}
+    <label style="font-size:11px;color:var(--text2)">Vue :
+      <select id="graphlabelsMode" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="graphOnLabelsModeChange()">
+        <option value="major" ${f.mode==='major'?'selected':''}>Par major</option>
+        <option value="label" ${f.mode==='label'?'selected':''}>Par label</option>
+      </select>
+    </label>
+    ${f.mode==='label' ? `<label style="font-size:11px;color:var(--text2)">Label(s) :
+      <select id="graphlabelsMulti" multiple size="${Math.max(2,Math.min(5,allLabels.length))}" style="font-size:11.5px;padding:5px 8px;border-radius:6px;min-width:170px;vertical-align:top" onchange="graphOnLabelsChange()">
+        ${allLabels.map(l => `<option value="${escHtml(l)}" ${f.labels.includes(l)?'selected':''}>${escHtml(l)}</option>`).join('')}
+      </select>
+    </label>` : ''}
+    <button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="graphToggleLabelsManage()">⚙️ Gérer les majors</button>
+    ${graphAudToggleHtml('labels', f.showAudience)}
+    ${graphZoomToggleHtml('labels', f.zoomed)}
+  `;
+
+  const range = graphWeekRangeSlice(weeks, f.from, f.to);
+  let series;
+  if(f.mode === 'major'){
+    const map = labelMajorLoadMap();
+    // "Non affecté" n'apparaît que s'il existe réellement des labels non
+    // catégorisés dans la période affichée — pas de bruit inutile une fois
+    // que tout est renseigné.
+    const hasUnassigned = range.some(w => (w.stats.labelDistribution||[]).some(l => !map[l.label]));
+    const buckets = hasUnassigned ? [...MAJORS, 'Non affecté'] : MAJORS;
+    series = buckets.map(major => ({
+      label: major, color: MAJOR_COLORS[major],
+      data: range.map(w => {
+        const dist = w.stats.labelDistribution || [];
+        const pct = dist.filter(l => (map[l.label] || 'Non affecté') === major).reduce((s,l) => s+l.pct, 0);
+        return Math.round(pct*10)/10;
+      })
+    }));
+  } else {
+    series = f.labels.map((label,i) => ({
+      label, color: ANALYSE_GENRE_PALETTE[i % ANALYSE_GENRE_PALETTE.length],
+      data: range.map(w => { const e = (w.stats.labelDistribution||[]).find(x => x.label===label); return e ? Math.round(e.pct*10)/10 : 0; })
+    }));
+  }
+  if(!series.length) return;
+  graphBuildMixedChart('graphlabelsChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed);
+}
+
 function renderGraphPage(){
   const stKey = graphUI.station;
   const tabsArea = document.getElementById('graphStationTabs');
@@ -12778,7 +12917,7 @@ function renderGraphPage(){
   // Répare/initialise les périodes par défaut (semaine la plus ancienne →
   // la plus récente) si elles ne pointent plus vers une semaine existante
   // (ex. première ouverture, ou changement de station).
-  ['genre','recherche','fit','exposition'].forEach(k => {
+  ['genre','recherche','fit','exposition','labels'].forEach(k => {
     const f = graphFilters[k];
     if(!f.from || !weeks.some(w=>w.weekLabel===f.from)) f.from = weeks[0].weekLabel;
     if(!f.to   || !weeks.some(w=>w.weekLabel===f.to))   f.to   = weeks[weeks.length-1].weekLabel;
@@ -12791,13 +12930,15 @@ function renderGraphPage(){
     graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.'),
     graphCardShell('recherche', 'Recherche', 'Résultats Call Out / OMT — Pot Score, Fam Score et leurs taux de Burn, cibles Ensemble et P1.'),
     graphCardShell('fit', 'Fit Score', 'Fit Score et SPU moyens pondérés de la programmation.'),
-    graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.')
+    graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.'),
+    graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
   ].join('');
 
   graphRenderGenreCard(stKey, weeks);
   graphRenderRechercheCard(stKey, weeks);
   graphRenderFitCard(stKey, weeks);
   graphRenderExpositionCard(stKey, weeks);
+  graphRenderLabelsCard(stKey, weeks);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -13649,21 +13790,28 @@ function analyseUpdateAttr(input, title, artist, field){
  *  `maxSlices` sont regroupés dans "Autres" pour garder un graphique lisible
  *  et un payload Drive léger. */
 function analyseComputeGenreDistribution(rows, maxSlices){
-  const byGenre = {};
+  return analyseComputeFieldDistribution(rows, 'genre', maxSlices);
+}
+
+/** Généralisation de analyseComputeGenreDistribution à n'importe quel champ
+ *  de la ligne (genre, label...) — répartition pondérée par nbDiffs, triée
+ *  décroissant, plafonnée à maxSlices entrées (+ "Autres" au-delà). */
+function analyseComputeFieldDistribution(rows, field, maxSlices){
+  const byKey = {};
   let total = 0;
   rows.forEach(r => {
-    const g = (r.genre || '').trim() || 'Non renseigné';
+    const k = (r[field] || '').trim() || 'Non renseigné';
     const w = r.nbDiffs || 0;
-    byGenre[g] = (byGenre[g] || 0) + w;
+    byKey[k] = (byKey[k] || 0) + w;
     total += w;
   });
-  let arr = Object.entries(byGenre).map(([genre, diffs]) => ({ genre, diffs }));
+  let arr = Object.entries(byKey).map(([key, diffs]) => ({ [field]: key, diffs }));
   arr.sort((a, b) => b.diffs - a.diffs);
   const cap = maxSlices || 12;
   if(arr.length > cap){
     const head = arr.slice(0, cap - 1);
     const restDiffs = arr.slice(cap - 1).reduce((s, e) => s + e.diffs, 0);
-    arr = [...head, { genre: 'Autres', diffs: restDiffs }];
+    arr = [...head, { [field]: 'Autres', diffs: restDiffs }];
   }
   return arr.map(e => ({ ...e, pct: total > 0 ? (e.diffs / total * 100) : 0 }));
 }
@@ -13697,7 +13845,12 @@ function analyseComputeStats(rows){
     avgBurnOMTP1: wavg(r => r.search ? r.search.burnOMTP1 : null),
     avgFit:     wavg(r => r.fpa ? r.fpa.fit : null),
     avgSpu:     wavg(r => r.fpa ? r.fpa.spu : null),
-    genreDistribution: analyseComputeGenreDistribution(rows)
+    genreDistribution: analyseComputeGenreDistribution(rows),
+    // Pas de plafond sur les labels (contrairement au genre, capé à 12 pour
+    // la lisibilité du camembert) : la vue "par major" a besoin de la part
+    // de diffusions de CHAQUE label pour agréger correctement les totaux —
+    // un plafond tronquerait silencieusement les majors les plus actives.
+    labelDistribution: analyseComputeFieldDistribution(rows, 'label', 9999)
   };
 }
 
@@ -15598,6 +15751,13 @@ function toggleChartsPage(){
       document.getElementById('pageQuotas').style.display = 'none';
       const qBtn = document.getElementById('quotasTabBtn');
       if(qBtn){ qBtn.style.borderColor=''; qBtn.style.color=''; qBtn.style.background=''; }
+    }
+    // Fermer Analyse si ouvert
+    if(analysePageOpen){
+      analysePageOpen = false;
+      document.getElementById('pageAnalyse').style.display = 'none';
+      const anBtn = document.getElementById('analyseTabBtn');
+      if(anBtn){ anBtn.style.borderColor=''; anBtn.style.color=''; anBtn.style.background=''; }
     }
     // Masquer tout le reste, afficher la page
     document.getElementById('pageUpload').style.display  = 'none';
