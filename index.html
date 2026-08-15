@@ -1617,7 +1617,12 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <input type="file" id="digitalAudienceFileInput" accept=".pdf" multiple style="display:none" onchange="digitalAudienceHandleFiles(this)">
         <input type="file" id="digitalAudienceDMImportInput" accept=".json" style="display:none" onchange="digitalAudienceImportDMFile(this)">
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="digitalAudienceLoadHistoryFromDrive(true)" title="Recharge l'historique audience digitale depuis Drive Sync">☁️ Synchroniser Drive</button>
-        <button class="btn-ghost" style="font-size:11px;padding:8px 14px;border-color:#D97706;color:#D97706" onclick="digitalAudienceRepairCorruptedDurations()" title="Corrige les durées d'écoute importées avant le correctif du parsing HH:MM (ex. 41 min importées comme 41 secondes)">🔧 Réparer les durées corrompues</button>
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="(async()=>{
+          const btn=this; const orig=btn.textContent; btn.disabled=true; btn.textContent='⏳ Envoi…';
+          const r = await digitalAudienceSaveToDrive();
+          if(r.ok) showToast('Historique audience digitale envoyé sur Drive', 'success');
+          btn.disabled=false; btn.textContent=orig;
+        })()" title="Renvoie tout l'historique local vers Drive, même si rien n'a changé depuis — utile après un échec de sauvegarde (ex. quota Drive plein) pour forcer le renvoi sans attendre une nouvelle modification">☁️⬆️ Forcer l'envoi vers Drive</button>
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="document.getElementById('digitalAudienceDMImportInput').click()" title="Importe un export JSON réalisé depuis Digital Monitoring (bouton « Exporter tout (.json) » de sa page Archives)">📤 Importer export Digital Monitoring (.json)</button>
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="digitalAudienceTriggerImport()">📥 Importer un ou plusieurs PDF Live Stats</button>
       </div>
@@ -1689,7 +1694,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
         <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">📅 Historique des semaines archivées</div>
         <div style="display:flex;gap:8px">
-          <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="analyseDiagnoseLocalStorageUI()" title="Diagnostique pourquoi le détail de certaines semaines est introuvable en local">🔍 Diagnostiquer le stockage local</button>
           <button class="btn-ghost" id="analyseRecalcBtn" style="font-size:11px;padding:8px 14px" onclick="analyseRecalculateAllArchivesUI()" title="Recalcule les scores Call Out/OMT/Fit Score des semaines déjà archivées, à partir de leur date réelle — sans réimporter les fichiers Excel">🔄 Recalculer les scores (semaines archivées)</button>
         </div>
       </div>
@@ -1701,10 +1705,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div style="height:6px;background:var(--bg);border-radius:4px;overflow:hidden">
           <div id="analyseRecalcProgressBar" style="height:100%;width:0%;background:var(--cyan);border-radius:4px;transition:width .15s ease"></div>
         </div>
-      </div>
-      <div id="analyseDiagReportWrap" style="display:none;margin-bottom:20px;padding:16px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">
-        <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">🔍 Diagnostic du stockage local</div>
-        <div id="analyseDiagReportArea"></div>
       </div>
       <div id="analyseRecalcReportWrap" style="display:none;margin-bottom:20px;padding:16px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">
         <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:10px">🔄 Résultat du recalcul</div>
@@ -8790,11 +8790,6 @@ async function histInit(){
   // ici, une fois l'historique réellement chargé.
   renderHomePendingCard('callout');
   renderHomePendingCard('omt');
-  // Sauvegarde automatique désactivée au démarrage à la demande de Gaël :
-  // le backup Drive (fpa_auto_backup) ne se déclenche plus qu'à la main,
-  // via le bouton dédié dans le panneau Drive Sync (qui appelle runAutoBackup()
-  // directement). maybeRunAutoBackup() reste défini mais n'est plus appelée ici.
-  // setTimeout(maybeRunAutoBackup, 5000);
 }
 histInit();
 
@@ -10942,174 +10937,6 @@ async function analyseRecalculateAllArchives(onProgress){
   return { recalculated, skippedNoDate, skippedNoDetail, weeksWithChanges, report };
 }
 
-/** Diagnostic du stockage local pour les semaines Analyse — répond
- *  précisément à « pourquoi le détail de telle semaine est introuvable ? »
- *  sans se contenter de l'hypothèse « autre appareil » :
- *  1) Espace localStorage utilisé/restant (le détail complet par titre est
- *     volumineux — plusieurs dizaines de semaines à 40-500 titres peuvent
- *     saturer le quota du navigateur, typiquement 5-10 Mo selon le
- *     navigateur — auquel cas les sauvegardes échouent SILENCIEUSEMENT,
- *     voir analyseSaveWeekDetailLocal qui avale l'erreur).
- *  2) Pour chaque semaine sans détail trouvé à la clé exacte attendue,
- *     recherche si une clé très proche existe déjà (libellé de semaine
- *     modifié après le premier enregistrement du détail — la clé de
- *     stockage est dérivée du libellé, donc un renommage casse le lien).
- *  3) Test d'écriture réel (petite valeur) pour confirmer si le quota est
- *     ACTUELLEMENT dépassé au moment du diagnostic. */
-async function analyseDiagnoseLocalStorage(){
-  // 1) Occupation totale de localStorage (estimation : somme clé+valeur en
-  //    caractères — un caractère JS ≈ 2 octets en UTF-16, l'unité de calcul
-  //    du quota réel du navigateur).
-  let totalChars = 0;
-  const allKeys = [];
-  for(let i=0;i<localStorage.length;i++){
-    const k = localStorage.key(i);
-    const v = localStorage.getItem(k) || '';
-    totalChars += k.length + v.length;
-    allKeys.push({ key:k, size:v.length });
-  }
-  const totalBytes = totalChars * 2;
-  // Depuis la migration vers IndexedDB, le détail Analyse ne devrait plus
-  // apparaître ici que pour d'éventuels restes pré-migration (voir le repli
-  // automatique dans analyseLoadWeekDetailLocal, qui les bascule et les
-  // supprime dès leur première lecture).
-  const legacyWeekDetailKeys = allKeys.filter(e => e.key.startsWith('fpa_analyse_week_'));
-
-  // 2) Test d'écriture réel pour savoir si le quota localStorage est saturé
-  //    maintenant (n'affecte plus le détail Analyse depuis la migration,
-  //    mais reste pertinent pour tout le reste de FPA qui utilise encore
-  //    localStorage).
-  let quotaExceededNow = false;
-  try{
-    const testKey = '__fpa_quota_test__';
-    localStorage.setItem(testKey, 'x'.repeat(50000)); // ~100 Ko
-    localStorage.removeItem(testKey);
-  }catch(e){ quotaExceededNow = true; }
-
-  // 3) Détail Analyse réellement présent en IndexedDB (source actuelle).
-  let idbWeekDetailKeys = [];
-  try{
-    const { keys } = await idbGetAllEntries();
-    idbWeekDetailKeys = (keys||[]).filter(k => k.startsWith('fpa_analyse_week_'));
-  }catch(e){ /* IndexedDB indisponible — allKeys IDB reste vide, les semaines apparaîtront "manquantes" ci-dessous, ce qui est honnête dans ce cas */ }
-
-  // 4) Semaines archivées sans détail trouvable (ni en IndexedDB, ni en
-  //    reliquat localStorage pré-migration) — et recherche d'une clé proche
-  //    (même station) qui pourrait correspondre à un libellé renommé depuis.
-  const history = analyseLoadHistory();
-  const missing = [];
-  ['EUROPE2','RFM'].forEach(stKey => {
-    (history[stKey]||[]).forEach(entry => {
-      const expectedKey = analyseWeekLocalKey(stKey, entry.weekLabel);
-      const existsIdb = idbWeekDetailKeys.includes(expectedKey);
-      const existsLegacy = legacyWeekDetailKeys.some(e => e.key === expectedKey);
-      if(existsIdb || existsLegacy) return;
-      const prefix = 'fpa_analyse_week_' + stKey + '_';
-      const candidates = idbWeekDetailKeys.filter(k => k.startsWith(prefix)).length + legacyWeekDetailKeys.filter(e => e.key.startsWith(prefix)).length;
-      missing.push({ station:stKey, weekLabel:entry.weekLabel, expectedKey, nearbyKeysCount: candidates });
-    });
-  });
-
-  return {
-    totalBytes, totalKeys: allKeys.length,
-    weekDetailKeyCount: idbWeekDetailKeys.length,
-    legacyWeekDetailKeyCount: legacyWeekDetailKeys.length,
-    legacyWeekDetailBytes: legacyWeekDetailKeys.reduce((s,e)=>s+e.size,0) * 2,
-    quotaExceededNow,
-    missing,
-    // Plus gros consommateurs, TOUTES clés localStorage confondues (le
-    // détail Analyse n'y figure plus, sauf reliquat pré-migration) — pour
-    // identifier ce qui remplit réellement le quota localStorage partagé du
-    // navigateur (Comité d'Écoute, Playlist, Veille, Song Attributes,
-    // Genres, outils tiers éventuels...).
-    topKeys: allKeys.map(e => ({ key:e.key, bytes:e.size*2 })).sort((a,b) => b.bytes-a.bytes).slice(0,15)
-  };
-}
-
-async function analyseDiagnoseLocalStorageUI(){
-  const d = await analyseDiagnoseLocalStorage();
-  const wrap = document.getElementById('analyseDiagReportWrap');
-  const area = document.getElementById('analyseDiagReportArea');
-  wrap.style.display = 'block';
-
-  const mb = n => (n/1024/1024).toFixed(2) + ' Mo';
-  const quotaWarning = d.quotaExceededNow
-    ? `<div style="padding:10px 14px;border:1.5px solid #CC2222;border-radius:8px;color:#CC2222;font-size:12px;margin-bottom:12px">⚠ Le quota de stockage local de ce navigateur semble déjà saturé maintenant (test d'écriture de ~100 Ko échoué). C'est très probablement la cause : les enregistrements de détail de semaine échouent silencieusement une fois le quota atteint (le reste — libellé, stats agrégées — continue à se sauvegarder normalement, d'où le fait que la semaine apparaît bien dans l'historique mais sans détail).</div>`
-    : `<div style="padding:10px 14px;border:1.5px solid var(--green-text);border-radius:8px;color:var(--green-text);font-size:12px;margin-bottom:12px">Le quota ne semble pas saturé <em>actuellement</em> — mais il a pu l'être temporairement lors d'un import groupé passé (plusieurs semaines volumineuses sauvegardées d'affilée), sans que l'espace libéré depuis (suppressions, nettoyage) ne le montre plus maintenant.</div>`;
-
-  const missingRows = d.missing.map(m => `<tr>
-    <td style="padding:6px 10px;font-size:11.5px">${STATION_ICONS[m.station]||''} ${STATION_LABELS[m.station]||m.station}</td>
-    <td style="padding:6px 10px;font-size:11.5px;font-weight:700">${escHtml(m.weekLabel)}</td>
-    <td style="padding:6px 10px;font-size:10.5px;color:var(--muted);font-family:monospace">${escHtml(m.expectedKey)}</td>
-  </tr>`).join('');
-
-  area.innerHTML = `
-    <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px">
-      <div style="font-size:12px">Stockage <code>localStorage</code> total : <b>${mb(d.totalBytes)}</b> (${d.totalKeys} clés)</div>
-      <div style="font-size:12px">Détail Analyse en IndexedDB (stockage actuel) : <b>${d.weekDetailKeyCount}</b> semaine(s)${d.legacyWeekDetailKeyCount ? ' <span style="color:var(--muted)">+ ' + d.legacyWeekDetailKeyCount + ' en reliquat localStorage (' + mb(d.legacyWeekDetailBytes) + ', migration automatique à la prochaine ouverture)</span>' : ''}</div>
-      <div style="font-size:12px">Semaines archivées sans détail retrouvé : <b style="color:#CC2222">${d.missing.length}</b></div>
-    </div>
-    <div style="padding:10px 14px;border:1.5px solid var(--cyan);border-radius:8px;color:var(--navy);font-size:12px;margin-bottom:12px">ℹ️ Depuis cette version, le détail des semaines Analyse est stocké en <b>IndexedDB</b> plutôt qu'en <code>localStorage</code> — un espace bien plus généreux (généralement des centaines de Mo), qui ne devrait plus jamais saturer en usage normal. Le test de quota ci-dessous ne concerne donc plus que le reste de FPA (Comité d'Écoute, Playlist, etc.), pas le détail Analyse.</div>
-    ${quotaWarning}
-    ${d.missing.length ? `
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Semaines concernées (aucun détail trouvé, ni en IndexedDB ni en reliquat localStorage) :</div>
-    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px">
-      <thead><tr style="background:var(--white)">
-        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Station</th>
-        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Semaine</th>
-        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Clé recherchée</th>
-      </tr></thead>
-      <tbody>${missingRows}</tbody>
-    </table>
-    <div style="font-size:12px;color:var(--text2)">Le libellé (ex. « S32 ») sert de clé de stockage pour le détail. Si tu as modifié le libellé d'une semaine <em>après</em> l'avoir enregistrée une première fois (via le champ libellé du bandeau ou lors d'une revue d'import en masse), l'ancien détail reste sous l'ancienne clé et devient invisible sous le nouveau libellé. Pour les semaines archivées avant la migration vers IndexedDB et déjà touchées par le quota localStorage, le détail est malheureusement irrécupérable — seul un réimport le restaurera.</div>
-    ` : `<div style="font-size:12px;color:var(--green-text)">Toutes les semaines archivées ont leur détail retrouvé. ✓</div>`}
-
-    <div style="font-size:12px;font-weight:800;color:var(--navy);margin:18px 0 8px">📦 Plus gros consommateurs d'espace (toutes fonctionnalités FPA confondues)</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Le détail Analyse n'est qu'une partie du stockage local — Comité d'Écoute, Playlist, Song Attributes, Genres, etc. partagent le même espace navigateur (${mb(d.totalBytes)} au total). Ce navigateur peut aussi contenir des données d'<b>autres outils/artifacts</b> (préfixe différent de <code>fpa_</code>) qui n'ont rien à voir avec FPA — supprimables sans risque si tu ne les utilises plus.</div>
-    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
-      <thead><tr style="background:var(--white)">
-        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Clé</th>
-        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Origine</th>
-        <th style="padding:6px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:right">Taille</th>
-        <th style="padding:6px 10px"></th>
-      </tr></thead>
-      <tbody>${d.topKeys.map(k => {
-        let origin, originColor;
-        if(k.key.startsWith('fpa_analyse_week_')){ origin = 'FPA — détail Analyse'; originColor = 'var(--cyan)'; }
-        else if(k.key.startsWith('fpa_')){ origin = 'FPA — autre module'; originColor = 'var(--navy)'; }
-        else if(k.key.startsWith('dm:') || k.key.startsWith('digital')){ origin = 'Digital Monitoring'; originColor = '#5B3FA8'; }
-        else { origin = '⚠ Outil tiers / inconnu'; originColor = '#CC2222'; }
-        return `<tr>
-          <td style="padding:6px 10px;font-size:11px;font-family:monospace">${escHtml(k.key)}</td>
-          <td style="padding:6px 10px;font-size:10.5px;font-weight:700;color:${originColor}">${origin}</td>
-          <td style="padding:6px 10px;font-size:11.5px;text-align:right;font-weight:700">${mb(k.bytes)}</td>
-          <td style="padding:6px 10px;text-align:center"><button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="analyseDeleteStorageKeyUI('${escHtml(k.key).replace(/'/g,"\\'")}', ${k.bytes})" title="Supprimer cette clé du stockage local">🗑</button></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>
-  `;
-}
-
-/** Supprime une clé localStorage arbitraire depuis le tableau de diagnostic
- *  — avec confirmation renforcée si la clé appartient visiblement à FPA
- *  (préfixe "fpa_") plutôt qu'à un outil tiers, pour éviter une suppression
- *  accidentelle de donnée encore utile à l'application. */
-function analyseDeleteStorageKeyUI(key, bytes){
-  const mbStr = (bytes/1024/1024).toFixed(2) + ' Mo';
-  const isFpa = key.startsWith('fpa_');
-  const msg = isFpa
-    ? `Supprimer la clé FPA « ${key} » (${mbStr}) ? Cette clé appartient à FPA — vérifie qu'il ne s'agit pas d'une donnée dont tu as encore besoin avant de continuer.`
-    : `Supprimer « ${key} » (${mbStr}) ? Cette clé ne semble pas appartenir à FPA (probablement un autre outil/artifact utilisé dans ce même navigateur) — sans risque pour FPA si tu confirmes.`;
-  if(!confirm(msg)) return;
-  try{
-    localStorage.removeItem(key);
-    showToast('✓ Clé « ' + key + ' » supprimée (' + mbStr + ' libéré(s))', 'success');
-  }catch(e){
-    showToast('Erreur lors de la suppression : ' + e.message, 'err');
-  }
-  analyseDiagnoseLocalStorageUI();
-}
-
 function analyseRenderRecalcReport(result){
   const area = document.getElementById('analyseRecalcReportArea');
   const wrap = document.getElementById('analyseRecalcReportWrap');
@@ -11330,47 +11157,6 @@ function digitalAudienceLoadLocal(){
 function digitalAudienceSaveLocal(){
   try{ localStorage.setItem(DIGITAL_AUDIENCE_LOCAL_KEY, JSON.stringify(digitalAudienceHistory)); }
   catch(e){ /* quota localStorage, ignoré */ }
-}
-
-/** Répare les durées d'écoute importées avec la régression de parsing
- *  HH:MM/MM:SS (voir digitalAudienceParsePdfText) : la valeur corrompue est
- *  toujours exactement 60× trop petite (hh*60+mm secondes au lieu de
- *  hh*3600+mm*60), donc la multiplication par 60 est une réparation exacte,
- *  pas une estimation — pas besoin de retrouver les PDF d'origine. Un seuil
- *  de 600s (10 min) sépare de façon fiable les valeurs corrompues (quelques
- *  dizaines de secondes) des valeurs correctes (plusieurs dizaines de
- *  minutes, jamais aussi courtes pour ces sessions radio). */
-function digitalAudienceRepairCorruptedDurations(){
-  const REPAIR_THRESHOLD_SEC = 600;
-  const toFix = [];
-  DIGITAL_AUDIENCE_STATIONS.forEach(stKey => {
-    const weeks = digitalAudienceHistory[stKey] || {};
-    Object.keys(weeks).forEach(w => {
-      const rec = weeks[w];
-      if(rec.dureeSec != null && rec.dureeSec > 0 && rec.dureeSec < REPAIR_THRESHOLD_SEC){
-        toFix.push({ stKey, week: w, before: rec.dureeSec, after: rec.dureeSec * 60 });
-      }
-    });
-  });
-  if(!toFix.length){
-    showToast('Aucune durée corrompue détectée — rien à réparer', 'ok');
-    return;
-  }
-  const preview = toFix.slice(0, 8).map(f =>
-    `${STATION_LABELS[f.stKey]||f.stKey} — ${digitalAudienceFmtDate(f.week)} : ${digitalAudienceFmtDuration(f.before)} → ${digitalAudienceFmtDuration(f.after)}`
-  ).join('\n');
-  const more = toFix.length > 8 ? `\n… et ${toFix.length - 8} autre(s)` : '';
-  if(!confirm(`Réparer ${toFix.length} durée(s) d'écoute corrompue(s) (×60) ?\n\n${preview}${more}\n\nSauvegardé en local et sur Drive si configuré.`)) return;
-
-  toFix.forEach(f => { digitalAudienceHistory[f.stKey][f.week].dureeSec = f.after; });
-  digitalAudienceSaveLocal();
-  digitalAudienceSaveToDrive();
-  showToast(`${toFix.length} durée(s) réparée(s) (Europe 2 + RFM)`, 'ok');
-  if(typeof renderDigitalAudiencePage === 'function') renderDigitalAudiencePage();
-  if(typeof analyseSubView !== 'undefined'){
-    if(analyseSubView === 'corr' && typeof renderCorrPage === 'function') renderCorrPage();
-    if(analyseSubView === 'graph' && typeof renderGraphPage === 'function') renderGraphPage();
-  }
 }
 
 /** Sauvegarde l'historique complet (2 stations, données hebdo agrégées —
@@ -26337,14 +26123,32 @@ async function computeRadarRows(){
   // pour la comparaison — une semaine encore incomplète fausserait les gains
   // constatés. On prend donc la première entrée dont le vendredi d'ouverture
   // est strictement antérieur à celui de la semaine en cours.
+  //
+  // Résilience : si le fichier Drive de la meilleure candidate est corrompu
+  // (JSON invalide — ça peut arriver après un envoi interrompu), on essaie la
+  // candidate suivante plutôt que de bloquer toute la page Radar. L'index est
+  // déjà trié du plus récent au plus ancien (dedupeAndSortChartsIndex), donc
+  // cet ordre de parcours reste "la semaine valide la plus proche".
   const currentWeekKey = fridayWeekKey(new Date());
-  const refEntry = chartsHistoryIndex.find(e => e.date < currentWeekKey) || chartsHistoryIndex[0];
+  const olderWeeks = chartsHistoryIndex.filter(e => e.date < currentWeekKey);
+  const candidates = olderWeeks.length ? olderWeeks : chartsHistoryIndex;
 
-  let prevData;
-  try{
-    prevData = await loadChartsWeek(refEntry.date);
-  }catch(e){
-    return {status:'error', message: e.message};
+  let prevData = null, refEntry = null;
+  const skipped = [];
+  for(const candidate of candidates){
+    try{
+      prevData = await loadChartsWeek(candidate.date);
+      refEntry = candidate;
+      break;
+    }catch(e){
+      skipped.push({ date: candidate.date, label: candidate.label, message: e.message });
+    }
+  }
+  if(!prevData){
+    const detail = skipped.length
+      ? ' (semaine(s) illisible(s) sur Drive : ' + skipped.map(s => s.label || s.date).join(', ') + ')'
+      : '';
+    return {status:'error', message: 'Aucune semaine de référence lisible' + detail};
   }
 
   const threshShz  = parseInt(document.getElementById('radarThreshShz')?.value)  || 3;
@@ -26455,7 +26259,7 @@ async function computeRadarRows(){
 
   rows.sort((a,b) => b.totalGain - a.totalGain);
 
-  return {status:'ok', rows, refEntry, compLabel, useLive};
+  return {status:'ok', rows, refEntry, compLabel, useLive, skipped};
 }
 
 async function renderRadarPage(){
@@ -26508,6 +26312,12 @@ async function renderRadarPage(){
   if(badge){
     badge.textContent = '🕓 Comparé à : ' + (result.refEntry.label || result.refEntry.date);
     if(result.useLive) badge.textContent += ' · 🔴 Live (' + (livePeriod || 'période en cours') + ')';
+    if(result.skipped && result.skipped.length){
+      badge.textContent += ' · ⚠️ ' + result.skipped.length + ' semaine(s) plus récente(s) illisible(s) sur Drive, ignorée(s)';
+      badge.title = 'Semaine(s) ignorée(s) car corrompue(s) sur Drive : ' + result.skipped.map(s => s.label || s.date).join(', ') + '. La comparaison utilise la semaine valide la plus proche à la place.';
+    } else {
+      badge.title = '';
+    }
   }
 
   const rows = result.rows;
@@ -28683,7 +28493,7 @@ async function driveCall(action, key, payload, onProgress) {
       await driveCallJSONPWithRetry({ action: 'save_chunk', key, chunk, idx: i, total });
       if(onProgress) onProgress(i + 1, total);
     }
-    return driveCallJSONPWithRetry({ action: 'save_finalize', key });
+    return driveCallJSONPWithRetry({ action: 'save_finalize', key, total });
   })();
 
   if (key) {
@@ -28698,154 +28508,6 @@ async function driveCall(action, key, payload, onProgress) {
   }
   return doSave;
 }
-
-// ── Sauvegarde automatique quotidienne ──────────────────────────────────────
-// Empaquette les données JSON les plus sensibles à une perte (sound codes,
-// seuils, sélection Comité d'Écoute — tout ce qui vit uniquement dans le
-// navigateur, localStorage, et disparaîtrait en cas de vidage du cache) et
-// les sauvegarde sous une seule clé Drive.
-// IMPORTANT : l'historique complet des vagues (histLoad()) est délibérément
-// EXCLU de ce payload. Il est potentiellement volumineux (des mois de vagues
-// OMT/Call Out, 693 titres × plusieurs colonnes chacune) et le pousser via ce
-// même canal JSONP chunké (1500 caractères/chunk) est exactement ce qui a été
-// abandonné plus haut pour cette raison (voir commentaire dans driveCall) —
-// des milliers de requêtes séquentielles, peu fiable, potentiellement très
-// long voire bloquant. Pour l'historique, utiliser le bouton dédié
-// « Exporter tout l'historique en JSON » (téléchargement local, sans limite
-// de taille réseau).
-const AUTO_BACKUP_KEY      = 'fpa_auto_backup';
-const AUTO_BACKUP_LAST_KEY = 'fpa_auto_backup_last'; // horodatage local du dernier succès
-const AUTO_BACKUP_MIN_INTERVAL_MS = 20 * 60 * 60 * 1000; // 20h : couvre à la fois
-
-  // l'usage quotidien normal et la relance après plusieurs jours d'inactivité
-  // avec un seul et même test.
-
-function buildAutoBackupPayload(){
-  let comiteTitles = [];
-  try{ comiteTitles = JSON.parse(localStorage.getItem('fpa_comite_titles') || '[]'); }catch(e){}
-  return {
-    savedAt      : new Date().toISOString(),
-    soundCodes   : genresStoreLoad(),
-    thresholds   : thLoad(),
-    comiteTitles : comiteTitles,
-  };
-}
-
-let autoBackupInProgress = false;
-
-async function runAutoBackup(){
-  if(!DRIVE_SYNC_URL) return {ok:false, reason:'no_url'};
-  if(autoBackupInProgress) return {ok:false, reason:'in_progress'};
-  autoBackupInProgress = true;
-  try{
-    const payload = buildAutoBackupPayload();
-    await driveCall('save', AUTO_BACKUP_KEY, JSON.stringify(payload));
-    localStorage.setItem(AUTO_BACKUP_LAST_KEY, payload.savedAt);
-    if(document.getElementById('driveSyncPanel')?.style.display === 'block') renderDriveSyncPanel();
-    return {ok:true};
-  }catch(e){
-    // Tâche de fond silencieuse en mode automatique : Drive Sync momentanément
-    // indisponible ne doit pas interrompre l'utilisateur avec un toast intrusif.
-    // En mode manuel (bouton), l'appelant décide s'il affiche ce message.
-    console.warn('Sauvegarde Drive échouée :', e.message);
-    return {ok:false, reason:'error', message: e.message};
-  }finally{
-    autoBackupInProgress = false;
-  }
-}
-
-/** Appelée au lancement de l'appli (une fois l'historique chargé). Ne
- *  déclenche une sauvegarde que si la dernière remonte à plus de 20h — ce qui
- *  correspond à la fois à « une fois par jour » en usage normal et à un
- *  rattrapage automatique si la plateforme n'a pas tourné depuis plusieurs
- *  jours, sans logique séparée pour les deux cas. */
-function maybeRunAutoBackup(){
-  if(!DRIVE_SYNC_URL) return;
-  const last = localStorage.getItem(AUTO_BACKUP_LAST_KEY);
-  const lastMs = last ? Date.parse(last) : 0;
-  if(!lastMs || (Date.now() - lastMs) >= AUTO_BACKUP_MIN_INTERVAL_MS){
-    runAutoBackup();
-  }
-}
-
-/** Formatage lisible d'une date ISO — jour de semaine + date complète + heure,
- *  ex. "mardi 8 juillet 2026 à 14:32". Utilisé partout où l'on affiche une
- *  date de sauvegarde, pour que ce soit sans ambiguïté (jour, mois en toutes
- *  lettres, heure) plutôt qu'un format numérique compact. */
-function formatBackupDate(iso){
-  if(!iso) return 'date inconnue';
-  try{
-    const d = new Date(iso);
-    if(isNaN(d.getTime())) return 'date inconnue';
-    const datePart = d.toLocaleDateString('fr-FR', {weekday:'long', day:'2-digit', month:'long', year:'numeric'});
-    const timePart = d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
-    return datePart.charAt(0).toUpperCase() + datePart.slice(1) + ' à ' + timePart;
-  }catch(e){ return iso; }
-}
-
-/** Récupère la sauvegarde automatique sur Drive et la fusionne avec les
- *  données locales (historique, sound codes, Comité d'Écoute fusionnés par
- *  clé — rien n'est supprimé ; seuils remplacés, comme pour l'import manuel
- *  de fichier JSON de seuils). Demande toujours confirmation avant d'agir,
- *  avec le détail de ce qui va être restauré. */
-async function restoreAutoBackup(){
-  if(!DRIVE_SYNC_URL){ showToast("Configurez d'abord l'URL Drive Sync", 'err'); return; }
-  let raw;
-  try{
-    const r = await driveCall('load', AUTO_BACKUP_KEY);
-    raw = r.data;
-  }catch(e){
-    showToast('Aucune sauvegarde trouvée sur Drive · ' + e.message, 'err');
-    return;
-  }
-  let payload;
-  try{ payload = JSON.parse(raw); }
-  catch(e){ showToast('Sauvegarde Drive illisible (JSON invalide)', 'err'); return; }
-
-  const nSound  = payload.soundCodes && typeof payload.soundCodes === 'object' ? Object.keys(payload.soundCodes).length : 0;
-  const nComite = Array.isArray(payload.comiteTitles) ? payload.comiteTitles.length : 0;
-
-  const msg = 'Restaurer la sauvegarde Drive du ' + formatBackupDate(payload.savedAt) + ' ?\n\n' +
-    '• ' + nSound + ' sound code(s) (fusionnés)\n' +
-    '• Seuils (remplacés par ceux de la sauvegarde)\n' +
-    '• ' + nComite + ' titre(s) Comité d\'Écoute (fusionnés)\n\n' +
-    'Rien n\'est supprimé localement — seules les valeurs en conflit (même titre) sont écrasées par la version sauvegardée.\n' +
-    "(L'historique des vagues n'est pas concerné par cette sauvegarde — utilisez plutôt Historique → Exporter tout en JSON.)";
-  if(!confirm(msg)) return;
-
-  // Sound codes : fusion par clé titre/artiste
-  if(payload.soundCodes && typeof payload.soundCodes === 'object'){
-    const store = genresStoreLoad();
-    Object.entries(payload.soundCodes).forEach(([key, val]) => {
-      if(val && typeof val === 'object') store[key] = val;
-    });
-    genresStoreSave(store);
-  }
-
-  // Seuils : remplacement, comme l'import manuel JSON
-  if(payload.thresholds && typeof payload.thresholds === 'object'){
-    thSave(payload.thresholds);
-  }
-
-  // Comité d'Écoute : fusion par clé
-  if(Array.isArray(payload.comiteTitles)){
-    payload.comiteTitles.forEach(t => {
-      if(t && t.key && !comiteTitles.some(x => x.key === t.key)) comiteTitles.push(t);
-    });
-    comiteSaveToStorage();
-    updateComiteBadge();
-  }
-
-  updateHistoryBadge();
-  if(historyPageOpen) renderHistoryPage();
-  if(comitePageOpen) renderComitePage();
-  renderThresholdsGrid();
-  renderRawDataTable();
-  renderGenresPage();
-  showToast('Sauvegarde du ' + formatBackupDate(payload.savedAt) + ' restaurée ✓', 'success');
-  renderDriveSyncPanel();
-}
-
 
 async function drivePing() {
   try { await driveCall('ping'); return true; }
@@ -29637,8 +29299,20 @@ function renderDriveSyncPanel() {
             <div style="font-size:10px;color:var(--muted)">Détail non chargé — cliquez sur Restaurer pour le récupérer depuis Drive</div>
           </div>
         </div>
-        <button onclick="restoreChartsWeek('${e.date}').then(()=>renderDriveSyncPanel())"
-          style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--cyan-light);border:1px solid var(--cyan-mid);color:#007B87;cursor:pointer;font-weight:700;flex-shrink:0">Restaurer</button>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button onclick="restoreChartsWeek('${e.date}').then(()=>renderDriveSyncPanel())"
+            style="font-size:10px;padding:4px 10px;border-radius:6px;background:var(--cyan-light);border:1px solid var(--cyan-mid);color:#007B87;cursor:pointer;font-weight:700">Restaurer</button>
+          <button onclick="if(confirm('Supprimer définitivement la semaine « ${escHtml(e.label).replace(/'/g,"\\'")} » (${e.date}) ? Utile si son fichier est corrompu sur Drive (JSON invalide) et bloque son chargement.')){
+            driveCall('delete','charts_week_${e.date}').then(()=>{
+              chartsHistoryIndex = chartsHistoryIndex.filter(x=>x.date!=='${e.date}');
+              delete chartsHistoryWeeks['${e.date}'];
+              saveChartsIndex();
+              renderDriveSyncPanel();
+              showToast('Semaine supprimée','success');
+            }).catch(err=>showToast('Erreur : '+err.message,'err'));
+          }" title="Supprimer cette semaine (ex. fichier corrompu sur Drive)"
+            style="font-size:10px;padding:4px 8px;border-radius:6px;background:#FFEAEA;border:1px solid #F5B8B8;color:#CC2222;cursor:pointer;font-weight:700">🗑</button>
+        </div>
       </div>`;
     }
 
@@ -29785,39 +29459,6 @@ function renderDriveSyncPanel() {
             style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--white);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700">
             ↻ Recharger l'index
           </button>
-          <div style="border-top:1px dashed var(--border);margin:4px 0;padding-top:8px">
-            <div style="font-size:10.5px;font-weight:700;color:var(--navy);margin-bottom:4px">🗄️ Sauvegarde manuelle (sound codes, seuils, Comité d'Écoute)</div>
-            <div style="font-size:10px;color:var(--text2);margin-bottom:8px;line-height:1.5">${(()=>{
-              const last=localStorage.getItem(AUTO_BACKUP_LAST_KEY);
-              return last
-                ? '<strong style="color:var(--navy)">Dernière sauvegarde :</strong><br>'+formatBackupDate(last)
-                : 'Aucune sauvegarde automatique enregistrée pour le moment';
-            })()}</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button onclick="(async()=>{
-                const btn=this; btn.disabled=true; btn.textContent='⏳ Sauvegarde…';
-                const r=await runAutoBackup();
-                let msg, kind;
-                if(r.ok){ msg='Sauvegarde effectuée ✓'; kind='success'; }
-                else if(r.reason==='no_url'){ msg='Configurez d\\'abord l\\'URL Drive Sync ci-dessus (champ vide)'; kind='err'; }
-                else if(r.reason==='in_progress'){ msg='Une sauvegarde est déjà en cours…'; kind='err'; }
-                else { msg='Échec de la sauvegarde · '+(r.message||'erreur inconnue'); kind='err'; }
-                showToast(msg, kind);
-                btn.disabled=false; btn.textContent='💾 Sauvegarder maintenant';
-                renderDriveSyncPanel();
-              })()" style="font-size:10.5px;padding:5px 10px;border-radius:6px;background:var(--cyan-light);border:1px solid var(--cyan-mid);color:#007B87;cursor:pointer;font-weight:700">
-                💾 Sauvegarder maintenant
-              </button>
-              <button onclick="(async()=>{
-                const btn=this; const orig=btn.textContent; btn.disabled=true; btn.textContent='⏳ Restauration…';
-                await restoreAutoBackup();
-                btn.disabled=false; btn.textContent=orig;
-              })()" style="font-size:10.5px;padding:5px 10px;border-radius:6px;background:var(--white);border:1px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700">
-                ♻️ Restaurer la sauvegarde
-              </button>
-            </div>
-            <div style="font-size:9px;color:var(--muted);line-height:1.4;margin-top:6px;max-width:260px">Se déclenche uniquement à la main, via le bouton ci-dessus — plus de sauvegarde automatique à l'ouverture de FPA. Clé <strong>fpa_auto_backup</strong> sur Drive. La restauration fusionne avec les données déjà présentes (rien n'est supprimé) et demande confirmation avant d'agir.</div>
-          </div>
         </div>
       </div>
       <!-- Migration vers un autre poste -->
@@ -29844,6 +29485,18 @@ function renderDriveSyncPanel() {
           <button onclick="recoverMissingChartsWeeks()"
             style="font-size:10px;padding:3px 10px;border-radius:6px;background:var(--cyan-light);border:1px solid var(--cyan-mid);color:#007B87;cursor:pointer;font-weight:700">
             🔍 Retrouver des semaines manquantes
+          </button>
+          <button onclick="(async()=>{
+            const btn=this; const orig=btn.textContent; btn.disabled=true; btn.textContent='⏳ Nettoyage…';
+            try{
+              const r = await driveCall('cleanup_chunks');
+              const msg = r.deleted ? (r.deleted + ' chunk(s) orphelin(s) supprimé(s), ' + r.freedChars.toLocaleString('fr-FR') + ' caractères libérés') : 'Aucun chunk orphelin trouvé — quota déjà propre';
+              showToast(msg, 'success');
+            }catch(e){ showToast('Erreur : '+e.message, 'err'); }
+            btn.disabled=false; btn.textContent=orig;
+          })()" title="Purge les chunks laissés par un envoi interrompu (page fermée, coupure réseau) — c'est ce qui remplit le quota de stockage des propriétés Apps Script au fil du temps"
+            style="font-size:10px;padding:3px 10px;border-radius:6px;background:#FFF4E5;border:1px solid #F0C078;color:#B36B00;cursor:pointer;font-weight:700">
+            🧹 Nettoyer les chunks orphelins
           </button>
           <button onclick="if(confirm('Supprimer l\\'index Drive et repartir de zéro ? Les fichiers semaines restent sur Drive.')){driveCall('delete',CHARTS_INDEX_KEY).then(()=>{chartsHistoryIndex=[];chartsHistoryLoaded=false;chartsHistoryWeeks={};updateDriveSyncStatus();renderDriveSyncPanel();showToast('Index supprimé — vous pouvez ré-enregistrer','success');}).catch(e=>showToast('Erreur : '+e.message,'err'));}"
             style="font-size:10px;padding:3px 10px;border-radius:6px;background:#FFEAEA;border:1px solid #F5B8B8;color:#CC2222;cursor:pointer;font-weight:700">
