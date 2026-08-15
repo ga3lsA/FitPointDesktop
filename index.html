@@ -46,9 +46,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 .tag{display:inline-block;padding:3px 9px;border-radius:5px;font-size:11px;font-weight:700;letter-spacing:.03em;white-space:nowrap}
 .step{font-size:11px;color:var(--muted);font-weight:600;padding:4px 10px;border-radius:20px}
 .step.active{color:var(--white);background:var(--navy)}
-.dec-subtab{height:48px;padding:0 18px;font-size:12px;font-weight:700;border:none;border-bottom:2.5px solid transparent;background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;line-height:1;transition:color .15s,border-color .15s;outline:none}
-.dec-subtab:hover{color:var(--navy)}
-.dec-subtab:focus-visible{outline:2px solid var(--cyan);outline-offset:-3px;border-radius:4px}
 .dec-subtab-ic{font-size:14px;line-height:1;display:inline-flex}
 .dec-group{position:relative}
 .dec-group-btn{height:48px;padding:0 14px;font-size:12px;font-weight:700;border:none;border-bottom:2.5px solid transparent;background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;line-height:1;transition:color .15s,border-color .15s;outline:none}
@@ -476,9 +473,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <button id="decTabBurn"   onclick="switchDecTab('burn')"   class="dec-subtab-item"><span class="dec-subtab-ic">🔥</span>Burn Rate</button>
         </div>
       </div>
-
-      <!-- Genres — entrée seule, hors groupe -->
-      <button id="decTabGenres"  onclick="switchDecTab('genres')"  class="dec-subtab"><span class="dec-subtab-ic">🎵</span>Genres</button>
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-shrink:0">
       <span id="decisionDataBadge" style="font-size:11px;color:var(--muted);white-space:nowrap"></span>
@@ -501,7 +495,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--cyan) 0%,rgba(0,184,200,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Aide à la programmation</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Matrice de décision</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Matrice de décision<span class="station-logo-slot"></span></h2>
             <button id="infoMatrixBtn" onclick="toggleInfoNote('infoMatrix')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -586,7 +580,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--cyan) 0%,rgba(0,184,200,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Aide à la programmation</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Score de Programmation Unifié</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Score de Programmation Unifié<span class="station-logo-slot"></span></h2>
             <button id="infoSpuBtn" onclick="toggleInfoNote('infoSpu')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -638,7 +632,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--cyan) 0%,rgba(0,184,200,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Aide à la programmation</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Vue Concurrence</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Vue Concurrence<span class="station-logo-slot"></span></h2>
             <button id="infoCompBtn" onclick="toggleInfoNote('infoComp')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -697,7 +691,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--cyan) 0%,rgba(0,184,200,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Aide à la programmation</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Burn Rate prédictif</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Burn Rate prédictif<span class="station-logo-slot"></span></h2>
             <button id="infoBurnBtn" onclick="toggleInfoNote('infoBurn')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -756,7 +750,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--cyan) 0%,rgba(0,184,200,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Aide à la programmation</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Score de Polarisation</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Score de Polarisation<span class="station-logo-slot"></span></h2>
             <button id="infoPolarBtn" onclick="toggleInfoNote('infoPolar')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -812,7 +806,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--cyan) 0%,rgba(0,184,200,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Aide à la programmation</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Analyse de potentiel</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Analyse de potentiel<span class="station-logo-slot"></span></h2>
             <button id="infoShazIncBtn" onclick="toggleInfoNote('infoShazInc')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -885,7 +879,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--cyan) 0%,rgba(0,184,200,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Aide à la programmation</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🔒 Exclusifs</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">🔒 Exclusifs<span class="station-logo-slot"></span></h2>
             <button id="infoExclusifsBtn" onclick="toggleInfoNote('infoExclusifs')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -956,7 +950,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#7C3AED 0%,rgba(124,58,237,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px"><span class="station-name">Europe 2</span> &middot; Cible Ensemble</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🧬 Cycles de vie</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">🧬 Cycles de vie<span class="station-logo-slot"></span></h2>
             <button id="infoCyclesBtn" onclick="toggleInfoNote('infoCycles')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -1000,7 +994,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#0DA76B 0%,rgba(13,167,107,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Détection de momentum</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🎯 Radar — titres en forte progression</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">🎯 Radar — titres en forte progression<span class="station-logo-slot"></span></h2>
             <button id="infoRadarBtn" onclick="toggleInfoNote('infoRadar')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -1070,7 +1064,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#7C3AED 0%,rgba(124,58,237,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Détection — signaux faibles</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🔭 Veille</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">🔭 Veille<span class="station-logo-slot"></span></h2>
             <button id="infoWatchlistBtn" onclick="toggleInfoNote('infoWatchlist')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment ça marche
@@ -1128,7 +1122,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#7C3AED 0%,rgba(124,58,237,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Décalage marché digital / radio</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">⏱️ IEDR — Indice d'Écart Digital Radio</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">⏱️ IEDR — Indice d'Écart Digital Radio<span class="station-logo-slot"></span></h2>
             <button id="infoIedrBtn" onclick="toggleInfoNote('infoIedr')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
               Comment lire cette page
@@ -1230,7 +1224,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#7C3AED 0%,rgba(124,58,237,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Digital Métrics</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🔊 Décalage Shazam/Radio</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">🔊 Décalage Shazam/Radio<span class="station-logo-slot"></span></h2>
           </div>
         </div>
         <div id="shazlagHistoryBadge" style="font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;white-space:nowrap"></div>
@@ -1250,7 +1244,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#7C3AED 0%,rgba(124,58,237,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Digital Métrics</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🧮 Score composite pondéré</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">🧮 Score composite pondéré<span class="station-logo-slot"></span></h2>
           </div>
         </div>
       </div>
@@ -1294,7 +1288,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#F59E0B 0%,rgba(245,158,11,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Digital Métrics</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🪟 Fenêtre d'opportunité</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">🪟 Fenêtre d'opportunité<span class="station-logo-slot"></span></h2>
           </div>
         </div>
         <label style="display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700;color:var(--text2)">
@@ -1318,7 +1312,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#7C3AED 0%,rgba(124,58,237,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
             <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Digital Métrics</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">📶 Triple Benchmark</h2>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">📶 Triple Benchmark<span class="station-logo-slot"></span></h2>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -1344,55 +1338,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div id="benchmarkBody" style="display:none">
         <div id="benchmarkResult"></div>
       </div>
-    </div>
-
-    <div id="decPaneGenres" style="display:none">
-
-      <!-- En-tête -->
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap">
-        <div style="display:flex;align-items:flex-start;gap:14px">
-          <div style="width:4px;height:40px;background:linear-gradient(180deg,#E85D2C 0%,rgba(232,93,44,.2) 100%);border-radius:4px;flex-shrink:0"></div>
-          <div>
-            <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Classification musicale</div>
-            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">🎵 Genres</h2>
-            <button id="infoGenresBtn" onclick="toggleInfoNote('infoGenres')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-              Comment ça marche
-              <svg class="info-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-          </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <button onclick="exportGenresJSON()" title="Télécharge un fichier JSON avec tous les sound codes confirmés/suggérés (par titre/artiste), pour les retrouver sur un autre ordinateur ou navigateur"
-            style="display:flex;align-items:center;gap:6px;background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0"
-            onmouseenter="this.style.borderColor='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)'">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Exporter les sound codes
-          </button>
-          <label title="Importe un fichier JSON de sound codes précédemment exporté et le fusionne avec ceux déjà présents dans ce navigateur (les entrées importées priment en cas de doublon)"
-            style="display:flex;align-items:center;gap:6px;background:var(--white);border:1.5px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;white-space:nowrap;flex-shrink:0"
-            onmouseenter="this.style.borderColor='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)'">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Importer
-            <input type="file" accept=".json" style="display:none" onchange="importGenresJSON(this.files[0]);this.value=''">
-          </label>
-          <button onclick="genresSuggestAll()" style="display:flex;align-items:center;gap:6px;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0">
-            🔍 Suggérer les genres manquants
-          </button>
-        </div>
-      </div>
-
-      <div id="infoGenres" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Ce que fait ce bouton</strong> — pour chaque titre de la vague sans sound code déjà confirmé, une recherche est faite sur l'API publique iTunes (titre + artiste) et son genre est automatiquement rapproché d'une ou plusieurs des 6 catégories ci-dessous (un genre composite comme «&nbsp;French Pop&nbsp;» ou «&nbsp;Electropop&nbsp;» suggère par exemple Pop + Variété ou Pop + Electro).</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Un titre, plusieurs sound codes</strong> — un titre peut cumuler plusieurs catégories à la fois (ex. «&nbsp;pop rock&nbsp;», «&nbsp;pop electro&nbsp;», «&nbsp;variété pop&nbsp;») : cliquez sur un badge inactif pour l'ajouter, sur un badge actif pour le retirer.</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Pourquoi une validation manuelle</strong> — les API musicales exposent des genres fins («&nbsp;dance pop&nbsp;», «&nbsp;conscious hip hop&nbsp;»...), pas les 6 catégories métier utilisées ici : le rapprochement automatique est une <strong>suggestion</strong>, pas une certitude. Cliquez sur un badge pour la corriger — dès qu'un titre a été touché manuellement, les suggestions auto ne l'écrasent plus.</div>
-        <div><strong style="color:var(--navy)">Persistance</strong> — les classifications (suggérées et confirmées) sont mémorisées dans ce navigateur par titre/artiste, et réutilisées automatiquement d'une vague à l'autre. Ce stockage est local à ce navigateur/ordinateur : utilisez « Exporter les sound codes » pour en garder une copie portable (fichier JSON), et « Importer » pour la recharger sur un autre poste ou navigateur.</div>
-      </div>
-
-      <div id="genresStats" style="margin-bottom:18px"></div>
-      <div id="genresEmptyBar" style="display:none;padding:24px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
-      <div id="genresTableWrap"></div>
-
     </div>
 
   </div>
@@ -1602,7 +1547,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--navy) 0%,rgba(11,29,58,.2) 100%);border-radius:4px;flex-shrink:0"></div>
         <div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Programmation exhaustive · Yacast/Muzicast</div>
-          <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">Analyse — <span id="analyseStationLabel">Europe 2</span></h2>
+          <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Analyse — <span id="analyseStationLabel">Europe 2</span><span class="station-logo-slot"></span></h2>
         </div>
       </div>
       <div id="analyseProgActions" style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -1695,6 +1640,12 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">📅 Historique des semaines archivées</div>
         <div style="display:flex;gap:8px">
           <button class="btn-ghost" id="analyseRecalcBtn" style="font-size:11px;padding:8px 14px" onclick="analyseRecalculateAllArchivesUI()" title="Recalcule les scores Call Out/OMT/Fit Score des semaines déjà archivées, à partir de leur date réelle — sans réimporter les fichiers Excel">🔄 Recalculer les scores (semaines archivées)</button>
+          <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="(async()=>{
+            const btn=this; const orig=btn.textContent; btn.disabled=true; btn.textContent='⏳ Envoi…';
+            const r = await analyseSaveHistoryToDrive();
+            if(r.ok) showToast('Statistiques Analyse (toutes semaines) envoyées sur Drive', 'success');
+            btn.disabled=false; btn.textContent=orig;
+          })()" title="Renvoie les statistiques agrégées de toutes les semaines archivées vers Drive, même si rien n'a changé depuis — utile après un échec de synchro (le détail par titre, lui, reste toujours local, voir note ci-dessous)">☁️⬆️ Forcer l'envoi vers Drive</button>
         </div>
       </div>
       <div id="analyseRecalcProgressWrap" style="display:none;margin-bottom:14px">
@@ -1774,6 +1725,13 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <option value="EUROPE2">Europe 2</option>
           <option value="RFM">RFM</option>
         </select>
+        <label style="font-size:11px;font-weight:700;color:var(--text2);margin-left:10px">Période :</label>
+        <label style="font-size:11px;color:var(--text2)">De
+          <select id="corrRangeFrom" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="corrOnRangeChange()"></select>
+        </label>
+        <label style="font-size:11px;color:var(--text2)">à
+          <select id="corrRangeTo" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="corrOnRangeChange()"></select>
+        </label>
         <span style="font-size:11px;color:var(--muted);margin-left:auto">Jointure par numéro de semaine Yacast (approximatif si le libellé de la semaine n'est pas au format « S32 ») — corrigez la correspondance ligne par ligne si besoin.</span>
       </div>
 
@@ -10055,6 +10013,16 @@ function updateStationToggleUI(){
   document.querySelectorAll('.station-name').forEach(span => {
     span.textContent = STATION_LABELS[ACTIVE_STATION];
   });
+  // Logo de la station à côté des titres des pages d'analyse (Décision +
+  // Analyse) — réutilise le logo déjà chargé dans l'en-tête (balise <img
+  // alt="Europe 2"> / <img alt="RFM">) plutôt que de dupliquer le base64 à
+  // chaque emplacement, même principe que quotasLogoImg().
+  const logoAlt = STATION_LABELS[ACTIVE_STATION]; // "Europe 2" ou "RFM"
+  const src = document.querySelector('img[alt="' + logoAlt + '"]');
+  const logoHtml = src
+    ? '<img src="' + src.getAttribute('src') + '" alt="' + logoAlt + '" height="22" style="object-fit:contain;display:block">'
+    : '';
+  document.querySelectorAll('.station-logo-slot').forEach(slot => { slot.innerHTML = logoHtml; });
 }
 
 // Onglets Europe 2 (comparaison normalisée insensible casse/accents/séparateurs)
@@ -12601,9 +12569,9 @@ function graphZoomToggleHtml(key, checked){
     <input type="checkbox" id="graph${key}ZoomToggle" ${checked?'checked':''} onchange="graphOnZoomToggle('${key}')"> 🔍 Zoomer sur les variations
   </label>`;
 }
-function graphCardShell(key, title, subtitle, withManagePanel){
+function graphCardShell(key, title, subtitle, withManagePanel, withStationLogo){
   return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px">
-    <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">${escHtml(title)}</div>
+    <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:8px">${escHtml(title)}${withStationLogo ? '<span class="station-logo-slot"></span>' : ''}</div>
     ${subtitle ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${escHtml(subtitle)}</div>` : '<div style="margin-bottom:10px"></div>'}
     <div id="graph${key}Controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px"></div>
     ${withManagePanel ? `<div id="graphLabelsManageWrap" style="display:none;margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px">
@@ -12886,12 +12854,25 @@ function renderGraphPage(){
   }
 
   cardsArea.innerHTML = [
-    graphCardShell('recherche', 'Recherche', 'Résultats Call Out / OMT — Pot Score, Fam Score et leurs taux de Burn, cibles Ensemble et P1.'),
-    graphCardShell('fit', 'Fit Score', 'Fit Score et SPU moyens pondérés de la programmation.'),
-    graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.'),
-    graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.'),
+    graphCardShell('recherche', 'Recherche', 'Résultats Call Out / OMT — Pot Score, Fam Score et leurs taux de Burn, cibles Ensemble et P1.', false, true),
+    graphCardShell('fit', 'Fit Score', 'Fit Score et SPU moyens pondérés de la programmation.', false, true),
+    graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.', false, true),
+    graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.', false, true),
     graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
   ].join('');
+
+  // Les emplacements .station-logo-slot viennent d'être recréés dans le DOM
+  // (innerHTML ci-dessus) — repeupler immédiatement. IMPORTANT : on utilise
+  // ici stKey (= graphUI.station, le sélecteur propre à CETTE page), pas
+  // updateStationToggleUI()/ACTIVE_STATION — la page Graphiques a son propre
+  // bouton de station, indépendant du reste de l'app (voir bouton
+  // "graphUI.station=...;renderGraphPage()" plus haut).
+  const graphLogoAlt = STATION_LABELS[stKey];
+  const graphLogoSrc = document.querySelector('img[alt="' + graphLogoAlt + '"]');
+  const graphLogoHtml = graphLogoSrc
+    ? '<img src="' + graphLogoSrc.getAttribute('src') + '" alt="' + graphLogoAlt + '" height="22" style="object-fit:contain;display:block">'
+    : '';
+  cardsArea.querySelectorAll('.station-logo-slot').forEach(slot => { slot.innerHTML = graphLogoHtml; });
 
   graphRenderGenreCard(stKey, weeks);
   graphRenderRechercheCard(stKey, weeks);
@@ -12914,6 +12895,20 @@ function renderGraphPage(){
 // modifiable manuellement ligne par ligne (persistée dans un mapping local),
 // car ce rapprochement automatique est une heuristique, pas une garantie.
 let corrStation = 'EUROPE2';
+/** Filtre de période du calcul de corrélation, par station (pour ne pas se
+ *  marcher dessus en changeant de station) — { from, to } en weekStart ISO
+ *  de la semaine d'audience, ou null pour "depuis le début"/"jusqu'à la fin".
+ *  N'affecte QUE la matrice de corrélation et le nuage de points : le
+ *  tableau de correspondance au-dessus continue d'afficher TOUTES les
+ *  semaines (y compris hors période), pour rester utilisable comme outil de
+ *  correction de l'appariement même quand on regarde une fenêtre restreinte. */
+let corrRangeFilter = { EUROPE2: {from:null, to:null}, RFM: {from:null, to:null} };
+function corrOnRangeChange(){
+  const from = document.getElementById('corrRangeFrom')?.value || null;
+  const to   = document.getElementById('corrRangeTo')?.value || null;
+  corrRangeFilter[corrStation] = { from, to };
+  renderCorrPage();
+}
 const CORR_MANUAL_MAP_KEY = 'fpa_corr_manual_map_v1';
 
 function corrLoadManualMap(){
@@ -13101,8 +13096,39 @@ function renderCorrPage(){
     </table>
   `;
 
-  // ── Matrice de corrélation ──
-  const rows = matched.map(m => ({ prog: m.progEntry.stats, aud: m.audRecord }));
+  // ── Sélecteur de période — options construites à partir des semaines
+  // d'audience APPARIÉES (seules pertinentes pour un calcul de corrélation),
+  // triées chronologiquement. Reconstruit à chaque rendu (la liste change au
+  // fil des imports) mais la sélection en cours est préservée si elle existe
+  // toujours dans la nouvelle liste.
+  const matchedSorted = matched.slice().sort((a,b) => new Date(a.weekStart) - new Date(b.weekStart));
+  const rangeFilter = corrRangeFilter[stKey] || {from:null, to:null};
+  const fromSel = document.getElementById('corrRangeFrom');
+  const toSel   = document.getElementById('corrRangeTo');
+  if(fromSel && toSel){
+    const opts = matchedSorted.map(m => {
+      const lbl = digitalAudienceFmtDate(m.weekStart) + (m.progEntry ? ' (' + m.progEntry.weekLabel + ')' : '');
+      return { value: m.weekStart, label: lbl };
+    });
+    const buildOpts = (selected, fallbackFirst) => {
+      let html = '';
+      opts.forEach((o,i) => {
+        const isSelected = selected ? o.value===selected : (fallbackFirst ? i===0 : i===opts.length-1);
+        html += `<option value="${o.value}" ${isSelected?'selected':''}>${escHtml(o.label)}</option>`;
+      });
+      return html;
+    };
+    fromSel.innerHTML = buildOpts(rangeFilter.from, true);
+    toSel.innerHTML   = buildOpts(rangeFilter.to, false);
+  }
+  const fromIdx = rangeFilter.from ? matchedSorted.findIndex(m => m.weekStart === rangeFilter.from) : 0;
+  const toIdx   = rangeFilter.to   ? matchedSorted.findIndex(m => m.weekStart === rangeFilter.to)   : matchedSorted.length - 1;
+  const a = Math.max(0, Math.min(fromIdx===-1?0:fromIdx, toIdx===-1?matchedSorted.length-1:toIdx));
+  const b = Math.max(fromIdx===-1?0:fromIdx, toIdx===-1?matchedSorted.length-1:toIdx);
+  const matchedInRange = matchedSorted.slice(a, b+1);
+
+  // ── Matrice de corrélation ── (uniquement sur la période sélectionnée)
+  const rows = matchedInRange.map(m => ({ prog: m.progEntry.stats, aud: m.audRecord }));
   let matrixHtml = `<table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;font-size:11px">
     <thead><tr style="background:var(--bg)">
       <th style="padding:7px 10px;text-align:left;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Critère programmation \\ Audience</th>
@@ -13119,8 +13145,8 @@ function renderCorrPage(){
     matrixHtml += '</tr>';
   });
   matrixHtml += '</tbody></table>';
-  if(matched.length < 3){
-    matrixHtml += `<div style="margin-top:8px;font-size:11px;color:var(--muted)">⚠ Seulement ${matched.length} semaine(s) appariée(s) — un coefficient de corrélation fiable nécessite au moins 3 à 5 semaines comparables. Continuez d'importer/archiver pour affiner.</div>`;
+  if(matchedInRange.length < 3){
+    matrixHtml += `<div style="margin-top:8px;font-size:11px;color:var(--muted)">⚠ Seulement ${matchedInRange.length} semaine(s) appariée(s) sur la période sélectionnée — un coefficient de corrélation fiable nécessite au moins 3 à 5 semaines comparables. Élargissez la période, ou continuez d'importer/archiver pour affiner.</div>`;
   }
   document.getElementById('corrMatrixArea').innerHTML = matrixHtml;
 
@@ -13359,7 +13385,7 @@ function analyseBulkProcessNext(){
   if(!analyseBulkQueue.length){
     const r = analyseBulkResults;
     const detailWarning = r.detailFailed
-      ? `<div style="margin-top:10px;padding:10px 14px;border:1.5px solid #CC2222;border-radius:8px;color:#CC2222;font-size:12px">⚠ Le DÉTAIL par titre de ${r.detailFailed} semaine(s) n'a pas pu être sauvegardé (quota de stockage du navigateur atteint) : ${escHtml(r.detailFailedWeeks.join(', '))}. Les statistiques agrégées de ces semaines restent correctes, mais leur détail (recalcul, affichage titre par titre) est indisponible. Utilisez « 🔍 Diagnostiquer le stockage local » pour plus de détails.</div>`
+      ? `<div style="margin-top:10px;padding:10px 14px;border:1.5px solid #CC2222;border-radius:8px;color:#CC2222;font-size:12px">⚠ Le DÉTAIL par titre de ${r.detailFailed} semaine(s) n'a pas pu être sauvegardé (quota de stockage du navigateur atteint) : ${escHtml(r.detailFailedWeeks.join(', '))}. Les statistiques agrégées de ces semaines restent correctes, mais leur détail (recalcul, affichage titre par titre) est indisponible. Libérez de l'espace disque du navigateur (vider le cache d'autres sites, par exemple) puis réenregistrez ces semaines.</div>`
       : '';
     area.innerHTML = `<div style="font-size:13px;font-weight:700;color:var(--navy)">✓ Import terminé — ${r.archived} semaine(s) archivée(s)${r.skipped?', '+r.skipped+' ignorée(s)':''}${r.errors?', '+r.errors+' erreur(s)':''}.</div>
       ${detailWarning}
@@ -13505,7 +13531,7 @@ async function analyseBulkArchive(preview, silent){
     // suivantes. On arrête l'archivage automatique et on prévient tout de
     // suite plutôt que de laisser l'utilisateur le découvrir à la fin.
     analyseBulkAutoMode = false;
-    showToast('⚠ Quota de stockage local atteint — le détail de « ' + preview.label + ' » n\'a pas pu être sauvegardé. Archivage automatique interrompu. Libérez de l\'espace (voir 🔍 Diagnostiquer le stockage local) avant de continuer.', 'err');
+    showToast('⚠ Quota de stockage local atteint — le détail de « ' + preview.label + ' » n\'a pas pu être sauvegardé. Archivage automatique interrompu. Libérez de l\'espace disque du navigateur avant de continuer.', 'err');
   }
 
   analyseBulkResults.archived++;
@@ -13858,7 +13884,7 @@ async function analyseSaveWeekToHistory(){
   renderAnalyseHistoryPanel();
 
   if(!detailSaved){
-    showToast('⚠ Semaine ' + label + ' enregistrée (statistiques agrégées OK), mais le DÉTAIL par titre n\'a pas pu être sauvegardé localement — quota de stockage du navigateur probablement atteint. Utilisez « 🔍 Diagnostiquer le stockage local » pour vérifier. Le détail de cette semaine ne sera pas disponible pour le recalcul ou l\'affichage détaillé.', 'err');
+    showToast('⚠ Semaine ' + label + ' enregistrée (statistiques agrégées OK), mais le DÉTAIL par titre n\'a pas pu être sauvegardé localement — quota de stockage du navigateur probablement atteint. Le détail de cette semaine ne sera pas disponible pour le recalcul ou l\'affichage détaillé.', 'err');
     return;
   }
 
@@ -19597,7 +19623,6 @@ const DEC_TAB_TO_GROUP = {
   radar:'detection', polar:'detection', shazinc:'detection', exclusifs:'detection', watchlist:'detection',
   iedr:'digital', shazlag:'digital', compscore:'digital', opportunity:'digital', benchmark:'digital',
   cycles:'trajectoire', burn:'trajectoire'
-  // 'genres' n'appartient à aucun groupe (entrée seule)
 };
 const DEC_GROUP_KEYS = ['ranking','detection','digital','trajectoire'];
 
@@ -19631,20 +19656,17 @@ function switchDecTab(tab){
   if(tab === 'list') tab = 'matrix'; // compat : la liste est désormais intégrée à la matrice
   decActiveTab = tab;
   closeAllDecGroups();
-  ['matrix','spu','comp','burn','polar','shazinc','exclusifs','watchlist','cycles','radar','iedr','shazlag','compscore','opportunity','benchmark','genres'].forEach(t => {
+  ['matrix','spu','comp','burn','polar','shazinc','exclusifs','watchlist','cycles','radar','iedr','shazlag','compscore','opportunity','benchmark'].forEach(t => {
     document.getElementById('decPane'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'block':'none';
     const b = document.getElementById('decTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(b){
       b.classList.toggle('active', t===tab);
-      // Les entrées à l'intérieur d'un menu de groupe utilisent .dec-subtab-item
-      // (surlignage via classe), l'entrée seule Genres utilise .dec-subtab
-      // (surlignage via bordure/couleur inline, cf. CSS .dec-subtab).
       b.style.borderBottomColor = t===tab ? 'var(--cyan)' : 'transparent';
       b.style.color     = t===tab ? 'var(--navy)' : 'var(--muted)';
       b.style.fontWeight = t===tab ? '800' : '700';
     }
   });
-  // Surligne le bouton du groupe contenant l'onglet actif (ou aucun pour Genres)
+  // Surligne le bouton du groupe contenant l'onglet actif
   const activeGroup = DEC_TAB_TO_GROUP[tab] || null;
   DEC_GROUP_KEYS.forEach(g => {
     const btn = document.getElementById('decGroupBtn'+capitalize(g));
@@ -19665,7 +19687,6 @@ function switchDecTab(tab){
   if(tab==='compscore')   renderCompscorePage();
   if(tab==='opportunity') renderOpportunityPage();
   if(tab==='benchmark')   renderBenchmarkPage();
-  if(tab==='genres')  renderGenresPage();
 }
 
 /* ── Construire les données enrichies pour la Décision ── */
@@ -20152,58 +20173,6 @@ function dec360Sort(key){
 /** Rendu compact : un badge minimal par critère (icône + valeur courte),
  *  infobulle au survol pour le détail complet. En-têtes cliquables pour
  *  trier par n'importe quel critère ; tri par défaut = Score Global 360°. */
-// ══════════════════════════════════════════════════════════════════════════
-// GENRES — classification musicale (suggestion automatique + validation manuelle)
-// ══════════════════════════════════════════════════════════════════════════
-// Aucun fichier Call Out/OMT ne fournit cette info de façon fiable. On
-// suggère un genre par titre via l'API publique iTunes Search (gratuite,
-// sans clé, accessible directement depuis le navigateur en JSONP — pas
-// besoin d'un proxy comme pour Deezer/Apple Music). Cette API expose un
-// genre PAR TITRE (contrairement à Spotify qui n'a que des genres par
-// artiste), mais reste une micro-catégorie fine ("Dance", "Alternative"...)
-// qu'on rapproche des 6 catégories métier via une table de correspondance —
-// forcément imparfaite. D'où la validation manuelle : une fois qu'un titre
-// est confirmé par l'utilisateur, une nouvelle suggestion ne l'écrase jamais.
-
-const SOUND_CATEGORIES = {
-  pop:     { label:'Pop',      icon:'🎤', color:'#00B8C8', bg:'#E0F7FA' },
-  rock:    { label:'Rock',     icon:'🎸', color:'#CC2222', bg:'#FFEAEA' },
-  rap:     { label:'Rap',      icon:'🎧', color:'#7C3AED', bg:'#F3E8FF' },
-  urbain:  { label:'Urbain',   icon:'🕺', color:'#B05E00', bg:'#FFF4E0' },
-  electro: { label:'Electro',  icon:'🎛️', color:'#0DA76B', bg:'#E8F8F2' },
-  variete: { label:'Variété',  icon:'🎼', color:'#1E6FD9', bg:'#EAF2FF' },
-};
-
-// Correspondance genre iTunes (brut, tel que renvoyé par l'API) → une ou
-// plusieurs catégories métier (un titre peut cumuler plusieurs sound codes,
-// ex. "pop rock", "pop electro", "variété pop"). Liste non exhaustive : un
-// genre non reconnu reste "à valider" plutôt que de forcer un mauvais
-// rapprochement. Les entrées composites listent explicitement leurs 2 tags ;
-// les entrées simples restent un tableau à 1 élément.
-const ITUNES_GENRE_MAP = {
-  'POP':['pop'],'FRENCH POP':['pop','variete'],'DANCE POP':['pop','electro'],'TEEN POP':['pop'],'K-POP':['pop'],'J-POP':['pop'],
-  'ELECTROPOP':['pop','electro'],'SYNTH-POP':['pop','electro'],'POP ROCK':['pop','rock'],'POP/ROCK':['pop','rock'],
-  'ROCK':['rock'],'ALTERNATIVE':['rock'],'INDIE ROCK':['rock'],'METAL':['rock'],'PUNK':['rock'],'FOLK-ROCK':['rock','variete'],'SINGER/SONGWRITER':['variete'],
-  'HIP-HOP/RAP':['rap'],'HIP HOP':['rap'],'RAP':['rap'],'FRENCH HIP HOP':['rap'],'TRAP':['rap'],'CONSCIOUS HIP HOP':['rap'],
-  'R&B/SOUL':['urbain'],'R&B':['urbain'],'SOUL':['urbain'],'REGGAE':['urbain'],'AFROBEATS':['urbain'],'DANCEHALL':['urbain'],'FUNK':['urbain'],
-  'ELECTRONIC':['electro'],'DANCE':['electro'],'HOUSE':['electro'],'TECHNO':['electro'],'EDM':['electro'],'ELECTRO':['electro'],'DUBSTEP':['electro'],
-  'CHANSON FRANÇAISE':['variete'],'VARIÉTÉ FRANÇAISE':['variete'],'VARIETE POP':['variete','pop'],'EASY LISTENING':['variete'],'WORLD':['variete'],'LATIN':['variete'],'VOCAL':['variete'],
-};
-
-/** Retourne un tableau (0..n) de catégories métier correspondant au genre
- *  brut iTunes. Cumule toutes les correspondances trouvées (exactes ou
- *  partielles) plutôt que de s'arrêter à la première, pour permettre les
- *  suggestions multi-tags (ex. "Dance Pop" → pop + electro). */
-function mapItunesGenreToCategories(rawGenre){
-  if(!rawGenre) return [];
-  const norm = rawGenre.toUpperCase().trim();
-  if(ITUNES_GENRE_MAP[norm]) return [...ITUNES_GENRE_MAP[norm]];
-  const found = new Set();
-  for(const [k,v] of Object.entries(ITUNES_GENRE_MAP)){
-    if(norm.includes(k)) v.forEach(c => found.add(c));
-  }
-  return [...found];
-}
 
 // ── Stockage persistant (par titre/artiste, indépendant de la vague) ──
 function genresStoreLoad(){
@@ -21700,269 +21669,6 @@ function renderSpotifyPlaylistsGroupMenu(){
   menuEl.innerHTML = items
     + (items ? '<div style="height:1px;background:var(--border);margin:4px 8px"></div>' : '')
     + `<button id="chartTabIntl_keyplaylists" onclick="switchChartTab('keyplaylists')" class="dec-subtab-item"><span class="dec-subtab-ic">➕</span>Ajouter / gérer les playlists</button>`;
-}
-
-/** Export du store complet des sound codes (toutes vagues confondues, indexé
- *  par titre/artiste) — permet de retrouver ses classifications sur un autre
- *  ordinateur/navigateur, puisque le stockage est local à chaque navigateur. */
-function exportGenresJSON(){
-  const store = genresStoreLoad();
-  const keys = Object.keys(store);
-  if(!keys.length){ showToast('Aucun sound code à exporter', 'err'); return; }
-  const blob = new Blob([JSON.stringify(store, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'FPA_SoundCodes_' + new Date().toISOString().slice(0,10) + '.json';
-  a.click();
-  showToast(keys.length + ' titre(s) exporté(s)', 'success');
-}
-
-/** Import du store des sound codes — fusionne avec le store local existant.
- *  Les entrées importées prennent le dessus en cas de doublon (même clé
- *  titre/artiste), même logique que l'import d'historique. */
-function importGenresJSON(file){
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = e => {
-    try{
-      const incoming = JSON.parse(e.target.result);
-      if(typeof incoming !== 'object' || incoming === null || Array.isArray(incoming)){
-        showToast('Fichier JSON invalide (format sound codes attendu)', 'err'); return;
-      }
-      const store = genresStoreLoad();
-      let n = 0;
-      Object.entries(incoming).forEach(([key, val]) => {
-        if(!val || typeof val !== 'object') return;
-        store[key] = val;
-        n++;
-      });
-      genresStoreSave(store);
-      renderGenresPage();
-      showToast(n + ' titre(s) importé(s)', 'success');
-    } catch(err){
-      showToast('Fichier JSON invalide', 'err');
-    }
-  };
-  reader.readAsText(file);
-}
-
-/** Parcourt tous les titres de la vague en cours et suggère un genre pour
- *  ceux qui n'ont ni suggestion ni confirmation déjà enregistrée. Requêtes
- *  espacées pour rester respectueux de l'API publique. */
-async function genresSuggestAll(){
-  if(genresSuggestInProgress){ showToast('Une suggestion est déjà en cours…', 'err'); return; }
-  const rows = buildDecisionRows();
-  if(!rows.length){ showToast('Aucun titre à analyser', 'err'); return; }
-
-  const todo = rows.filter(r => {
-    const entry = getGenreEntry(r.title, r.artist);
-    return !entry || (!(entry.confirmed && entry.confirmed.length) && !(entry.suggested && entry.suggested.length));
-  });
-  if(todo.length === 0){ showToast('Tous les titres ont déjà un genre suggéré ou confirmé', 'success'); return; }
-
-  genresSuggestInProgress = true;
-  const btn = document.querySelector('#decPaneGenres button[onclick="genresSuggestAll()"]');
-  if(btn){ btn.disabled = true; btn.style.opacity = '0.6'; }
-
-  let done = 0, found = 0;
-  for(const r of todo){
-    const rawGenre = await fetchItunesGenre(r.title, r.artist);
-    const mapped = mapItunesGenreToCategories(rawGenre); // tableau, potentiellement plusieurs tags
-    if(rawGenre) found++;
-    setGenreEntry(r.title, r.artist, { suggested: mapped, rawGenre: rawGenre || null });
-    done++;
-    if(done % 5 === 0 || done === todo.length){
-      renderGenresPage();
-      const summ = document.getElementById('genresStats');
-      if(summ) summ.insertAdjacentHTML('afterbegin', `<div style="font-size:11px;color:var(--muted);margin-bottom:8px">⏳ ${done}/${todo.length} titres traités…</div>`);
-    }
-    await new Promise(res => setTimeout(res, 250)); // respect de l'API publique
-  }
-
-  genresSuggestInProgress = false;
-  if(btn){ btn.disabled = false; btn.style.opacity = '1'; }
-  renderGenresPage();
-  showToast(`${found}/${todo.length} genre${todo.length>1?'s':''} trouvé${todo.length>1?'s':''} sur iTunes`, 'success');
-}
-
-/** Bascule (ajoute/retire) une catégorie pour un titre donné — un titre peut
- *  porter plusieurs sound codes en même temps (ex. pop + rock). Le premier
- *  clic sur un titre "non touché" initialise la liste confirmée à partir
- *  des suggestions auto déjà en place, puis bascule le tag cliqué ; les
- *  clics suivants basculent directement dans la liste confirmée. */
-function genresToggleCategory(title, artist, cat){
-  const entry = getGenreEntry(title, artist) || {};
-  const base = entry.confirmed ? [...entry.confirmed] : [...(entry.suggested || [])];
-  const idx = base.indexOf(cat);
-  if(idx === -1) base.push(cat); else base.splice(idx, 1);
-  setGenreEntry(title, artist, { confirmed: base });
-  renderGenresPage();
-}
-
-function renderGenresPage(){
-  const rows = buildDecisionRows();
-  const empty = document.getElementById('genresEmptyBar');
-  const wrap = document.getElementById('genresTableWrap');
-  const stats = document.getElementById('genresStats');
-
-  if(!rows.length){
-    if(empty){ empty.style.display='block'; empty.textContent = '📂 Importez et analysez d\'abord un fichier Call Out ou OMT pour classer ses titres par genre.'; }
-    if(wrap) wrap.innerHTML = '';
-    if(stats) stats.innerHTML = '';
-    return;
-  }
-  if(empty) empty.style.display = 'none';
-
-  const enriched = rows.map(r => {
-    const entry = getGenreEntry(r.title, r.artist) || {};
-    // touched = l'utilisateur a déjà interagi manuellement avec ce titre
-    // (confirmed existe, même vide) → on affiche confirmed en solide.
-    // Sinon on affiche les suggestions auto, en pointillé.
-    const touched = !!entry.confirmed;
-    const activeCats = touched ? entry.confirmed : (entry.suggested || []);
-    return { ...r, genreCats: activeCats, genreTouched: touched, genreRaw: entry.rawGenre || null };
-  });
-
-  // ── Statistiques (un titre peut compter dans plusieurs catégories) ──
-  const counts = {};
-  Object.keys(SOUND_CATEGORIES).forEach(k => counts[k] = 0);
-  let unclassified = 0;
-  enriched.forEach(r => {
-    if(r.genreCats && r.genreCats.length) r.genreCats.forEach(c => { if(counts[c] !== undefined) counts[c]++; });
-    else unclassified++;
-  });
-  const total = enriched.length;
-
-  const statBars = Object.entries(SOUND_CATEGORIES).map(([key,info]) => {
-    const n = counts[key];
-    const pct = total ? Math.round((n/total)*100) : 0;
-    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
-      <span style="width:80px;font-size:11px;font-weight:700;color:var(--navy);flex-shrink:0">${info.icon} ${info.label}</span>
-      <div style="flex:1;height:16px;background:var(--bg);border-radius:4px;overflow:hidden">
-        <div style="width:${pct}%;height:100%;background:${info.color};border-radius:4px"></div>
-      </div>
-      <span style="width:70px;font-size:11px;color:var(--text2);text-align:right;flex-shrink:0">${n} · ${pct}%</span>
-    </div>`;
-  }).join('');
-
-  // ── Répartition pondérée par exposition (passages airplay), à côté du
-  //    graphique en barres ci-dessus qui ne compte que le nombre de titres,
-  //    sans tenir compte de leur volume de diffusion réel. Un titre multi-tag
-  //    répartit son volume de passages à parts égales entre ses sound codes
-  //    actifs, pour que le total du camembert reste cohérent. Fonction
-  //    réutilisée pour le marché complet (toutes radios) ET pour Europe 2
-  //    seule, qui n'ont pas la même distribution (une radio peut sur- ou
-  //    sous-indexer certains styles par rapport au marché global). ──
-  function buildExposurePie(weightField, emptyMsg){
-    const exposure = {};
-    Object.keys(SOUND_CATEGORIES).forEach(k => exposure[k] = 0);
-    let exposureUnclassified = 0, totalExposure = 0;
-    enriched.forEach(r => {
-      const p = r[weightField] || 0;
-      if(!p) return; // pas de donnée pour ce titre : ne pèse pas dans la répartition
-      totalExposure += p;
-      if(r.genreCats && r.genreCats.length){
-        const share = p / r.genreCats.length;
-        r.genreCats.forEach(c => { if(exposure[c] !== undefined) exposure[c] += share; });
-      } else {
-        exposureUnclassified += p;
-      }
-    });
-
-    if(totalExposure <= 0){
-      return { totalExposure, html: `<div style="flex:1;min-width:220px;display:flex;align-items:center;justify-content:center;text-align:center;padding:14px;color:var(--muted);font-size:11px">📡 ${emptyMsg}</div>` };
-    }
-
-    const slices = [
-      ...Object.entries(SOUND_CATEGORIES).map(([key,info]) => ({label:info.label, icon:info.icon, color:info.color, val:exposure[key]})),
-      { label:'Non classé', icon:'❔', color:'#B7BEC9', val:exposureUnclassified }
-    ].filter(s => s.val > 0.001);
-
-    let acc = 0;
-    const gradientStops = slices.map(s => {
-      const from = acc / totalExposure * 360; acc += s.val;
-      const to = acc / totalExposure * 360;
-      return `${s.color} ${from.toFixed(2)}deg ${to.toFixed(2)}deg`;
-    }).join(', ');
-
-    const legend = slices.map(s => {
-      const pct = Math.round((s.val/totalExposure)*100);
-      return `<div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text2)">
-        <span style="width:10px;height:10px;border-radius:3px;background:${s.color};flex-shrink:0"></span>
-        <span style="font-weight:700;color:var(--navy)">${s.icon} ${s.label}</span>
-        <span style="margin-left:auto;color:var(--muted)">${Math.round(s.val)} · ${pct}%</span>
-      </div>`;
-    }).join('');
-
-    const html = `<div style="flex:1;min-width:220px;display:flex;align-items:center;gap:16px">
-      <div style="width:100px;height:100px;border-radius:50%;background:conic-gradient(${gradientStops});flex-shrink:0;position:relative">
-        <div style="position:absolute;inset:16px;background:var(--white);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--muted);text-align:center;line-height:1.25">${Math.round(totalExposure)}<br>passages</div>
-      </div>
-      <div style="flex:1;display:flex;flex-direction:column;gap:5px;min-width:0">${legend}</div>
-    </div>`;
-    return { totalExposure, html };
-  }
-
-  const pieMarket = buildExposurePie('totalAirplay', "Importez un fichier Airplay pour afficher la répartition pondérée par exposition (marché complet).");
-  const pieE2     = buildExposurePie('airplayE2',    "Importez un fichier Airplay pour afficher la répartition pondérée par exposition sur Europe 2.");
-
-  const codingNote = unclassified > 0
-    ? `<div style="font-size:10px;color:var(--muted);margin-top:10px">⚠️ ${unclassified} titre${unclassified>1?'s':''} pas encore codé${unclassified>1?'s':''} — leur exposition apparaît dans la part « Non classé » du camembert.</div>`
-    : `<div style="font-size:10px;color:var(--green-text,#0DA76B);margin-top:10px">✓ Tous les titres sont codés.</div>`;
-
-  if(stats) stats.innerHTML = `<div style="display:flex;gap:14px;flex-wrap:wrap;align-items:stretch">
-    <div style="flex:1.2;min-width:260px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow)">
-      <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Nombre de titres par sound code (${total} titres, ${unclassified} non classé${unclassified>1?'s':''})</div>
-      ${statBars}
-      <div style="font-size:10px;color:var(--muted);margin-top:6px">Un titre peut cumuler plusieurs sound codes : les % ne totalisent pas 100.</div>
-    </div>
-    <div style="flex:1;min-width:260px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column">
-      <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Exposition marché complet (toutes radios) par sound code</div>
-      ${pieMarket.html}
-      ${codingNote}
-    </div>
-    <div style="flex:1;min-width:260px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;box-shadow:var(--shadow);display:flex;flex-direction:column">
-      <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Exposition Europe 2 seule par sound code</div>
-      ${pieE2.html}
-      ${codingNote}
-    </div>
-  </div>`;
-
-  // ── Tableau ──
-  const header = `<div style="display:grid;grid-template-columns:1fr 320px;gap:0;background:var(--bg);border-bottom:2px solid var(--border)">
-    <div style="padding:10px 14px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Titre / Artiste</div>
-    <div style="padding:10px 14px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Sound codes (cliquer pour ajouter/retirer)</div>
-  </div>`;
-
-  const tableRows = enriched.map((r,i) => {
-    const rowBg = i%2===0 ? 'var(--white)' : 'rgba(240,243,249,.5)';
-    const chips = Object.entries(SOUND_CATEGORIES).map(([key,info]) => {
-      const isActive = r.genreCats.includes(key);
-      const isSuggestedOnly = isActive && !r.genreTouched;
-      return `<button onclick="genresToggleCategory('${jsAttrEscape(r.title)}','${jsAttrEscape(r.artist)}','${key}')"
-        title="${isSuggestedOnly ? 'Suggestion iTunes'+(r.genreRaw?' : '+escHtml(r.genreRaw):'')+' — cliquer pour confirmer' : (isActive ? 'Cliquer pour retirer '+info.label : 'Cliquer pour ajouter '+info.label)}"
-        style="display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:700;cursor:pointer;
-          background:${isActive ? info.bg : 'var(--bg)'};
-          border:1.5px solid ${isActive ? info.color : 'var(--border)'};
-          color:${isActive ? info.color : 'var(--muted)'};
-          ${isSuggestedOnly ? 'border-style:dashed' : ''}">
-        ${info.icon}${isActive ? ' '+info.label : ''}${isSuggestedOnly ? ' ?' : ''}
-      </button>`;
-    }).join('');
-
-    return `<div style="display:grid;grid-template-columns:1fr 320px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
-      <div style="padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)}</div>
-      </div>
-      <div style="padding:8px 14px;display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
-    </div>`;
-  }).join('');
-
-  if(wrap) wrap.innerHTML = `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow);margin-top:16px">
-    ${header}${tableRows}
-  </div>
-  <div style="font-size:10px;color:var(--muted);margin-top:8px">Badge en pointillé = suggestion automatique non confirmée (cliquez pour la valider). Un titre peut porter plusieurs sound codes à la fois (ex. Pop + Rock) : cliquez sur un badge actif pour le retirer, sur un badge inactif pour l'ajouter.</div>`;
 }
 
 /** Pastille colorée générique — réutilisée par Vue 360° et la fiche titre. */
