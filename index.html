@@ -1548,6 +1548,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Programmation exhaustive · Yacast/Muzicast</div>
           <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Analyse — <span id="analyseStationLabel">Europe 2</span><span class="station-logo-slot"></span></h2>
+          <span id="analyseDecadeProgress" style="display:none;margin-top:6px;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px" title="Récupération en arrière-plan des décennies de sortie manquantes (API iTunes) — n'empêche pas de continuer à travailler"></span>
         </div>
       </div>
       <div id="analyseProgActions" style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -1676,9 +1677,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </div>
 
       <div id="digitalAudienceDetailWrap" style="display:none">
-        <!-- Onglets station + sélecteur de semaine -->
+        <!-- Sélecteur de semaine -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-          <div style="display:flex;gap:6px" id="digitalAudienceStationTabs"></div>
           <select id="digitalAudienceWeekSelect" style="font-size:12px;padding:8px 12px;border-radius:8px" onchange="digitalAudienceUI.week=this.value;renderDigitalAudienceDetail()"></select>
           <span id="digitalAudienceWeekCount" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
         </div>
@@ -1720,12 +1720,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <!-- Sous-page Corrélation programmation ↔ audience digitale -->
     <div id="analyseCorrContainer" style="display:none">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <label style="font-size:11px;font-weight:700;color:var(--text2)">Station :</label>
-        <select id="corrStationSelect" style="font-size:12px;padding:7px 10px;border-radius:8px" onchange="corrStation=this.value;renderCorrPage()">
-          <option value="EUROPE2">Europe 2</option>
-          <option value="RFM">RFM</option>
-        </select>
-        <label style="font-size:11px;font-weight:700;color:var(--text2);margin-left:10px">Période :</label>
+        <label style="font-size:11px;font-weight:700;color:var(--text2)">Période :</label>
         <label style="font-size:11px;color:var(--text2)">De
           <select id="corrRangeFrom" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="corrOnRangeChange()"></select>
         </label>
@@ -1761,11 +1756,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
     <!-- Sous-page Médiamétrie (vagues, quinzaines/intermédiaires, historique) -->
     <div id="analyseMediaContainer" style="display:none">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
-        <div style="display:flex;gap:6px" id="mediaStationTabs"></div>
-      </div>
-      <div style="font-size:12px;color:var(--text2);margin-bottom:18px">Chaque vague (SO, ND, JM, AJ) affiche son résultat final publié (Ensemble, 5h-24h) avec ses évolutions N-1 et V-1. Les vagues en cours de suivi par quinzaine affichent leur détail directement dans leur propre panneau, juste en dessous. Les vagues archivées sans détail apparaissent dans le tableau historique, groupées par saison.</div>
-
       <div id="mediaEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
 
       <div id="mediaPeriodBlocks"></div>
@@ -1774,9 +1764,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
     <!-- Sous-page Graphiques d'évolution (programmation ↔ audience digitale, par semaine) -->
     <div id="analyseGraphContainer" style="display:none">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <div style="display:flex;gap:6px" id="graphStationTabs"></div>
-      </div>
       <div id="graphEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
       <div id="graphCardsArea" style="display:flex;flex-direction:column;gap:24px"></div>
     </div>
@@ -6701,7 +6688,7 @@ function countLoadedAutoCharts(){
     // aussi pour que le total affiché corresponde à toutes les sources
     // réellement chargées par "Tout charger", pas seulement les classements
     // "génériques" historiques.
-    ...keyPlaylists.map(p => !!p.fetchedAt),
+    ...keyPlaylists.map(p => isFetchedToday(p)),
     ...RADIO_TOP_SONGS_SOURCES.map(r => isFetchedToday(radioTopSongsData[r.id])),
     ...DEEZER_KEY_PLAYLISTS.map(p => !!deezerKeyPlaylistLoaded[p.id]),
     // Playlists clés Apple Music : comptées seulement une fois l'URL
@@ -6791,8 +6778,11 @@ async function loadAllCharts(silent = false){
     if(!kworbYoutubeCountryState[cc].loaded) tasks.push(loadKworbYoutubeCountry(cc));
   });
   // Playlists Spotify clés suivies (RapCaviar, New Music Friday...) pas
-  // encore récupérées — au même titre que les autres sources auto-fetchables.
-  keyPlaylists.filter(p => !p.fetchedAt).forEach(p => tasks.push(refreshKeyPlaylist(p.id)));
+  // encore récupérées aujourd'hui — au même titre que les autres sources
+  // auto-fetchables (fetchedAt persiste indéfiniment en localStorage, voir
+  // isFetchedToday : sans ce contrôle de fraîcheur, une playlist récupérée
+  // une fois ne serait plus jamais rafraîchie automatiquement).
+  keyPlaylists.filter(p => !isFetchedToday(p)).forEach(p => tasks.push(refreshKeyPlaylist(p.id)));
   // Radios clés (Top Songs — Z100, KIIS, Capital FM, Radio 538...) pas
   // encore récupérées non plus — oubliées ici jusqu'ici, ce qui sous-
   // comptait le nombre total de sources affiché au chargement global.
@@ -10000,6 +9990,16 @@ function toggleActiveStation(){
     analyseRows = []; analyseWeekMeta = null;
     if(typeof analyseLoadCurrentFromSession === 'function') analyseLoadCurrentFromSession();
     renderAnalysePage();
+    // Les sous-onglets Audience digitale / Médiamétrie / Graphiques /
+    // Corrélation suivent eux aussi la station de référence globale — les
+    // rafraîchir immédiatement si l'un d'eux est actuellement affiché, pour
+    // ne pas laisser les données d'une autre station à l'écran après bascule.
+    if(typeof analyseSubView !== 'undefined'){
+      if(analyseSubView === 'audience' && typeof renderDigitalAudiencePage === 'function') renderDigitalAudiencePage();
+      if(analyseSubView === 'media'     && typeof renderMediaPage === 'function')          renderMediaPage();
+      if(analyseSubView === 'graph'     && typeof renderGraphPage === 'function')          renderGraphPage();
+      if(analyseSubView === 'corr'      && typeof renderCorrPage === 'function')           renderCorrPage();
+    }
   }
   // Le résumé Call Out/OMT de la home est filtré par station active
   if(typeof renderHomePendingCard === 'function'){ renderHomePendingCard('callout'); renderHomePendingCard('omt'); }
@@ -10888,9 +10888,19 @@ async function analyseRecalculateAllArchives(onProgress){
         row.search = analyseGetSearchScores(row.title, row.artist, refDate);
         row.fpa = analyseGetFpaScores(row.title, row.artist);
         analyseApplyDatedFit(row);
+        // Renseigne la décennie depuis le cache (songAttributes) pour les
+        // lignes archivées avant l'introduction de cette fonctionnalité —
+        // sans ça, decadeDistribution recalculerait sur des lignes sans
+        // décennie du tout (100% "Non renseigné"). Les titres pas encore en
+        // cache sont mis en file pour un enrichissement en arrière-plan (cf.
+        // badge "🕐 Décennies" en haut de la page) ; ce recalcul peut donc
+        // être relancé plus tard pour intégrer les décennies alors résolues.
+        const attrs = getSongAttributes(row.title, row.artist);
+        row.decade = attrs.decade || null;
         const newFit = row.fpa ? row.fpa.fit : null;
         if(oldFit !== newFit || oldPot !== row.search.potTous || oldFam !== row.search.famTous) titresModifies++;
       });
+      if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(detail.rows);
       const newStats = analyseComputeStats(detail.rows);
       entry.stats = newStats;
       detail.rows = detail.rows.map(analyseCleanRowForSave);
@@ -11107,11 +11117,7 @@ function analyseSetSubView(view){
   if(view==='audience') renderDigitalAudiencePage();
   if(view==='media') renderMediaPage();
   if(view==='graph') renderGraphPage();
-  if(view==='corr'){
-    const sel = document.getElementById('corrStationSelect');
-    if(sel) sel.value = corrStation;
-    renderCorrPage();
-  }
+  if(view==='corr') renderCorrPage();
 }
 
 function digitalAudienceLoadLocal(){
@@ -11546,12 +11552,10 @@ function renderDigitalAudiencePage(){
   detailWrap.style.display = anyData ? 'block' : 'none';
   if(!anyData){ histArea.innerHTML = ''; return; }
 
-  // Si la station active n'a aucune semaine, bascule automatiquement sur
-  // celle qui en a (comme le fait Digital Monitoring en filigrane).
-  if(!digitalAudienceWeekKeys(digitalAudienceUI.station).length){
-    const withData = DIGITAL_AUDIENCE_STATIONS.find(st => digitalAudienceWeekKeys(st).length);
-    if(withData) digitalAudienceUI.station = withData;
-  }
+  // La station affichée suit le sélecteur de station de référence global
+  // (ACTIVE_STATION, bouton 🔁 de l'en-tête) — plus de bascule automatique
+  // ou manuelle propre à cette page.
+  digitalAudienceUI.station = ACTIVE_STATION;
 
   renderDigitalAudienceDetail();
   renderDigitalAudienceHistoryTable();
@@ -11562,12 +11566,9 @@ function renderDigitalAudienceDetail(){
   const weeks = digitalAudienceWeekKeys(stKey);
   if(!weeks.includes(digitalAudienceUI.week)) digitalAudienceUI.week = weeks.length ? weeks[weeks.length-1] : null;
 
-  // Onglets station
-  const tabsArea = document.getElementById('digitalAudienceStationTabs');
-  tabsArea.innerHTML = DIGITAL_AUDIENCE_STATIONS.map(st => {
-    const active = st === stKey;
-    return `<button class="btn-ghost" style="font-size:11.5px;padding:7px 14px;${active ? 'border-color:var(--cyan);color:var(--navy);background:var(--cyan-light)' : ''}" onclick="digitalAudienceUI.station='${st}';digitalAudienceUI.week=null;renderDigitalAudienceDetail();renderDigitalAudienceHistoryTable()">${STATION_ICONS[st]||'📻'} ${STATION_LABELS[st]}</button>`;
-  }).join('');
+  // Station affichée : suit le sélecteur de station de référence global
+  // (🔁 en-tête) — déjà visible ci-dessous dans l'en-tête de station
+  // (digitalAudienceStationHeader), pas besoin de le répéter ici.
 
   const weekSelect = document.getElementById('digitalAudienceWeekSelect');
   weekSelect.innerHTML = weeks.slice().reverse().map(w => `<option value="${w}" ${w===digitalAudienceUI.week?'selected':''}>Semaine du ${digitalAudienceFmtDate(w)}</option>`).join('');
@@ -12201,12 +12202,12 @@ function mediaRenderHistoryTable(stKey){
 }
 
 function renderMediaPage(){
+  // La station affichée suit désormais le sélecteur de station de référence
+  // global (ACTIVE_STATION, bouton 🔁 de l'en-tête) plutôt qu'un bouton
+  // propre à cette page — cohérent avec Audience digitale/Graphiques/
+  // Corrélation, toutes rattachées à la même station de référence.
+  mediaUI.station = ACTIVE_STATION;
   const stKey = mediaUI.station;
-  const tabsArea = document.getElementById('mediaStationTabs');
-  tabsArea.innerHTML = ['EUROPE2','RFM'].map(st => {
-    const active = st === stKey;
-    return `<button class="btn-ghost" style="font-size:11.5px;padding:7px 14px;${active ? 'border-color:var(--cyan);color:var(--navy);background:var(--cyan-light)' : ''}" onclick="mediaUI.station='${st}';renderMediaPage()">${STATION_ICONS[st]||'📻'} ${STATION_LABELS[st]}</button>`;
-  }).join('');
 
   const data = mediaHistory[stKey];
   const emptyBar = document.getElementById('mediaEmptyBar');
@@ -12298,6 +12299,7 @@ let graphUI = { station: 'EUROPE2' };
 let graphCharts = {};
 let graphFilters = {
   genre:      { from:null, to:null, genres:[], showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
+  decades:    { from:null, to:null, decades:[], showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
   recherche:  { from:null, to:null, criterion:'potTous', showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
   fit:        { from:null, to:null, showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
   exposition: { from:null, to:null, metric:'totalDiffs', showAudience:true, zoomed:false, musicalFocus:false, audienceMetric:'audienceMoyenne' },
@@ -12382,6 +12384,22 @@ function graphAllGenres(stKey){
   const set = new Set();
   graphAvailableWeeks(stKey).forEach(w => (w.stats && w.stats.genreDistribution || []).forEach(g => set.add(g.genre)));
   return Array.from(set).sort((a,b) => a.localeCompare(b, 'fr'));
+}
+/** Décennies présentes dans l'historique — tri chronologique (le format
+ *  "1990s" se trie correctement en alphabétique), "Inconnue" et "Non
+ *  renseigné" toujours en fin de liste plutôt qu'intercalés. */
+function graphAllDecades(stKey){
+  const set = new Set();
+  graphAvailableWeeks(stKey).forEach(w => (w.stats && w.stats.decadeDistribution || []).forEach(d => set.add(d.decade)));
+  const arr = Array.from(set);
+  const isSpecial = v => v === 'Inconnue' || v === 'Non renseigné';
+  arr.sort((a,b) => {
+    if(isSpecial(a) && isSpecial(b)) return a.localeCompare(b, 'fr');
+    if(isSpecial(a)) return 1;
+    if(isSpecial(b)) return -1;
+    return a.localeCompare(b, 'fr');
+  });
+  return arr;
 }
 /** Semaine d'audience digitale la plus proche de la date de cette semaine
  *  de programmation (± 4 jours — même tolérance que la jointure de l'onglet
@@ -12614,6 +12632,11 @@ function graphOnGenreChange(){
   graphFilters.genre.genres = Array.from(sel.selectedOptions).map(o => o.value);
   graphRenderCard('genre');
 }
+function graphOnDecadesChange(){
+  const sel = document.getElementById('graphdecadesMulti');
+  graphFilters.decades.decades = Array.from(sel.selectedOptions).map(o => o.value);
+  graphRenderCard('decades');
+}
 function graphOnRechercheCriterionChange(){
   graphFilters.recherche.criterion = document.getElementById('graphrechercheCriterion').value;
   graphRenderCard('recherche');
@@ -12627,10 +12650,42 @@ function graphRenderCard(key){
   const stKey = graphUI.station;
   const weeks = graphAvailableWeeks(stKey);
   if(key==='genre')      graphRenderGenreCard(stKey, weeks);
+  if(key==='decades')    graphRenderDecadesCard(stKey, weeks);
   if(key==='recherche')  graphRenderRechercheCard(stKey, weeks);
   if(key==='fit')        graphRenderFitCard(stKey, weeks);
   if(key==='exposition') graphRenderExpositionCard(stKey, weeks);
   if(key==='labels')     graphRenderLabelsCard(stKey, weeks);
+}
+
+/** Carte "Décennies" — calquée exactement sur graphRenderGenreCard
+ *  (graphAllDecades ci-dessus gère juste le tri chronologique en plus). */
+function graphRenderDecadesCard(stKey, weeks){
+  const f = graphFilters.decades;
+  const allDecades = graphAllDecades(stKey);
+  const controls = document.getElementById('graphdecadesControls');
+  controls.innerHTML = `
+    ${graphWeekControlsHtml('decades', weeks, f.from, f.to)}
+    <label style="font-size:11px;color:var(--text2)">Décennie(s) :
+      <select id="graphdecadesMulti" multiple size="${Math.max(2,Math.min(5,allDecades.length))}" style="font-size:11.5px;padding:5px 8px;border-radius:6px;min-width:170px;vertical-align:top" onchange="graphOnDecadesChange()">
+        ${allDecades.map(d => `<option value="${escHtml(d)}" ${f.decades.includes(d)?'selected':''}>${escHtml(d)}</option>`).join('')}
+      </select>
+    </label>
+    ${graphAudToggleHtml('decades', f.showAudience)}
+    ${graphAudienceMetricSelectHtml('decades', f.audienceMetric, !f.showAudience)}
+    ${graphMusicalToggleHtml('decades', f.musicalFocus, stKey!=='EUROPE2' || !f.showAudience || !(AUDIENCE_METRICS[f.audienceMetric]||{}).musicalCompatible)}
+    ${graphZoomToggleHtml('decades', f.zoomed)}
+  `;
+  const range = graphWeekRangeSlice(weeks, f.from, f.to);
+  const series = f.decades.map((d,i) => ({
+    label: d, color: ANALYSE_GENRE_PALETTE[i % ANALYSE_GENRE_PALETTE.length],
+    data: range.map(w => { const e = (w.stats.decadeDistribution||[]).find(x => x.decade===d); return e ? Math.round(e.pct*10)/10 : 0; })
+  }));
+  if(!series.length){
+    const el = document.getElementById('graphdecadesChart');
+    if(el){ if(graphCharts['graphdecadesChart']) graphCharts['graphdecadesChart'].destroy(); }
+    return;
+  }
+  graphBuildMixedChart('graphdecadesChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.zoomed, f.musicalFocus, f.audienceMetric);
 }
 
 function graphRenderGenreCard(stKey, weeks){
@@ -12823,12 +12878,11 @@ function graphRenderLabelsCard(stKey, weeks){
 }
 
 function renderGraphPage(){
+  // La station affichée suit le sélecteur de station de référence global
+  // (ACTIVE_STATION, bouton 🔁 de l'en-tête) plutôt qu'un bouton propre à
+  // cette page.
+  graphUI.station = ACTIVE_STATION;
   const stKey = graphUI.station;
-  const tabsArea = document.getElementById('graphStationTabs');
-  tabsArea.innerHTML = ['EUROPE2','RFM'].map(st => {
-    const active = st === stKey;
-    return `<button class="btn-ghost" style="font-size:11.5px;padding:7px 14px;${active ? 'border-color:var(--cyan);color:var(--navy);background:var(--cyan-light)' : ''}" onclick="graphUI.station='${st}';renderGraphPage()">${STATION_ICONS[st]||'📻'} ${STATION_LABELS[st]}</button>`;
-  }).join('');
 
   const weeks = graphAvailableWeeks(stKey);
   const emptyBar = document.getElementById('graphEmptyBar');
@@ -12844,7 +12898,7 @@ function renderGraphPage(){
   // Répare/initialise les périodes par défaut (semaine la plus ancienne →
   // la plus récente) si elles ne pointent plus vers une semaine existante
   // (ex. première ouverture, ou changement de station).
-  ['genre','recherche','fit','exposition','labels'].forEach(k => {
+  ['genre','decades','recherche','fit','exposition','labels'].forEach(k => {
     const f = graphFilters[k];
     if(!f.from || !weeks.some(w=>w.weekLabel===f.from)) f.from = weeks[0].weekLabel;
     if(!f.to   || !weeks.some(w=>w.weekLabel===f.to))   f.to   = weeks[weeks.length-1].weekLabel;
@@ -12852,21 +12906,23 @@ function renderGraphPage(){
   if(!graphFilters.genre.genres.length){
     graphFilters.genre.genres = graphAllGenres(stKey).slice(0, 3);
   }
+  if(!graphFilters.decades.decades.length){
+    graphFilters.decades.decades = graphAllDecades(stKey).slice(0, 4);
+  }
 
   cardsArea.innerHTML = [
     graphCardShell('recherche', 'Recherche', 'Résultats Call Out / OMT — Pot Score, Fam Score et leurs taux de Burn, cibles Ensemble et P1.', false, true),
     graphCardShell('fit', 'Fit Score', 'Fit Score et SPU moyens pondérés de la programmation.', false, true),
     graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.', false, true),
     graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.', false, true),
+    graphCardShell('decades', 'Décennies', "Part des diffusions par décennie de sortie du titre (source : iTunes, récupérée et mise en cache automatiquement).", false, true),
     graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
   ].join('');
 
   // Les emplacements .station-logo-slot viennent d'être recréés dans le DOM
-  // (innerHTML ci-dessus) — repeupler immédiatement. IMPORTANT : on utilise
-  // ici stKey (= graphUI.station, le sélecteur propre à CETTE page), pas
-  // updateStationToggleUI()/ACTIVE_STATION — la page Graphiques a son propre
-  // bouton de station, indépendant du reste de l'app (voir bouton
-  // "graphUI.station=...;renderGraphPage()" plus haut).
+  // (innerHTML ci-dessus) — repeupler immédiatement. stKey = graphUI.station,
+  // lui-même synchronisé sur ACTIVE_STATION en tête de fonction (la page
+  // Graphiques suit désormais le sélecteur de station de référence global).
   const graphLogoAlt = STATION_LABELS[stKey];
   const graphLogoSrc = document.querySelector('img[alt="' + graphLogoAlt + '"]');
   const graphLogoHtml = graphLogoSrc
@@ -12875,6 +12931,7 @@ function renderGraphPage(){
   cardsArea.querySelectorAll('.station-logo-slot').forEach(slot => { slot.innerHTML = graphLogoHtml; });
 
   graphRenderGenreCard(stKey, weeks);
+  graphRenderDecadesCard(stKey, weeks);
   graphRenderRechercheCard(stKey, weeks);
   graphRenderFitCard(stKey, weeks);
   graphRenderExpositionCard(stKey, weeks);
@@ -13049,6 +13106,9 @@ function corrColorForR(r){
 }
 
 function renderCorrPage(){
+  // La station affichée suit le sélecteur de station de référence global
+  // (ACTIVE_STATION, bouton 🔁 de l'en-tête).
+  corrStation = ACTIVE_STATION;
   const stKey = corrStation;
   const matches = corrBuildMatches(stKey);
   const matched = matches.filter(m => m.progEntry);
@@ -13456,7 +13516,9 @@ function analyseEnrichRowsForBulk(rows, stKey, importedDateStr, refDate){
     row.label = attrs.label || row.label || '';
     row.genre = attrs.genre || row.genre || '';
     row.dateEntree = attrs[stationField] || '';
+    row.decade = attrs.decade || null;
   });
+  if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(rows);
   return rows;
 }
 
@@ -13746,7 +13808,9 @@ function analyseEnrichRows(){
     row.label = attrs.label || row.label || '';
     row.genre = attrs.genre || row.genre || '';
     row.dateEntree = attrs[stationField] || '';
+    row.decade = attrs.decade || null;
   });
+  if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(analyseRows);
 }
 
 /** Édition inline Genre/Label/Date d'Entrée directement depuis le tableau
@@ -13831,6 +13895,12 @@ function analyseComputeStats(rows){
     avgFit:     wavg(r => r.fpa ? r.fpa.fit : null),
     avgSpu:     wavg(r => r.fpa ? r.fpa.spu : null),
     genreDistribution: analyseComputeGenreDistribution(rows),
+    // Décennies de sortie — même principe de pondération par nbDiffs que le
+    // genre (un titre en forte rotation pèse plus qu'un titre en une seule
+    // diffusion). "Inconnue" et les titres pas encore enrichis (decade=null,
+    // exclus par analyseComputeFieldDistribution via son filtre .trim())
+    // apparaissent séparément plutôt que de fausser une vraie décennie.
+    decadeDistribution: analyseComputeFieldDistribution(rows, 'decade', 10),
     // Pas de plafond sur les labels (contrairement au genre, capé à 12 pour
     // la lisibilité du camembert) : la vue "par major" a besoin de la part
     // de diffusions de CHAQUE label pour agréger correctement les totaux —
@@ -14162,22 +14232,14 @@ function renderAnalyseGenreChart(){
   </div>`;
 }
 
-function analyseDriveStatusNote(){
-  if(!DRIVE_SYNC_URL){
-    return `<div style="padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted);margin-bottom:10px">☁️ Non synchronisé sur Drive — configurez la synchronisation dans <strong>Classements → Historique Drive</strong> pour partager les statistiques entre postes.</div>`;
-  }
-  return `<div style="padding:10px 14px;background:var(--cyan-light);border:1.5px solid var(--cyan-mid);border-radius:8px;font-size:11px;color:var(--navy);margin-bottom:10px">☁️ Statistiques synchronisées sur Drive (fichier dédié « analyse_history »). Le <strong>détail complet des titres</strong> reste local à chaque appareil (👁️ pour l'afficher) — volontairement non poussé sur Drive pour éviter tout risque de corruption avec un aussi gros volume de données.</div>`;
-}
-
 function renderAnalyseHistoryPanel(){
   const area = document.getElementById('analyseHistoryArea');
   if(!area) return;
   const history = analyseLoadHistory();
   const stKey = analyseStationKey();
   const weeks = history[stKey] || [];
-  const statusNote = analyseDriveStatusNote();
   if(!weeks.length){
-    area.innerHTML = statusNote + `<div style="padding:18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);text-align:center">Aucune semaine encore archivée pour ${STATION_LABELS[stKey]}. Cliquez sur « 💾 Enregistrer la semaine » une fois une programmation importée.</div>`;
+    area.innerHTML = `<div style="padding:18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);text-align:center">Aucune semaine encore archivée pour ${STATION_LABELS[stKey]}. Cliquez sur « 💾 Enregistrer la semaine » une fois une programmation importée.</div>`;
     return;
   }
   const isCurrent = w => analyseWeekMeta && analyseWeekMeta.weekLabel === w.weekLabel && analyseRows.length > 0;
@@ -14195,7 +14257,7 @@ function renderAnalyseHistoryPanel(){
     <td style="padding:8px 10px;color:var(--muted);font-size:10.5px">${new Date(w.savedAt).toLocaleDateString('fr-FR')}</td>
     <td style="padding:8px 10px;text-align:center" onclick="event.stopPropagation()"><button onclick="analyseDeleteWeekFromHistory('${stKey}','${jsAttrEscape(w.weekLabel)}')" title="Supprimer" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px">🗑️</button></td>
   </tr>`).join('');
-  area.innerHTML = statusNote + `<div style="border:1.5px solid var(--border);border-radius:12px;overflow:visible">
+  area.innerHTML = `<div style="border:1.5px solid var(--border);border-radius:12px;overflow:visible">
     <table style="width:100%;border-collapse:collapse;font-size:12px;background:var(--white)">
       <thead><tr style="background:var(--bg)">
         <th style="width:30px"></th>
@@ -15149,15 +15211,13 @@ async function openTitleEvolutionModal(btn){
     ${buildDigitalSnapshotSection(chartsSeries, title, artist)}
   </div>`);
 
-  // ── Song Attributs : Date d'Entrée par station, Label, Genre — tous
-  // optionnels. Éditables ici ET depuis la Playlist (Date d'Entrée/Label),
-  // synchronisés dans les deux sens (voir updateSongAttribute). Le Genre
-  // réutilise directement le store de la page Genres (Décision → Genres),
-  // pas de doublon : le confirmer ici le confirme aussi là-bas.
+  // ── Song Attributs : Date d'Entrée par station, Label, Genre, Décennie —
+  // tous optionnels, éditables ici ET (Date d'Entrée/Label) depuis la
+  // Playlist, synchronisés dans les deux sens (voir updateSongAttribute).
+  // Genre et Décennie sont partagés avec l'import de programmation
+  // exhaustive et les graphiques d'évolution (même store songAttributes) :
+  // une correction ici se répercute directement sur les deux.
   const songAttrs = getSongAttributes(title, artist);
-  const genreEntry = getGenreEntry(title, artist);
-  const genreVal = (genreEntry && genreEntry.confirmed && genreEntry.confirmed.length) ? genreEntry.confirmed.join(', ')
-    : ((genreEntry && genreEntry.suggested && genreEntry.suggested.length) ? genreEntry.suggested.join(', ') : '');
   sections.push(`<div style="display:flex;align-items:center;gap:12px;margin:26px 0 14px">
     <div style="flex:1;height:3px;background:linear-gradient(90deg,var(--border) 0%,var(--cyan) 50%,var(--border) 100%);border-radius:2px"></div>
     <span style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap">🏷️ Song Attributs</span>
@@ -15178,10 +15238,19 @@ async function openTitleEvolutionModal(btn){
     </label>
     <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Genre
       <div style="display:flex;gap:6px;margin-top:5px">
-        <input id="tevGenreInput" type="text" placeholder="ex. Pop" value="${escHtml(genreVal)}"
-          onchange="setGenreEntry('${jsAttrEscape(title)}','${jsAttrEscape(artist)}',{confirmed: this.value ? [this.value] : []})"
+        <input id="tevGenreInput" type="text" placeholder="ex. Pop" value="${escHtml(songAttrs.genre || '')}"
+          onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','genre',this.value)"
           style="flex:1;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
         <button onclick="tevFetchGenre('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher le genre via iTunes"
+          style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
+      </div>
+    </label>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Décennie
+      <div style="display:flex;gap:6px;margin-top:5px">
+        <input id="tevDecadeInput" type="text" placeholder="ex. 1990s" value="${escHtml((songAttrs.decade && songAttrs.decade !== 'Inconnue') ? songAttrs.decade : '')}"
+          onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','decade',this.value)"
+          style="flex:1;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+        <button onclick="tevFetchDecade('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher la décennie de sortie via iTunes"
           style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
       </div>
     </label>
@@ -15191,16 +15260,31 @@ async function openTitleEvolutionModal(btn){
 }
 
 /** Recherche le genre via iTunes pour le champ Genre de la fiche Song
- *  Attributs, et l'enregistre directement dans le store de la page Genres
- *  (Décision → Genres) comme genre confirmé. */
+ *  Attributs — enregistré dans songAttributes.genre, le même store utilisé
+ *  par l'import de programmation exhaustive et le graphique Genre Musical
+ *  (une correction ici s'y répercute directement, plus de store séparé). */
 async function tevFetchGenre(title, artist){
   showToast('⏳ Recherche du genre…', 'success');
   const rawGenre = await fetchItunesGenre(title, artist);
   if(!rawGenre){ showToast('Aucun genre trouvé sur iTunes pour ce titre', 'err'); return; }
-  setGenreEntry(title, artist, { confirmed: [rawGenre] });
+  updateSongAttribute(title, artist, 'genre', rawGenre);
   const input = document.getElementById('tevGenreInput');
   if(input) input.value = rawGenre;
   showToast('✓ Genre trouvé : ' + rawGenre, 'success');
+}
+
+/** Recherche la décennie de sortie via iTunes pour le champ Décennie de la
+ *  fiche Song Attributs — même mécanisme que tevFetchGenre ci-dessus,
+ *  enregistré dans songAttributes.decade (le store lu par la carte
+ *  "Décennies" des Graphiques d'évolution). */
+async function tevFetchDecade(title, artist){
+  showToast('⏳ Recherche de la décennie…', 'success');
+  const decade = await fetchItunesReleaseDecade(title, artist);
+  if(!decade){ showToast('Décennie introuvable sur iTunes pour ce titre', 'err'); return; }
+  updateSongAttribute(title, artist, 'decade', decade);
+  const input = document.getElementById('tevDecadeInput');
+  if(input) input.value = decade;
+  showToast('✓ Décennie trouvée : ' + decade, 'success');
 }
 
 function closeTitleEvolutionModal(e){
@@ -16006,7 +16090,12 @@ function switchChartTab(tab){
   if(tab.startsWith('kp_')){
     const pid = tab.slice(3);
     const p = keyPlaylists.find(x => x.id === pid);
-    if(p && !p.fetchedAt) refreshKeyPlaylist(pid);
+    // Rafraîchissement automatique une fois par jour (voir isFetchedToday) —
+    // et pas uniquement à la toute première visite depuis l'installation :
+    // fetchedAt persiste indéfiniment en localStorage, donc sans ce contrôle
+    // de fraîcheur une playlist chargée une fois ne serait plus jamais
+    // revérifiée automatiquement, contrairement à Deezer/Apple Music.
+    if(p && !isFetchedToday(p)) refreshKeyPlaylist(pid);
   }
   // Radios clés : même logique, chargement à la demande uniquement à la
   // première visite de la page complète de chaque station.
@@ -17407,8 +17496,9 @@ function songAttributesSaveToStorage(){
 }
 function getSongAttributes(title, artist){
   const key = comiteKey(title, artist);
-  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'', genre:'' };
+  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'', genre:'', decade:'' };
   if(songAttributes[key].genre === undefined) songAttributes[key].genre = '';
+  if(songAttributes[key].decade === undefined) songAttributes[key].decade = '';
   return songAttributes[key];
 }
 
@@ -17455,6 +17545,31 @@ function migrateSongAttributesFromPlaylist(){
 let playlistTitles = playlistLoadFromStorage();
 dedupePlaylistTitles();
 migrateSongAttributesFromPlaylist();
+/** Migration ponctuelle : la fiche titre lisait/écrivait un store de Genre
+ *  totalement séparé (fpa_genres_store, hérité de l'ancienne page Décision →
+ *  Genres) de celui réellement utilisé par l'import de programmation
+ *  exhaustive et le graphique "Genre Musical" (songAttributes.genre) — les
+ *  deux vivaient sans jamais se synchroniser. On unifie sur songAttributes
+ *  .genre, seul store désormais lu/écrit partout, en récupérant d'abord tout
+ *  ce qui existe dans l'ancien store pour ne perdre aucune recherche/saisie
+ *  passée. Idempotente (ne touche jamais un genre déjà renseigné côté
+ *  songAttributes) — sans effet à partir de la 2e exécution. */
+function migrateGenreStoreToSongAttributes(){
+  let changed = false;
+  const oldStore = genresStoreLoad();
+  Object.keys(oldStore).forEach(key => {
+    const raw = oldStore[key];
+    const genreList = normGenreList(raw && raw.confirmed) || normGenreList(raw && raw.suggested);
+    if(!genreList || !genreList.length) return;
+    const parts = key.split('|||');
+    if(parts.length !== 2) return;
+    const [artist, title] = parts;
+    const attrs = getSongAttributes(title, artist);
+    if(!attrs.genre){ attrs.genre = genreList[0]; changed = true; }
+  });
+  if(changed) songAttributesSaveToStorage();
+}
+migrateGenreStoreToSongAttributes();
 updatePlaylistBadge();
 
 function playlistLoadFromStorage(){
@@ -20175,13 +20290,14 @@ function dec360Sort(key){
  *  trier par n'importe quel critère ; tri par défaut = Score Global 360°. */
 
 // ── Stockage persistant (par titre/artiste, indépendant de la vague) ──
+// NOTE : cette clé (fpa_genres_store) est désormais en lecture seule, via
+// genresStoreLoad() ci-dessous, uniquement pour la migration ponctuelle vers
+// songAttributes.genre (voir migrateGenreStoreToSongAttributes) — plus rien
+// n'y écrit. genresStoreSave/getGenreEntry/setGenreEntry ont été retirées
+// avec l'ancienne page Décision → Genres.
 function genresStoreLoad(){
   try{ return JSON.parse(localStorage.getItem('fpa_genres_store') || '{}'); }
   catch(e){ return {}; }
-}
-function genresStoreSave(store){
-  try{ localStorage.setItem('fpa_genres_store', JSON.stringify(store)); }
-  catch(e){ console.warn('Impossible de sauvegarder les genres', e); }
 }
 /** Normalise une valeur confirmed/suggested héritée (ancien format : une
  *  string ou null) vers le nouveau format tableau, sans rien migrer en
@@ -20190,19 +20306,6 @@ function normGenreList(v){
   if(v == null) return null;
   if(Array.isArray(v)) return v;
   return [v]; // ancien format (une seule catégorie stockée en string)
-}
-function getGenreEntry(title, artist){
-  const store = genresStoreLoad();
-  const raw = store[histKey(artist, title)];
-  if(!raw) return null;
-  return { ...raw, confirmed: normGenreList(raw.confirmed), suggested: normGenreList(raw.suggested) };
-}
-function setGenreEntry(title, artist, patch){
-  const store = genresStoreLoad();
-  const key = histKey(artist, title);
-  store[key] = { ...(store[key]||{}), ...patch };
-  genresStoreSave(store);
-  return store[key];
 }
 
 /** Recherche iTunes Search en JSONP (pas de proxy nécessaire : l'API
@@ -20230,6 +20333,111 @@ function fetchItunesGenre(title, artist, timeoutMs = 7000){
     script.onerror = () => { clearTimeout(timer); cleanup(script); resolve(null); };
     document.body.appendChild(script);
   });
+}
+
+/** Décennie de sortie d'un titre via l'API iTunes Search (même mécanisme
+ *  JSONP que fetchItunesGenre ci-dessus) — extrait releaseDate et arrondit
+ *  à la décennie ("1990s", "2020s"...). Retourne null si introuvable
+ *  (titre absent d'iTunes, requête en échec ou expirée). */
+function fetchItunesReleaseDecade(title, artist, timeoutMs = 7000){
+  return new Promise((resolve) => {
+    const cbName = '__fpaItunesDecade_' + Math.floor(Math.random()*1e9);
+    const cleanup = (script) => { window[cbName] = () => {}; if(script) script.remove(); };
+    const timer = setTimeout(() => {
+      const s = document.getElementById(cbName); cleanup(s); resolve(null);
+    }, timeoutMs);
+    window[cbName] = (data) => {
+      clearTimeout(timer);
+      const s = document.getElementById(cbName); cleanup(s);
+      try{
+        const r = data && data.results && data.results[0];
+        const year = r && r.releaseDate ? parseInt(String(r.releaseDate).slice(0,4), 10) : NaN;
+        resolve(!isNaN(year) ? (Math.floor(year/10)*10 + 's') : null);
+      }catch(e){ resolve(null); }
+    };
+    const term = encodeURIComponent(`${title} ${artist}`.trim());
+    const script = document.createElement('script');
+    script.id = cbName;
+    script.src = `https://itunes.apple.com/search?term=${term}&entity=song&limit=1&callback=${cbName}`;
+    script.onerror = () => { clearTimeout(timer); cleanup(script); resolve(null); };
+    document.body.appendChild(script);
+  });
+}
+
+/** File d'enrichissement des décennies en arrière-plan — déclenchée
+ *  automatiquement après chaque import de programmation exhaustive.
+ *  N'BLOQUE JAMAIS l'affichage : les lignes s'affichent immédiatement avec
+ *  la décennie déjà en cache (songAttributes, la quasi-totalité après les
+ *  premières semaines), et celles manquantes se complètent au fil de l'eau,
+ *  avec un rafraîchissement périodique des vues concernées (tableau Analyse,
+ *  carte "Décennies" des Graphiques). Concurrence limitée à 4 requêtes iTunes
+ *  en parallèle : raisonnable sur une grosse semaine (400-700 titres) sans
+ *  bombarder l'API — le premier import est donc plus lent que les suivants,
+ *  qui ne recherchent quasiment plus rien (cache déjà rempli par les
+ *  semaines précédentes, les mêmes titres revenant d'une semaine à l'autre).
+ *  Une décennie introuvable sur iTunes est mise en cache comme "Inconnue"
+ *  (chaîne non vide) pour ne jamais la re-rechercher inutilement — seule une
+ *  correction manuelle future pourrait la corriger. */
+let decadeEnrichInProgress = false;
+let decadeEnrichQueue = [];
+let decadeEnrichTotal = 0;
+let decadeEnrichDone = 0;
+function analyseQueueDecadeEnrichment(rows){
+  const seen = new Set();
+  rows.forEach(row => {
+    const key = comiteKey(row.title, row.artist);
+    if(seen.has(key)) return;
+    seen.add(key);
+    if(decadeEnrichQueue.some(q => q.key === key)) return;
+    const attrs = getSongAttributes(row.title, row.artist);
+    if(!attrs.decade) decadeEnrichQueue.push({ title: row.title, artist: row.artist, key });
+  });
+  if(!decadeEnrichQueue.length) return;
+  decadeEnrichTotal = decadeEnrichDone + decadeEnrichQueue.length;
+  if(!decadeEnrichInProgress) analyseRunDecadeEnrichment();
+  else analyseUpdateDecadeProgressUI();
+}
+async function analyseRunDecadeEnrichment(){
+  decadeEnrichInProgress = true;
+  analyseUpdateDecadeProgressUI();
+  const CONCURRENCY = 4;
+  async function worker(){
+    while(decadeEnrichQueue.length){
+      const item = decadeEnrichQueue.shift();
+      const decade = await fetchItunesReleaseDecade(item.title, item.artist);
+      const attrs = getSongAttributes(item.title, item.artist);
+      if(!attrs.decade){ attrs.decade = decade || 'Inconnue'; songAttributesSaveToStorage(); }
+      decadeEnrichDone++;
+      if(decadeEnrichDone % 15 === 0 || decadeEnrichQueue.length === 0) analyseRefreshDecadeDependentViews();
+      analyseUpdateDecadeProgressUI();
+    }
+  }
+  await Promise.all(Array.from({length: CONCURRENCY}, worker));
+  decadeEnrichInProgress = false;
+  decadeEnrichDone = 0; decadeEnrichTotal = 0;
+  analyseUpdateDecadeProgressUI();
+  analyseRefreshDecadeDependentViews();
+}
+function analyseRefreshDecadeDependentViews(){
+  if(typeof analyseRows !== 'undefined' && analyseRows.length) analyseApplyDecadeToRows(analyseRows);
+  if(typeof analysePageOpen !== 'undefined' && analysePageOpen && typeof renderAnalysePage === 'function') renderAnalysePage();
+  if(typeof analyseSubView !== 'undefined' && analyseSubView === 'graph' && typeof renderGraphPage === 'function') renderGraphPage();
+}
+function analyseApplyDecadeToRows(rows){
+  rows.forEach(row => {
+    const attrs = getSongAttributes(row.title, row.artist);
+    row.decade = attrs.decade || null;
+  });
+}
+function analyseUpdateDecadeProgressUI(){
+  const el = document.getElementById('analyseDecadeProgress');
+  if(!el) return;
+  if(!decadeEnrichInProgress || decadeEnrichTotal === 0){
+    el.style.display = 'none';
+    return;
+  }
+  el.style.display = 'inline-block';
+  el.textContent = '🕐 Décennies : ' + decadeEnrichDone + '/' + decadeEnrichTotal;
 }
 
 /** Pochette d'un titre via l'API iTunes Search (même mécanisme JSONP que
@@ -20494,7 +20702,7 @@ async function watchlistDailyCheck(force){
   // de repli silencieux — si l'extraction échoue pour l'une, la vérification
   // se poursuit avec les autres sources déjà disponibles).
   await Promise.all(keyPlaylists
-    .filter(p => !p.fetchedAt)
+    .filter(p => !isFetchedToday(p))
     .map(p => refreshKeyPlaylist(p.id).catch(() => {})));
 
   for(const w of toCheck){
