@@ -1549,6 +1549,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Programmation exhaustive · Yacast/Muzicast</div>
           <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Analyse — <span id="analyseStationLabel">Europe 2</span><span class="station-logo-slot"></span></h2>
           <span id="analyseDecadeProgress" style="display:none;margin-top:6px;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px" title="Récupération en arrière-plan des décennies de sortie manquantes (API iTunes) — n'empêche pas de continuer à travailler"></span>
+          <button onclick="analyseRetryFailedDecades()" title="Repasse en file tous les titres de cette semaine marqués « Inconnue », pour leur redonner une chance (utile après un rate-limit iTunes lors d'un gros import)" style="display:inline-block;margin-top:6px;margin-left:6px;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔄 Relancer les décennies en échec</button>
         </div>
       </div>
       <div id="analyseProgActions" style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -1706,7 +1707,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
         <!-- Tranches programme -->
         <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;margin-bottom:24px">
-          <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Audience moyenne par tranche programme</div>
+          <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:2px">Audience moyenne par tranche programme</div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Cliquez sur une tranche pour voir son historique</div>
           <div id="digitalAudienceTranchesTable"></div>
         </div>
       </div>
@@ -2834,56 +2836,80 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <div style="max-width:1200px;margin:0 auto">
       <div style="text-align:center;margin-bottom:40px">
         <div style="font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--muted);text-transform:uppercase;margin-bottom:10px">Fonctionnalités</div>
-        <h2 style="font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--navy)">Les outils de recherche musicale, d'analyse et d'aide à la décision</h2>
+        <h2 style="font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--navy)">4 sources croisées pour une décision de programmation éclairée</h2>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px">
 
         <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
-          <div style="width:48px;height:48px;border-radius:14px;background:var(--cyan-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+          <div style="width:48px;height:48px;border-radius:14px;background:#FFF4E0;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E07B00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
           </div>
-          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Fit Point automatique</div>
-          <div style="font-size:14px;color:var(--text2);line-height:1.65">La fonction cœur de l'outil : le Fit Point est calculé automatiquement à partir de vos titres anchor. Choisissez 1 à 3 chansons qui définissent l'ADN sonore de votre station, classées en 5 quadrants (Power Song, Power Burned, Sleeper, Wrong Format, Miss).</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Recherche musicale</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Call Out, OMT et Fit Score calculés automatiquement par corrélation de Pearson contre vos titres anchor (Pure Core), avec classement en 5 quadrants (Power Song, Power Burned, Sleeper, Wrong Format, Miss).</div>
         </div>
 
         <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
           <div style="width:48px;height:48px;border-radius:14px;background:#EAF2FF;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
           </div>
-          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Classements de consommation</div>
-          <div style="font-size:14px;color:var(--text2);line-height:1.65">Agrégation des principaux classements de consommation musicale — Spotify, Shazam, Deezer et Apple Music en France, en Europe et dans le monde — pour croiser vos données Call Out avec la réalité du marché.</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Airplay complet</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Suivi hebdomadaire Général, Fortes et Faibles Rotations, comparatif Live en cours de semaine et benchmark européen (EMB), avec plusieurs mois d'historique sauvegardés.</div>
         </div>
 
         <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
           <div style="width:48px;height:48px;border-radius:14px;background:var(--green-bg);display:flex;align-items:center;justify-content:center;margin-bottom:18px">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
           </div>
-          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Airplay avec historique</div>
-          <div style="font-size:14px;color:var(--text2);line-height:1.65">Suivi hebdomadaire de l'Airplay (classement général, Europe 2, NRJ, RTL2, Indés Radios) avec plusieurs mois d'historique sauvegardés, pour visualiser les tendances semaine après semaine.</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Consommation digitale</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Spotify, Deezer, Apple Music, Shazam, iTunes, YouTube et Billboard agrégés en France comme à l'international, playlists clés et radios clés suivies automatiquement chaque jour.</div>
         </div>
 
         <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
-          <div style="width:48px;height:48px;border-radius:14px;background:#FFF4E0;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E07B00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+          <div style="width:48px;height:48px;border-radius:14px;background:#FDEAEA;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#E5484D" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
           </div>
-          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Radar &amp; outils de décision</div>
-          <div style="font-size:14px;color:var(--text2);line-height:1.65">Matrice de décision, Score Unifié, Burn Rate, Polarisation, Analyse de potentiel et Radar de gains hebdomadaires — pour transformer les données en recommandations concrètes de programmation.</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Signature émotionnelle</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Import des scores Habs(R) pour qualifier l'empreinte émotionnelle de chaque titre, en complément direct du Fit Score dans les décisions de programmation.</div>
+        </div>
+
+        <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
+          <div style="width:48px;height:48px;border-radius:14px;background:var(--cyan-light);display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8 13 13.7l-4-4L3 16"/></svg>
+          </div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Analyses de programmation</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Programmation hebdomadaire exhaustive croisée à l'audience digitale, aux données Médiamétrie et à des graphiques d'évolution par genre, décennie, label et exposition musicale.</div>
         </div>
 
         <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
           <div style="width:48px;height:48px;border-radius:14px;background:var(--purple-bg);display:flex;align-items:center;justify-content:center;margin-bottom:18px">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
           </div>
-          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Historique par titre/artiste</div>
-          <div style="font-size:14px;color:var(--text2);line-height:1.65">Recherchez un titre ou un artiste pour retrouver sa fiche de synthèse complète : évolution du Call Out vague par vague, et courbes Airplay/Spotify au fil des semaines.</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Outils de décision</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Radar de gains, Veille, Cycles de vie, Burn Rate, Polarisation, Concurrence, Score Unifié, IEDR et Matrice Décision : les données se transforment en recommandations concrètes.</div>
         </div>
 
         <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
-          <div style="width:48px;height:48px;border-radius:14px;background:#EAF2FF;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <div style="width:48px;height:48px;border-radius:14px;background:rgba(11,29,58,.08);display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--navy)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </div>
-          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Export Excel enrichi</div>
-          <div style="font-size:14px;color:var(--text2);line-height:1.65">Exportez en un clic votre fichier source complété des colonnes FIT_SCORE et QUADRANT, avec un onglet de synthèse détaillé.</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Fiche titre 360°</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Une fiche complète par titre, navigable au clavier depuis n'importe quel tableau : historique Call Out, Airplay et Spotify vague par vague, Genre et Décennie enrichis automatiquement via iTunes.</div>
+        </div>
+
+        <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
+          <div style="width:48px;height:48px;border-radius:14px;background:#FDF0F5;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D6336C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          </div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Playlist &amp; Comité d'écoute</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Playlist par station avec catégories, paquets et suivi Power New/Intro, archivage Drive et export PDF prêt pour la réunion hebdomadaire de Comité d'écoute.</div>
+        </div>
+
+        <div style="padding:28px;border-radius:16px;border:1.5px solid var(--border);background:var(--white);transition:box-shadow .2s" onmouseenter="this.style.boxShadow='0 8px 32px rgba(11,29,58,.10)'" onmouseleave="this.style.boxShadow='none'">
+          <div style="width:48px;height:48px;border-radius:14px;background:#EEF1F6;display:flex;align-items:center;justify-content:center;margin-bottom:18px">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#5B6B82" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          </div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:700;color:var(--navy);margin-bottom:8px">Quotas &amp; exports</div>
+          <div style="font-size:14px;color:var(--text2);line-height:1.65">Suivi quotidien des quotas de diffusion français et export Excel enrichi des colonnes FIT_SCORE et QUADRANT, avec un onglet de synthèse détaillé.</div>
         </div>
 
       </div>
@@ -11633,7 +11659,8 @@ function renderDigitalAudienceDetail(){
     tranchesArea.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Aucune donnée de tranche pour cette semaine.</div>';
   } else {
     const heatBg = x => (x>0.02 ? 'var(--green-bg)' : (x<-0.02 ? '#FDEBEB' : 'transparent'));
-    const rows = tranches.map(t => `<tr>
+    const rows = tranches.map(t => `<tr onclick="openDigitalAudienceTrancheHistory('${jsAttrEscape(t.tranche)}')" title="Voir l'historique de cette tranche"
+      style="cursor:pointer" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background=''">
       <td style="padding:8px 12px;font-size:12px;font-weight:700;color:var(--navy)">${escHtml(t.tranche)}${t.programme ? ` <span style="color:var(--muted);font-weight:500">· ${escHtml(t.programme)}</span>` : ''}</td>
       <td style="padding:8px 12px;font-size:12px;text-align:right">${digitalAudienceFmtInt(t.audience)}</td>
       <td style="padding:8px 12px;text-align:right;background:${heatBg(t.evolS1)}">${digitalAudienceEvolBadge(t.evolS1)}</td>
@@ -11650,6 +11677,67 @@ function renderDigitalAudienceDetail(){
         <tbody>${rows}</tbody>
       </table>`;
   }
+}
+
+/** Petite pastille "chiffre" pour l'en-tête de la fiche historique tranche
+ *  (openDigitalAudienceTrancheHistory) — même style que les cartes KPI de la
+ *  page, condensé pour tenir en ligne dans la modale. */
+function digitalAudienceTrancheStatChip(label, value){
+  return `<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:8px 12px;min-width:90px">
+    <div style="font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">${escHtml(label)}</div>
+    <div style="font-size:14px;font-weight:800;color:var(--navy)">${value}</div>
+  </div>`;
+}
+
+/** Ouvre la fiche historique (chiffres + courbe) d'une tranche horaire de la
+ *  page Audience digitale — reprend la modale générique #modalHistChart
+ *  (mêmes champs mhcTitle/mhcArtist/mhcCible et même buildHistChart déjà
+ *  utilisés pour l'historique de score des titres) plutôt que d'en créer
+ *  une nouvelle, pour rester cohérent visuellement et ne pas dupliquer le
+ *  moteur de graphique SVG. Le programme diffusé et la station étant liés à
+ *  la station de référence active (digitalAudienceUI.station), l'historique
+ *  couvre toutes les semaines archivées pour CETTE tranche précise, quelle
+ *  que soit la semaine actuellement affichée dans le tableau. */
+function openDigitalAudienceTrancheHistory(trancheLabel){
+  const stKey = digitalAudienceUI.station;
+  const weeks = digitalAudienceWeekKeys(stKey);
+
+  const vagues = [];
+  let latestTranche = null, latestProgramme = '';
+  weeks.forEach(w => {
+    const rec = digitalAudienceHistory[stKey][w];
+    const t = rec && rec.tranches && rec.tranches.find(x => x.tranche === trancheLabel);
+    if(t && t.audience !== null && t.audience !== undefined){
+      vagues.push({ label: digitalAudienceFmtDate(w), full: 'Semaine du ' + digitalAudienceFmtDate(w), val: t.audience });
+      latestTranche = t;
+      if(t.programme) latestProgramme = t.programme;
+    }
+  });
+  if(!vagues.length) return;
+
+  const vals = vagues.map(v => v.val);
+  const avg  = vals.reduce((a,b) => a+b, 0) / vals.length;
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+
+  document.getElementById('mhcTitle').textContent  = trancheLabel;
+  document.getElementById('mhcArtist').textContent = STATION_LABELS[stKey] + (latestProgramme ? ' · ' + latestProgramme : '');
+  document.getElementById('mhcCible').textContent  = 'AUDIENCE MOYENNE · HISTORIQUE';
+
+  const statsHtml = `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+    ${digitalAudienceTrancheStatChip('Dernière valeur', digitalAudienceFmtInt(vals[vals.length-1]))}
+    ${latestTranche && latestTranche.evolS1 !== null && latestTranche.evolS1 !== undefined ? digitalAudienceTrancheStatChip('Évol. S-1', digitalAudienceEvolBadge(latestTranche.evolS1)) : ''}
+    ${latestTranche && latestTranche.evol1an !== null && latestTranche.evol1an !== undefined ? digitalAudienceTrancheStatChip('Évol. 1 an', digitalAudienceEvolBadge(latestTranche.evol1an)) : ''}
+    ${digitalAudienceTrancheStatChip('Moyenne période', digitalAudienceFmtInt(avg))}
+    ${digitalAudienceTrancheStatChip('Minimum', digitalAudienceFmtInt(minV))}
+    ${digitalAudienceTrancheStatChip('Maximum', digitalAudienceFmtInt(maxV))}
+  </div>`;
+
+  document.getElementById('mhcChartWrap').innerHTML = statsHtml + buildHistChart(vagues, { hideStats: true, showTrend: true });
+
+  const modal = document.getElementById('modalHistChart');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
 }
 
 /** Instances Chart.js de la sous-page Audience digitale — détruites et
@@ -15337,12 +15425,16 @@ async function tevFetchGenre(title, artist){
  *  "Décennies" des Graphiques d'évolution). */
 async function tevFetchDecade(title, artist){
   showToast('⏳ Recherche de la décennie…', 'success');
-  const decade = await fetchItunesReleaseDecade(title, artist);
-  if(!decade){ showToast('Décennie introuvable sur iTunes pour ce titre', 'err'); return; }
-  updateSongAttribute(title, artist, 'decade', decade);
+  await itunesRateGate();
+  const result = await fetchItunesReleaseDecade(title, artist);
+  if(!result.decade){
+    showToast(result.failed ? 'Requête iTunes en échec, réessayez' : 'Décennie introuvable sur iTunes pour ce titre', 'err');
+    return;
+  }
+  updateSongAttribute(title, artist, 'decade', result.decade);
   const input = document.getElementById('tevDecadeInput');
-  if(input) input.value = decade;
-  showToast('✓ Décennie trouvée : ' + decade, 'success');
+  if(input) input.value = result.decade;
+  showToast('✓ Décennie trouvée : ' + result.decade, 'success');
 }
 
 function closeTitleEvolutionModal(e){
@@ -15557,9 +15649,37 @@ function buildHistChart(vagues, meta){
   const range = maxV - minV || 1;
   const n = vagues.length;
 
+  // Courbe lissée (moyenne mobile centrée, fenêtre adaptative) — optionnelle
+  // via meta.showTrend, pour ne pas changer le rendu des fiches titres
+  // existantes. Une fenêtre plus large sur de longues séries (nombreuses
+  // semaines) lisse davantage le bruit hebdomadaire et fait ressortir la
+  // tendance de fond ; sur une série courte, une fenêtre de 3 suffit et
+  // évite d'aplatir complètement les quelques points disponibles.
+  const showTrend = !!(meta && meta.showTrend) && n >= 4;
+  let trendVals = null;
+  if(showTrend){
+    const window = n >= 20 ? 5 : 3;
+    const half = Math.floor(window / 2);
+    trendVals = vals.map((_, i) => {
+      const start = Math.max(0, i - half);
+      const end   = Math.min(n, i + half + 1);
+      const slice = vals.slice(start, end);
+      return slice.reduce((a,b) => a+b, 0) / slice.length;
+    });
+  }
+
+  // Libellés X : les dates ("29/12/2025") sont bien plus longues que les
+  // anciens numéros de vague ("V603") pour lesquels ce graphique a été conçu
+  // à l'origine — au-delà d'une poignée de points elles se chevauchent
+  // toujours en horizontal, quel que soit le pas d'échantillonnage. On les
+  // fait pivoter dès que le libellé moyen dépasse ~6 caractères, et on
+  // réserve une hauteur basse suffisante pour les accueillir en diagonale.
+  const maxLabelLen = Math.max(1, ...vagues.map(v => String(v.label||'').length));
+  const rotateLabels = maxLabelLen > 6;
+
   // Dimensions du SVG (responsive via viewBox)
   const W = 760, H = 300;
-  const padL = 58, padR = 28, padT = 28, padB = 64;
+  const padL = 58, padR = 28, padT = 28, padB = rotateLabels ? 74 : 64;
   const chartW = W - padL - padR;
   const chartH = H - padT - padB;
 
@@ -15615,17 +15735,33 @@ function buildHistChart(vagues, meta){
   // Zone de remplissage (aire sous la courbe)
   const linePoints = vagues.map((v,i) => `${xPos(i).toFixed(1)},${yPos(v.val).toFixed(1)}`).join(' ');
   const areaPoints = `${xPos(0).toFixed(1)},${(padT+chartH).toFixed(1)} ` + linePoints + ` ${xPos(n-1).toFixed(1)},${(padT+chartH).toFixed(1)}`;
+  const trendLinePoints = trendVals ? trendVals.map((v,i) => `${xPos(i).toFixed(1)},${yPos(v).toFixed(1)}`).join(' ') : '';
 
-  // Labels X (numéros de vague) — alterner si trop serrés, tronquer si long
-  const labelStep = n > 10 ? 2 : 1;
+  // Labels X — pas adaptatif calculé à partir de la largeur réellement
+  // disponible entre deux points, pour ne jamais dépendre d'un seuil fixe
+  // (fonctionne aussi bien pour 6 vagues que pour 30+ semaines de dates).
+  // En diagonale (rotateLabels), l'empreinte horizontale d'un libellé est
+  // réduite par le cosinus de l'angle ; à plat, elle vaut sa pleine largeur.
+  const charW = 5.4; // largeur moyenne d'un caractère à font-size 10, Inter
+  const spacing = n > 1 ? chartW / (n - 1) : chartW;
+  const angle = rotateLabels ? -42 : 0;
+  const footprint = rotateLabels
+    ? maxLabelLen * charW * Math.cos(42 * Math.PI / 180) + 8
+    : maxLabelLen * charW + 12;
+  const labelStep = Math.max(1, Math.ceil(footprint / Math.max(spacing, 1)));
   const xLabels = vagues.map((v,i) => {
     if(i % labelStep !== 0 && i !== n-1) return '';
     const x = xPos(i);
-    const y = padT + chartH + 18;
+    const y = padT + chartH + (rotateLabels ? 14 : 18);
     const lblText = String(v.label||'');
-    const shortText = lblText.length > 10 ? lblText.slice(0,9) + '…' : lblText;
-    // Label court (V603) et complet au survol via title
-    return `<text x="${x.toFixed(1)}" y="${y.toFixed(0)}" font-size="10" fill="var(--text2)" text-anchor="middle" font-family="Inter,sans-serif" font-weight="600">${escHtml(shortText)}<title>${escHtml(v.full||lblText)}</title></text>`;
+    // En diagonale, la place est nettement moindre : tronquer plus court.
+    const shortText = rotateLabels
+      ? (lblText.length > 12 ? lblText.slice(0,11) + '…' : lblText)
+      : (lblText.length > 10 ? lblText.slice(0,9) + '…' : lblText);
+    const anchor = rotateLabels ? 'end' : 'middle';
+    const transform = rotateLabels ? ` transform="rotate(${angle} ${x.toFixed(1)} ${y.toFixed(0)})"` : '';
+    // Label court et complet au survol via title
+    return `<text x="${x.toFixed(1)}" y="${y.toFixed(0)}" font-size="10" fill="var(--text2)" text-anchor="${anchor}" font-family="Inter,sans-serif" font-weight="600"${transform}>${escHtml(shortText)}<title>${escHtml(v.full||lblText)}</title></text>`;
   }).join('');
 
   // Points interactifs avec tooltip SVG natif
@@ -15678,16 +15814,19 @@ function buildHistChart(vagues, meta){
     }
   }
 
-  // Stats : min / max / moyenne / première apparition
+  // Stats : min / max / moyenne / première apparition — masquable via
+  // meta.hideStats (fiches où ce résumé générique ne correspond à rien,
+  // ex. historique d'une tranche d'audience qui a son propre résumé dédié).
   const avg = (vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(1);
   const firstPoint = vagues[0];
-  const statsBadge = `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  const statsBadge = (meta && meta.hideStats) ? '' : `<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
     <span style="font-size:12px;color:var(--text2)">Min <strong style="color:var(--navy)">${Math.min(...vals).toFixed(1)}</strong></span>
     <span style="font-size:12px;color:var(--text2)">Max <strong style="color:var(--navy)">${Math.max(...vals).toFixed(1)}</strong></span>
     <span style="font-size:12px;color:var(--text2)">Moy. <strong style="color:var(--navy)">${avg}</strong></span>
     <span style="font-size:12px;color:var(--text2)">${n} vague${n>1?'s':''}</span>
     <span style="font-size:12px;color:var(--text2)">📅 1er passage : <strong style="color:var(--navy)">${escHtml(firstPoint.full || firstPoint.label || '')}</strong></span>
   </div>`;
+  if(meta && meta.hideStats) trendBadge = '';
 
   const svgMarkup = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;overflow:visible">
     <defs>
@@ -15706,6 +15845,8 @@ function buildHistChart(vagues, meta){
     <polygon points="${areaPoints}" fill="url(#hcGrad)"/>
     <!-- Courbe -->
     <polyline points="${linePoints}" fill="none" stroke="var(--cyan)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <!-- Courbe lissée (moyenne mobile) : tendance de fond, en tirets, par-dessus la courbe brute -->
+    ${trendVals ? `<polyline points="${trendLinePoints}" fill="none" stroke="var(--navy)" stroke-width="2" stroke-dasharray="6,4" stroke-linejoin="round" stroke-linecap="round" opacity="0.75"/>` : ''}
     <!-- Labels X -->
     ${xLabels}
     <!-- Points -->
@@ -15714,15 +15855,20 @@ function buildHistChart(vagues, meta){
     <line x1="${padL}" y1="${(padT+chartH).toFixed(1)}" x2="${W-padR}" y2="${(padT+chartH).toFixed(1)}" stroke="var(--border)" stroke-width="1.5"/>
   </svg>`;
 
+  const legendHtml = trendVals ? `<div style="display:flex;align-items:center;justify-content:center;gap:16px;font-size:11px;color:var(--muted)">
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:2.5px;background:var(--cyan);border-radius:2px"></span>Valeur par semaine</span>
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="display:inline-block;width:14px;height:0;border-top:2px dashed var(--navy)"></span>Tendance (moyenne mobile)</span>
+  </div>` : `<div style="font-size:11px;color:var(--muted);text-align:center">Survol des points pour les valeurs · Dernière vague en bleu marine</div>`;
+
   return `<div style="display:flex;flex-direction:column;gap:14px">
-    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between">
+    ${statsBadge || trendBadge ? `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between">
       ${statsBadge}
       ${trendBadge}
-    </div>
+    </div>` : ''}
     <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:12px;padding:16px 8px 8px">
       ${svgMarkup}
     </div>
-    <div style="font-size:11px;color:var(--muted);text-align:center">Survol des points pour les valeurs · Dernière vague en bleu marine</div>
+    ${legendHtml}
   </div>`;
 }
 
@@ -20407,14 +20553,18 @@ function fetchItunesGenre(title, artist, timeoutMs = 7000){
 
 /** Décennie de sortie d'un titre via l'API iTunes Search (même mécanisme
  *  JSONP que fetchItunesGenre ci-dessus) — extrait releaseDate et arrondit
- *  à la décennie ("1990s", "2020s"...). Retourne null si introuvable
- *  (titre absent d'iTunes, requête en échec ou expirée). */
+ *  à la décennie ("1990s", "2020s"...). Résout un objet { decade, failed }
+ *  plutôt qu'une simple string : distinguer un ÉCHEC TECHNIQUE (timeout,
+ *  requête réseau en erreur — typiquement un rate-limit iTunes lors d'un
+ *  enrichissement en masse) d'un VRAI "aucun résultat" est nécessaire pour
+ *  ne mettre en cache "Inconnue" (jamais retenté ensuite) que dans le
+ *  second cas — voir analyseRunDecadeEnrichment ci-dessous. */
 function fetchItunesReleaseDecade(title, artist, timeoutMs = 7000){
   return new Promise((resolve) => {
     const cbName = '__fpaItunesDecade_' + Math.floor(Math.random()*1e9);
     const cleanup = (script) => { window[cbName] = () => {}; if(script) script.remove(); };
     const timer = setTimeout(() => {
-      const s = document.getElementById(cbName); cleanup(s); resolve(null);
+      const s = document.getElementById(cbName); cleanup(s); resolve({ decade: null, failed: true });
     }, timeoutMs);
     window[cbName] = (data) => {
       clearTimeout(timer);
@@ -20422,15 +20572,35 @@ function fetchItunesReleaseDecade(title, artist, timeoutMs = 7000){
       try{
         const r = data && data.results && data.results[0];
         const year = r && r.releaseDate ? parseInt(String(r.releaseDate).slice(0,4), 10) : NaN;
-        resolve(!isNaN(year) ? (Math.floor(year/10)*10 + 's') : null);
-      }catch(e){ resolve(null); }
+        resolve({ decade: !isNaN(year) ? (Math.floor(year/10)*10 + 's') : null, failed: false });
+      }catch(e){ resolve({ decade: null, failed: false }); }
     };
     const term = encodeURIComponent(`${title} ${artist}`.trim());
     const script = document.createElement('script');
     script.id = cbName;
     script.src = `https://itunes.apple.com/search?term=${term}&entity=song&limit=1&callback=${cbName}`;
-    script.onerror = () => { clearTimeout(timer); cleanup(script); resolve(null); };
+    script.onerror = () => { clearTimeout(timer); cleanup(script); resolve({ decade: null, failed: true }); };
     document.body.appendChild(script);
+  });
+}
+
+/** Limiteur de débit partagé par toutes les requêtes de décennie (worker
+ *  d'enrichissement en masse ET clic manuel 🔍) — l'API publique iTunes
+ *  Search se met à répondre en échec au-delà d'une vingtaine de requêtes
+ *  par minute environ ; sans espacement, un import de 400-700 titres
+ *  saturait la limite en quelques dizaines de titres et le reste de la
+ *  file se retrouvait marqué "Inconnue" à tort (échec de débit confondu
+ *  avec "introuvable"). L'attente est calculée de façon synchrone (avant
+ *  tout await), donc atomique malgré les workers concurrents — pas de
+ *  risque que deux requêtes se faufilent au même instant. */
+let _itunesLastRequestAt = 0;
+const ITUNES_MIN_INTERVAL_MS = 3200; // ≈ 18-19 requêtes/minute, sous le seuil de rate-limit observé
+function itunesRateGate(){
+  return new Promise(resolve => {
+    const now = Date.now();
+    const wait = Math.max(0, _itunesLastRequestAt + ITUNES_MIN_INTERVAL_MS - now);
+    _itunesLastRequestAt = now + wait;
+    setTimeout(resolve, wait);
   });
 }
 
@@ -20440,16 +20610,19 @@ function fetchItunesReleaseDecade(title, artist, timeoutMs = 7000){
  *  la décennie déjà en cache (songAttributes, la quasi-totalité après les
  *  premières semaines), et celles manquantes se complètent au fil de l'eau,
  *  avec un rafraîchissement périodique des vues concernées (tableau Analyse,
- *  carte "Décennies" des Graphiques). Concurrence limitée à 4 requêtes iTunes
- *  en parallèle : raisonnable sur une grosse semaine (400-700 titres) sans
- *  bombarder l'API — le premier import est donc plus lent que les suivants,
- *  qui ne recherchent quasiment plus rien (cache déjà rempli par les
- *  semaines précédentes, les mêmes titres revenant d'une semaine à l'autre).
- *  Une décennie introuvable sur iTunes est mise en cache comme "Inconnue"
- *  (chaîne non vide) pour ne jamais la re-rechercher inutilement — seule une
- *  correction manuelle future pourrait la corriger. */
+ *  carte "Décennies" des Graphiques). Concurrence limitée à 2 requêtes
+ *  iTunes en parallèle, ESPACÉES par itunesRateGate() (voir plus haut) — le
+ *  premier import d'une grosse semaine (400-700 titres) est donc plus lent
+ *  qu'avant (plusieurs dizaines de minutes en tâche de fond), mais aboutit
+ *  réellement au lieu de se faire rate-limiter au bout de quelques dizaines
+ *  de titres. Un échec TECHNIQUE (timeout, requête en erreur) est remis en
+ *  file pour une passe ultérieure plutôt que d'être mis en cache comme
+ *  "Inconnue" — seul un vrai "aucun résultat" iTunes reçoit ce marquage
+ *  définitif (jamais retenté ensuite, sauf via "Relancer les décennies en
+ *  échec"). */
 let decadeEnrichInProgress = false;
 let decadeEnrichQueue = [];
+let decadeEnrichRetryQueue = []; // échecs techniques de la passe en cours, retentés une fois celle-ci terminée
 let decadeEnrichTotal = 0;
 let decadeEnrichDone = 0;
 function analyseQueueDecadeEnrichment(rows){
@@ -20470,24 +20643,80 @@ function analyseQueueDecadeEnrichment(rows){
 async function analyseRunDecadeEnrichment(){
   decadeEnrichInProgress = true;
   analyseUpdateDecadeProgressUI();
-  const CONCURRENCY = 4;
+  const CONCURRENCY = 2;
   async function worker(){
     while(decadeEnrichQueue.length){
       const item = decadeEnrichQueue.shift();
-      const decade = await fetchItunesReleaseDecade(item.title, item.artist);
+      await itunesRateGate();
+      const result = await fetchItunesReleaseDecade(item.title, item.artist);
       const attrs = getSongAttributes(item.title, item.artist);
-      if(!attrs.decade){ attrs.decade = decade || 'Inconnue'; songAttributesSaveToStorage(); }
+      if(!attrs.decade){
+        if(result.failed){
+          decadeEnrichRetryQueue.push(item); // échec technique : pas de "Inconnue", on retentera
+        } else {
+          attrs.decade = result.decade || 'Inconnue';
+          songAttributesSaveToStorage();
+        }
+      }
       decadeEnrichDone++;
       if(decadeEnrichDone % 15 === 0 || decadeEnrichQueue.length === 0) analyseRefreshDecadeDependentViews();
       analyseUpdateDecadeProgressUI();
     }
   }
   await Promise.all(Array.from({length: CONCURRENCY}, worker));
+
+  if(decadeEnrichRetryQueue.length){
+    // Une passe s'est terminée avec des échecs techniques (rate-limit
+    // encore actif, coupure réseau ponctuelle...) — on les repasse en file
+    // et on relance directement une nouvelle passe, toujours au même débit
+    // limité, plutôt que de les abandonner marqués "Inconnue".
+    decadeEnrichQueue = decadeEnrichRetryQueue;
+    decadeEnrichRetryQueue = [];
+    decadeEnrichTotal = decadeEnrichDone + decadeEnrichQueue.length;
+    return analyseRunDecadeEnrichment();
+  }
+
   decadeEnrichInProgress = false;
   decadeEnrichDone = 0; decadeEnrichTotal = 0;
   analyseUpdateDecadeProgressUI();
   analyseRefreshDecadeDependentViews();
 }
+
+/** Repasse en file tous les titres actuellement marqués "Inconnue" pour la
+ *  semaine affichée — utile pour rattraper les décennies restées à tort en
+ *  "Inconnue" avant l'introduction de la distinction échec technique / vrai
+ *  "aucun résultat" ci-dessus. Bouton "🔄 Relancer les décennies en échec"
+ *  du header de la page Analyse. */
+function analyseRetryFailedDecades(){
+  if(typeof analyseRows === 'undefined' || !analyseRows.length){
+    showToast('Aucune semaine chargée', 'err');
+    return;
+  }
+  const seen = new Set();
+  let queued = 0;
+  analyseRows.forEach(row => {
+    const key = comiteKey(row.title, row.artist);
+    if(seen.has(key)) return;
+    seen.add(key);
+    if(decadeEnrichQueue.some(q => q.key === key)) return;
+    const attrs = getSongAttributes(row.title, row.artist);
+    if(attrs.decade === 'Inconnue'){
+      attrs.decade = '';
+      decadeEnrichQueue.push({ title: row.title, artist: row.artist, key });
+      queued++;
+    }
+  });
+  if(!queued){
+    showToast('Aucune décennie en échec sur cette semaine', 'success');
+    return;
+  }
+  songAttributesSaveToStorage();
+  decadeEnrichTotal = decadeEnrichDone + decadeEnrichQueue.length;
+  showToast('🔄 Relance de ' + queued + ' décennie(s) en échec…', 'success');
+  if(!decadeEnrichInProgress) analyseRunDecadeEnrichment();
+  else analyseUpdateDecadeProgressUI();
+}
+
 function analyseRefreshDecadeDependentViews(){
   if(typeof analyseRows !== 'undefined' && analyseRows.length) analyseApplyDecadeToRows(analyseRows);
   if(typeof analysePageOpen !== 'undefined' && analysePageOpen && typeof renderAnalysePage === 'function') renderAnalysePage();
@@ -29461,7 +29690,7 @@ function renderDriveSyncPanel() {
       <div style="padding:14px 18px;background:var(--white);border-bottom:1.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div>
           <div style="font-size:11px;font-weight:800;color:var(--navy)">💾 Migration vers un autre poste</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:420px;line-height:1.5">Exporte en un fichier tout ce qui est propre à ce navigateur : URLs des backends, Comité/Playlist/Veille, Playlists Spotify clés, sound codes, Habs(R), historique des vagues et des quotas. Ne couvre pas le Drive Sync lui-même (déjà côté serveur, indépendant du poste).</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:420px;line-height:1.5">Exporte en un fichier tout ce qui est propre à ce navigateur : URLs des backends, Comité/Playlist/Veille, Playlists Spotify clés, sound codes, Habs(R), Song Attributs (dates d'entrée, label, genre, décennie), historique des vagues et des quotas. Ne couvre pas le Drive Sync lui-même (déjà côté serveur, indépendant du poste).</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
           <button onclick="exportFpaSettingsJSON()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700">⬇ Tout exporter</button>
