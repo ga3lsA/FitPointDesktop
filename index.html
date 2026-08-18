@@ -2057,6 +2057,15 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;position:relative">
+        <div id="tevNavWrap" style="display:none;align-items:center;gap:4px;margin-right:4px">
+          <button onclick="tevNavStep(-1)" title="Titre précédent"
+            style="flex-shrink:0;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:28px;height:32px;font-size:14px;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s"
+            onmouseenter="this.style.borderColor='var(--cyan)';this.style.color='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">‹</button>
+          <span id="tevNavCounter" style="font-size:10.5px;font-weight:700;color:var(--muted);min-width:44px;text-align:center;white-space:nowrap"></span>
+          <button onclick="tevNavStep(1)" title="Titre suivant"
+            style="flex-shrink:0;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:28px;height:32px;font-size:14px;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s"
+            onmouseenter="this.style.borderColor='var(--cyan)';this.style.color='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">›</button>
+        </div>
         <button id="tevShareBtn" onclick="toggleTevShareMenu(event)" title="Exporter cette fiche en image ou PDF"
           style="display:flex;align-items:center;gap:6px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:0 12px;height:32px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;transition:all .15s"
           onmouseenter="this.style.borderColor='var(--cyan)';this.style.color='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
@@ -2667,27 +2676,25 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
         <!-- Airplay : statut de référence + import complet (Général/Fortes/Faibles, hebdo + Live) — source Airplay, accent bleu -->
         <div style="padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #3B82F6">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
             <div style="font-size:12.5px;font-weight:800;color:#fff">📻 Airplay</div>
             <span id="homeAirplayRefStatus" style="font-size:10.5px;color:rgba(255,255,255,.5)"></span>
           </div>
-          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#3B82F6;margin-bottom:6px">● AIRPLAY</div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:4px">Hebdomadaire</div>
           <div id="homeAirplayImportZone" style="margin-bottom:8px"></div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:4px">Live (en cours de semaine)</div>
           <div id="homeLiveImportZone"></div>
         </div>
 
-        <!-- Programmation musicale (Analyse) — chargement direct depuis la home, Europe 2 et RFM, avec statut de la dernière semaine connue — source Programmation, accent violet -->
-        <div style="padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #7C3AED">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+        <!-- Programmation musicale (Analyse) — chargement direct depuis la home, Europe 2 et RFM, avec statut de la dernière semaine connue — même famille qu'Airplay, même accent bleu -->
+        <div style="padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #3B82F6">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
             <div style="font-size:12.5px;font-weight:800;color:#fff">📊 Programmation musicale</div>
             <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:6px 12px;border-radius:8px;cursor:pointer;white-space:nowrap">
               Importer une/des semaine(s)
               <input type="file" accept=".xlsx,.xls" multiple style="display:none" onchange="homeProgTriggerImport(this)">
             </label>
           </div>
-          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#7C3AED;margin-bottom:6px">● PROGRAMMATION</div>
           <div id="homeProgLastWeeks" style="font-size:11px;line-height:1.7"></div>
         </div>
 
@@ -2698,7 +2705,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
         <!-- Call Out — source : Recherche (même famille que OMT, accent ambre) -->
         <div style="padding:16px 18px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #F0A020">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
             <div style="font-size:14px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px">📋 Call Out<span id="homePendingCheck_callout"></span></div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
@@ -2711,13 +2718,12 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
               </label>
             </div>
           </div>
-          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#F0A020;margin-bottom:8px">● RECHERCHE</div>
           <div id="homePending_callout" style="font-size:11px;line-height:1.6"></div>
         </div>
 
         <!-- OMT — source : Recherche (même famille que Call Out, accent ambre) -->
         <div style="padding:16px 18px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #F0A020">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
             <div style="font-size:14px;font-weight:800;color:#fff;display:flex;align-items:center;gap:6px">🎙️ OMT<span id="homePendingCheck_omt"></span></div>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
               <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
@@ -2730,7 +2736,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
               </label>
             </div>
           </div>
-          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#F0A020;margin-bottom:8px">● RECHERCHE</div>
           <div id="homePending_omt" style="font-size:11px;line-height:1.6"></div>
         </div>
 
@@ -2738,7 +2743,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
         <!-- Upload optionnel : données individuelles pour suggestion auto des anchors — source Recherche, accent ambre -->
         <div id="rawMatrixZone" style="padding:14px 16px;border-radius:12px;border:1.5px dashed rgba(255,255,255,.25);background:rgba(255,255,255,.03);border-left:3px solid #F0A020">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
             <div>
               <div style="font-size:12px;font-weight:700;color:#fff">+ Données individuelles (facultatif)</div>
               <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;line-height:1.5">Matrice brute par répondant → FPA vous propose automatiquement 1 à 3 titres anchor</div>
@@ -2748,34 +2753,31 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
               <input id="rawMatrixInput" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleRawMatrixFile(event)">
             </label>
           </div>
-          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#F0A020;margin-top:8px">● RECHERCHE</div>
           <div id="rawMatrixMsg" style="display:none;margin-top:10px;padding:9px 12px;border-radius:8px;font-size:11px;line-height:1.5"></div>
         </div>
 
         <!-- Habs(R) — source : IA (alimentée plus tard), accent rouge -->
         <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #E5484D">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
             <div style="font-size:12.5px;font-weight:800;color:#fff">💫 Habs(R) — signature émotionnelle</div>
             <label style="display:inline-flex;align-items:center;gap:6px;background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap">
               Charger les scores
               <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handleHabsImport(this)">
             </label>
           </div>
-          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#E5484D;margin-top:6px">● IA</div>
-          <div id="homeHabsInfo" style="font-size:10.5px;color:rgba(255,255,255,.4);margin-top:6px"></div>
+          <div id="homeHabsInfo" style="font-size:10.5px;color:rgba(255,255,255,.4)"></div>
         </div>
 
         <!-- Tout charger (classements + playlists digitales) — source Digital, accent vert -->
         <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #10B981">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
             <div style="font-size:12.5px;font-weight:800;color:#fff">🌍 Tous les classements digitaux</div>
             <button id="homeLoadAllBtn" onclick="loadAllCharts()" style="display:flex;align-items:center;gap:6px;background:var(--cyan);color:var(--navy);border:none;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               Tout charger
             </button>
           </div>
-          <div style="font-size:9px;font-weight:800;letter-spacing:.08em;color:#10B981;margin:6px 0 2px">● DIGITAL</div>
-          <div style="font-size:10px;color:rgba(255,255,255,.4);margin:2px 0 4px">Shazam, Spotify, Deezer, Apple Music, iTunes, YouTube, Billboard, Playlists Spotify clés…</div>
+          <div style="font-size:10px;color:rgba(255,255,255,.4);margin-bottom:4px">Shazam, Spotify, Deezer, Apple Music, iTunes, YouTube, Billboard, Playlists Spotify clés…</div>
           <div id="homeLoadAllBar" style="display:none;height:5px;border-radius:3px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:6px">
             <div id="homeLoadAllBarFill" style="height:100%;width:0%;background:var(--cyan);transition:width .25s"></div>
           </div>
@@ -15033,12 +15035,67 @@ function populateTevLogosRow(){
     </div>`;
 }
 
+// Navigation "titre suivant/précédent" au sein de la fiche Song Metrics —
+// la liste parcourue est reconstituée dynamiquement en remontant depuis
+// l'élément cliqué jusqu'au niveau où plusieurs éléments frères contiennent
+// chacun (eux-mêmes ou un descendant) un [data-evotitle] : ça couvre aussi
+// bien les <tr data-evotitle> directs que les grilles où le titre cliquable
+// est niché 1-2 niveaux plus bas dans une cellule (ex. bloc "Titre/Artiste"
+// avec le titre et l'artiste sur deux lignes séparées). Fonctionne sans
+// modification pour les ~20 contextes différents d'où la fiche peut être
+// ouverte, sans avoir à faire transiter une liste explicite à travers
+// chaque onclick="openTitleEvolutionModal(this)" existant.
+let tevNavList = [];
+let tevNavIndex = -1;
+
+function tevFindNavItems(btn){
+  let node = btn;
+  for(let level = 0; level < 8 && node && node.parentElement; level++){
+    const parent = node.parentElement;
+    const siblings = Array.from(parent.children);
+    const withEvo = siblings
+      .map(s => s.hasAttribute('data-evotitle') ? s : s.querySelector('[data-evotitle]'))
+      .filter(Boolean);
+    if(withEvo.length > 1) return withEvo;
+    node = parent;
+  }
+  return [btn];
+}
+
 async function openTitleEvolutionModal(btn){
   const raw = btn.getAttribute('data-evotitle');
   if(!raw) return;
   let info;
   try{ info = JSON.parse(raw.replace(/&quot;/g,'"').replace(/&#39;/g,"'")); }
   catch(e){ return; }
+
+  const items = tevFindNavItems(btn);
+  tevNavList = items.map(el => {
+    try{ return JSON.parse(el.getAttribute('data-evotitle').replace(/&quot;/g,'"').replace(/&#39;/g,"'")); }
+    catch(e){ return null; }
+  }).filter(Boolean);
+  tevNavIndex = items.indexOf(btn);
+
+  await openTevByInfo(info);
+}
+
+/** Navigue vers le titre précédent/suivant de tevNavList (wraparound) sans
+ *  fermer la fiche — appelé par les boutons ‹ › du header. */
+function tevNavStep(delta){
+  if(!tevNavList.length) return;
+  tevNavIndex = (tevNavIndex + delta + tevNavList.length) % tevNavList.length;
+  openTevByInfo(tevNavList[tevNavIndex]);
+}
+
+function updateTevNavUI(){
+  const wrap = document.getElementById('tevNavWrap');
+  if(!wrap) return;
+  if(tevNavList.length <= 1){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  document.getElementById('tevNavCounter').textContent = (tevNavIndex + 1) + ' / ' + tevNavList.length;
+}
+
+async function openTevByInfo(info){
   const { artist, title } = info;
 
   const modal = document.getElementById('modalTitleEvolution');
@@ -15257,6 +15314,7 @@ async function openTitleEvolutionModal(btn){
   </div>`);
 
   document.getElementById('tevBody').innerHTML = sections.join('');
+  updateTevNavUI();
 }
 
 /** Recherche le genre via iTunes pour le champ Genre de la fiche Song
@@ -15478,6 +15536,18 @@ document.addEventListener('keydown', e => {
     const m = document.getElementById('modalHistChart');
     if(m && m.style.display === 'flex'){ closeHistChartModal(); }
   }
+});
+
+/* Fiche Song Metrics : ← → pour titre précédent/suivant, sauf si le focus
+ * est dans un champ de saisie (Song Attributs édités directement dans la
+ * fiche : Label, Genre, Décennie, Date d'entrée) où les flèches doivent
+ * rester utilisables pour déplacer le curseur normalement. */
+document.addEventListener('keydown', e => {
+  if(e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  const m = document.getElementById('modalTitleEvolution');
+  if(m && m.style.display === 'flex'){ tevNavStep(e.key === 'ArrowLeft' ? -1 : 1); }
 });
 
 function buildHistChart(vagues, meta){
@@ -26793,13 +26863,25 @@ function mergeDailyOverviewRows(movers, playlistDiff, radioDiff){
   });
   playlistDiff.forEach(g => { ensure(g.title, g.artist).playlistEvents = g.events; });
   radioDiff.forEach(g => { ensure(g.title, g.artist).radioEvents = g.events; });
-  return Object.values(rows).map(r => ({
-    ...r,
-    sortChart: r.chartSignals.length ? Math.max(...r.chartSignals.map(s => Math.abs(s.delta))) : 0,
-    sortPlaylist: r.playlistEvents.length,
-    sortRadio: r.radioEvents.length,
-    sortMovement: Math.abs(r.totalDelta || 0) + r.playlistEvents.length * 3 + r.radioEvents.length * 5,
-  }));
+  return Object.values(rows).map(r => {
+    // Score de mouvement SIGNÉ (et non plus en valeur absolue) : trier
+    // directement dessus place naturellement les grosses progressions en
+    // tête, puis les petites, puis les baisses par ordre de grandeur
+    // croissant jusqu'à la plus forte chute en bas — sans quoi progressions
+    // et baisses de même ampleur se retrouvaient mélangées côte à côte.
+    // Priorité aux classements (déjà signés via totalDelta) ; à défaut,
+    // le solde entrées/sorties Playlists clés et Radios (mêmes poids
+    // qu'auparavant : ×3 Playlists, ×5 Radios) donne le sens du mouvement.
+    const netEvents = (r.playlistEvents.filter(e => e.type === 'in').length - r.playlistEvents.filter(e => e.type === 'out').length) * 3
+                     + (r.radioEvents.filter(e => e.type === 'in').length - r.radioEvents.filter(e => e.type === 'out').length) * 5;
+    return {
+      ...r,
+      sortChart: r.chartSignals.length ? Math.max(...r.chartSignals.map(s => Math.abs(s.delta))) : 0,
+      sortPlaylist: r.playlistEvents.length,
+      sortRadio: r.radioEvents.length,
+      sortMovement: r.chartSignals.length ? (r.totalDelta || 0) : netEvents,
+    };
+  });
 }
 
 function filteredSortedDailyTableRows(){
