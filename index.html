@@ -13122,7 +13122,7 @@ function renderGraphPage(){
     graphCardShell('decades', 'Décennies', "Part des diffusions par décennie de sortie du titre (source : iTunes, récupérée et mise en cache automatiquement).", false, true,
       `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-4px 0 10px">
         <span id="analyseDecadeProgress" style="display:none;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px" title="Récupération en arrière-plan des décennies de sortie manquantes (API iTunes) — n'empêche pas de continuer à travailler"></span>
-        <button onclick="analyseRetryFailedDecades()" title="Repasse en file tous les titres de cette semaine marqués « Inconnue », pour leur redonner une chance (utile après un rate-limit iTunes lors d'un gros import)" style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔄 Relancer les décennies en échec</button>
+        <button onclick="analyseRetryFailedDecadesAllArchives()" title="Repasse en file, sur TOUTES les semaines archivées (les deux stations), tous les titres marqués « Inconnue » — pas besoin d'ouvrir chaque semaine une par une. Le recalcul des statistiques se déclenche automatiquement une fois terminé." style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔄 Relancer les décennies en échec (toutes semaines)</button>
         <button onclick="analyseRecalcArchivesFromGraph()" title="Recalcule le Genre et la Décennie de toutes les semaines archivées à partir des données actuellement en cache — nécessaire pour que ce graphique et son sélecteur reflètent les décennies résolues APRÈS l'archivage de chaque semaine" style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔁 Recalculer les statistiques archivées</button>
       </div>`),
     graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
@@ -21318,37 +21318,48 @@ async function analyseRefreshArchivedGenreDecadeStats(){
   return changed;
 }
 
-/** Repasse en file tous les titres actuellement marqués "Inconnue" pour la
- *  semaine affichée — utile pour rattraper les décennies restées à tort en
- *  "Inconnue" avant l'introduction de la distinction échec technique / vrai
- *  "aucun résultat" ci-dessus. Bouton "🔄 Relancer les décennies en échec"
- *  du header de la page Analyse. */
-function analyseRetryFailedDecades(){
-  if(typeof analyseRows === 'undefined' || !analyseRows.length){
-    showToast('Aucune semaine chargée', 'err');
-    return;
-  }
+/** Repasse en file, sur TOUTES les semaines archivées des deux stations
+ *  (pas seulement la semaine actuellement ouverte comme l'ancienne version
+ *  de cette fonction), tous les titres actuellement marqués "Inconnue" —
+ *  évite d'avoir à ouvrir chaque semaine une par une pour cliquer sur ce
+ *  bouton. Bouton "🔄 Relancer les décennies en échec (toutes semaines)" de
+ *  la carte Décennies des Graphiques d'évolution. Lecture seule sur le
+ *  détail local de chaque semaine (aucune réécriture ici) — seul
+ *  songAttributes est modifié, puis la file d'enrichissement habituelle
+ *  (analyseRunDecadeEnrichment, avec son throttle iTunes) prend le relais ;
+ *  le recalcul des statistiques archivées se déclenche ensuite
+ *  automatiquement à la fin (voir la fin de analyseRunDecadeEnrichment). */
+async function analyseRetryFailedDecadesAllArchives(){
+  showToast('⏳ Recherche des décennies en échec dans toutes les semaines archivées…', 'success');
+  await analyseHistoryCacheLoad();
+  const history = analyseLoadHistory();
   const seen = new Set();
   let queued = 0;
-  analyseRows.forEach(row => {
-    const key = comiteKey(row.title, row.artist);
-    if(seen.has(key)) return;
-    seen.add(key);
-    if(decadeEnrichQueue.some(q => q.key === key)) return;
-    const attrs = getSongAttributes(row.title, row.artist);
-    if(attrs.decade === 'Inconnue'){
-      attrs.decade = '';
-      decadeEnrichQueue.push({ title: row.title, artist: row.artist, key });
-      queued++;
+  for(const stKey of ['EUROPE2','RFM']){
+    for(const entry of (history[stKey]||[])){
+      const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
+      if(!detail || !detail.rows) continue;
+      detail.rows.forEach(row => {
+        const key = comiteKey(row.title, row.artist);
+        if(seen.has(key)) return;
+        seen.add(key);
+        if(decadeEnrichQueue.some(q => q.key === key)) return;
+        const attrs = getSongAttributes(row.title, row.artist);
+        if(attrs.decade === 'Inconnue'){
+          attrs.decade = '';
+          decadeEnrichQueue.push({ title: row.title, artist: row.artist, key });
+          queued++;
+        }
+      });
     }
-  });
+  }
   if(!queued){
-    showToast('Aucune décennie en échec sur cette semaine', 'success');
+    showToast('Aucune décennie en échec trouvée sur l\'ensemble des semaines archivées', 'success');
     return;
   }
   songAttributesSaveToStorage();
   decadeEnrichTotal = decadeEnrichDone + decadeEnrichQueue.length;
-  showToast('🔄 Relance de ' + queued + ' décennie(s) en échec…', 'success');
+  showToast('🔄 Relance de ' + queued + ' décennie(s) en échec sur toutes les semaines archivées…', 'success');
   if(!decadeEnrichInProgress){
     decadeEnrichResolvedCount = 0;
     analyseRunDecadeEnrichment();
