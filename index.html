@@ -17854,7 +17854,24 @@ async function songAttributesCacheLoad(){
   try{
     const fromIdb = await idbGet(SONG_ATTRIBUTES_IDB_KEY);
     if(fromIdb && Object.keys(fromIdb).length){
-      Object.keys(fromIdb).forEach(k => { if(!songAttributes[k]) songAttributes[k] = fromIdb[k]; });
+      // IndexedDB fait foi — CORRECTIF : la version précédente ne prenait
+      // une entrée d'IndexedDB que si la clé était ABSENTE du repli
+      // localStorage synchrone du boot (if(!songAttributes[k])), ce qui
+      // revient à l'inverse de ce qui est voulu. Résultat concret : dès
+      // qu'une entrée existait déjà en localStorage (même incomplète, ex.
+      // decade encore null faute d'avoir été résolue au moment de cette
+      // sauvegarde locale), elle n'était JAMAIS remplacée par la version
+      // IndexedDB plus à jour — silencieusement, à chaque rechargement de
+      // page. Comme l'écriture localStorage (best-effort, voir
+      // songAttributesSaveToStorage) peut rester bloquée en silence si le
+      // quota est dépassé, ce repli localStorage périmé revenait alors
+      // écraser IndexedDB en mémoire à CHAQUE ouverture — exactement le
+      // symptôme observé : les décennies corrigées via "Recalculer"
+      // semblaient se réinitialiser au bout de quelques heures (en réalité
+      // dès la prochaine ouverture de l'app). IndexedDB n'ayant pas de
+      // plafond, il est désormais TOUJOURS prioritaire sur le repli
+      // localStorage pour toute clé qu'il connaît.
+      Object.assign(songAttributes, fromIdb);
     } else {
       await idbSet(SONG_ATTRIBUTES_IDB_KEY, songAttributes);
     }
