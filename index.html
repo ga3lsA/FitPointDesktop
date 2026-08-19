@@ -419,19 +419,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   <div style="background:var(--white);border-bottom:1.5px solid var(--border);padding:0 40px;display:flex;align-items:center;gap:10px;height:48px;position:sticky;top:60px;z-index:90;box-shadow:0 1px 6px rgba(11,29,58,.04)">
     <div style="display:flex;align-items:stretch;gap:2px;flex:1;min-width:0;position:relative" id="decisionSubTabs">
 
-      <!-- Groupe RANKING -->
-      <div class="dec-group">
-        <button id="decGroupBtnRanking" class="dec-group-btn active" onclick="toggleDecGroup('ranking')">
-          <span class="dec-subtab-ic">📊</span>Ranking
-          <svg class="dec-group-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div id="decGroupMenuRanking" class="dec-group-menu" style="display:none">
-          <button id="decTabMatrix" onclick="switchDecTab('matrix')" class="dec-subtab-item active"><span class="dec-subtab-ic">📊</span>Matrice &amp; Liste de décision</button>
-          <button id="decTabSpu"    onclick="switchDecTab('spu')"    class="dec-subtab-item"><span class="dec-subtab-ic">🏆</span>Score Unifié</button>
-          <button id="decTabComp"   onclick="switchDecTab('comp')"   class="dec-subtab-item"><span class="dec-subtab-ic">📡</span>Concurrence</button>
-        </div>
-      </div>
-
       <!-- Groupe DÉTECTION -->
       <div class="dec-group">
         <button id="decGroupBtnDetection" class="dec-group-btn" onclick="toggleDecGroup('detection')">
@@ -444,6 +431,19 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <button id="decTabPolar"  onclick="switchDecTab('polar')"  class="dec-subtab-item"><span class="dec-subtab-ic">⚡</span>Polarisation</button>
           <button id="decTabShazInc" onclick="switchDecTab('shazinc')" class="dec-subtab-item"><span class="dec-subtab-ic">🔍</span>Analyse de potentiel</button>
           <button id="decTabExclusifs" onclick="switchDecTab('exclusifs')" class="dec-subtab-item"><span class="dec-subtab-ic">🔒</span>Exclusifs</button>
+        </div>
+      </div>
+
+      <!-- Groupe RANKING -->
+      <div class="dec-group">
+        <button id="decGroupBtnRanking" class="dec-group-btn active" onclick="toggleDecGroup('ranking')">
+          <span class="dec-subtab-ic">📊</span>Ranking
+          <svg class="dec-group-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="decGroupMenuRanking" class="dec-group-menu" style="display:none">
+          <button id="decTabMatrix" onclick="switchDecTab('matrix')" class="dec-subtab-item active"><span class="dec-subtab-ic">📊</span>Matrice &amp; Liste de décision</button>
+          <button id="decTabSpu"    onclick="switchDecTab('spu')"    class="dec-subtab-item"><span class="dec-subtab-ic">🏆</span>Score Unifié</button>
+          <button id="decTabComp"   onclick="switchDecTab('comp')"   class="dec-subtab-item"><span class="dec-subtab-ic">📡</span>Concurrence</button>
         </div>
       </div>
 
@@ -1007,7 +1007,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Note explicative -->
       <div id="infoRadar" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quelle donnée ?</strong> Le Radar compare, pour chaque titre du fichier chargé, son classement actuel (Shazam France, Spotify France, Spotify UK, Spotify Pays-Bas, Classement Indés Radios, Classement Général Muzicast, et une radio concurrente suivie au choix) avec son classement lors de la dernière semaine <strong>complète</strong> sauvegardée sur Drive (vendredi→jeudi ; une semaine encore en cours, même déjà sauvegardée, est ignorée pour la comparaison — voir Classements → Historique Drive). Spotify UK et Pays-Bas (source kworb.net) servent de signal de progression internationale précoce — un titre qui accélère sur ces marchés avant la France mérite souvent d'être surveillé de près.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quelle donnée ?</strong> Le Radar compare, pour chaque titre du fichier chargé, son classement actuel (Shazam France, Spotify France, Spotify UK, Spotify Pays-Bas, YouTube France, Classement Indés Radios, Classement Général Muzicast, et une radio concurrente suivie au choix) avec son classement lors de la dernière semaine <strong>complète</strong> sauvegardée sur Drive (vendredi→jeudi ; une semaine encore en cours, même déjà sauvegardée, est ignorée pour la comparaison — voir Classements → Historique Drive). Spotify UK, Pays-Bas et YouTube France servent de signal de progression précoce — un titre qui accélère sur ces fronts avant que ça ne se voie ailleurs mérite souvent d'être surveillé de près. Un signal séparé, sans seuil, détecte l'entrée d'un titre dans les playlists éditoriales « Futurs Hits » de Deezer et de Spotify.</div>
         <div style="margin-bottom:6px"><strong style="color:var(--navy)">Méthode</strong> — Un « gain » correspond à une progression du classement (rang qui diminue = position qui monte). Le classement de la radio concurrente suivie est dérivé du volume de passages de la semaine (tri décroissant), les Classements Indés Radios et Général sont repris tels quels de l'import airplay. Option « Utiliser le Live » : remplace, uniquement côté semaine actuelle, l'Airplay hebdomadaire officiel par le fichier chargé dans <strong>Classement Live</strong> pour ces 3 signaux — utile en milieu de semaine pour détecter une progression avant la sortie du classement complet. La semaine de référence (comparaison) reste toujours la dernière semaine complète sauvegardée sur Drive.</div>
         <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer immédiatement les titres qui accélèrent simultanément sur plusieurs fronts (streams, découverte, concurrence) — souvent le signal le plus fiable qu'un titre mérite plus de rotation avant que la concurrence ne le programme.</div>
       </div>
@@ -1035,8 +1035,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text2)">🌐 Général ≥
           <input id="radarThreshGen" type="number" value="5" min="1" max="200" style="width:52px;font-size:12px;padding:5px 7px;border-radius:6px" onchange="renderRadarPage()">
         </label>
-        <label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text2)" title="Le passage en Top 10 est toujours signalé, quel que soit ce seuil">🚀 Futurs Hits ≥
-          <input id="radarThreshFH" type="number" value="3" min="1" max="98" style="width:52px;font-size:12px;padding:5px 7px;border-radius:6px" onchange="renderRadarPage()">
+        <label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text2)" title="Source : kworb.net, vues YouTube France">📺 YouTube FR ≥
+          <input id="radarThreshYt" type="number" value="5" min="1" max="200" style="width:52px;font-size:12px;padding:5px 7px;border-radius:6px" onchange="renderRadarPage()">
         </label>
         <span style="width:1px;height:20px;background:var(--border)"></span>
         <label style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text2)">
@@ -1548,8 +1548,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Programmation exhaustive · Yacast/Muzicast</div>
           <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">Analyse — <span id="analyseStationLabel">Europe 2</span><span class="station-logo-slot"></span></h2>
-          <span id="analyseDecadeProgress" style="display:none;margin-top:6px;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px" title="Récupération en arrière-plan des décennies de sortie manquantes (API iTunes) — n'empêche pas de continuer à travailler"></span>
-          <button onclick="analyseRetryFailedDecades()" title="Repasse en file tous les titres de cette semaine marqués « Inconnue », pour leur redonner une chance (utile après un rate-limit iTunes lors d'un gros import)" style="display:inline-block;margin-top:6px;margin-left:6px;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔄 Relancer les décennies en échec</button>
         </div>
       </div>
       <div id="analyseProgActions" style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -6453,6 +6451,24 @@ function findInChart(chart,title,artist){
     if(score>bestScore&&score>=0.55){bestScore=score;best=parseInt(rank);}
   }
   return best;
+}
+
+/** Localise la playlist clé Spotify "Futurs Hits" parmi celles suivies par
+ *  l'utilisateur (recherche par libellé, insensible à la casse/accents via
+ *  norm()) — utilisée par le Radar pour le critère d'ajout dans les Futurs
+ *  Hits Spotify (voir computeRadarRows). Retourne null si l'utilisateur n'a
+ *  pas ajouté de playlist clé portant ce nom (⚙️ Playlists Spotify clés). */
+function findSpotifyFutursHitsPlaylist(){
+  return keyPlaylists.find(p => norm(p.label).includes(norm('Futurs Hits'))) || null;
+}
+
+/** Convertit le format tracklist des playlists clés Spotify/Apple Music
+ *  ({rank, title, artist}[]) au format "chart" ({rang: {a,t}}) attendu par
+ *  findInChart. */
+function keyPlaylistTracksToChart(tracks){
+  const chart = {};
+  (tracks || []).forEach(t => { if(t && t.rank != null) chart[t.rank] = { t: t.title, a: t.artist }; });
+  return chart;
 }
 
 /* ── Proxy perso Shazam (URL Apps Script) ──────────────────────────────────
@@ -12677,10 +12693,11 @@ function graphZoomToggleHtml(key, checked){
     <input type="checkbox" id="graph${key}ZoomToggle" ${checked?'checked':''} onchange="graphOnZoomToggle('${key}')"> 🔍 Zoomer sur les variations
   </label>`;
 }
-function graphCardShell(key, title, subtitle, withManagePanel, withStationLogo){
+function graphCardShell(key, title, subtitle, withManagePanel, withStationLogo, extraHeaderHtml){
   return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px">
     <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy);display:flex;align-items:center;gap:8px">${escHtml(title)}${withStationLogo ? '<span class="station-logo-slot"></span>' : ''}</div>
     ${subtitle ? `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">${escHtml(subtitle)}</div>` : '<div style="margin-bottom:10px"></div>'}
+    ${extraHeaderHtml || ''}
     <div id="graph${key}Controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px"></div>
     ${withManagePanel ? `<div id="graphLabelsManageWrap" style="display:none;margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px">
       <div style="font-size:11.5px;font-weight:800;color:var(--navy);margin-bottom:8px">⚙️ Affectation des labels aux majors</div>
@@ -13005,7 +13022,11 @@ function renderGraphPage(){
     graphCardShell('fit', 'Fit Score', 'Fit Score et SPU moyens pondérés de la programmation.', false, true),
     graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.', false, true),
     graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.', false, true),
-    graphCardShell('decades', 'Décennies', "Part des diffusions par décennie de sortie du titre (source : iTunes, récupérée et mise en cache automatiquement).", false, true),
+    graphCardShell('decades', 'Décennies', "Part des diffusions par décennie de sortie du titre (source : iTunes, récupérée et mise en cache automatiquement).", false, true,
+      `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-4px 0 10px">
+        <span id="analyseDecadeProgress" style="display:none;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px" title="Récupération en arrière-plan des décennies de sortie manquantes (API iTunes) — n'empêche pas de continuer à travailler"></span>
+        <button onclick="analyseRetryFailedDecades()" title="Repasse en file tous les titres de cette semaine marqués « Inconnue », pour leur redonner une chance (utile après un rate-limit iTunes lors d'un gros import)" style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔄 Relancer les décennies en échec</button>
+      </div>`),
     graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
   ].join('');
 
@@ -26314,6 +26335,14 @@ function radarShowEmpty(msg){
  *  et par le résumé Radar de la home (renderHomeRadarSummary()).
  *  Retourne {status:'ok', rows, refEntry, compLabel, useLive}
  *       ou  {status:'no-analysis'|'no-drive'|'no-history'|'error', message?}. */
+/** Bonus fixe attribué à un critère binaire "entrée dans la playlist" (pas
+ *  de notion de rang progressif comme les autres signaux du Radar) — utilisé
+ *  pour l'entrée dans Futurs Hits (Deezer et Spotify). Valeur du même ordre
+ *  de grandeur qu'une progression de rang notable, pour que ces entrées ne
+ *  soient ni noyées ni disproportionnées dans le classement du Radar par
+ *  totalGain. */
+const PLAYLIST_ENTRY_BONUS = 15;
+
 async function computeRadarRows(){
   if(!analysisResult || !analysisResult.length) return {status:'no-analysis'};
   if(!DRIVE_SYNC_URL) return {status:'no-drive'};
@@ -26327,6 +26356,9 @@ async function computeRadarRows(){
   // pour que le Radar détecte ces progressions sans action manuelle préalable.
   if(!kworbSpotifyState.gb.loaded && !kworbSpotifyState.gb.loading) await loadKworbSpotify('gb');
   if(!kworbSpotifyState.nl.loaded && !kworbSpotifyState.nl.loading) await loadKworbSpotify('nl');
+  // YouTube France (kworb.net, vues) — même logique de chargement à la
+  // demande, pour le critère de position ci-dessous.
+  if(!kworbYoutubeLoaded && !kworbYoutubeLoading) await loadKworbYoutube();
   enrichResultsWithCharts();
 
   // Semaine de référence = la dernière semaine COMPLÈTE au sens calendaire
@@ -26370,7 +26402,7 @@ async function computeRadarRows(){
   const threshSpyNL = parseInt(document.getElementById('radarThreshSpyNL')?.value) || 10;
   const threshInd  = parseInt(document.getElementById('radarThreshInd')?.value)  || 5;
   const threshGen  = parseInt(document.getElementById('radarThreshGen')?.value)  || 5;
-  const threshFH   = parseInt(document.getElementById('radarThreshFH')?.value)   || 3;
+  const threshYt   = parseInt(document.getElementById('radarThreshYt')?.value)   || 5;
   const threshComp = parseInt(document.getElementById('radarThreshComp')?.value) || 5;
   const compRadio  = document.getElementById('radarCompRadio')?.value || (AIRPLAY_RADIOS.find(a=>a.key==='nrj') || AIRPLAY_RADIOS.find(a=>!a.own&&!AIRPLAY_RANK_KEYS.includes(a.key))||{}).key;
   const compLabel  = (AIRPLAY_RADIOS.find(a=>a.key===compRadio)||{}).label || compRadio;
@@ -26445,18 +26477,35 @@ async function computeRadarRows(){
         if(gain >= threshGen) gains.push({icon:'🌐', label:'Classement Général' + (useLive?' (Live)':''), gain, from:prevGen, to:curGen});
       }
     }
-    // Futurs Hits (playlist éditoriale Deezer/Digster) — l'entrée en Top 10
-    // spécifiquement est le signal fort (désirabilité supérieure une fois en
-    // haut de la playlist, selon retour terrain), pas seulement une progression
-    // de rang classique : mise en avant visuellement dans ce cas.
-    const curFH = futursHitsLoaded ? findInChart(futursHitsData, r.title, r.artist) : null;
-    if(curFH && prevData.fh){
-      const prevFHraw = findInChart(prevData.fh, r.title, r.artist);
-      const prevFH = prevFHraw || 99; // absent la semaine précédente = tout en bas d'échelle (playlist ~98 titres)
-      const gain = prevFH - curFH;
-      const enteredTop10 = curFH <= 10 && prevFH > 10;
-      if(gain >= threshFH || enteredTop10){
-        gains.push({icon:'🚀', label: enteredTop10 ? 'Top 10 Futurs Hits' : 'Futurs Hits', gain, from: prevFHraw || '–', to: curFH, highlight: enteredTop10});
+    // Ajout dans les playlists clés "Futurs Hits" — Deezer ET Spotify.
+    // Remplace l'ancien critère (progression de rang au sein de la seule
+    // playlist éditoriale Deezer) : ce qui compte désormais n'est plus "de
+    // combien de places le titre progresse dans Futurs Hits" mais "le titre
+    // vient-il d'ENTRER dans l'une de ces deux playlists" — signal binaire,
+    // pas de seuil numérique, toute entrée de la semaine est signalée. La
+    // playlist Spotify est celle que l'utilisateur a nommée "Futurs Hits"
+    // parmi ses Playlists clés (voir findSpotifyFutursHitsPlaylist) ; si
+    // aucune ne porte ce nom, ce volet du critère reste silencieux.
+    const curFHDz  = futursHitsLoaded ? findInChart(futursHitsData, r.title, r.artist) : null;
+    const prevFHDz = prevData.fh ? findInChart(prevData.fh, r.title, r.artist) : null;
+    if(curFHDz && !prevFHDz){
+      gains.push({icon:'🚀', label:'Entrée Futurs Hits (Deezer)', gain: PLAYLIST_ENTRY_BONUS, from:'–', to:curFHDz});
+    }
+    const spFHPlaylist = findSpotifyFutursHitsPlaylist();
+    const curFHSp = (spFHPlaylist && spFHPlaylist.tracks) ? findInChart(keyPlaylistTracksToChart(spFHPlaylist.tracks), r.title, r.artist) : null;
+    const prevFHSp = prevData.spFH ? findInChart(prevData.spFH, r.title, r.artist) : null;
+    if(curFHSp && !prevFHSp){
+      gains.push({icon:'🚀', label:'Entrée Futurs Hits (Spotify)', gain: PLAYLIST_ENTRY_BONUS, from:'–', to:curFHSp});
+    }
+    // Classement YouTube France (kworb.net, vues) — même logique de
+    // progression de rang classique que Spotify UK/Pays-Bas, seuil
+    // paramétrable (par défaut +5 places).
+    const curYt = kworbYoutubeLoaded ? findInChart(kworbYoutubeData, r.title, r.artist) : null;
+    if(curYt && prevData.yt){
+      const prevYtRank = findInChart(prevData.yt, r.title, r.artist);
+      if(prevYtRank){
+        const gain = prevYtRank - curYt;
+        if(gain >= threshYt) gains.push({icon:'📺', label:'YouTube France', gain, from:prevYtRank, to:curYt});
       }
     }
     // Radio concurrente suivie (rang dérivé du volume de passages)
@@ -28943,6 +28992,11 @@ async function saveCurrentChartsWeek(customDateStr, onProgress) {
     if(!ok) return;
   }
 
+  // Playlist clé Spotify "Futurs Hits" (si l'utilisateur en a ajouté une
+  // portant ce nom) — sauvegardée au même titre que fh (Deezer) pour que le
+  // Radar puisse détecter les entrées de la semaine (voir computeRadarRows).
+  const spFHPlaylist = findSpotifyFutursHitsPlaylist();
+
   const entry = {
     date, label, savedAt: new Date().toISOString(),
     shzFR        : chartsLoaded.fr ? chartsData.fr : null,
@@ -28962,6 +29016,8 @@ async function saveCurrentChartsWeek(customDateStr, onProgress) {
     dzDate       : deezerDateUsed || null,
     fh           : futursHitsLoaded ? futursHitsData : null,
     fhDate       : futursHitsDateUsed || null,
+    spFH         : (spFHPlaylist && spFHPlaylist.tracks && spFHPlaylist.tracks.length) ? keyPlaylistTracksToChart(spFHPlaylist.tracks) : null,
+    spFHDate     : (spFHPlaylist && spFHPlaylist.fetchedAt) || null,
     bbUS         : billboardLoaded ? billboardData : null,
     bbDate       : billboardDateUsed || null,
     bbG200       : billboardGlobalLoaded ? billboardGlobalData : null,
