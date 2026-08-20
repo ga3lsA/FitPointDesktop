@@ -1702,8 +1702,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <button id="analyseSubProgBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--navy)" onclick="analyseSetSubView('prog')">📊 Programmation musicale</button>
       <button id="analyseSubAudienceBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('audience')">🎧 Audience digitale</button>
       <button id="analyseSubMediaBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('media')">📡 Médiamétrie</button>
-      <button id="analyseSubCorrBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('corr')">🔗 Corrélation</button>
       <button id="analyseSubGraphBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('graph')">📈 Graphiques</button>
+      <button id="analyseSubCorrBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('corr')">🔗 Corrélation</button>
     </div>
 
     <div id="analyseProgContainer">
@@ -12956,6 +12956,15 @@ function marcheAutoClusterDiagonalHeader(items, targetCount){
   return { clusters, matched: bestDiff===0 };
 }
 const MARCHE_LEGACY_MARKER_RE = /QUART D.HEURE MOYEN|AUDIENCE CUMULEE|^MILLIERS$|PENETRATION|PART D.AUDIENCE|DUREE D.ECOUTE|INDIVIDU|AUDITEUR/i;
+/** Détecte un libellé reconstruit à partir du bandeau incliné qui contient
+ *  en réalité deux mots (ou plus) collés sans espace suite à un découpage
+ *  interne décalé — ex. "PublicRadios", "cGénéralistes". Signe révélateur :
+ *  une lettre minuscule immédiatement suivie d'une majuscule ailleurs qu'en
+ *  toute fin de chaîne. Sert à écarter un nom trompeur plutôt que de
+ *  l'afficher avec une fausse confiance. */
+function marcheLooksGarbled(label){
+  return /[a-zà-ÿ][A-ZÀ-Ÿ]/.test(label);
+}
 async function marcheParseLegacyRapport126000(pdf, fileName){
   const gridMap = {};
   const warnings = ['Format « Rapport 126 000 Radio » détecté (rapport complet, ancienne méthodologie) — l\'alignement des colonnes est une estimation automatique. Vérifiez chaque valeur colonne par colonne contre le PDF source avant d\'enregistrer, en particulier les lignes « Colonne N (à vérifier) ».'];
@@ -12999,9 +13008,17 @@ async function marcheParseLegacyRapport126000(pdf, fileName){
       if(!metric || metric==='skip') continue;
       const field = metric==='ac_pct' ? 'ac' : metric==='pda_pct' ? 'pda' : 'dea';
       rowVals.forEach((val, i) => {
-        const label = (headerMatched && headerCache[i]) ? headerCache[i].text.trim() : ('Colonne ' + (i+1) + ' (à vérifier)');
+        const raw = (headerMatched && headerCache[i]) ? headerCache[i].text.trim() : '';
+        // Même quand le nombre de colonnes reconstruites correspond exactement
+        // au nombre de valeurs, le découpage INTERNE du bandeau diagonal peut
+        // rester décalé (deux libellés adjacents partiellement fusionnés,
+        // ex. "PublicRadios PrivéesCommerciales"). On le détecte via une
+        // transition minuscule→majuscule au milieu du texte, révélatrice
+        // d'une frontière de mot avalée — et on bascule alors sur le repli
+        // sûr plutôt que d'afficher un nom trompeur avec une fausse confiance.
+        const label = (raw && !marcheLooksGarbled(raw)) ? raw : ('Colonne ' + (i+1) + ' (à vérifier)');
         const key = label + '|' + rowVals.length; // regroupe par nom ET par taille de tableau (stations/agrégats/couplages)
-        if(!gridMap[key]) gridMap[key] = { name: label || ('Colonne '+(i+1)+' (à vérifier)'), category: marcheClassifyLabel(label), LV:{}, SD:{} };
+        if(!gridMap[key]) gridMap[key] = { name: label, category: marcheClassifyLabel(label), LV:{}, SD:{} };
         gridMap[key][period][field] = parseFloat(val.replace(',','.'));
       });
     }
@@ -13342,7 +13359,7 @@ function openMarcheEntityModal(slug){
       const data = histWaves.map(wv => { const v = (wv.entities[slug][period]||{})[field]; return typeof v==='number' ? v : null; });
       marcheEntitySafeNewChart('marcheEntityChart_'+field, {
         type: 'line',
-        data: { labels: waveLabels, datasets: [{ data, borderColor: '#0B1D3A', backgroundColor: 'rgba(11,29,58,.08)', borderWidth: 2, pointRadius: 3, pointBackgroundColor:'#0B1D3A', tension: .25, fill: true, spanGaps: true }] },
+        data: { labels: waveLabels, datasets: [{ data, borderColor: '#1E6FD9', backgroundColor: 'rgba(30,111,217,.10)', borderWidth: 2, pointRadius: 3, pointBackgroundColor:'#1E6FD9', tension: .25, fill: true, spanGaps: true }] },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y) } } },
@@ -13398,7 +13415,7 @@ function marcheOpenChartZoom(field){
   if(el && typeof Chart !== 'undefined'){
     marcheZoomChart = new Chart(el, {
       type: 'line',
-      data: { labels: waveLabels, datasets: [{ data, borderColor: '#0B1D3A', backgroundColor: 'rgba(11,29,58,.08)', borderWidth: 3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor:'#0B1D3A', tension: .25, fill: true, spanGaps: true }] },
+      data: { labels: waveLabels, datasets: [{ data, borderColor: '#1E6FD9', backgroundColor: 'rgba(30,111,217,.10)', borderWidth: 3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor:'#1E6FD9', tension: .25, fill: true, spanGaps: true }] },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y) } } },
@@ -13613,7 +13630,7 @@ function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, y
   const datasets = barSeries.map((s,i) => ({
     type:'bar', label:s.label, data:s.data,
     backgroundColor: s.color || GRAPH_COLORS[i % GRAPH_COLORS.length],
-    borderRadius:6, maxBarThickness: barSeries.length>1 ? 26 : 42, yAxisID:'y'
+    borderRadius:6, maxBarThickness: barSeries.length>1 ? 26 : 42, yAxisID:'y', order:2
   }));
   const metricCfg = AUDIENCE_METRICS[audienceMetric] || AUDIENCE_METRICS.audienceMoyenne;
   const useMusical = showAudience && musicalFocus && stKey==='EUROPE2' && metricCfg.musicalCompatible;
@@ -13622,10 +13639,14 @@ function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, y
   const audienceData = showAudience ? weeks.map(w => audienceGetter(stKey, w)) : null;
   const fmtY1 = v => metricCfg.isDuration ? digitalAudienceFmtDuration(v) : (v==null ? '—' : v.toLocaleString('fr-FR'));
   if(showAudience){
+    // order:1 (< bar order:2) place la courbe au premier plan, devant les
+    // barres, quel que soit l'ordre d'ajout des jeux de données — Chart.js
+    // dessine du plus grand au plus petit "order", donc la valeur la plus
+    // faible se retrouve dessinée en dernier, par-dessus le reste.
     datasets.push({
       type:'line', label:audienceLabel, data: audienceData,
       borderColor:'#0B6E99', backgroundColor:'rgba(11,110,153,0.10)',
-      borderWidth:2.5, pointRadius:3, pointBackgroundColor:'#0B6E99', tension:0.3, fill:false, yAxisID:'y1'
+      borderWidth:2.5, pointRadius:3, pointBackgroundColor:'#0B6E99', tension:0.3, fill:false, yAxisID:'y1', order:1
     });
   }
 
@@ -13823,7 +13844,7 @@ function graphBuildStackedChart(canvasId, weeks, barSeries, showAudience, stKey,
   const datasets = barSeries.map((s,i) => ({
     type:'bar', label:s.label, data:s.data,
     backgroundColor: s.color || GRAPH_COLORS[i % GRAPH_COLORS.length],
-    stack:'decades', borderRadius:2, maxBarThickness:56, yAxisID:'y'
+    stack:'decades', borderRadius:2, maxBarThickness:56, yAxisID:'y', order:2
   }));
   const metricCfg = AUDIENCE_METRICS[audienceMetric] || AUDIENCE_METRICS.audienceMoyenne;
   const useMusical = showAudience && musicalFocus && stKey==='EUROPE2' && metricCfg.musicalCompatible;
@@ -13835,7 +13856,7 @@ function graphBuildStackedChart(canvasId, weeks, barSeries, showAudience, stKey,
     datasets.push({
       type:'line', label:audienceLabel, data: audienceData,
       borderColor:'#0B6E99', backgroundColor:'rgba(11,110,153,0.10)',
-      borderWidth:2.5, pointRadius:3, pointBackgroundColor:'#0B6E99', tension:0.3, fill:false, yAxisID:'y1'
+      borderWidth:2.5, pointRadius:3, pointBackgroundColor:'#0B6E99', tension:0.3, fill:false, yAxisID:'y1', order:1
     });
   }
 
