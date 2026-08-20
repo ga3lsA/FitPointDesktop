@@ -325,14 +325,27 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
 <!-- Fiche détaillée d'une radio dans l'Historique Marché (toutes vagues) -->
 <div id="modalMarcheEntity" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:650;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeMarcheEntityModal()">
-  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:840px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(11,29,58,.25)">
+  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:920px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(11,29,58,.25)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
       <div id="marcheEntityTitle" style="font-size:16px;font-weight:800;color:var(--navy)"></div>
       <button onclick="closeMarcheEntityModal()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
     </div>
     <div id="marcheEntitySub" style="font-size:11.5px;color:var(--muted);margin-bottom:14px"></div>
     <div id="marcheEntityMergeArea" style="margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px"></div>
+    <div id="marcheEntityChartsArea" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px"></div>
     <div id="marcheEntityHistoryArea"></div>
+  </div>
+</div>
+
+<!-- Agrandissement d'une courbe de la fiche radio -->
+<div id="modalMarcheChartZoom" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.6);z-index:700;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this) closeMarcheChartZoom()">
+  <div style="background:var(--white);border-radius:14px;padding:24px;max-width:820px;width:100%;box-shadow:0 24px 70px rgba(11,29,58,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
+      <div id="marcheChartZoomTitle" style="font-size:15px;font-weight:800;color:var(--navy)"></div>
+      <button onclick="closeMarcheChartZoom()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+    </div>
+    <div id="marcheChartZoomSub" style="font-size:11.5px;color:var(--muted);margin-bottom:16px"></div>
+    <div style="position:relative;height:420px"><canvas id="marcheChartZoomCanvas"></canvas></div>
   </div>
 </div>
 
@@ -12616,7 +12629,7 @@ const MARCHE_WAVE_LABELS = { SO:'Septembre-Octobre', ND:'Novembre-Décembre', JM
 const MARCHE_WAVE_MONTH  = { SO:9, ND:11, JM:1, AJ:4 };
 const MARCHE_CATEGORY_LABELS = { station:'📻 Radios', format:'📦 Agrégats — format', statut:'🏛️ Agrégats — statut', couplage:'🔗 Couplages publicitaires' };
 let marcheHistory   = { waves:{} };
-let marcheAliasMap  = { 'france-bleu':'ici' }; // rebranding connu (France Bleu → ici, janv. 2025)
+let marcheAliasMap  = { 'france-bleu':'ici', 'virgin-radio':'europe-2' }; // rebrandings connus (France Bleu → ici, janv. 2025 ; Virgin Radio → Europe 2)
 let marcheDriveLoaded = false;
 let marcheInnerTabState = 'pdf';
 let marcheUI = { waveId:null, period:'LV', category:'station', search:'', sortBy:'ac' };
@@ -12631,8 +12644,22 @@ function marcheLoadLocal(){
   }catch(e){ /* ignoré */ }
   try{
     const raw2 = localStorage.getItem(MARCHE_ALIAS_KEY);
-    if(raw2) marcheAliasMap = Object.assign({ 'france-bleu':'ici' }, JSON.parse(raw2));
+    if(raw2) marcheAliasMap = Object.assign({ 'france-bleu':'ici', 'virgin-radio':'europe-2' }, JSON.parse(raw2));
   }catch(e){ /* ignoré */ }
+  marcheApplyKnownAliases();
+}
+/** Consolide rétroactivement les radios déjà importées sous un ancien nom
+ *  (avant que l'alias n'existe) — sans quoi la fusion ne s'appliquerait
+ *  qu'aux futurs imports. Sans effet (et sans re-sauvegarde) si les deux
+ *  entités n'existent pas simultanément. */
+function marcheApplyKnownAliases(){
+  let changed = false;
+  Object.keys(marcheAliasMap).forEach(fromSlug => {
+    const toSlug = marcheAliasMap[fromSlug];
+    const existsSomewhere = Object.values(marcheHistory.waves).some(w => w.entities[fromSlug]);
+    if(existsSomewhere){ marcheMergeEntitiesSilent(fromSlug, toSlug); changed = true; }
+  });
+  if(changed) marcheSaveLocal();
 }
 function marcheSaveLocal(){
   try{ localStorage.setItem(MARCHE_LOCAL_KEY, JSON.stringify(marcheHistory)); }
@@ -12720,11 +12747,10 @@ function marcheUpsertEntity(waveId, rawLabel, category, period, metrics){
   ent[period] = Object.assign({}, ent[period], metrics);
   return slug;
 }
-/** Fusionne deux entités (ex. renommage France Bleu → ici) : toutes les
- *  données historiques de `fromSlug` sont recopiées sous `intoSlug` (sans
- *  écraser une valeur déjà présente sous `intoSlug`), puis un alias
- *  permanent est enregistré pour les futurs imports. */
-function marcheMergeEntities(fromSlug, intoSlug){
+/** Cœur de la fusion, sans effet de bord de sauvegarde — utilisé à la fois
+ *  par la consolidation automatique au chargement (marcheApplyKnownAliases)
+ *  et par la fusion manuelle depuis la fiche radio. */
+function marcheMergeEntitiesSilent(fromSlug, intoSlug){
   if(fromSlug === intoSlug) return;
   Object.values(marcheHistory.waves).forEach(w => {
     const fromEnt = w.entities[fromSlug];
@@ -12737,6 +12763,13 @@ function marcheMergeEntities(fromSlug, intoSlug){
     delete w.entities[fromSlug];
   });
   marcheAliasMap[fromSlug] = intoSlug;
+}
+/** Fusionne deux entités (ex. renommage France Bleu → ici) : toutes les
+ *  données historiques de `fromSlug` sont recopiées sous `intoSlug` (sans
+ *  écraser une valeur déjà présente sous `intoSlug`), puis un alias
+ *  permanent est enregistré pour les futurs imports. */
+function marcheMergeEntities(fromSlug, intoSlug){
+  marcheMergeEntitiesSilent(fromSlug, intoSlug);
   marcheSaveAliasMap();
   marcheSaveLocal();
   marcheSaveToDrive();
@@ -12828,13 +12861,18 @@ async function marcheParsePdfFile(file){
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   }
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  const page1 = await pdf.getPage(1);
-  const page1Text = (await page1.getTextContent()).items.map(it => it.str).join(' ');
-  // Deux familles de documents Médiamétrie très différentes dans leur mise en
-  // page : le « Communiqué de Presse EAR National » (tableaux classiques,
-  // 2020+) et le « Rapport 126 000 Radio » complet (100+ pages, méthodologie
-  // pré-EAR National, en-têtes de colonne imprimés en texte incliné).
-  if(/126\s*000\s*Radio/i.test(page1Text) && !/EAR\s*>?\s*National/i.test(page1Text)){
+  // Trois familles de documents Médiamétrie coexistent sur 15 ans d'archives,
+  // mais seulement DEUX mises en page de tableau différentes :
+  //  - tableaux classiques (lignes horizontales normales) : le « Communiqué
+  //    de Presse EAR National » récent (2020+) ET son ancêtre au nom encore
+  //    « Enquête Médiamétrie 126 000 Radio » (même mise en page, juste un
+  //    autre habillage) — toujours un document court, ~7-9 pages.
+  //  - en-têtes de colonne en texte incliné : le « Rapport 126 000 Radio »
+  //    complet, un document long de 100+ pages.
+  // Le nombre de pages est donc un bien meilleur discriminant que le nom
+  // "126 000 Radio", qui à lui seul ne distingue pas les deux premiers cas
+  // (repéré à tort comme legacy dans une version antérieure de ce parseur).
+  if(pdf.numPages > 20){
     return marcheParseLegacyRapport126000(pdf, file.name);
   }
   return marcheParseCommuniquePdf(pdf, file.name);
@@ -13161,25 +13199,35 @@ function marcheToolbarHtml(waves){
   </div>
   ${currentWave.importedAt ? `<div style="font-size:10.5px;color:var(--muted);margin-bottom:10px">Dernier import de cette vague : ${new Date(currentWave.importedAt).toLocaleDateString('fr-FR')}${currentWave.source?' · '+escHtml(currentWave.source):''}</div>` : ''}`;
 }
-function marcheEvolutionCellHtml(currentEnt, otherWave, slug, period){
-  if(!otherWave) return `<div style="font-size:10px;color:var(--muted)">–</div>`;
+/** Un badge d'évolution compact, collé au chiffre : ex. "▲+1,2" avec une
+ *  infobulle précisant la comparaison ("vs Novembre-Décembre 2024"). */
+function marcheDeltaBadgeHtml(curVal, otherWave, slug, period, field, tagLabel){
+  if(!otherWave) return `<span style="font-size:9px;color:var(--muted);opacity:.5">·</span>`;
   const otherEnt = otherWave.entities[slug];
-  const otherM = otherEnt ? otherEnt[period] : null;
-  const curM = currentEnt[period] || {};
-  const badge = (cur, oth, unit, tag) => {
-    if(typeof cur !== 'number' || !oth || typeof oth[tag==='AC'?'ac':'pda'] !== 'number'){
-      return `<span style="color:var(--muted);font-size:10px"><b>${tag}</b> –</span>`;
-    }
-    const otherVal = oth[tag==='AC'?'ac':'pda'];
-    const delta = Math.round((cur-otherVal)*10)/10;
-    let color='var(--muted)', arrow='＝';
-    if(delta>0){ color='var(--green-text)'; arrow='▲'; } else if(delta<0){ color='#CC2222'; arrow='▼'; }
-    return `<span style="color:${color};font-weight:700;font-size:10px" title="vs ${escHtml(otherWave.label)} : ${String(otherVal).replace('.',',')}${unit}"><b style="color:var(--muted)">${tag}</b> ${arrow} ${(delta>0?'+':'')+delta.toFixed(1).replace('.',',')}${unit}</span>`;
-  };
-  return `<div style="display:flex;flex-direction:column;gap:2px">
-    ${badge(curM.ac, otherM, 'pt', 'AC')}
-    ${badge(curM.pda, otherM, 'pt', 'PDA')}
-  </div>`;
+  const otherVal = otherEnt && otherEnt[period] ? otherEnt[period][field] : null;
+  if(typeof curVal !== 'number' || typeof otherVal !== 'number'){
+    return `<span style="font-size:9px;color:var(--muted);opacity:.5" title="${tagLabel} : donnée absente">·</span>`;
+  }
+  const delta = Math.round((curVal-otherVal)*10)/10;
+  let color='var(--muted)', arrow='＝';
+  if(delta>0){ color='var(--green-text)'; arrow='▲'; } else if(delta<0){ color='#CC2222'; arrow='▼'; }
+  return `<span style="font-size:9px;font-weight:700;color:${color};white-space:nowrap" title="${tagLabel} (${escHtml(otherWave.label)}) : ${String(otherVal).replace('.',',')}">${arrow}${(delta>0?'+':'')+delta.toFixed(1).replace('.',',')}</span>`;
+}
+/** Un groupe de 3 colonnes de largeur fixe pour un critère (AC/PDA/DEA) :
+ *  valeur, Δ vague précédente, Δ N-1 — chacune alignée dans sa propre
+ *  colonne (au lieu d'un texte concaténé) pour une lecture en tableau. Le
+ *  premier <td> porte une bordure gauche marquée pour séparer visuellement
+ *  ce groupe du précédent. Fort contraste de taille entre le chiffre
+ *  principal (16px, gras, navy) et les badges d'évolution (9px) pour que
+ *  l'œil hiérarchise immédiatement l'essentiel. */
+function marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, field, formatter, isFirstGroup){
+  const m = ent[period] || {};
+  const val = m[field];
+  const groupBorder = isFirstGroup ? 'border-left:2px solid var(--border)' : '';
+  return `
+    <td style="padding:6px 4px 6px 14px;text-align:left;font-weight:800;font-size:16px;color:var(--navy);white-space:nowrap;${groupBorder}">${formatter(val)}</td>
+    <td style="padding:6px 4px;text-align:left;width:46px">${marcheDeltaBadgeHtml(val, prevChrono, slug, period, field, 'Vs vague précédente')}</td>
+    <td style="padding:6px 10px 6px 4px;text-align:left;width:46px">${marcheDeltaBadgeHtml(val, prevYear, slug, period, field, 'Vs même période N-1')}</td>`;
 }
 function marcheTableHtml(){
   const w = marcheHistory.waves[marcheUI.waveId];
@@ -13202,36 +13250,53 @@ function marcheTableHtml(){
   if(!rows.length){
     return `<div style="padding:30px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">Aucune radio dans cette catégorie pour ${w.label} (${period==='LV'?'Lundi-Vendredi':'Samedi-Dimanche'}).</div>`;
   }
+  const groupHead = (title) => `<th colspan="3" style="padding:4px 10px;text-align:center;border-left:2px solid var(--border);border-bottom:1px solid var(--border)">${title}</th>`;
+  const subHead = (isFirst) => `
+      <th style="padding:3px 4px 5px 14px;text-align:left;font-weight:400;${isFirst?'border-left:2px solid var(--border)':''}">Valeur</th>
+      <th style="padding:3px 4px 5px;text-align:left;font-weight:400" title="Évolution vs vague précédente${prevChrono?' ('+escHtml(prevChrono.label)+')':''}">Δ Vague</th>
+      <th style="padding:3px 10px 5px 4px;text-align:left;font-weight:400" title="Évolution vs même période N-1${prevYear?' ('+escHtml(prevYear.label)+')':''}">Δ N-1</th>`;
   return `<div style="overflow-x:auto">
   <table style="width:100%;border-collapse:collapse;font-size:12px">
-    <thead><tr style="text-align:left;color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--border)">
-      <th style="padding:8px 10px">Radio</th>
-      <th style="padding:8px 10px;text-align:right">AC %</th>
-      <th style="padding:8px 10px;text-align:right">AC (000)</th>
-      <th style="padding:8px 10px;text-align:right">PDA %</th>
-      <th style="padding:8px 10px;text-align:right">DEA</th>
-      <th style="padding:8px 10px">Vs vague précédente${prevChrono?' <span style="font-weight:400;text-transform:none">('+escHtml(prevChrono.label)+')</span>':''}</th>
-      <th style="padding:8px 10px">Vs même période N-1${prevYear?' <span style="font-weight:400;text-transform:none">('+escHtml(prevYear.label)+')</span>':''}</th>
-    </tr></thead>
+    <thead>
+      <tr style="text-align:left;color:var(--text2);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em">
+        <th rowspan="2" style="padding:6px 10px;vertical-align:bottom;border-bottom:1.5px solid var(--border)">Radio</th>
+        ${groupHead('AC %')}${groupHead('PDA %')}${groupHead('DEA')}
+      </tr>
+      <tr style="text-align:right;color:var(--muted);font-size:9px;text-transform:none;border-bottom:1.5px solid var(--border)">
+        ${subHead(true)}${subHead(false)}${subHead(false)}
+      </tr>
+    </thead>
     <tbody>
-      ${rows.map(({slug,ent}) => {
-        const m = ent[period] || {};
-        return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openMarcheEntityModal('${slug}')" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
-          <td style="padding:8px 10px;font-weight:700;color:var(--navy)">${escHtml(ent.label)}</td>
-          <td style="padding:8px 10px;text-align:right;font-weight:700">${marcheFmtPct(m.ac)}</td>
-          <td style="padding:8px 10px;text-align:right;color:var(--text2)">${m.ac000!=null?marcheFmtNum(m.ac000):'–'}</td>
-          <td style="padding:8px 10px;text-align:right;font-weight:700">${marcheFmtPct(m.pda)}</td>
-          <td style="padding:8px 10px;text-align:right;color:var(--text2)">${m.dea!=null?marcheFmtMinToHM(m.dea):'–'}</td>
-          <td style="padding:8px 10px">${marcheEvolutionCellHtml(ent, prevChrono, slug, period)}</td>
-          <td style="padding:8px 10px">${marcheEvolutionCellHtml(ent, prevYear, slug, period)}</td>
-        </tr>`;
-      }).join('')}
+      ${rows.map(({slug,ent}) => `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openMarcheEntityModal('${slug}')" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+          <td style="padding:6px 10px;font-weight:700;color:var(--navy)">${escHtml(ent.label)}</td>
+          ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'ac', marcheFmtPct, true)}
+          ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'pda', marcheFmtPct, true)}
+          ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'dea', v => v!=null?marcheFmtMinToHM(v):'–', true)}
+        </tr>`).join('')}
     </tbody>
   </table>
   </div>`;
 }
 
-/* ---- Fiche détaillée d'une radio : historique complet toutes vagues ---- */
+/* ---- Fiche détaillée d'une radio : historique complet toutes vagues,
+ *  avec une courbe d'évolution par critère (AC/PDA/DEA). ---- */
+let marcheEntityCharts = {};
+let marcheEntityChartCache = null; // { slug, period, histWaves, waveLabels, label } — pour l'agrandissement au clic
+let marcheZoomChart = null;
+function marcheEntitySafeNewChart(canvasId, config){
+  try{
+    if(typeof Chart === 'undefined'){ console.error('Chart.js non chargé — graphique ignoré', canvasId); return null; }
+    const el = document.getElementById(canvasId);
+    if(!el) return null;
+    if(marcheEntityCharts[canvasId]) marcheEntityCharts[canvasId].destroy();
+    marcheEntityCharts[canvasId] = new Chart(el, config);
+    return marcheEntityCharts[canvasId];
+  }catch(err){ console.error('Échec du rendu du graphique', canvasId, err); return null; }
+}
+function marcheEntityDestroyCharts(){
+  Object.values(marcheEntityCharts).forEach(c => { try{ c.destroy(); }catch(e){} });
+  marcheEntityCharts = {};
+}
 function openMarcheEntityModal(slug){
   const modal = document.getElementById('modalMarcheEntity');
   const w = marcheHistory.waves[marcheUI.waveId];
@@ -13256,6 +13321,40 @@ function openMarcheEntityModal(slug){
 
   const histWaves = marcheSortedWaves().filter(wv => wv.entities[slug]);
   const period = marcheUI.period;
+  const waveLabels = histWaves.map(wv => wv.waveType + ' ' + String(wv.year).slice(-2));
+  marcheEntityChartCache = { slug, period, histWaves, waveLabels, label: ent.label };
+
+  // Courbes d'évolution — une par critère, seulement si au moins 2 points.
+  // Cliquer sur une courbe l'ouvre en grand (modalMarcheChartZoom).
+  const chartsArea = document.getElementById('marcheEntityChartsArea');
+  marcheEntityDestroyCharts();
+  if(histWaves.length >= 2){
+    chartsArea.style.display = 'grid';
+    chartsArea.innerHTML = ['ac','pda','dea'].map(field => `
+      <div onclick="marcheOpenChartZoom('${field}')" style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px;cursor:zoom-in" title="Cliquer pour agrandir">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:10px;font-weight:800;color:var(--text2);text-transform:uppercase;letter-spacing:.04em">${field==='ac'?'AC %':field==='pda'?'PDA %':'DEA (min)'}</div>
+          <div style="font-size:11px;color:var(--muted)">⤢</div>
+        </div>
+        <div style="position:relative;height:130px;pointer-events:none"><canvas id="marcheEntityChart_${field}"></canvas></div>
+      </div>`).join('');
+    ['ac','pda','dea'].forEach(field => {
+      const data = histWaves.map(wv => { const v = (wv.entities[slug][period]||{})[field]; return typeof v==='number' ? v : null; });
+      marcheEntitySafeNewChart('marcheEntityChart_'+field, {
+        type: 'line',
+        data: { labels: waveLabels, datasets: [{ data, borderColor: '#0B1D3A', backgroundColor: 'rgba(11,29,58,.08)', borderWidth: 2, pointRadius: 3, pointBackgroundColor:'#0B1D3A', tension: .25, fill: true, spanGaps: true }] },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y) } } },
+          scales: { y: { ticks: { font:{ size:9 } } }, x: { ticks: { font:{ size:9 } } } }
+        }
+      });
+    });
+  } else {
+    chartsArea.style.display = 'none';
+    chartsArea.innerHTML = '';
+  }
+
   document.getElementById('marcheEntityHistoryArea').innerHTML = `
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead><tr style="text-align:left;color:var(--muted);font-size:9.5px;text-transform:uppercase;border-bottom:1.5px solid var(--border)">
@@ -13266,11 +13365,11 @@ function openMarcheEntityModal(slug){
         ${histWaves.map(wv => {
           const m = wv.entities[slug][period] || {};
           return `<tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:6px 8px;font-weight:700;color:var(--navy)">${wv.waveType} ${wv.year} <span style="font-weight:400;color:var(--muted)">(${escHtml(MARCHE_WAVE_LABELS[wv.waveType])})</span></td>
-            <td style="padding:6px 8px;color:var(--text2)">${marcheSeasonLabel(wv)}</td>
-            <td style="padding:6px 8px;text-align:right;font-weight:700">${marcheFmtPct(m.ac)}</td>
-            <td style="padding:6px 8px;text-align:right;font-weight:700">${marcheFmtPct(m.pda)}</td>
-            <td style="padding:6px 8px;text-align:right;color:var(--text2)">${m.dea!=null?marcheFmtMinToHM(m.dea):'–'}</td>
+            <td style="padding:5px 8px;font-weight:700;color:var(--navy)">${wv.waveType} ${wv.year} <span style="font-weight:400;color:var(--muted)">(${escHtml(MARCHE_WAVE_LABELS[wv.waveType])})</span></td>
+            <td style="padding:5px 8px;color:var(--text2)">${marcheSeasonLabel(wv)}</td>
+            <td style="padding:5px 8px;text-align:right;font-weight:700">${marcheFmtPct(m.ac)}</td>
+            <td style="padding:5px 8px;text-align:right;font-weight:700">${marcheFmtPct(m.pda)}</td>
+            <td style="padding:5px 8px;text-align:right;color:var(--text2)">${m.dea!=null?marcheFmtMinToHM(m.dea):'–'}</td>
           </tr>`;
         }).join('')}
       </tbody>
@@ -13279,6 +13378,39 @@ function openMarcheEntityModal(slug){
 }
 function closeMarcheEntityModal(){
   document.getElementById('modalMarcheEntity').style.display = 'none';
+  marcheEntityDestroyCharts();
+  closeMarcheChartZoom();
+  marcheEntityChartCache = null;
+}
+
+/** Agrandit l'une des 3 courbes de la fiche radio (AC/PDA/DEA) dans une
+ *  modale dédiée, par-dessus la fiche déjà ouverte. */
+function marcheOpenChartZoom(field){
+  if(!marcheEntityChartCache) return;
+  const { slug, period, histWaves, waveLabels, label } = marcheEntityChartCache;
+  const fieldLabel = field==='ac' ? 'AC %' : field==='pda' ? 'PDA %' : 'DEA (durée d\'écoute par auditeur, en minutes)';
+  document.getElementById('marcheChartZoomTitle').textContent = label + ' — ' + fieldLabel;
+  document.getElementById('marcheChartZoomSub').textContent = (period==='LV'?'Lundi-Vendredi':'Samedi-Dimanche') + ' — ' + histWaves.length + ' vague(s)';
+  document.getElementById('modalMarcheChartZoom').style.display = 'flex';
+  const data = histWaves.map(wv => { const v = (wv.entities[slug][period]||{})[field]; return typeof v==='number' ? v : null; });
+  try{ if(marcheZoomChart) marcheZoomChart.destroy(); }catch(e){ /* ignoré */ }
+  const el = document.getElementById('marcheChartZoomCanvas');
+  if(el && typeof Chart !== 'undefined'){
+    marcheZoomChart = new Chart(el, {
+      type: 'line',
+      data: { labels: waveLabels, datasets: [{ data, borderColor: '#0B1D3A', backgroundColor: 'rgba(11,29,58,.08)', borderWidth: 3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor:'#0B1D3A', tension: .25, fill: true, spanGaps: true }] },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y) } } },
+        scales: { y: { ticks: { font:{ size:12 } } }, x: { ticks: { font:{ size:12 } } } }
+      }
+    });
+  }
+}
+function closeMarcheChartZoom(){
+  document.getElementById('modalMarcheChartZoom').style.display = 'none';
+  try{ if(marcheZoomChart) marcheZoomChart.destroy(); }catch(e){ /* ignoré */ }
+  marcheZoomChart = null;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
