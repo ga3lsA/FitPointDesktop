@@ -250,6 +250,92 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 </div>
 
 <!-- MODAL ENREGISTRER VAGUE ─────────────────────────────────────────────── -->
+<div id="modalMediaAddPeriod" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:600;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeMediaAddPeriodModal()">
+  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:440px;width:100%;box-shadow:0 20px 60px rgba(11,29,58,.25)">
+    <div style="font-size:15px;font-weight:800;color:var(--navy);margin-bottom:4px">➕ Nouvelle(s) vague(s)</div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:18px">Une saison n'est qu'un regroupement automatique de ses 4 vagues possibles (SO/ND/JM/AJ) — indiquez juste sa première année, les vagues à créer se rangeront ensuite d'elles-mêmes dans la bonne saison.</div>
+
+    <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:6px">Saison</label>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:18px">
+      <input type="number" id="mediaAddSeasonYear1" style="width:90px;font-size:13px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border)" oninput="mediaUpdateAddSeasonPreview()">
+      <span style="color:var(--muted)">–</span>
+      <span id="mediaAddSeasonYear2" style="font-size:13px;color:var(--text2);font-weight:700"></span>
+    </div>
+
+    <label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:8px">Vague(s) à créer</label>
+    <div id="mediaAddWaveChecks" style="display:flex;flex-direction:column;gap:9px;margin-bottom:22px"></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button class="btn-ghost" style="font-size:12px;padding:8px 16px" onclick="closeMediaAddPeriodModal()">Annuler</button>
+      <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="mediaConfirmAddPeriods()">Créer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Import / saisie Historique Marché -->
+<div id="modalMarcheImport" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:650;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeMarcheImportModal()">
+  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:1080px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(11,29,58,.25)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">📊 Historique Marché — nouvelle vague</div>
+      <button onclick="closeMarcheImportModal()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:16px">Communiqué de Presse « EAR &gt; National » de Médiamétrie — AC (%), DEA et PDA par radio, en Lundi-Vendredi et Samedi-Dimanche. La détection automatique cible le format récent (2020+) ; pour les anciens rapports (ex. « 126 000 Radio »), utilisez l'onglet « Coller du texte » ou corrigez directement la grille ci-dessous — rien n'est enregistré tant que vous ne cliquez pas sur « Enregistrer ».</div>
+
+    <div style="display:flex;gap:6px;margin-bottom:16px;border-bottom:1.5px solid var(--border)">
+      <button id="marcheImportTabPdfBtn" class="btn-ghost" style="font-size:11.5px;font-weight:800;padding:8px 14px;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--navy)" onclick="marcheSetImportTab('pdf')">📄 Fichier(s) PDF</button>
+      <button id="marcheImportTabPasteBtn" class="btn-ghost" style="font-size:11.5px;font-weight:800;padding:8px 14px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="marcheSetImportTab('paste')">📋 Coller du texte / saisie manuelle</button>
+    </div>
+
+    <div id="marcheImportPdfPane">
+      <label style="display:inline-flex;align-items:center;gap:8px;background:var(--cyan-light);border:1.5px solid var(--cyan-mid);border-radius:8px;padding:9px 16px;cursor:pointer;font-size:12px;font-weight:700;color:#007B87;margin-bottom:14px">
+        📥 Choisir un ou plusieurs PDF Médiamétrie
+        <input type="file" accept=".pdf" multiple style="display:none" onchange="marcheHandleImportFiles(this.files)">
+      </label>
+      <div id="marcheImportPdfStatus" style="font-size:11.5px;color:var(--muted);margin-bottom:10px"></div>
+    </div>
+
+    <div id="marcheImportPastePane" style="display:none">
+      <div style="display:flex;gap:10px;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap">
+        <div>
+          <label style="font-size:10.5px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Type de vague</label>
+          <select id="marchePasteWaveType" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border)">
+            <option value="SO">Septembre-Octobre</option>
+            <option value="ND">Novembre-Décembre</option>
+            <option value="JM">Janvier-Mars</option>
+            <option value="AJ">Avril-Juin</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10.5px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Année</label>
+          <input type="number" id="marchePasteWaveYear" style="width:90px;font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border)">
+        </div>
+        <button class="btn-ghost" style="font-size:11.5px;padding:8px 14px" onclick="marcheCreateManualEntry()">＋ Grille vide (saisie 100% manuelle)</button>
+      </div>
+      <textarea id="marchePasteText" placeholder="Collez ici le texte copié depuis le PDF Médiamétrie (Ctrl+A / Ctrl+C dans le lecteur PDF, puis collez tel quel)…" style="width:100%;height:120px;font-size:11.5px;font-family:monospace;padding:10px;border-radius:8px;border:1.5px solid var(--border);margin-bottom:10px"></textarea>
+      <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="marcheAnalyzePastedText()">Analyser ce texte</button>
+    </div>
+
+    <div id="marcheImportQueueArea" style="margin-top:18px;display:flex;flex-direction:column;gap:18px"></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn-ghost" style="font-size:12px;padding:8px 16px" onclick="closeMarcheImportModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Fiche détaillée d'une radio dans l'Historique Marché (toutes vagues) -->
+<div id="modalMarcheEntity" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:650;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeMarcheEntityModal()">
+  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:840px;width:100%;max-height:88vh;overflow:auto;box-shadow:0 20px 60px rgba(11,29,58,.25)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div id="marcheEntityTitle" style="font-size:16px;font-weight:800;color:var(--navy)"></div>
+      <button onclick="closeMarcheEntityModal()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+    </div>
+    <div id="marcheEntitySub" style="font-size:11.5px;color:var(--muted);margin-bottom:14px"></div>
+    <div id="marcheEntityMergeArea" style="margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px"></div>
+    <div id="marcheEntityHistoryArea"></div>
+  </div>
+</div>
+
 <div id="modalSaveVague" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:500;align-items:center;justify-content:center">
   <div style="background:var(--white);border-radius:16px;padding:32px;width:480px;max-width:92vw;box-shadow:0 20px 60px rgba(11,29,58,.25)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
@@ -1578,7 +1664,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </div>
       <div id="digitalAudienceActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <input type="file" id="digitalAudienceFileInput" accept=".pdf" multiple style="display:none" onchange="digitalAudienceHandleFiles(this)">
-        <input type="file" id="digitalAudienceDMImportInput" accept=".json" style="display:none" onchange="digitalAudienceImportDMFile(this)">
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="digitalAudienceLoadHistoryFromDrive(true)" title="Recharge l'historique audience digitale depuis Drive Sync">☁️ Synchroniser Drive</button>
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="(async()=>{
           const btn=this; const orig=btn.textContent; btn.disabled=true; btn.textContent='⏳ Envoi…';
@@ -1586,13 +1671,16 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           if(r.ok) showToast('Historique audience digitale envoyé sur Drive', 'success');
           btn.disabled=false; btn.textContent=orig;
         })()" title="Renvoie tout l'historique local vers Drive, même si rien n'a changé depuis — utile après un échec de sauvegarde (ex. quota Drive plein) pour forcer le renvoi sans attendre une nouvelle modification">☁️⬆️ Forcer l'envoi vers Drive</button>
-        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="document.getElementById('digitalAudienceDMImportInput').click()" title="Importe un export JSON réalisé depuis Digital Monitoring (bouton « Exporter tout (.json) » de sa page Archives)">📤 Importer export Digital Monitoring (.json)</button>
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="digitalAudienceTriggerImport()">📥 Importer un ou plusieurs PDF Live Stats</button>
       </div>
       <div id="mediaActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="mediaLoadHistoryFromDrive(true)" title="Recharge Médiamétrie depuis Drive Sync">☁️ Synchroniser Drive</button>
-        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="document.getElementById('digitalAudienceDMImportInput').click()" title="Importe aussi le bloc Médiamétrie d'un export Digital Monitoring">📤 Importer export Digital Monitoring (.json)</button>
-        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="mediaAddPeriod()">+ Ajouter une vague</button>
+        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="openMediaAddPeriodModal()">+ Ajouter une vague</button>
+      </div>
+      <div id="marcheActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="marcheLoadFromDrive(true)" title="Recharge l'Historique Marché depuis Drive Sync">☁️ Synchroniser Drive</button>
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openMarcheImportModal('paste')" title="Saisir ou coller manuellement les résultats d'une vague (utile pour les anciens rapports Médiamétrie non reconnus automatiquement)">✍️ Saisie manuelle</button>
+        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="openMarcheImportModal('pdf')">📥 Importer un communiqué (PDF)</button>
       </div>
     </div>
 
@@ -1759,6 +1847,20 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div style="font-size:12px;font-weight:800;color:var(--navy);margin:6px 0 10px">📈 Matrice de corrélation (coefficient de Pearson)</div>
         <div id="corrMatrixArea" style="margin-bottom:26px"></div>
 
+        <div style="font-size:12px;font-weight:800;color:var(--navy);margin:6px 0 6px">🔢 Indice combiné — plusieurs critères à la fois</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">La matrice ci-dessus ne teste qu'un critère à la fois. Cochez-en plusieurs pour voir leur pouvoir prédictif <strong>combiné</strong> sur l'audience choisie (régression linéaire multiple, coefficients standardisés) — utile si aucun critère seul ne ressort, mais qu'une combinaison pourrait expliquer davantage.</div>
+        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;padding:14px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px">
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:8px">Critères programmation (1 ou plus)</div>
+            <div id="corrCombinedCriteria" style="display:flex;flex-direction:column;gap:5px"></div>
+          </div>
+          <div style="flex:1;min-width:220px">
+            <div style="font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:8px">Audience à expliquer</div>
+            <select id="corrCombinedTarget" style="font-size:11.5px;padding:6px 9px;border-radius:6px;width:100%;margin-bottom:12px" onchange="renderCorrCombined()"></select>
+            <div id="corrCombinedResult"></div>
+          </div>
+        </div>
+
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
           <div style="font-size:12px;font-weight:800;color:var(--navy)">🔬 Nuage de points</div>
           <label style="font-size:11px;color:var(--text2)">Programmation (X) :
@@ -1768,16 +1870,32 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             <select id="corrScatterY" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="renderCorrScatter()"></select>
           </label>
         </div>
-        <div id="corrScatterArea"></div>
+        <div id="corrScatterMeta" style="font-size:11px;color:var(--text2);margin-bottom:8px"></div>
+        <div style="position:relative;height:340px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:10px"><canvas id="corrScatterChart"></canvas></div>
       </div>
     </div>
 
     <!-- Sous-page Médiamétrie (vagues, quinzaines/intermédiaires, historique) -->
     <div id="analyseMediaContainer" style="display:none">
-      <div id="mediaEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
 
-      <div id="mediaPeriodBlocks"></div>
-      <div id="mediaHistoryTableArea" style="margin-top:24px"></div>
+      <!-- Onglets internes : résultats live de la station de référence vs historique de marché toutes radios -->
+      <div style="display:flex;gap:4px;margin-bottom:16px">
+        <button id="mediaInnerTabLiveBtn" class="btn-ghost" style="font-size:11.5px;font-weight:800;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border)" onclick="mediaSetInnerTab('live')">📻 Résultats par cible</button>
+        <button id="mediaInnerTabMarcheBtn" class="btn-ghost" style="font-size:11.5px;font-weight:800;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border)" onclick="mediaSetInnerTab('marche')">📊 Historique Marché</button>
+      </div>
+
+      <div id="mediaInnerLive">
+        <div id="mediaEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
+        <div id="mediaHistoryTableArea"></div>
+      </div>
+
+      <!-- Historique Marché : toutes radios (dont concurrents), toutes vagues, toutes saisons —
+           alimenté par import des communiqués Médiamétrie EAR National (PDF) ou saisie manuelle. -->
+      <div id="mediaInnerMarche" style="display:none">
+        <div id="marcheEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
+        <div id="marcheArea"></div>
+      </div>
+
     </div>
 
     <!-- Sous-page Graphiques d'évolution (programmation ↔ audience digitale, par semaine) -->
@@ -11213,9 +11331,10 @@ function analyseSetSubView(view){
       mediaLoadLocal();
       if(DRIVE_SYNC_URL) mediaLoadHistoryFromDrive(false);
     }
+    mediaSetInnerTab(mediaInnerTab);
   }
   if(view==='audience') renderDigitalAudiencePage();
-  if(view==='media') renderMediaPage();
+  if(view==='media' && mediaInnerTab==='live') renderMediaPage();
   if(view==='graph') renderGraphPage();
   if(view==='corr') renderCorrPage();
 }
@@ -11926,101 +12045,6 @@ function digitalAudienceDeleteWeek(stKey, weekStart){
   renderDigitalAudiencePage();
 }
 
-/** Import en masse d'un export JSON réalisé depuis l'outil Digital
- *  Monitoring (bouton « ⭳ Exporter tout (.json) » de sa page Archives).
- *  Reprend le bloc `live` (Live Stats hebdo → Audience digitale) ET le bloc
- *  `mediametrie` (vagues/quinzaines → Médiamétrie), uniquement Europe 2 / RFM
- *  (portée d'Analyse) — Europe 1, hors périmètre, est ignoré silencieusement.
- *  N'écrase jamais une entrée déjà présente (import antérieur potentiellement
- *  corrigé à la main) : les entrées déjà connues sont comptées à part et
- *  laissées telles quelles. */
-const DM_STATION_MAP = { europe2:'EUROPE2', rfm:'RFM' }; // europe1 volontairement absent (hors périmètre Analyse)
-
-async function digitalAudienceImportDMFile(input){
-  const file = input.files && input.files[0];
-  input.value = '';
-  if(!file) return;
-  let data;
-  try{
-    const text = await file.text();
-    data = JSON.parse(text);
-  }catch(e){
-    showToast('Fichier JSON invalide', 'err');
-    return;
-  }
-  if(!data || typeof data !== 'object' || (!data.live && !data.mediametrie)){
-    showToast('Ce fichier ne contient pas de données « live » ou « médiamétrie » (Digital Monitoring) exploitables', 'err');
-    return;
-  }
-
-  let added = 0, skippedExisting = 0, skippedOutOfScope = 0;
-  if(data.live){
-    for(const [dmStation, weeks] of Object.entries(data.live)){
-      const stKey = DM_STATION_MAP[dmStation];
-      if(!stKey){ skippedOutOfScope += Object.keys(weeks||{}).length; continue; } // europe1
-      if(!digitalAudienceHistory[stKey]) digitalAudienceHistory[stKey] = {};
-      for(const [weekStart, rec] of Object.entries(weeks || {})){
-        if(digitalAudienceHistory[stKey][weekStart]){ skippedExisting++; continue; }
-        const weekEnd = rec.weekEnd || (Array.isArray(rec.daily) && rec.daily.length ? rec.daily[rec.daily.length-1].date : null);
-        digitalAudienceHistory[stKey][weekStart] = {
-          weekStart, weekEnd,
-          sessions: rec.sessions ?? null,
-          uniques: rec.uniques ?? null,
-          dureeSec: rec.dureeSec ?? null,
-          audienceMoyenne: rec.audienceMoyenne ?? null,
-          evolS1Sessions: rec.evolS1Sessions ?? null, evol1anSessions: rec.evol1anSessions ?? null,
-          evolS1Uniques: rec.evolS1Uniques ?? null, evol1anUniques: rec.evol1anUniques ?? null,
-          evolS1Audience: rec.evolS1Audience ?? null, evol1anAudience: rec.evol1anAudience ?? null,
-          daily: rec.daily || [], tranches: rec.tranches || [], contexte: rec.contexte || [],
-          filename: '(import Digital Monitoring — ' + (data.exportedAt ? data.exportedAt.slice(0,10) : '?') + ')',
-          importedAt: new Date().toISOString()
-        };
-        added++;
-      }
-    }
-  }
-
-  let mediaAdded = 0, mediaSkipped = 0, mediaOutOfScope = 0;
-  if(data.mediametrie){
-    mediaLoadLocal();
-    for(const [dmStation, stationData] of Object.entries(data.mediametrie)){
-      const stKey = DM_STATION_MAP[dmStation];
-      if(!stKey){ mediaOutOfScope += (stationData.periods||[]).length; continue; } // europe1
-      if(!mediaHistory[stKey]) mediaHistory[stKey] = { cibles: stationData.cibles || [], periods: [] };
-      if(!mediaHistory[stKey].cibles || !mediaHistory[stKey].cibles.length) mediaHistory[stKey].cibles = stationData.cibles || [];
-      (stationData.periods || []).forEach(p => {
-        const exists = mediaHistory[stKey].periods.find(e => e.id === p.id);
-        if(exists){ mediaSkipped++; return; }
-        mediaHistory[stKey].periods.push(p);
-        mediaAdded++;
-      });
-    }
-    mediaSaveLocal();
-  }
-
-  if(!added && !skippedExisting && !mediaAdded && !mediaSkipped){
-    showToast('Aucune donnée Europe 2/RFM exploitable trouvée dans cet export', 'err');
-    return;
-  }
-
-  const parts = [];
-  if(added || skippedExisting) parts.push(added + ' semaine(s) audience digitale importée(s)' + (skippedExisting ? ' (' + skippedExisting + ' déjà présente(s))' : ''));
-  if(mediaAdded || mediaSkipped) parts.push(mediaAdded + ' vague(s) Médiamétrie importée(s)' + (mediaSkipped ? ' (' + mediaSkipped + ' déjà présente(s))' : ''));
-  let msg = '✓ ' + parts.join(' · ');
-  if(skippedOutOfScope || mediaOutOfScope) msg += ' · Europe 1 ignoré (hors périmètre)';
-  showToast(msg, 'success');
-
-  renderDigitalAudiencePage();
-  if(analyseSubView === 'corr') renderCorrPage();
-  if(analyseSubView === 'media') renderMediaPage();
-
-  if(DRIVE_SYNC_URL){
-    if(added > 0) await digitalAudienceSaveToDrive();
-    if(mediaAdded > 0) await mediaSaveToDrive();
-    if(added > 0 || mediaAdded > 0) showToast('☁️ Import synchronisé sur Drive', 'success');
-  }
-}
-
 // ══════════════════════════════════════════════════════════════════════════
 // MÉDIAMÉTRIE — vagues (SO/ND/JM/AJ), quinzaines/intermédiaires, historique
 // ══════════════════════════════════════════════════════════════════════════
@@ -12040,7 +12064,7 @@ const MEDIA_WAVE_LABELS = { SO:'Septembre-Octobre', ND:'Novembre-Décembre', JM:
 const MEDIA_SEED = {"RFM": {"cibles": [{"key": "ensemble", "label": "Ensemble"}, {"key": "c2", "label": "25-59 ans"}, {"key": "c3", "label": "35-59 ans"}], "periods": [{"id": "2020-so", "label": "Septembre-Octobre 2020", "waveType": "SO", "year": 2020, "waves": [], "finalResult": {"AC": 4.1, "PDA": 3.6, "DEA": null}}, {"id": "2020-nd", "label": "Novembre-Décembre 2020", "waveType": "ND", "year": 2020, "waves": [], "finalResult": {"AC": 3.6, "PDA": 2.8, "DEA": null}}, {"id": "2021-jm", "label": "Janvier-Mars 2021", "waveType": "JM", "year": 2021, "waves": [], "finalResult": {"AC": 3.2, "PDA": 2.4, "DEA": null}}, {"id": "2021-aj", "label": "Avril-Juin 2021", "waveType": "AJ", "year": 2021, "waves": [], "finalResult": {"AC": 3.4, "PDA": 3, "DEA": null}}, {"id": "2021-so", "label": "Septembre-Octobre 2021", "waveType": "SO", "year": 2021, "waves": [], "finalResult": {"AC": 3.6, "PDA": 2.9, "DEA": null}}, {"id": "2021-nd", "label": "Novembre-Décembre 2021", "waveType": "ND", "year": 2021, "waves": [], "finalResult": {"AC": 3.7, "PDA": 2.8, "DEA": null}}, {"id": "2022-jm", "label": "Janvier-Mars 2022", "waveType": "JM", "year": 2022, "waves": [], "finalResult": {"AC": 3.1, "PDA": 2.5, "DEA": null}}, {"id": "2022-aj", "label": "Avril-Juin 2022", "waveType": "AJ", "year": 2022, "waves": [], "finalResult": {"AC": 3.3, "PDA": 2.8, "DEA": null}}, {"id": "2022-so", "label": "Septembre-Octobre 2022", "waveType": "SO", "year": 2022, "waves": [], "finalResult": {"AC": 3.1, "PDA": 2.9, "DEA": null}}, {"id": "2022-nd", "label": "Novembre-Décembre 2022", "waveType": "ND", "year": 2022, "waves": [], "finalResult": {"AC": 3.6, "PDA": 3, "DEA": null}}, {"id": "2023-jm", "label": "Janvier-Mars 2023", "waveType": "JM", "year": 2023, "waves": [], "finalResult": {"AC": 3.1, "PDA": 2.4, "DEA": null}}, {"id": "2023-aj", "label": "Avril-Juin 2023", "waveType": "AJ", "year": 2023, "waves": [], "finalResult": {"AC": 3, "PDA": 2.5, "DEA": null}}, {"id": "2023-so", "label": "Septembre-Octobre 2023", "waveType": "SO", "year": 2023, "waves": [], "finalResult": {"AC": 2.9, "PDA": 2.6, "DEA": null}}, {"id": "2023-nd", "label": "Novembre-Décembre 2023", "waveType": "ND", "year": 2023, "waves": [], "finalResult": {"AC": 3.3, "PDA": 2.7, "DEA": null}}, {"id": "2024-jm", "label": "Janvier-Mars 2024", "waveType": "JM", "year": 2024, "waves": [], "finalResult": {"AC": 3, "PDA": 2.6, "DEA": null}}, {"id": "2024-aj", "label": "Avril-Juin 2024", "waveType": "AJ", "year": 2024, "waves": [], "finalResult": {"AC": 3.1, "PDA": 2.6, "DEA": null}}, {"id": "2024-so", "label": "Septembre-Octobre 2024", "waveType": "SO", "year": 2024, "waves": [], "finalResult": {"AC": 3, "PDA": 2.5, "DEA": null}}, {"id": "2024-nd", "label": "Novembre-Décembre 2024", "waveType": "ND", "year": 2024, "waves": [], "finalResult": {"AC": 2.8, "PDA": 2.4, "DEA": null}}, {"id": "2025-jm", "label": "Janvier-Mars 2025", "waveType": "JM", "year": 2025, "waves": [], "finalResult": {"AC": 2.9, "PDA": 2.3, "DEA": null}}, {"id": "2025-aj", "label": "Avril-Juin 2025", "waveType": "AJ", "year": 2025, "waves": [], "finalResult": {"AC": 2.6, "PDA": 2.4, "DEA": null}}, {"id": "2025-so", "label": "Septembre-Octobre 2025", "waveType": "SO", "year": 2025, "waves": [], "finalResult": {"AC": 2.6, "PDA": 2.6, "DEA": null}}, {"id": "2025-nd", "label": "Novembre-Décembre 2025", "waveType": "ND", "year": 2025, "waves": [], "finalResult": {"AC": 2.8, "PDA": 2.1, "DEA": null}}, {"id": "2026-jm", "label": "Janvier-Mars 2026", "waveType": "JM", "year": 2026, "waves": [{"id": "q1", "label": "Q1", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.8, "PDA": 2.4, "DEA": 89}, "c2": {"AC": 3.1, "PDA": 2.5, "DEA": 84}, "c3": {"AC": 3.9, "PDA": 2.9, "DEA": 89}}}, {"id": "q2", "label": "Q2", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.9, "PDA": 2.4, "DEA": 90}, "c2": {"AC": 3.2, "PDA": 2.6, "DEA": 90}, "c3": {"AC": 3.8, "PDA": 2.7, "DEA": 87}}}, {"id": "q3", "label": "Q3", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.8, "PDA": 2.4, "DEA": 91}, "c2": {"AC": 2.9, "PDA": 2.5, "DEA": 92}, "c3": {"AC": 3.5, "PDA": 2.7, "DEA": 90}}}, {"id": "q4", "label": "Q4", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.7, "PDA": 2.3, "DEA": 89}, "c2": {"AC": 2.9, "PDA": 2.4, "DEA": 90}, "c3": {"AC": 3.4, "PDA": 2.6, "DEA": 89}}}, {"id": "q4c", "label": "Q4 corrigé", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.9, "PDA": 2.4, "DEA": null}, "c2": {"AC": 3.1, "PDA": 2.6, "DEA": null}, "c3": {"AC": 3.7, "PDA": 2.7, "DEA": null}}}, {"id": "q5c", "label": "Q5 corrigé", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.9, "PDA": 2.4, "DEA": 90}, "c2": {"AC": 3.2, "PDA": 2.5, "DEA": 87}, "c3": {"AC": 3.8, "PDA": 2.6, "DEA": 86}}}], "finalResult": {"AC": 2.9, "PDA": 2.4, "DEA": 90}}, {"id": "2026-aj", "label": "Avril-Juin 2026", "waveType": "AJ", "year": 2026, "waves": [{"id": "q1", "label": "Q1", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.6, "PDA": 2.5, "DEA": 107}, "c2": {"AC": 2.9, "PDA": 3.1, "DEA": 113}, "c3": {"AC": 3.3, "PDA": 3.0, "DEA": 110}}}, {"id": "q2", "label": "Q2", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.6, "PDA": 2.5, "DEA": 104}, "c2": {"AC": 2.9, "PDA": 3.0, "DEA": 112}, "c3": {"AC": 3.3, "PDA": 3.1, "DEA": 114}}}, {"id": "q3", "label": "Q3", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.7, "PDA": 2.4, "DEA": 101}, "c2": {"AC": 3.0, "PDA": 2.9, "DEA": 108}, "c3": {"AC": 3.4, "PDA": 2.9, "DEA": 105}}}, {"id": "q4", "label": "Q4", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.7, "PDA": 2.4, "DEA": 99}, "c2": {"AC": 3.0, "PDA": 2.9, "DEA": 105}, "c3": {"AC": 3.5, "PDA": 2.9, "DEA": 103}}}, {"id": "q5", "label": "Q5", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.8, "PDA": 2.5, "DEA": 101}, "c2": {"AC": 3.1, "PDA": 2.9, "DEA": 105}, "c3": {"AC": 3.5, "PDA": 3.0, "DEA": 106}}}], "finalResult": {"AC": 2.8, "PDA": 2.5, "DEA": 101}}]}, "EUROPE2": {"cibles": [{"key": "ensemble", "label": "Ensemble"}, {"key": "c2", "label": "25-49 ans"}, {"key": "c3", "label": "25-59 ans"}], "periods": [{"id": "2020-so", "label": "Septembre-Octobre 2020", "waveType": "SO", "year": 2020, "waves": [], "finalResult": {"AC": 3.4, "PDA": 2.1, "DEA": null}}, {"id": "2020-nd", "label": "Novembre-Décembre 2020", "waveType": "ND", "year": 2020, "waves": [], "finalResult": {"AC": 3, "PDA": 1.9, "DEA": null}}, {"id": "2021-jm", "label": "Janvier-Mars 2021", "waveType": "JM", "year": 2021, "waves": [], "finalResult": {"AC": 3, "PDA": 1.8, "DEA": null}}, {"id": "2021-aj", "label": "Avril-Juin 2021", "waveType": "AJ", "year": 2021, "waves": [], "finalResult": {"AC": 2.8, "PDA": 1.8, "DEA": null}}, {"id": "2021-so", "label": "Septembre-Octobre 2021", "waveType": "SO", "year": 2021, "waves": [], "finalResult": {"AC": 3, "PDA": 1.8, "DEA": null}}, {"id": "2021-nd", "label": "Novembre-Décembre 2021", "waveType": "ND", "year": 2021, "waves": [], "finalResult": {"AC": 2.8, "PDA": 1.6, "DEA": null}}, {"id": "2022-jm", "label": "Janvier-Mars 2022", "waveType": "JM", "year": 2022, "waves": [], "finalResult": {"AC": 2.8, "PDA": 1.6, "DEA": null}}, {"id": "2022-aj", "label": "Avril-Juin 2022", "waveType": "AJ", "year": 2022, "waves": [], "finalResult": {"AC": 2.8, "PDA": 1.8, "DEA": null}}, {"id": "2022-so", "label": "Septembre-Octobre 2022", "waveType": "SO", "year": 2022, "waves": [], "finalResult": {"AC": 2.6, "PDA": 1.6, "DEA": null}}, {"id": "2022-nd", "label": "Novembre-Décembre 2022", "waveType": "ND", "year": 2022, "waves": [], "finalResult": {"AC": 2.5, "PDA": 1.5, "DEA": null}}, {"id": "2023-jm", "label": "Janvier-Mars 2023", "waveType": "JM", "year": 2023, "waves": [], "finalResult": {"AC": 2.4, "PDA": 1.4, "DEA": null}}, {"id": "2023-aj", "label": "Avril-Juin 2023", "waveType": "AJ", "year": 2023, "waves": [], "finalResult": {"AC": 2.2, "PDA": 1.3, "DEA": null}}, {"id": "2023-so", "label": "Septembre-Octobre 2023", "waveType": "SO", "year": 2023, "waves": [], "finalResult": {"AC": 2.3, "PDA": 1.5, "DEA": null}}, {"id": "2023-nd", "label": "Novembre-Décembre 2023", "waveType": "ND", "year": 2023, "waves": [], "finalResult": {"AC": 2.2, "PDA": 1.3, "DEA": null}}, {"id": "2024-jm", "label": "Janvier-Mars 2024", "waveType": "JM", "year": 2024, "waves": [], "finalResult": {"AC": 2, "PDA": 1.1, "DEA": null}}, {"id": "2024-aj", "label": "Avril-Juin 2024", "waveType": "AJ", "year": 2024, "waves": [], "finalResult": {"AC": 1.9, "PDA": 1.2, "DEA": null}}, {"id": "2024-so", "label": "Septembre-Octobre 2024", "waveType": "SO", "year": 2024, "waves": [], "finalResult": {"AC": 1.6, "PDA": 1, "DEA": null}}, {"id": "2024-nd", "label": "Novembre-Décembre 2024", "waveType": "ND", "year": 2024, "waves": [], "finalResult": {"AC": 1.6, "PDA": 1, "DEA": null}}, {"id": "2025-jm", "label": "Janvier-Mars 2025", "waveType": "JM", "year": 2025, "waves": [], "finalResult": {"AC": 1.5, "PDA": 0.9, "DEA": null}}, {"id": "2025-aj", "label": "Avril-Juin 2025", "waveType": "AJ", "year": 2025, "waves": [], "finalResult": {"AC": 1.6, "PDA": 1, "DEA": null}}, {"id": "2025-so", "label": "Septembre-Octobre 2025", "waveType": "SO", "year": 2025, "waves": [], "finalResult": {"AC": 1.8, "PDA": 1.5, "DEA": null}}, {"id": "2025-nd", "label": "Novembre-Décembre 2025", "waveType": "ND", "year": 2025, "waves": [], "finalResult": {"AC": 1.9, "PDA": 1.6, "DEA": null}}, {"id": "2026-jm", "label": "Janvier-Mars 2026", "waveType": "JM", "year": 2026, "waves": [{"id": "q1", "label": "Q1", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.7, "PDA": 1.5, "DEA": 92}, "c2": {"AC": 2.6, "PDA": 2.5, "DEA": 95}, "c3": {"AC": 2.4, "PDA": 2.3, "DEA": 104}}}, {"id": "q2", "label": "Q2", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.8, "PDA": 1.5, "DEA": 89}, "c2": {"AC": 2.8, "PDA": 2.7, "DEA": 97}, "c3": {"AC": 2.5, "PDA": 2.3, "DEA": 101}}}, {"id": "q3", "label": "Q3", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.7, "PDA": 1.5, "DEA": 92}, "c2": {"AC": 2.6, "PDA": 2.9, "DEA": 106}, "c3": {"AC": 2.4, "PDA": 2.4, "DEA": 107}}}, {"id": "q4", "label": "Q4", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.8, "PDA": 1.6, "DEA": 98}, "c2": {"AC": 2.8, "PDA": 3.4, "DEA": 116}, "c3": {"AC": 2.6, "PDA": 2.7, "DEA": 113}}}, {"id": "q4c", "label": "Q4 corrigé", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.9, "PDA": 1.7, "DEA": null}, "c2": {"AC": 3.1, "PDA": 3.3, "DEA": null}, "c3": {"AC": 2.8, "PDA": 2.7, "DEA": null}}}, {"id": "q5c", "label": "Q5 corrigé", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.8, "PDA": 1.6, "DEA": 95}, "c2": {"AC": 2.9, "PDA": 3.0, "DEA": 105}, "c3": {"AC": 2.7, "PDA": 2.6, "DEA": 107}}}], "finalResult": {"AC": 1.8, "PDA": 1.6, "DEA": 95}}, {"id": "2026-aj", "label": "Avril-Juin 2026", "waveType": "AJ", "year": 2026, "waves": [{"id": "q1", "label": "Q1", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.9, "PDA": 1.8, "DEA": 101}, "c2": {"AC": 2.8, "PDA": 3.8, "DEA": 130}, "c3": {"AC": 2.7, "PDA": 3.1, "DEA": 120}}}, {"id": "q2", "label": "Q2", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 2.0, "PDA": 1.7, "DEA": 94}, "c2": {"AC": 3.0, "PDA": 3.2, "DEA": 104}, "c3": {"AC": 2.9, "PDA": 2.9, "DEA": 108}}}, {"id": "q3", "label": "Q3", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.9, "PDA": 1.7, "DEA": 94}, "c2": {"AC": 3.0, "PDA": 3.1, "DEA": 102}, "c3": {"AC": 2.8, "PDA": 2.9, "DEA": 111}}}, {"id": "q4", "label": "Q4", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.8, "PDA": 1.5, "DEA": 92}, "c2": {"AC": 2.8, "PDA": 2.8, "DEA": 98}, "c3": {"AC": 2.7, "PDA": 2.6, "DEA": 105}}}, {"id": "q5", "label": "Q5", "dateStart": null, "dateEnd": null, "cibles": {"ensemble": {"AC": 1.7, "PDA": 1.4, "DEA": 92}, "c2": {"AC": 2.7, "PDA": 2.8, "DEA": 102}, "c3": {"AC": 2.6, "PDA": 2.5, "DEA": 105}}}], "finalResult": {"AC": 1.7, "PDA": 1.4, "DEA": 92}}]}};
 let mediaHistory = { EUROPE2: { cibles:[], periods:[] }, RFM: { cibles:[], periods:[] } };
 let mediaDriveLoaded = false;
-let mediaUI = { station: 'EUROPE2', collapsed: {} };
+let mediaUI = { station: 'EUROPE2', collapsed: {}, expandedPeriods: { EUROPE2: new Set(), RFM: new Set() } };
 
 function mediaLoadLocal(){
   try{
@@ -12095,17 +12119,6 @@ async function mediaLoadHistoryFromDrive(manual){
   }
 }
 
-/* ---- Détection type de vague + année depuis un libellé libre ---- */
-function mediaDetectWaveTypeYear(label){
-  const yearMatch = /(20\d{2})/.exec(label||'');
-  const year = yearMatch ? parseInt(yearMatch[1],10) : null;
-  let waveType = null;
-  if(/septembre|octobre/i.test(label)) waveType = 'SO';
-  else if(/novembre|d[ée]cembre/i.test(label)) waveType = 'ND';
-  else if(/janvier|f[ée]vrier|mars/i.test(label)) waveType = 'JM';
-  else if(/avril|mai|juin/i.test(label)) waveType = 'AJ';
-  return { waveType, year };
-}
 function mediaWaveSortKey(period){
   const monthMap = { SO:9, ND:11, JM:1, AJ:4 };
   if(period.year && period.waveType && monthMap[period.waveType]!==undefined) return period.year*12 + monthMap[period.waveType];
@@ -12205,17 +12218,81 @@ function mediaNextWaveLabel(period){
 }
 
 /* ---- CRUD période / quinzaine ---- */
-function mediaAddPeriod(){
+/** Ouvre la modale de création guidée : saisir une saison (première année),
+ *  puis cocher la ou les vagues à créer dedans (SO/ND/JM/AJ) — remplace
+ *  l'ancien prompt() texte libre où il fallait deviner le format attendu.
+ *  Les vagues déjà existantes pour cette saison sont grisées et décochées
+ *  automatiquement pour éviter les doublons. */
+function openMediaAddPeriodModal(){
   if(!requireAdmin()) return;
   const stKey = mediaUI.station;
+  const sorted = mediaSortedPeriods(stKey);
+  const last = sorted[sorted.length-1];
+  let suggestedYear1;
+  if(last && last.year && last.waveType){
+    const lastSeasonYear1 = (last.waveType==='SO' || last.waveType==='ND') ? last.year : last.year-1;
+    suggestedYear1 = lastSeasonYear1 + 1; // propose par défaut la saison SUIVANTE la plus récente connue
+  } else {
+    suggestedYear1 = new Date().getFullYear();
+  }
+  document.getElementById('mediaAddSeasonYear1').value = suggestedYear1;
+  mediaUpdateAddSeasonPreview();
+  document.getElementById('modalMediaAddPeriod').style.display = 'flex';
+}
+function closeMediaAddPeriodModal(){
+  document.getElementById('modalMediaAddPeriod').style.display = 'none';
+}
+const MEDIA_SEASON_WAVE_DEFS = [
+  { type:'SO', yearOffset:0 },
+  { type:'ND', yearOffset:0 },
+  { type:'JM', yearOffset:1 },
+  { type:'AJ', yearOffset:1 },
+];
+/** Recalcule la liste de cases à cocher (une par vague possible de la
+ *  saison saisie) à chaque changement d'année — appelée à l'ouverture de la
+ *  modale et à chaque frappe dans le champ année. */
+function mediaUpdateAddSeasonPreview(){
+  const y1 = parseInt(document.getElementById('mediaAddSeasonYear1')?.value, 10);
+  const y2el = document.getElementById('mediaAddSeasonYear2');
+  if(y2el) y2el.textContent = isNaN(y1) ? '' : String(y1+1);
+  const checksEl = document.getElementById('mediaAddWaveChecks');
+  if(!checksEl || isNaN(y1)) return;
+  const stKey = mediaUI.station;
   const data = mediaHistory[stKey];
-  const label = prompt('Nom de la nouvelle vague (ex : "Juillet-Septembre 2026") :');
-  if(!label) return;
-  const id = mediaUniqueId(data.periods.map(p=>p.id), mediaSlugify(label));
-  const {waveType, year} = mediaDetectWaveTypeYear(label);
-  data.periods.push({ id, label, waveType, year, waves: [], finalResult:{AC:null,PDA:null,DEA:null} });
+  const existing = new Set((data.periods||[]).map(p => p.waveType+'|'+p.year));
+  checksEl.innerHTML = MEDIA_SEASON_WAVE_DEFS.map(w => {
+    const year = y1 + w.yearOffset;
+    const already = existing.has(w.type+'|'+year);
+    return `<label style="font-size:12.5px;color:${already?'var(--muted)':'var(--text2)'};display:flex;align-items:center;gap:8px;cursor:${already?'default':'pointer'}">
+      <input type="checkbox" value="${w.type}|${year}" ${already?'disabled':''} ${already?'':'checked'}>
+      ${escHtml(MEDIA_WAVE_LABELS[w.type])} ${year}${already?' — déjà existante' : ''}
+    </label>`;
+  }).join('');
+}
+/** Crée toutes les vagues cochées dans la modale — chacune se range ensuite
+ *  toute seule dans sa saison (dérivée de waveType+year, voir
+ *  mediaSeasonLabel) et à la bonne place chronologique (mediaSortedPeriods),
+ *  sans action supplémentaire de ma part. */
+function mediaConfirmAddPeriods(){
+  const stKey = mediaUI.station;
+  const data = mediaHistory[stKey];
+  const checked = Array.from(document.querySelectorAll('#mediaAddWaveChecks input:checked'));
+  if(!checked.length){ showToast('Sélectionnez au moins une vague à créer', 'err'); return; }
+  let created = 0;
+  checked.forEach(cb => {
+    const [waveType, yearStr] = cb.value.split('|');
+    const year = parseInt(yearStr, 10);
+    if(data.periods.some(p => p.waveType===waveType && p.year===year)) return; // sécurité anti-doublon
+    const label = MEDIA_WAVE_LABELS[waveType] + ' ' + year;
+    const id = mediaUniqueId(data.periods.map(p=>p.id), mediaSlugify(label));
+    data.periods.push({ id, label, waveType, year, waves: [], finalResult:{AC:null,PDA:null,DEA:null} });
+    created++;
+  });
+  closeMediaAddPeriodModal();
+  if(!created) return;
   mediaSaveLocal();
   if(DRIVE_SYNC_URL) mediaSaveToDrive();
+  showToast('✓ ' + created + ' vague(s) créée(s) — utilisez "+ Quinzaines" sur chacune pour y ajouter ses intermédiaires', 'success');
   renderMediaPage();
 }
 function mediaRemovePeriod(stKey, periodId){
@@ -12321,13 +12398,79 @@ function mediaFinalResultBlockHtml(stKey, period){
     </div>`;
 }
 
+/** Déplie/replie le détail par quinzaine d'une vague (JM/AJ en cours de
+ *  saisie détaillée) — repliée par défaut (voir mediaUI.expandedPeriods),
+ *  pour qu'elle se présente comme n'importe quelle vague archivée tant
+ *  qu'on n'a pas explicitement demandé à voir le détail. */
+function mediaTogglePeriodExpand(stKey, periodId){
+  if(!mediaUI.expandedPeriods) mediaUI.expandedPeriods = { EUROPE2:new Set(), RFM:new Set() };
+  const set = mediaUI.expandedPeriods[stKey] || (mediaUI.expandedPeriods[stKey] = new Set());
+  if(set.has(periodId)) set.delete(periodId); else set.add(periodId);
+  renderMediaPage();
+}
+
+/** Table de détail par quinzaine (intermédiaire) d'une vague — extrait du
+ *  bloc "vague détaillée" pour être réutilisable dans la ligne dépliée
+ *  d'une vague, qu'elle vienne juste d'être créée ou soit déjà ancienne. */
+function mediaWaveDetailTableHtml(stKey, period, cibles, collapsed){
+  const rows = period.waves.map(wave => {
+    let cibleCells = '';
+    cibles.forEach(c => {
+      if(collapsed.has(c.key)){ cibleCells += `<td style="padding:7px;text-align:center;color:var(--muted)">⋯</td>`; return; }
+      const v = wave.cibles[c.key] || {AC:null,PDA:null,DEA:null};
+      ['AC','PDA','DEA'].forEach(metric => {
+        cibleCells += `<td style="padding:5px"><input type="text" inputmode="decimal" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:48px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveMetric('${period.id}','${wave.id}','${c.key}','${metric}',this.value)"></td>`;
+      });
+    });
+    return `<tr>
+      <td style="padding:7px 10px;font-size:12px;font-weight:700">${escHtml(wave.label)}</td>
+      <td style="padding:5px"><input type="date" value="${wave.dateStart||''}" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','start',this.value)"></td>
+      <td style="padding:5px"><input type="date" value="${wave.dateEnd||''}" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','end',this.value)"></td>
+      ${cibleCells}
+      <td style="padding:7px 10px">${mediaLiveCellHtml(stKey, wave)}</td>
+      <td style="padding:7px 10px;text-align:center"><button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaRemoveWave('${stKey}','${period.id}','${wave.id}')" title="Supprimer cette quinzaine">🗑</button></td>
+    </tr>`;
+  }).join('');
+
+  const cibleHeadGroup = cibles.map(c => {
+    const isCollapsed = collapsed.has(c.key);
+    return `<th ${isCollapsed?'':'colspan="3"'} style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);cursor:pointer" onclick="mediaToggleCible('${c.key}')" title="${isCollapsed?'Déplier':'Replier'} ${escHtml(c.label)}">${isCollapsed?'▸':'▾'} ${escHtml(c.label)}</th>`;
+  }).join('');
+  const cibleSubHead = cibles.map(c => collapsed.has(c.key) ? `<th></th>` : `<th style="padding:5px;font-size:9px;color:var(--muted)">AC</th><th style="padding:5px;font-size:9px;color:var(--muted)">PDA</th><th style="padding:5px;font-size:9px;color:var(--muted)">DEA</th>`).join('');
+
+  return `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Détail par quinzaine (intermédiaire Médiamétrie). Saisissez les dates de la quinzaine pour calculer automatiquement l'audience live hebdomadaire moyenne sur la période correspondante. Cliquez sur l'en-tête d'une cible pour la replier/déplier.</div>
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:600px;background:var(--white);border-radius:10px;border:1.5px solid var(--border)">
+      <thead>
+        <tr style="background:var(--bg)"><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Quinzaine</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date début</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date fin</th>${cibleHeadGroup}<th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Live hebdo moy.</th><th rowspan="2"></th></tr>
+        <tr style="background:var(--bg)">${cibleSubHead}</tr>
+      </thead>
+      <tbody>${rows || `<tr><td colspan="${3+cibles.length*3+2}" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune quinzaine — ajoutez-en une ci-dessous</td></tr>`}</tbody>
+    </table>
+    </div>`;
+}
+
 function mediaRenderHistoryTable(stKey){
-  // Ordre antéchronologique (vague la plus récente en haut, la plus
-  // ancienne tout en bas) — inverse de mediaSortedPeriods qui trie du plus
-  // ancien au plus récent.
-  const sorted = mediaSortedPeriods(stKey).filter(p => !p.waves || p.waves.length===0).reverse();
+  const cibles = (mediaHistory[stKey] && mediaHistory[stKey].cibles) || [];
+  if(!mediaUI.expandedPeriods) mediaUI.expandedPeriods = { EUROPE2:new Set(), RFM:new Set() };
+  const expanded = mediaUI.expandedPeriods[stKey] || (mediaUI.expandedPeriods[stKey] = new Set());
+  const collapsedCibles = mediaUI.collapsed[stKey] || new Set();
+
+  // Toutes les vagues — archivées (résultat seul) ET détaillées (quinzaines,
+  // ex. JM/AJ en cours de saisie) — dans une seule liste triée antéchrono-
+  // logiquement (plus récente en haut), regroupée par saison. Une vague
+  // détaillée se présente par défaut comme une vague archivée (ligne
+  // compacte) ; son détail par quinzaine ne s'affiche qu'une fois dépliée
+  // (voir mediaUI.expandedPeriods, replié par défaut). Toute nouvelle vague
+  // ou saison créée à l'avenir se classe automatiquement à la bonne place :
+  // le tri ne dépend que de waveType/year (mediaWaveSortKey), jamais d'un
+  // ordre de saisie.
+  const sorted = mediaSortedPeriods(stKey).reverse();
   let lastSeason = null;
   const rows = sorted.map(period => {
+    const hasWaves = period.waves && period.waves.length > 0;
+    const isExpanded = expanded.has(period.id);
     const fr = period.finalResult || {AC:null,PDA:null,DEA:null};
     const prevChrono = mediaFindPrevChrono(stKey, period);
     const prevYear = mediaFindSameTypePrevYear(stKey, period);
@@ -12335,21 +12478,36 @@ function mediaRenderHistoryTable(stKey){
       <input type="text" inputmode="decimal" value="${fr[metric]==null?'':fr[metric]}" placeholder="–" style="width:56px;font-size:12px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateFinal('${period.id}','${metric}',this.value)">
       <div style="display:flex;gap:6px;margin-top:3px">${mediaEvolutionBadge(fr[metric], prevYear, metric, 'N-1')}${mediaEvolutionBadge(fr[metric], prevChrono, metric, 'V-1')}</div>
     </td>`;
+
     let seasonRow = '';
     const season = mediaSeasonLabel(period);
-    if(season && season !== lastSeason){ seasonRow = `<tr><td colspan="5" style="padding:10px;font-size:11px;font-weight:800;color:var(--navy);background:var(--bg)">${escHtml(season)}</td></tr>`; lastSeason = season; }
-    return `${seasonRow}<tr>
+    if(season && season !== lastSeason){ seasonRow = `<tr><td colspan="6" style="padding:10px;font-size:11px;font-weight:800;color:var(--navy);background:var(--bg)">${escHtml(season)}</td></tr>`; lastSeason = season; }
+
+    const detailToggle = hasWaves
+      ? `<button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaTogglePeriodExpand('${stKey}','${period.id}')" title="${isExpanded?'Replier':'Déplier'} le détail par quinzaine">${isExpanded?'▾':'▸'} ${period.waves.length} quinz.</button>`
+      : `<button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaAddWave('${stKey}','${period.id}');mediaUI.expandedPeriods['${stKey}'].add('${period.id}');renderMediaPage()">+ Quinzaines</button>`;
+
+    const summaryRow = `<tr>
       <td style="padding:7px 10px;font-size:12px;font-weight:700;white-space:nowrap">${mediaWaveTypePill(period)}${escHtml(period.label)}</td>
       ${cellFor('AC')}${cellFor('PDA')}${cellFor('DEA')}
+      <td style="padding:7px 10px;text-align:center;white-space:nowrap">${detailToggle}</td>
       <td style="padding:7px 10px;text-align:right;white-space:nowrap">
-        <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaAddWave('${stKey}','${period.id}');renderMediaPage()">+ Quinzaines</button>
         <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaRemovePeriod('${stKey}','${period.id}')" title="Supprimer cette vague">🗑</button>
       </td>
     </tr>`;
+
+    const detailRow = (hasWaves && isExpanded) ? `<tr><td colspan="6" style="padding:16px;background:var(--bg)">
+      ${mediaFinalResultBlockHtml(stKey, period)}
+      ${mediaWaveDetailTableHtml(stKey, period, cibles, collapsedCibles)}
+      <div style="margin-top:10px"><button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="mediaAddWave('${stKey}','${period.id}')">+ Ajouter une quinzaine</button></div>
+    </td></tr>` : '';
+
+    return seasonRow + summaryRow + detailRow;
   }).join('');
+
   return `<div>
-    <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:4px">Vagues archivées (résultat final seul)</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Résultat officiel publié — cible Ensemble, tranche 5h-24h — pour les vagues sans détail par quinzaine. Évolutions vs la même vague l'année précédente (N-1) et vs la vague précédente (V-1).</div>
+    <div style="font-size:12px;font-weight:800;color:var(--navy);margin-bottom:4px">Vagues par saison</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Résultat officiel — cible Ensemble, tranche 5h-24h. Évolutions vs la même vague l'année précédente (N-1) et vs la vague précédente (V-1). Cliquez sur "N quinz." pour déplier/replier le détail par quinzaine d'une vague en cours de saisie détaillée.</div>
     <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
       <thead><tr style="background:var(--bg)">
         <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Vague</th>
@@ -12357,8 +12515,9 @@ function mediaRenderHistoryTable(stKey){
         <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">PDA (%)</th>
         <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">DEA</th>
         <th style="padding:7px 10px"></th>
+        <th style="padding:7px 10px"></th>
       </tr></thead>
-      <tbody>${rows || '<tr><td colspan="5" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune vague archivée</td></tr>'}</tbody>
+      <tbody>${rows || '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune vague</td></tr>'}</tbody>
     </table>
   </div>`;
 }
@@ -12373,13 +12532,12 @@ function renderMediaPage(){
 
   const data = mediaHistory[stKey];
   const emptyBar = document.getElementById('mediaEmptyBar');
-  const blocksArea = document.getElementById('mediaPeriodBlocks');
   const histArea = document.getElementById('mediaHistoryTableArea');
 
   if(!data || !data.periods || !data.periods.length){
     emptyBar.style.display = 'block';
     emptyBar.textContent = 'Aucune donnée Médiamétrie pour ' + STATION_LABELS[stKey] + '.';
-    blocksArea.innerHTML = ''; histArea.innerHTML = '';
+    histArea.innerHTML = '';
     return;
   }
   emptyBar.style.display = 'none';
@@ -12390,58 +12548,737 @@ function renderMediaPage(){
     cibles.forEach(c => { if(/35-?\s*59/.test(c.label)) initial.add(c.key); });
     mediaUI.collapsed[stKey] = initial;
   }
-  const collapsed = mediaUI.collapsed[stKey];
 
-  const periodsWithWaves = mediaSortedPeriods(stKey).filter(p => p.waves && p.waves.length>0).reverse();
-  blocksArea.innerHTML = periodsWithWaves.map(period => {
-    const rows = period.waves.map(wave => {
-      let cibleCells = '';
-      cibles.forEach(c => {
-        if(collapsed.has(c.key)){ cibleCells += `<td style="padding:7px;text-align:center;color:var(--muted)">⋯</td>`; return; }
-        const v = wave.cibles[c.key] || {AC:null,PDA:null,DEA:null};
-        ['AC','PDA','DEA'].forEach(metric => {
-          cibleCells += `<td style="padding:5px"><input type="text" inputmode="decimal" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:48px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveMetric('${period.id}','${wave.id}','${c.key}','${metric}',this.value)"></td>`;
-        });
-      });
-      return `<tr>
-        <td style="padding:7px 10px;font-size:12px;font-weight:700">${escHtml(wave.label)}</td>
-        <td style="padding:5px"><input type="date" value="${wave.dateStart||''}" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','start',this.value)"></td>
-        <td style="padding:5px"><input type="date" value="${wave.dateEnd||''}" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','end',this.value)"></td>
-        ${cibleCells}
-        <td style="padding:7px 10px">${mediaLiveCellHtml(stKey, wave)}</td>
-        <td style="padding:7px 10px;text-align:center"><button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaRemoveWave('${stKey}','${period.id}','${wave.id}')" title="Supprimer cette quinzaine">🗑</button></td>
-      </tr>`;
-    }).join('');
-
-    const cibleHeadGroup = cibles.map(c => {
-      const isCollapsed = collapsed.has(c.key);
-      return `<th ${isCollapsed?'':'colspan="3"'} style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);cursor:pointer" onclick="mediaToggleCible('${c.key}')" title="${isCollapsed?'Déplier':'Replier'} ${escHtml(c.label)}">${isCollapsed?'▸':'▾'} ${escHtml(c.label)}</th>`;
-    }).join('');
-    const cibleSubHead = cibles.map(c => collapsed.has(c.key) ? `<th></th>` : `<th style="padding:5px;font-size:9px;color:var(--muted)">AC</th><th style="padding:5px;font-size:9px;color:var(--muted)">PDA</th><th style="padding:5px;font-size:9px;color:var(--muted)">DEA</th>`).join('');
-
-    return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-        <div style="font-size:13px;font-weight:800;color:var(--navy)">${mediaWaveTypePill(period)}${escHtml(period.label)}</div>
-        <div style="display:flex;gap:8px">
-          <button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="mediaAddWave('${stKey}','${period.id}')">+ Ajouter une quinzaine</button>
-          <button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="mediaRemovePeriod('${stKey}','${period.id}')">🗑 Supprimer la vague</button>
-        </div>
-      </div>
-      ${mediaFinalResultBlockHtml(stKey, period)}
-      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Détail par quinzaine (intermédiaire Médiamétrie). Saisissez les dates de la quinzaine pour calculer automatiquement l'audience live hebdomadaire moyenne sur la période correspondante. Cliquez sur l'en-tête d'une cible pour la replier/déplier.</div>
-      <div style="overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;min-width:600px">
-        <thead>
-          <tr style="background:var(--bg)"><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Quinzaine</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date début</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date fin</th>${cibleHeadGroup}<th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Live hebdo moy.</th><th rowspan="2"></th></tr>
-          <tr style="background:var(--bg)">${cibleSubHead}</tr>
-        </thead>
-        <tbody>${rows || `<tr><td colspan="${3+cibles.length*3+2}" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune quinzaine — ajoutez-en une ci-dessus</td></tr>`}</tbody>
-      </table>
-      </div>
-    </div>`;
-  }).join('');
-
+  // Vagues archivées ET détaillées (JM/AJ en cours de saisie) sont désormais
+  // réunies dans un seul tableau groupé par saison, toujours trié plus
+  // récent en haut — voir mediaRenderHistoryTable. Une vague détaillée se
+  // présente repliée par défaut (comme une vague archivée) ; son détail par
+  // quinzaine se déplie au clic (mediaUI.expandedPeriods).
   histArea.innerHTML = mediaRenderHistoryTable(stKey);
+}
+
+/** Bascule entre les deux onglets internes de la sous-page Médiamétrie :
+ *  « live » (résultats par cible de la station de référence, module existant)
+ *  et « marche » (Historique Marché — toutes radios, toutes vagues). */
+function mediaSetInnerTab(tab){
+  mediaInnerTab = tab;
+  const liveBtn = document.getElementById('mediaInnerTabLiveBtn');
+  const marcheBtn = document.getElementById('mediaInnerTabMarcheBtn');
+  const liveC = document.getElementById('mediaInnerLive');
+  const marcheC = document.getElementById('mediaInnerMarche');
+  const mediaAct = document.getElementById('mediaActions');
+  const marcheAct = document.getElementById('marcheActions');
+  [[liveBtn,'live'],[marcheBtn,'marche']].forEach(([btn,v]) => {
+    const active = v === tab;
+    btn.style.borderColor = active ? 'var(--navy)' : 'var(--border)';
+    btn.style.background = active ? 'var(--bg)' : 'transparent';
+    btn.style.color = active ? 'var(--navy)' : 'var(--muted)';
+  });
+  if(liveC) liveC.style.display = tab==='live' ? 'block' : 'none';
+  if(marcheC) marcheC.style.display = tab==='marche' ? 'block' : 'none';
+  if(mediaAct) mediaAct.style.display = tab==='live' ? 'flex' : 'none';
+  if(marcheAct) marcheAct.style.display = tab==='marche' ? 'flex' : 'none';
+  if(tab==='marche'){
+    if(!marcheDriveLoaded){
+      marcheLoadLocal();
+      if(DRIVE_SYNC_URL) marcheLoadFromDrive(false);
+    }
+    renderMarchePage();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// HISTORIQUE MARCHÉ — toutes radios (dont concurrents), toutes vagues,
+// toutes saisons, alimenté par import des communiqués Médiamétrie
+// « EAR > National » (PDF) ou par saisie/collage manuel.
+// ══════════════════════════════════════════════════════════════════════════
+// Une saison de mesure d'audience radio démarre en septembre et se termine
+// en juin, composée de 4 vagues : SO (Septembre-Octobre), ND (Novembre-
+// Décembre), JM (Janvier-Mars), AJ (Avril-Juin). Même convention d'id que le
+// module « Résultats par cible » ci-dessus (mediaWaveSortKey etc.) : l'année
+// stockée est celle qui apparaît dans le libellé de la vague elle-même (ex.
+// JM année 2025 = "Janvier-Mars 2025", qui appartient à la saison 2024-2025).
+//
+// Structure de données :
+//   marcheHistory.waves[waveId] = {
+//     id, waveType, year, label, importedAt, source,
+//     entities: {
+//       <slug>: { label, category:'station'|'format'|'statut'|'couplage',
+//                 LV:{ac,ac000,pda,dea}, SD:{ac,ac000,pda,dea} }
+//     }
+//   }
+// où ac/pda sont des % (ex. 12.8) et dea est en minutes (ex. 126 = 2h06).
+// waveId = `${year}-${waveType en minuscules}` (ex. "2025-jm").
+const MARCHE_LOCAL_KEY   = 'fpa_marche_historique_v1';
+const MARCHE_ALIAS_KEY   = 'fpa_marche_alias_v1';
+const MARCHE_DRIVE_KEY   = 'marche_historique';
+const MARCHE_WAVE_LABELS = { SO:'Septembre-Octobre', ND:'Novembre-Décembre', JM:'Janvier-Mars', AJ:'Avril-Juin' };
+const MARCHE_WAVE_MONTH  = { SO:9, ND:11, JM:1, AJ:4 };
+const MARCHE_CATEGORY_LABELS = { station:'📻 Radios', format:'📦 Agrégats — format', statut:'🏛️ Agrégats — statut', couplage:'🔗 Couplages publicitaires' };
+let marcheHistory   = { waves:{} };
+let marcheAliasMap  = { 'france-bleu':'ici' }; // rebranding connu (France Bleu → ici, janv. 2025)
+let marcheDriveLoaded = false;
+let marcheInnerTabState = 'pdf';
+let marcheUI = { waveId:null, period:'LV', category:'station', search:'', sortBy:'ac' };
+let marcheImportQueue = []; // [{ fileName, waveType, year, label, gridRows:[...], warnings:[] }]
+let mediaInnerTab = 'live';
+
+/* ---- Stockage local / Drive ---- */
+function marcheLoadLocal(){
+  try{
+    const raw = localStorage.getItem(MARCHE_LOCAL_KEY);
+    if(raw){ const parsed = JSON.parse(raw); if(parsed && parsed.waves) marcheHistory = parsed; }
+  }catch(e){ /* ignoré */ }
+  try{
+    const raw2 = localStorage.getItem(MARCHE_ALIAS_KEY);
+    if(raw2) marcheAliasMap = Object.assign({ 'france-bleu':'ici' }, JSON.parse(raw2));
+  }catch(e){ /* ignoré */ }
+}
+function marcheSaveLocal(){
+  try{ localStorage.setItem(MARCHE_LOCAL_KEY, JSON.stringify(marcheHistory)); }
+  catch(e){ showToast('Erreur de sauvegarde locale (Historique Marché) : quota dépassé ?', 'err'); }
+}
+function marcheSaveAliasMap(){
+  try{ localStorage.setItem(MARCHE_ALIAS_KEY, JSON.stringify(marcheAliasMap)); }catch(e){ /* ignoré */ }
+}
+async function marcheSaveToDrive(){
+  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  try{ await driveCall('save', MARCHE_DRIVE_KEY, JSON.stringify(marcheHistory)); return { ok:true }; }
+  catch(e){ showToast('Erreur de sauvegarde Drive (Historique Marché) : ' + e.message, 'err'); return { ok:false, reason:e.message }; }
+}
+async function marcheLoadFromDrive(manual){
+  if(!DRIVE_SYNC_URL){ if(manual) showToast('URL Drive Sync non configurée', 'err'); return { ok:false, reason:'no_url' }; }
+  try{
+    const r = await driveCall('load', MARCHE_DRIVE_KEY);
+    marcheDriveLoaded = true;
+    if(!r || !r.data){ if(manual) renderMarchePage(); return { ok:true, empty:true }; }
+    const remote = JSON.parse(r.data);
+    Object.keys(remote.waves || {}).forEach(wid => {
+      const rw = remote.waves[wid];
+      if(!marcheHistory.waves[wid]){ marcheHistory.waves[wid] = rw; return; }
+      const lw = marcheHistory.waves[wid];
+      Object.keys(rw.entities || {}).forEach(ek => { lw.entities[ek] = rw.entities[ek]; });
+      if(rw.importedAt && (!lw.importedAt || rw.importedAt > lw.importedAt)) lw.importedAt = rw.importedAt;
+    });
+    marcheSaveLocal();
+    if(manual) showToast('Historique Marché synchronisé depuis Drive', 'success');
+    renderMarchePage();
+    return { ok:true };
+  }catch(e){
+    marcheDriveLoaded = true;
+    if(manual) showToast('Erreur de synchronisation Drive : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }
+}
+
+/* ---- Vagues / saisons : mêmes conventions que le module « Résultats par cible » ---- */
+function marcheWaveSortKey(w){ return (w && w.year && w.waveType) ? w.year*12 + MARCHE_WAVE_MONTH[w.waveType] : null; }
+function marcheSeasonStartYear(w){ return (w.waveType==='SO' || w.waveType==='ND') ? w.year : w.year-1; }
+function marcheSeasonLabel(w){ const y = marcheSeasonStartYear(w); return y + '-' + (y+1); }
+function marcheWaveId(waveType, year){ return year + '-' + waveType.toLowerCase(); }
+function marcheSortedWaves(){
+  return Object.values(marcheHistory.waves).sort((a,b) => (marcheWaveSortKey(a)||0) - (marcheWaveSortKey(b)||0));
+}
+function marcheAllSeasons(){
+  const set = new Set(marcheSortedWaves().map(w => marcheSeasonLabel(w)));
+  return Array.from(set).sort();
+}
+function marcheEnsureWave(waveType, year, label){
+  const id = marcheWaveId(waveType, year);
+  if(!marcheHistory.waves[id]) marcheHistory.waves[id] = { id, waveType, year, label: label || (MARCHE_WAVE_LABELS[waveType] + ' ' + year), importedAt:null, source:null, entities:{} };
+  return marcheHistory.waves[id];
+}
+function marcheFindPrevChrono(waveId){
+  const w = marcheHistory.waves[waveId]; if(!w) return null;
+  const key = marcheWaveSortKey(w);
+  let prev = null;
+  marcheSortedWaves().forEach(o => {
+    const k = marcheWaveSortKey(o);
+    if(k!==null && k<key && (!prev || k > marcheWaveSortKey(prev))) prev = o;
+  });
+  return prev;
+}
+function marcheFindSameTypePrevYear(waveId){
+  const w = marcheHistory.waves[waveId]; if(!w) return null;
+  return marcheHistory.waves[marcheWaveId(w.waveType, w.year-1)] || null;
+}
+
+/* ---- Entités (radios / agrégats / couplages) : slug canonique + alias ---- */
+function marcheCanonicalSlug(rawLabel){
+  let slug = mediaSlugify(rawLabel);
+  let hops = 0;
+  while(marcheAliasMap[slug] && marcheAliasMap[slug] !== slug && hops < 6){ slug = marcheAliasMap[slug]; hops++; }
+  return slug;
+}
+function marcheUpsertEntity(waveId, rawLabel, category, period, metrics){
+  const w = marcheHistory.waves[waveId];
+  const slug = marcheCanonicalSlug(rawLabel);
+  if(!w.entities[slug]) w.entities[slug] = { label: rawLabel, category, LV:{}, SD:{} };
+  const ent = w.entities[slug];
+  if(!ent.label) ent.label = rawLabel;
+  if(!ent.category) ent.category = category;
+  ent[period] = Object.assign({}, ent[period], metrics);
+  return slug;
+}
+/** Fusionne deux entités (ex. renommage France Bleu → ici) : toutes les
+ *  données historiques de `fromSlug` sont recopiées sous `intoSlug` (sans
+ *  écraser une valeur déjà présente sous `intoSlug`), puis un alias
+ *  permanent est enregistré pour les futurs imports. */
+function marcheMergeEntities(fromSlug, intoSlug){
+  if(fromSlug === intoSlug) return;
+  Object.values(marcheHistory.waves).forEach(w => {
+    const fromEnt = w.entities[fromSlug];
+    if(!fromEnt) return;
+    if(!w.entities[intoSlug]){ w.entities[intoSlug] = fromEnt; }
+    else{
+      const into = w.entities[intoSlug];
+      ['LV','SD'].forEach(p => { into[p] = Object.assign({}, fromEnt[p], into[p]); });
+    }
+    delete w.entities[fromSlug];
+  });
+  marcheAliasMap[fromSlug] = intoSlug;
+  marcheSaveAliasMap();
+  marcheSaveLocal();
+  marcheSaveToDrive();
+}
+
+/* ---- Formatage ---- */
+function marcheParseHMtoMin(s){
+  if(!s) return null;
+  const m = /^(\d{1,2})h(\d{2})$/.exec(String(s).trim());
+  return m ? parseInt(m[1],10)*60 + parseInt(m[2],10) : null;
+}
+function marcheFmtMinToHM(min){
+  if(min==null || isNaN(min)) return '–';
+  const h = Math.floor(min/60), m = Math.round(min%60);
+  return h + 'h' + String(m).padStart(2,'0');
+}
+function marcheParseNum(s){
+  if(s==null) return null;
+  const t = String(s).trim();
+  if(!t || /^ND$/i.test(t)) return null;
+  const n = parseFloat(t.replace(',', '.'));
+  return isNaN(n) ? null : n;
+}
+function marcheFmtPct(n){ return (n==null || isNaN(n)) ? '–' : String(Math.round(n*10)/10).replace('.',',') + '%'; }
+function marcheFmtNum(n){ return (n==null || isNaN(n)) ? '–' : Math.round(n).toLocaleString('fr-FR'); }
+
+/* ---- Classification automatique des libellés de ligne (station / agrégat format / statut / couplage) ---- */
+const MARCHE_KNOWN_FORMAT_AGG  = ['RADIO EN GÉNÉRAL','TOTAL RADIO','PROGRAMMES GÉNÉRALISTES','PROGRAMMES MUSICAUX','PROGRAMMES THÉMATIQUES','PROGRAMMES LOCAUX','GROUPEMENT LES INDÉS RADIOS'];
+const MARCHE_KNOWN_STATUT_AGG  = ['RADIOS DE SERVICE PUBLIC','RADIO FRANCE','RADIOS PRIVÉES COMMERCIALES','RADIOS PRIVÉES ASSOCIATIVES','AUTRES PROGRAMMES'];
+const MARCHE_KNOWN_COUPLAGES   = ['NRJ GLOBAL','ADULTS ONLY','FULL IMPACT IDF','GROUPE M6','M6 PUBLICITE RADIO','M6 UNLIMITED RADIO','FIRST MUSIC','LAGARDERE RADIO','LAGARDERE PUBLICITE NEWS','LAGARDERE PUBLICITE NEWS IDF','LIP !','LIP!','LPN+','LES INDES RADIOS / TF1 PUB RADIOS','TF1 PUB RADIOS','LES INDES CAPITALE','LES INDES FLEX'];
+function marcheClassifyLabel(nameRaw){
+  const slug = mediaSlugify(nameRaw);
+  if(MARCHE_KNOWN_FORMAT_AGG.some(x => mediaSlugify(x)===slug)) return 'format';
+  if(MARCHE_KNOWN_STATUT_AGG.some(x => mediaSlugify(x)===slug)) return 'statut';
+  if(MARCHE_KNOWN_COUPLAGES.some(x => mediaSlugify(x)===slug)) return 'couplage';
+  return 'station';
+}
+
+/* ---- Extraction + parsing du format « Communiqué de Presse EAR National »
+ *  (2020+, voir marcheParseCommuniquePdf) : chaque ligne de tableau, une fois
+ *  reconstruite par position (groupPdfItemsIntoLines), se présente comme
+ *  "NOM  AC% DEA PDA%  [AC% DEA PDA% ...]" — seule la PREMIÈRE colonne (vague
+ *  courante, la plus à gauche) est retenue ; les colonnes suivantes (vague
+ *  N-1 / année N-1) ne sont pas importées automatiquement pour éviter
+ *  d'écraser des données déjà correctement saisies par un import antérieur. */
+function marcheDetectWaveFromText(fullText){
+  const re = /(Septembre[\s-]*Octobre|Novembre[\s-]*D[ée]cembre|Janvier[\s-]*Mars|Avril[\s-]*Juin)\s+(\d{4})/i;
+  const m = re.exec(fullText);
+  if(!m) return null;
+  const key = m[1].toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[\s-]/g,'');
+  const map = { 'septembreoctobre':'SO','novembredecembre':'ND','janviermars':'JM','avriljuin':'AJ' };
+  const waveType = map[key];
+  const year = parseInt(m[2],10);
+  return waveType ? { waveType, year, label: MARCHE_WAVE_LABELS[waveType] + ' ' + year } : null;
+}
+/** Repère les lignes de tableau "NOM AC% DEA PDA% …" dans un ensemble de
+ *  lignes déjà reconstruites (une par ligne de texte) et bascule la période
+ *  courante (LV/SD) au passage des en-têtes de section. */
+const MARCHE_ROW_RE = /^(.{2,50}?)\s+(\d{1,3},\d)\s+(\d{1,2}h\d{2}|ND)\s+(\d{1,3},\d|ND)(?:\s+.*)?$/;
+function marcheParseRowsFromLines(lineTexts){
+  const rows = [];
+  let currentPeriod = 'LV';
+  lineTexts.forEach(raw => {
+    const t = (raw||'').trim();
+    if(!t) return;
+    if(/lundi\s*-?\s*vendredi/i.test(t) && !/samedi/i.test(t)){ currentPeriod = 'LV'; return; }
+    if(/samedi\s*-?\s*dimanche/i.test(t)){ currentPeriod = 'SD'; return; }
+    const m = MARCHE_ROW_RE.exec(t);
+    if(!m) return;
+    let name = m[1].replace(/\s*\*\s*$/,'').replace(/\(\d+\)\s*$/,'').replace(/\s{2,}/g,' ').trim();
+    name = name.replace(/^dont\s*:?\s*/i,'').replace(/\s+Total$/i,'').trim();
+    if(/^(AC|DEA|PDA|AM|Ann[ée]e|Composé)\b/i.test(name) || name.length < 2) return;
+    rows.push({ name, period: currentPeriod, ac: marcheParseNum(m[2]), dea: marcheParseHMtoMin(m[3]), pda: marcheParseNum(m[4]) });
+  });
+  return rows;
+}
+function marcheRowsToGrid(rows){
+  const map = {};
+  rows.forEach(r => {
+    const key = mediaSlugify(r.name) + '|' + r.category;
+    if(!map[key]) map[key] = { name:r.name, category:r.category, LV:{}, SD:{} };
+    map[key][r.period] = { ac:r.ac, dea:r.dea, pda:r.pda };
+  });
+  return Object.values(map);
+}
+async function marcheParsePdfFile(file){
+  const buf = await file.arrayBuffer();
+  if(window.pdfjsLib && !pdfjsLib.GlobalWorkerOptions.workerSrc){
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  }
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const page1 = await pdf.getPage(1);
+  const page1Text = (await page1.getTextContent()).items.map(it => it.str).join(' ');
+  // Deux familles de documents Médiamétrie très différentes dans leur mise en
+  // page : le « Communiqué de Presse EAR National » (tableaux classiques,
+  // 2020+) et le « Rapport 126 000 Radio » complet (100+ pages, méthodologie
+  // pré-EAR National, en-têtes de colonne imprimés en texte incliné).
+  if(/126\s*000\s*Radio/i.test(page1Text) && !/EAR\s*>?\s*National/i.test(page1Text)){
+    return marcheParseLegacyRapport126000(pdf, file.name);
+  }
+  return marcheParseCommuniquePdf(pdf, file.name);
+}
+async function marcheParseCommuniquePdf(pdf, fileName){
+  const allLines = [];
+  let fullText = '';
+  for(let p=1; p<=pdf.numPages; p++){
+    const pg = await pdf.getPage(p);
+    const content = await pg.getTextContent();
+    const items = content.items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5] }));
+    const lines = groupPdfItemsIntoLines(items);
+    lines.forEach(l => allLines.push(l.text));
+    fullText += '\n' + lines.map(l => l.text).join('\n');
+  }
+  const waveGuess = marcheDetectWaveFromText(fullText);
+  const rawRows = marcheParseRowsFromLines(allLines).map(r => Object.assign(r, { category: marcheClassifyLabel(r.name) }));
+  const gridRows = marcheRowsToGrid(rawRows);
+  return {
+    fileName,
+    waveType: waveGuess ? waveGuess.waveType : 'JM',
+    year: waveGuess ? waveGuess.year : new Date().getFullYear(),
+    label: waveGuess ? waveGuess.label : null,
+    gridRows,
+    warnings: waveGuess ? [] : ['Vague non détectée automatiquement dans le texte — vérifiez le type et l\'année ci-dessous avant d\'enregistrer.']
+  };
+}
+
+/* ---- Format « Rapport 126 000 Radio » (rapport complet, ~100-170 pages,
+ *  anciennes vagues avant le rebranding EAR National) ----
+ *  Mise en page radicalement différente du Communiqué de Presse : les noms
+ *  de radio, en en-tête de colonne, sont imprimés en texte INCLINÉ (chaque
+ *  caractère décalé en x ET en y), ce qu'un simple regroupement par ligne
+ *  horizontale (groupPdfItemsIntoLines) ne peut pas reconstruire — deux
+ *  caractères d'un même nom incliné se retrouvent sur des « lignes »
+ *  différentes dès que la tolérance verticale est faible.
+ *  Cible : la section « Audience sur l'ensemble de la journée (5h-24h) par
+ *  jour nommé », reconnaissable à un titre de page contenant une plage de
+ *  dates entre parenthèses ("(du ... au ...)") — cette section donne, pour
+ *  la vague courante uniquement, l'AC%, la PDA% et la DEA (par auditeur) de
+ *  chaque radio/agrégat/couplage, avec une ligne « Lundi-Vendredi » et une
+ *  ligne « Week-End » (l'équivalent le plus proche du Samedi-Dimanche du
+ *  format récent).
+ *  Méthode de reconstruction de l'en-tête : regroupement des caractères du
+ *  bandeau incliné par proximité (distance euclidienne x/y), avec un pas
+ *  ajusté automatiquement pour tenter de retrouver autant de groupes que de
+ *  valeurs numériques dans la ligne de données — puis appariement ORDINAL
+ *  (position gauche→droite) entre en-têtes et valeurs. Cette reconstruction
+ *  reste une ESTIMATION : quand le nombre de groupes ne correspond pas
+ *  exactement au nombre de valeurs, les libellés sont remplacés par
+ *  « Colonne N (à vérifier) » plutôt que de risquer d'associer une valeur à
+ *  la mauvaise radio. Dans tous les cas, contrairement au format récent, ce
+ *  format doit être vérifié colonne par colonne contre le PDF source avant
+ *  enregistrement — d'où l'avertissement systématique renvoyé ici. */
+function marcheClusterDiagonalItems(items, gap){
+  const sorted = items.slice().sort((a,b) => a.x-b.x);
+  const clusters = []; let cur = [];
+  sorted.forEach(it => {
+    if(!cur.length){ cur=[it]; return; }
+    const prev = cur[cur.length-1];
+    if(Math.hypot(it.x-prev.x, it.y-prev.y) <= gap) cur.push(it);
+    else { clusters.push(cur); cur=[it]; }
+  });
+  if(cur.length) clusters.push(cur);
+  return clusters;
+}
+function marcheAutoClusterDiagonalHeader(items, targetCount){
+  let best=null, bestDiff=Infinity;
+  for(let gap=4; gap<=70; gap++){
+    const c = marcheClusterDiagonalItems(items, gap);
+    const diff = Math.abs(c.length-targetCount);
+    if(diff < bestDiff){ bestDiff = diff; best = c; if(diff===0) break; }
+    if(c.length < targetCount) break; // au-delà, on ne ferait que sur-fusionner
+  }
+  const clusters = (best||[]).map(cl => {
+    // ancre = caractère le plus proche de la ligne de données sous le bandeau
+    // (y minimal, car l'axe y de pdf.js est orienté vers le haut)
+    const anchor = cl.reduce((a,b) => (b.y < a.y ? b : a), cl[0]);
+    return { text: cl.map(c=>c.str).join(''), x: anchor.x };
+  }).sort((a,b) => a.x-b.x);
+  return { clusters, matched: bestDiff===0 };
+}
+const MARCHE_LEGACY_MARKER_RE = /QUART D.HEURE MOYEN|AUDIENCE CUMULEE|^MILLIERS$|PENETRATION|PART D.AUDIENCE|DUREE D.ECOUTE|INDIVIDU|AUDITEUR/i;
+async function marcheParseLegacyRapport126000(pdf, fileName){
+  const gridMap = {};
+  const warnings = ['Format « Rapport 126 000 Radio » détecté (rapport complet, ancienne méthodologie) — l\'alignement des colonnes est une estimation automatique. Vérifiez chaque valeur colonne par colonne contre le PDF source avant d\'enregistrer, en particulier les lignes « Colonne N (à vérifier) ».'];
+  let waveGuess = null;
+
+  for(let p=1; p<=pdf.numPages; p++){
+    const pg = await pdf.getPage(p);
+    const content = await pg.getTextContent();
+    const items = content.items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5] }));
+    const lines = groupPdfItemsIntoLines(items).sort((a,b) => b.y-a.y);
+    const titleLine = lines[0] ? lines[0].text : '';
+    if(p===1 && !waveGuess) waveGuess = marcheDetectWaveFromText(titleLine + ' ' + (lines[1]?lines[1].text:''));
+    if(!/\(du .+ au .+\)/i.test(titleLine)) continue; // seule la section "par jour nommé" (vague courante) nous intéresse
+
+    const markerYs = lines.filter(l => MARCHE_LEGACY_MARKER_RE.test(l.text)).map(l => l.y);
+    const isMarkerY = y => markerYs.some(my => Math.abs(my-y) <= 3);
+
+    let metric = null, headerCache = null, headerMatched = false;
+    for(let li=1; li<lines.length; li++){
+      const t = lines[li].text;
+      if(/QUART D.HEURE MOYEN/i.test(t)){ metric='skip'; continue; }
+      if(/AUDIENCE CUMULEE/i.test(t) && !/MILLIERS/i.test(t)){ metric='ac_pct'; continue; }
+      if(/^MILLIERS$/i.test(t)){ metric='skip'; continue; } // AC en milliers non extrait (ambigu, séparateur de milliers = espace)
+      if(/PART D.AUDIENCE/i.test(t)){ metric='pda_pct'; continue; }
+      if(/DUREE D.ECOUTE/i.test(t)){ metric='skip'; continue; }
+      if(/INDIVIDU/i.test(t)){ metric='skip'; continue; } // durée d'écoute PAR INDIVIDU non voulue, seule PAR AUDITEUR nous intéresse
+      if(/AUDITEUR/i.test(t)){ metric='dea_auditeur'; continue; }
+      const m = /^(Lundi-Vendredi|Week-End)\s+([\d, ]+)$/.exec(t.trim());
+      if(!m) continue;
+      const period = m[1]==='Lundi-Vendredi' ? 'LV' : 'SD';
+      const rowY = lines[li].y;
+      const rowVals = items.filter(it => Math.abs(it.y-rowY)<=3 && /^[\d,]+$/.test(it.str.trim()) && it.x>200)
+        .sort((a,b) => a.x-b.x).map(it => it.str.trim());
+      if(!rowVals.length) continue;
+      if(!headerCache){
+        const titleY = lines[0].y;
+        const band = items.filter(it => it.y>rowY+3 && it.y<titleY-3 && !isMarkerY(it.y));
+        const res = marcheAutoClusterDiagonalHeader(band, rowVals.length);
+        headerCache = res.clusters; headerMatched = res.matched;
+      }
+      if(!metric || metric==='skip') continue;
+      const field = metric==='ac_pct' ? 'ac' : metric==='pda_pct' ? 'pda' : 'dea';
+      rowVals.forEach((val, i) => {
+        const label = (headerMatched && headerCache[i]) ? headerCache[i].text.trim() : ('Colonne ' + (i+1) + ' (à vérifier)');
+        const key = label + '|' + rowVals.length; // regroupe par nom ET par taille de tableau (stations/agrégats/couplages)
+        if(!gridMap[key]) gridMap[key] = { name: label || ('Colonne '+(i+1)+' (à vérifier)'), category: marcheClassifyLabel(label), LV:{}, SD:{} };
+        gridMap[key][period][field] = parseFloat(val.replace(',','.'));
+      });
+    }
+  }
+  return {
+    fileName,
+    waveType: waveGuess ? waveGuess.waveType : 'JM',
+    year: waveGuess ? waveGuess.year : new Date().getFullYear(),
+    label: waveGuess ? waveGuess.label : null,
+    gridRows: Object.values(gridMap),
+    warnings: waveGuess ? warnings : warnings.concat(['Vague non détectée automatiquement — vérifiez le type et l\'année ci-dessous avant d\'enregistrer.'])
+  };
+}
+
+/* ---- Modale d'import ---- */
+function openMarcheImportModal(tab){
+  if(!requireAdmin()) return;
+  document.getElementById('modalMarcheImport').style.display = 'flex';
+  marcheSetImportTab(tab || 'pdf');
+}
+function closeMarcheImportModal(){
+  document.getElementById('modalMarcheImport').style.display = 'none';
+}
+function marcheSetImportTab(tab){
+  marcheInnerTabState = tab;
+  const pdfBtn = document.getElementById('marcheImportTabPdfBtn');
+  const pasteBtn = document.getElementById('marcheImportTabPasteBtn');
+  document.getElementById('marcheImportPdfPane').style.display = tab==='pdf' ? 'block' : 'none';
+  document.getElementById('marcheImportPastePane').style.display = tab==='paste' ? 'block' : 'none';
+  pdfBtn.style.borderBottomColor = tab==='pdf' ? 'var(--navy)' : 'transparent';
+  pdfBtn.style.color = tab==='pdf' ? '' : 'var(--muted)';
+  pasteBtn.style.borderBottomColor = tab==='paste' ? 'var(--navy)' : 'transparent';
+  pasteBtn.style.color = tab==='paste' ? '' : 'var(--muted)';
+}
+async function marcheHandleImportFiles(fileList){
+  const files = Array.from(fileList || []);
+  if(!files.length) return;
+  const statusEl = document.getElementById('marcheImportPdfStatus');
+  for(const file of files){
+    statusEl.textContent = '⏳ Analyse de ' + file.name + '…';
+    try{
+      const entry = await marcheParsePdfFile(file);
+      marcheImportQueue.push(entry);
+    }catch(e){
+      marcheImportQueue.push({ fileName:file.name, waveType:'JM', year:new Date().getFullYear(), label:null, gridRows:[], warnings:['Échec de lecture du PDF : ' + (e.message||e) + ' — utilisez « Coller du texte » en repli.'] });
+    }
+  }
+  statusEl.textContent = '';
+  document.getElementById('fileInputResetTick_marche') && 0;
+  marcheRenderImportQueue();
+}
+function marcheAnalyzePastedText(){
+  const waveType = document.getElementById('marchePasteWaveType').value;
+  const year = parseInt(document.getElementById('marchePasteWaveYear').value, 10);
+  const text = document.getElementById('marchePasteText').value;
+  if(!year){ showToast('Indiquez l\'année de la vague', 'err'); return; }
+  const rawRows = marcheParseRowsFromLines(text.split('\n')).map(r => Object.assign(r, { category: marcheClassifyLabel(r.name) }));
+  const gridRows = marcheRowsToGrid(rawRows);
+  if(!gridRows.length) showToast('Aucune ligne reconnue dans le texte collé — vous pouvez tout de même ajouter des lignes manuellement ci-dessous', 'success');
+  marcheImportQueue.push({ fileName: '(texte collé)', waveType, year, label: MARCHE_WAVE_LABELS[waveType] + ' ' + year, gridRows, warnings: [] });
+  marcheRenderImportQueue();
+}
+function marcheCreateManualEntry(){
+  const waveType = document.getElementById('marchePasteWaveType').value;
+  const year = parseInt(document.getElementById('marchePasteWaveYear').value, 10);
+  if(!year){ showToast('Indiquez l\'année de la vague', 'err'); return; }
+  marcheImportQueue.push({ fileName: '(saisie manuelle)', waveType, year, label: MARCHE_WAVE_LABELS[waveType] + ' ' + year, gridRows: [], warnings: [] });
+  marcheRenderImportQueue();
+}
+function marcheRenderImportQueue(){
+  const area = document.getElementById('marcheImportQueueArea');
+  area.innerHTML = marcheImportQueue.map((entry, qi) => marcheImportEntryHtml(entry, qi)).join('');
+}
+function marcheImportEntryHtml(entry, qi){
+  const waveSel = `
+    <select onchange="marcheImportQueue[${qi}].waveType=this.value" style="font-size:11.5px;padding:5px 8px;border-radius:6px;border:1.5px solid var(--border)">
+      ${['SO','ND','JM','AJ'].map(t => `<option value="${t}" ${entry.waveType===t?'selected':''}>${MARCHE_WAVE_LABELS[t]}</option>`).join('')}
+    </select>
+    <input type="number" value="${entry.year}" oninput="marcheImportQueue[${qi}].year=parseInt(this.value,10)||${entry.year}" style="width:78px;font-size:11.5px;padding:5px 8px;border-radius:6px;border:1.5px solid var(--border)">`;
+  const warn = (entry.warnings||[]).map(w => `<div style="font-size:11px;color:#B05E00;background:#FFF4E0;border:1px solid #FFD085;border-radius:6px;padding:6px 10px;margin-bottom:8px">⚠️ ${escHtml(w)}</div>`).join('');
+  return `
+  <div style="border:1.5px solid var(--border);border-radius:12px;padding:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="font-size:12.5px;font-weight:800;color:var(--navy)">${escHtml(entry.fileName)} <span style="font-weight:400;color:var(--muted)">— ${entry.gridRows.length} ligne(s) détectée(s)</span></div>
+      <div style="display:flex;align-items:center;gap:8px">${waveSel}
+        <button class="btn-ghost" style="font-size:11px;padding:6px 10px" onclick="marcheImportQueue[${qi}].gridRows.push({name:'',category:'station',LV:{},SD:{}});marcheRenderImportQueue()">＋ Ligne</button>
+        <button class="btn-primary" style="font-size:11.5px;padding:7px 14px" onclick="marcheCommitImportEntry(${qi})">💾 Enregistrer cette vague</button>
+        <button class="btn-ghost" style="font-size:11px;padding:6px 10px;color:#CC2222" onclick="marcheImportQueue.splice(${qi},1);marcheRenderImportQueue()">Retirer</button>
+      </div>
+    </div>
+    ${warn}
+    <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:11px">
+      <thead><tr style="text-align:left;color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em">
+        <th style="padding:4px 6px">Radio</th><th style="padding:4px 6px">Catégorie</th>
+        <th colspan="3" style="padding:4px 6px;text-align:center;border-left:1.5px solid var(--border)">Lundi-Vendredi</th>
+        <th colspan="3" style="padding:4px 6px;text-align:center;border-left:1.5px solid var(--border)">Samedi-Dimanche</th>
+        <th></th>
+      </tr>
+      <tr style="text-align:left;color:var(--muted);font-size:9.5px">
+        <th></th><th></th>
+        <th style="border-left:1.5px solid var(--border);padding:2px 6px">AC %</th><th style="padding:2px 6px">DEA</th><th style="padding:2px 6px">PDA %</th>
+        <th style="border-left:1.5px solid var(--border);padding:2px 6px">AC %</th><th style="padding:2px 6px">DEA</th><th style="padding:2px 6px">PDA %</th>
+        <th></th>
+      </tr></thead>
+      <tbody>
+        ${entry.gridRows.map((r,gi) => marcheImportGridRowHtml(qi,gi,r)).join('')}
+      </tbody>
+    </table>
+    </div>
+  </div>`;
+}
+function marcheImportGridRowHtml(qi,gi,r){
+  const cell = (period,field,val,ph) => `<input value="${val==null?'':val}" placeholder="${ph||''}" oninput="marcheGridSetField(${qi},${gi},'${period}','${field}',this.value)" style="width:56px;font-size:11px;padding:4px 5px;border-radius:5px;border:1.2px solid var(--border);text-align:center">`;
+  const catOpts = Object.keys(MARCHE_CATEGORY_LABELS).map(c => `<option value="${c}" ${r.category===c?'selected':''}>${MARCHE_CATEGORY_LABELS[c]}</option>`).join('');
+  return `<tr style="border-top:1px solid var(--border)">
+    <td style="padding:3px 6px"><input value="${escHtml(r.name||'')}" oninput="marcheImportQueue[${qi}].gridRows[${gi}].name=this.value" style="width:170px;font-size:11.5px;font-weight:700;padding:4px 6px;border-radius:5px;border:1.2px solid var(--border)"></td>
+    <td style="padding:3px 6px"><select onchange="marcheImportQueue[${qi}].gridRows[${gi}].category=this.value" style="font-size:10.5px;padding:4px 5px;border-radius:5px;border:1.2px solid var(--border)">${catOpts}</select></td>
+    <td style="padding:3px 6px;border-left:1.5px solid var(--border)">${cell('LV','ac',r.LV.ac,'%')}</td>
+    <td style="padding:3px 6px">${cell('LV','dea',r.LV.dea!=null?marcheFmtMinToHM(r.LV.dea):'','h:mm')}</td>
+    <td style="padding:3px 6px">${cell('LV','pda',r.LV.pda,'%')}</td>
+    <td style="padding:3px 6px;border-left:1.5px solid var(--border)">${cell('SD','ac',r.SD.ac,'%')}</td>
+    <td style="padding:3px 6px">${cell('SD','dea',r.SD.dea!=null?marcheFmtMinToHM(r.SD.dea):'','h:mm')}</td>
+    <td style="padding:3px 6px">${cell('SD','pda',r.SD.pda,'%')}</td>
+    <td style="padding:3px 6px"><button onclick="marcheImportQueue[${qi}].gridRows.splice(${gi},1);marcheRenderImportQueue()" style="background:transparent;border:none;color:#CC2222;cursor:pointer;font-size:13px" title="Supprimer la ligne">✕</button></td>
+  </tr>`;
+}
+function marcheGridSetField(qi,gi,period,field,value){
+  const row = marcheImportQueue[qi].gridRows[gi];
+  if(field==='dea'){ row[period].dea = /h/i.test(value) ? marcheParseHMtoMin(value.replace(/\s/g,'')) : (marcheParseNum(value)!=null ? Math.round(marcheParseNum(value)) : null); }
+  else{ row[period][field] = marcheParseNum(value); }
+}
+/** Valide et enregistre une vague de la file d'import dans marcheHistory —
+ *  ac000 (audience cumulée en milliers) n'est volontairement pas extrait
+ *  automatiquement du PDF (colonnes ambiguës en lecture positionnelle) mais
+ *  reste éditable ligne à ligne si besoin via la fiche radio. */
+function marcheCommitImportEntry(qi){
+  const entry = marcheImportQueue[qi];
+  if(!entry.year || !entry.waveType){ showToast('Type de vague et année requis', 'err'); return; }
+  const validRows = entry.gridRows.filter(r => r.name && r.name.trim());
+  if(!validRows.length){ showToast('Aucune ligne à enregistrer', 'err'); return; }
+  const w = marcheEnsureWave(entry.waveType, entry.year, entry.label);
+  validRows.forEach(r => {
+    ['LV','SD'].forEach(period => {
+      const m = r[period] || {};
+      if(m.ac==null && m.pda==null && m.dea==null) return;
+      marcheUpsertEntity(w.id, r.name.trim(), r.category||'station', period, { ac:m.ac, pda:m.pda, dea:m.dea });
+    });
+  });
+  w.importedAt = new Date().toISOString();
+  w.source = entry.fileName;
+  marcheSaveLocal();
+  marcheSaveToDrive();
+  showToast('✓ ' + w.label + ' enregistrée (' + validRows.length + ' ligne(s))', 'success');
+  marcheImportQueue.splice(qi,1);
+  marcheRenderImportQueue();
+  if(mediaInnerTab==='marche'){ marcheUI.waveId = w.id; renderMarchePage(); }
+}
+
+/* ---- Rendu de la page principale Historique Marché ---- */
+function marcheEmptyStateHtml(){
+  return `<div style="padding:40px;text-align:center;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;color:var(--text2);font-size:13px">
+    Aucune donnée pour l'instant. Importez un communiqué Médiamétrie « EAR &gt; National » (PDF) pour commencer l'historique.<br>
+    <button class="btn-primary" style="font-size:12px;padding:9px 16px;margin-top:14px" onclick="openMarcheImportModal('pdf')">📥 Importer un communiqué (PDF)</button>
+  </div>`;
+}
+function renderMarchePage(){
+  const area = document.getElementById('marcheArea');
+  if(!area) return;
+  const waves = marcheSortedWaves();
+  if(!waves.length){ area.innerHTML = marcheEmptyStateHtml(); return; }
+  if(!marcheUI.waveId || !marcheHistory.waves[marcheUI.waveId]) marcheUI.waveId = waves[waves.length-1].id;
+  area.innerHTML = marcheToolbarHtml(waves) + marcheTableHtml();
+}
+function marcheToolbarHtml(waves){
+  const currentWave = marcheHistory.waves[marcheUI.waveId];
+  const currentSeason = marcheSeasonLabel(currentWave);
+  const seasons = marcheAllSeasons();
+  const wavesInSeason = waves.filter(w => marcheSeasonLabel(w)===currentSeason);
+  const seasonOpts = seasons.map(s => `<option value="${s}" ${s===currentSeason?'selected':''}>Saison ${s}</option>`).join('');
+  const waveOpts = wavesInSeason.map(w => `<option value="${w.id}" ${w.id===marcheUI.waveId?'selected':''}>${w.waveType} — ${MARCHE_WAVE_LABELS[w.waveType]} ${w.year}</option>`).join('');
+  const catChips = ['station','format','statut','couplage'].map(c => {
+    const active = marcheUI.category===c;
+    return `<button onclick="marcheUI.category='${c}';renderMarchePage()" style="font-size:10.5px;font-weight:700;padding:6px 12px;border-radius:20px;border:1.5px solid ${active?'var(--navy)':'var(--border)'};background:${active?'var(--navy)':'var(--white)'};color:${active?'#fff':'var(--text2)'};cursor:pointer">${MARCHE_CATEGORY_LABELS[c]}</button>`;
+  }).join('');
+  return `
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+    <select onchange="marcheUI.category='station';const ws=marcheSortedWaves().filter(w=>marcheSeasonLabel(w)===this.value);if(ws.length)marcheUI.waveId=ws[ws.length-1].id;renderMarchePage()" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-weight:700">${seasonOpts}</select>
+    <select onchange="marcheUI.waveId=this.value;renderMarchePage()" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-weight:700">${waveOpts}</select>
+    <div style="display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px">
+      ${['LV','SD'].map(p => `<button onclick="marcheUI.period='${p}';renderMarchePage()" style="font-size:11px;font-weight:800;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;background:${marcheUI.period===p?'var(--white)':'transparent'};color:${marcheUI.period===p?'var(--navy)':'var(--muted)'};box-shadow:${marcheUI.period===p?'0 1px 4px rgba(11,29,58,.1)':'none'}">${p==='LV'?'Lundi-Vendredi':'Samedi-Dimanche'}</button>`).join('')}
+    </div>
+    <input type="text" placeholder="🔍 Rechercher une radio…" value="${escHtml(marcheUI.search)}" oninput="marcheUI.search=this.value;renderMarchePage()" style="font-size:12px;padding:7px 12px;border-radius:8px;border:1.5px solid var(--border);width:200px">
+    <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">${catChips}</div>
+  </div>
+  ${currentWave.importedAt ? `<div style="font-size:10.5px;color:var(--muted);margin-bottom:10px">Dernier import de cette vague : ${new Date(currentWave.importedAt).toLocaleDateString('fr-FR')}${currentWave.source?' · '+escHtml(currentWave.source):''}</div>` : ''}`;
+}
+function marcheEvolutionCellHtml(currentEnt, otherWave, slug, period){
+  if(!otherWave) return `<div style="font-size:10px;color:var(--muted)">–</div>`;
+  const otherEnt = otherWave.entities[slug];
+  const otherM = otherEnt ? otherEnt[period] : null;
+  const curM = currentEnt[period] || {};
+  const badge = (cur, oth, unit, tag) => {
+    if(typeof cur !== 'number' || !oth || typeof oth[tag==='AC'?'ac':'pda'] !== 'number'){
+      return `<span style="color:var(--muted);font-size:10px"><b>${tag}</b> –</span>`;
+    }
+    const otherVal = oth[tag==='AC'?'ac':'pda'];
+    const delta = Math.round((cur-otherVal)*10)/10;
+    let color='var(--muted)', arrow='＝';
+    if(delta>0){ color='var(--green-text)'; arrow='▲'; } else if(delta<0){ color='#CC2222'; arrow='▼'; }
+    return `<span style="color:${color};font-weight:700;font-size:10px" title="vs ${escHtml(otherWave.label)} : ${String(otherVal).replace('.',',')}${unit}"><b style="color:var(--muted)">${tag}</b> ${arrow} ${(delta>0?'+':'')+delta.toFixed(1).replace('.',',')}${unit}</span>`;
+  };
+  return `<div style="display:flex;flex-direction:column;gap:2px">
+    ${badge(curM.ac, otherM, 'pt', 'AC')}
+    ${badge(curM.pda, otherM, 'pt', 'PDA')}
+  </div>`;
+}
+function marcheTableHtml(){
+  const w = marcheHistory.waves[marcheUI.waveId];
+  const prevChrono = marcheFindPrevChrono(marcheUI.waveId);
+  const prevYear = marcheFindSameTypePrevYear(marcheUI.waveId);
+  const period = marcheUI.period;
+  let rows = Object.keys(w.entities)
+    .map(slug => ({ slug, ent: w.entities[slug] }))
+    .filter(r => r.ent.category === marcheUI.category);
+  if(marcheUI.search.trim()){
+    const q = mediaSlugify(marcheUI.search);
+    rows = rows.filter(r => mediaSlugify(r.ent.label).includes(q));
+  }
+  rows.sort((a,b) => {
+    const av = (a.ent[period]||{}).ac, bv = (b.ent[period]||{}).ac;
+    if(av==null && bv==null) return 0;
+    if(av==null) return 1; if(bv==null) return -1;
+    return bv-av;
+  });
+  if(!rows.length){
+    return `<div style="padding:30px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">Aucune radio dans cette catégorie pour ${w.label} (${period==='LV'?'Lundi-Vendredi':'Samedi-Dimanche'}).</div>`;
+  }
+  return `<div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="text-align:left;color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--border)">
+      <th style="padding:8px 10px">Radio</th>
+      <th style="padding:8px 10px;text-align:right">AC %</th>
+      <th style="padding:8px 10px;text-align:right">AC (000)</th>
+      <th style="padding:8px 10px;text-align:right">PDA %</th>
+      <th style="padding:8px 10px;text-align:right">DEA</th>
+      <th style="padding:8px 10px">Vs vague précédente${prevChrono?' <span style="font-weight:400;text-transform:none">('+escHtml(prevChrono.label)+')</span>':''}</th>
+      <th style="padding:8px 10px">Vs même période N-1${prevYear?' <span style="font-weight:400;text-transform:none">('+escHtml(prevYear.label)+')</span>':''}</th>
+    </tr></thead>
+    <tbody>
+      ${rows.map(({slug,ent}) => {
+        const m = ent[period] || {};
+        return `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openMarcheEntityModal('${slug}')" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+          <td style="padding:8px 10px;font-weight:700;color:var(--navy)">${escHtml(ent.label)}</td>
+          <td style="padding:8px 10px;text-align:right;font-weight:700">${marcheFmtPct(m.ac)}</td>
+          <td style="padding:8px 10px;text-align:right;color:var(--text2)">${m.ac000!=null?marcheFmtNum(m.ac000):'–'}</td>
+          <td style="padding:8px 10px;text-align:right;font-weight:700">${marcheFmtPct(m.pda)}</td>
+          <td style="padding:8px 10px;text-align:right;color:var(--text2)">${m.dea!=null?marcheFmtMinToHM(m.dea):'–'}</td>
+          <td style="padding:8px 10px">${marcheEvolutionCellHtml(ent, prevChrono, slug, period)}</td>
+          <td style="padding:8px 10px">${marcheEvolutionCellHtml(ent, prevYear, slug, period)}</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+  </div>`;
+}
+
+/* ---- Fiche détaillée d'une radio : historique complet toutes vagues ---- */
+function openMarcheEntityModal(slug){
+  const modal = document.getElementById('modalMarcheEntity');
+  const w = marcheHistory.waves[marcheUI.waveId];
+  const ent = w.entities[slug];
+  if(!ent) return;
+  document.getElementById('marcheEntityTitle').textContent = ent.label;
+  document.getElementById('marcheEntitySub').textContent = MARCHE_CATEGORY_LABELS[ent.category] + ' — historique complet, ' + (marcheUI.period==='LV'?'Lundi-Vendredi':'Samedi-Dimanche');
+
+  // Outil de fusion (renommage / doublon) : liste toutes les autres entités
+  // de même catégorie rencontrées sur l'historique.
+  const others = new Map();
+  marcheSortedWaves().forEach(wv => Object.keys(wv.entities).forEach(s => {
+    if(s!==slug && wv.entities[s].category===ent.category) others.set(s, wv.entities[s].label);
+  }));
+  const mergeOpts = Array.from(others.entries()).map(([s,l]) => `<option value="${s}">${escHtml(l)}</option>`).join('');
+  document.getElementById('marcheEntityMergeArea').innerHTML = others.size ? `
+    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">Fusionner avec une autre entrée (renommage / doublon, ex. ancien nom de station)</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="marcheMergeSelect" style="font-size:11.5px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);flex:1">${mergeOpts}</select>
+      <button class="btn-ghost" style="font-size:11px;padding:6px 12px" onclick="const s=document.getElementById('marcheMergeSelect').value;if(confirm('Fusionner « '+document.getElementById('marcheMergeSelect').selectedOptions[0].text+' » dans « ${escHtml(ent.label)} » sur tout l\\'historique ?')){marcheMergeEntities(s,'${slug}');closeMarcheEntityModal();renderMarchePage();showToast('Fusion effectuée','success');}">Fusionner →</button>
+    </div>` : `<div style="font-size:11px;color:var(--muted)">Aucune autre entrée de même catégorie à fusionner.</div>`;
+
+  const histWaves = marcheSortedWaves().filter(wv => wv.entities[slug]);
+  const period = marcheUI.period;
+  document.getElementById('marcheEntityHistoryArea').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      <thead><tr style="text-align:left;color:var(--muted);font-size:9.5px;text-transform:uppercase;border-bottom:1.5px solid var(--border)">
+        <th style="padding:6px 8px">Vague</th><th style="padding:6px 8px">Saison</th>
+        <th style="padding:6px 8px;text-align:right">AC %</th><th style="padding:6px 8px;text-align:right">PDA %</th><th style="padding:6px 8px;text-align:right">DEA</th>
+      </tr></thead>
+      <tbody>
+        ${histWaves.map(wv => {
+          const m = wv.entities[slug][period] || {};
+          return `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 8px;font-weight:700;color:var(--navy)">${wv.waveType} ${wv.year} <span style="font-weight:400;color:var(--muted)">(${escHtml(MARCHE_WAVE_LABELS[wv.waveType])})</span></td>
+            <td style="padding:6px 8px;color:var(--text2)">${marcheSeasonLabel(wv)}</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:700">${marcheFmtPct(m.ac)}</td>
+            <td style="padding:6px 8px;text-align:right;font-weight:700">${marcheFmtPct(m.pda)}</td>
+            <td style="padding:6px 8px;text-align:right;color:var(--text2)">${m.dea!=null?marcheFmtMinToHM(m.dea):'–'}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  modal.style.display = 'flex';
+}
+function closeMarcheEntityModal(){
+  document.getElementById('modalMarcheEntity').style.display = 'none';
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -13293,6 +14130,158 @@ const CORR_AUD_METRICS = [
   { key:'dureeSec',        label:'Durée moy. (sec)' },
 ];
 
+function corrColorForR(r){
+  if(r === null) return 'var(--muted)';
+  const a = Math.abs(r);
+  if(a >= 0.6) return r > 0 ? '#0DA76B' : '#CC2222';
+  if(a >= 0.3) return r > 0 ? '#5B9E3F' : '#E07B00';
+  return 'var(--muted)';
+}
+/** Même échelle de couleur que corrColorForR, mais toujours en hexadécimal
+ *  littéral — corrColorForR renvoie parfois 'var(--muted)', une variable CSS
+ *  que Chart.js ne sait pas résoudre puisqu'il dessine sur un <canvas>, pas
+ *  dans le DOM. */
+function corrColorForRCanvas(r){
+  if(r === null) return '#8A94A6';
+  const a = Math.abs(r);
+  if(a >= 0.6) return r > 0 ? '#0DA76B' : '#CC2222';
+  if(a >= 0.3) return r > 0 ? '#5B9E3F' : '#E07B00';
+  return '#8A94A6';
+}
+
+/** Résout un système linéaire A·x = b par élimination de Gauss avec pivot
+ *  partiel — matrices de petite taille ici (au plus 7 critères sélection-
+ *  nables). Retourne null si le système est singulier (critères combinés
+ *  trop redondants entre eux pour être distingués statistiquement). */
+function solveLinearSystem(A, b){
+  const n = A.length;
+  const M = A.map((row, i) => [...row, b[i]]);
+  for(let col = 0; col < n; col++){
+    let pivotRow = col;
+    for(let r = col+1; r < n; r++){ if(Math.abs(M[r][col]) > Math.abs(M[pivotRow][col])) pivotRow = r; }
+    if(Math.abs(M[pivotRow][col]) < 1e-9) return null;
+    [M[col], M[pivotRow]] = [M[pivotRow], M[col]];
+    for(let r = 0; r < n; r++){
+      if(r === col) continue;
+      const factor = M[r][col] / M[col][col];
+      for(let c = col; c <= n; c++) M[r][c] -= factor * M[col][c];
+    }
+  }
+  return M.map((row, i) => row[n] / row[i]);
+}
+
+/** Régression linéaire multiple STANDARDISÉE : répond à "un critère seul ne
+ *  ressort pas, mais une combinaison de plusieurs pourrait-elle expliquer
+ *  l'audience ?" — question que la matrice de Pearson ci-dessus, purement
+ *  univariée (un critère à la fois), ne peut pas capturer par construction
+ *  (deux critères peuvent être individuellement peu corrélés à l'audience
+ *  tout en étant, combinés, de bons prédicteurs — ou l'inverse, sembler
+ *  corrélés seuls mais redondants une fois combinés). Chaque X et Y sont
+ *  centrés-réduits (z-score) avant résolution : l'ordonnée à l'origine
+ *  devient nulle, et chaque coefficient obtenu est directement un bêta
+ *  standardisé, comparable entre critères d'échelles très différentes
+ *  (Nb Diffs en centaines vs Fit Score 0-100). */
+function corrMultiRegression(rows, xKeys, yKey){
+  const pts = rows.filter(r => xKeys.every(k => r.prog[k] != null && !isNaN(r.prog[k])) && r.aud[yKey] != null && !isNaN(r.aud[yKey]));
+  const n = pts.length, k = xKeys.length;
+  if(n < k + 3) return { error: 'insufficient', n, k };
+
+  const zscore = arr => {
+    const m = arr.reduce((s,v)=>s+v,0) / arr.length;
+    const sd = Math.sqrt(arr.reduce((s,v)=>s+(v-m)*(v-m),0) / arr.length);
+    return { m, sd, z: sd > 0 ? arr.map(v => (v-m)/sd) : arr.map(() => 0) };
+  };
+
+  const yZ = zscore(pts.map(p => p.aud[yKey]));
+  const xZs = xKeys.map(key => zscore(pts.map(p => p.prog[key])));
+
+  // Sur données standardisées : X'X = matrice de corrélation entre critères
+  // (diag=1), X'y = corrélation de chaque critère avec l'audience.
+  const XtX = xZs.map(xi => xZs.map(xj => {
+    let s = 0; for(let t=0;t<n;t++) s += xi.z[t]*xj.z[t];
+    return s / n;
+  }));
+  const Xty = xZs.map(xi => {
+    let s = 0; for(let t=0;t<n;t++) s += xi.z[t]*yZ.z[t];
+    return s / n;
+  });
+
+  const beta = solveLinearSystem(XtX, Xty);
+  if(!beta) return { error: 'singular', n, k };
+
+  let ssRes = 0;
+  for(let t=0;t<n;t++){
+    let pred = 0;
+    for(let i=0;i<k;i++) pred += beta[i]*xZs[i].z[t];
+    const err = yZ.z[t] - pred;
+    ssRes += err*err;
+  }
+  const r2 = Math.max(0, 1 - (ssRes/n)); // SStot=1 par construction du z-score
+  return { error:null, n, k, r2, coefs: xKeys.map((key,i) => ({ key, beta: beta[i] })) };
+}
+
+let corrCombinedSelectedCriteria = new Set(['avgFit']);
+function corrOnCombinedCriteriaChange(){
+  corrCombinedSelectedCriteria = new Set(Array.from(document.querySelectorAll('#corrCombinedCriteria input:checked')).map(el => el.value));
+  renderCorrCombined();
+}
+/** Affiche le résultat de la régression multiple pour la sélection de
+ *  critères en cours — checkboxes construites une seule fois (la liste de
+ *  critères ne change pas selon la station), résultat recalculé à chaque
+ *  changement de sélection ou d'audience cible. */
+function renderCorrCombined(){
+  const checkArea = document.getElementById('corrCombinedCriteria');
+  const targetSel = document.getElementById('corrCombinedTarget');
+  if(!checkArea || !targetSel) return;
+  if(!checkArea.dataset.filled){
+    checkArea.innerHTML = CORR_PROG_METRICS.map(p => `
+      <label style="font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" value="${p.key}" ${corrCombinedSelectedCriteria.has(p.key)?'checked':''} onchange="corrOnCombinedCriteriaChange()">
+        ${escHtml(p.label)}
+      </label>`).join('');
+    checkArea.dataset.filled = '1';
+  }
+  if(!targetSel.dataset.filled){
+    targetSel.innerHTML = CORR_AUD_METRICS.map(a => `<option value="${a.key}">${escHtml(a.label)}</option>`).join('');
+    targetSel.dataset.filled = '1';
+  }
+
+  const resultArea = document.getElementById('corrCombinedResult');
+  if(!resultArea) return;
+  const xKeys = Array.from(corrCombinedSelectedCriteria);
+  if(!xKeys.length){
+    resultArea.innerHTML = '<div style="font-size:11.5px;color:var(--muted)">Cochez au moins un critère à gauche.</div>';
+    return;
+  }
+  const yKey = targetSel.value || CORR_AUD_METRICS[0].key;
+  const rows = window._corrMatchedRows || [];
+  const res = corrMultiRegression(rows, xKeys, yKey);
+
+  if(res.error === 'insufficient'){
+    resultArea.innerHTML = `<div style="font-size:11.5px;color:var(--muted)">⚠ Pas assez de semaines appariées (${res.n}) pour ${res.k} critère(s) combiné(s) — il en faut au moins ${res.k+3}. Décochez un critère, ou élargissez la période / continuez d'archiver.</div>`;
+    return;
+  }
+  if(res.error === 'singular'){
+    resultArea.innerHTML = `<div style="font-size:11.5px;color:var(--muted)">⚠ Ces critères sont trop redondants entre eux pour être séparés statistiquement (ex. Pot Score et Fam Score évoluent presque toujours ensemble) — décochez-en un.</div>`;
+    return;
+  }
+  const r2pct = Math.round(res.r2 * 100);
+  const barsHtml = res.coefs.map(c => {
+    const label = CORR_PROG_METRICS.find(p => p.key === c.key)?.label || c.key;
+    const pct = Math.min(100, Math.abs(c.beta) * 50);
+    const color = c.beta >= 0 ? '#0DA76B' : '#CC2222';
+    return `<div style="margin-bottom:7px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:2px"><span>${escHtml(label)}</span><span style="font-weight:700;color:${color}">${c.beta>=0?'+':''}${c.beta.toFixed(2)}</span></div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .6s ease"></div></div>
+    </div>`;
+  }).join('');
+  resultArea.innerHTML = `
+    <div style="font-size:13px;margin-bottom:10px">Ces critères expliquent ensemble <strong style="color:var(--navy);font-size:15px">${r2pct}%</strong> de la variation de cette audience (R², sur ${res.n} semaine(s) appariée(s)).</div>
+    ${barsHtml}
+    <div style="font-size:10.5px;color:var(--muted);margin-top:8px">Coefficient positif = ce critère tire l'audience vers le haut quand il augmente, à autres critères combinés constants ; négatif = l'inverse. Échelle standardisée (bêtas), comparable entre critères d'unités différentes.</div>
+  `;
+}
+
 /** Coefficient de corrélation de Pearson sur les paires (x,y) non nulles. */
 function corrPearson(pairs){
   const pts = pairs.filter(p => p.x != null && p.y != null && !isNaN(p.x) && !isNaN(p.y));
@@ -13304,14 +14293,6 @@ function corrPearson(pairs){
   pts.forEach(p => { const dx = p.x-mx, dy = p.y-my; num += dx*dy; dx2 += dx*dx; dy2 += dy*dy; });
   const denom = Math.sqrt(dx2*dy2);
   return { r: denom > 0 ? num/denom : null, n };
-}
-
-function corrColorForR(r){
-  if(r === null) return 'var(--muted)';
-  const a = Math.abs(r);
-  if(a >= 0.6) return r > 0 ? '#0DA76B' : '#CC2222';
-  if(a >= 0.3) return r > 0 ? '#5B9E3F' : '#E07B00';
-  return 'var(--muted)';
 }
 
 function renderCorrPage(){
@@ -13430,59 +14411,80 @@ function renderCorrPage(){
     ySel.innerHTML = CORR_AUD_METRICS.map(a => `<option value="${a.key}">${escHtml(a.label)}</option>`).join('');
     ySel.dataset.filled = '1';
   }
-  window._corrMatchedRows = rows; // consommé par renderCorrScatter()
+  window._corrMatchedRows = rows; // consommé par renderCorrScatter() et renderCorrCombined()
+  renderCorrCombined();
   renderCorrScatter();
 }
 
-/** Nuage de points en SVG pur (pas de dépendance Chart.js dans FPA) avec
- *  droite de régression linéaire simple, dans le même esprit que le
- *  camembert genres de l'onglet Programmation (analyseBuildGenreDonutSVG). */
+/** Nuage de points animé (Chart.js, type "scatter") avec droite de
+ *  régression linéaire simple en overlay — remplace l'ancien rendu en SVG
+ *  statique fait main, pour un rendu et une animation d'entrée cohérents
+ *  avec les autres graphiques de la page Analyse (voir graphSafeNewChart). */
 function renderCorrScatter(){
-  const area = document.getElementById('corrScatterArea');
-  if(!area) return;
+  const metaEl = document.getElementById('corrScatterMeta');
   const rows = window._corrMatchedRows || [];
   const xKey = document.getElementById('corrScatterX')?.value;
   const yKey = document.getElementById('corrScatterY')?.value;
-  if(!xKey || !yKey || !rows.length){ area.innerHTML = ''; return; }
-  const pts = rows.map(r => ({ x: r.prog[xKey], y: r.aud[yKey] })).filter(p => p.x!=null && p.y!=null && !isNaN(p.x) && !isNaN(p.y));
-  if(pts.length < 2){
-    area.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:12px">Pas assez de points pour tracer un nuage.</div>';
+  if(!xKey || !yKey){
+    if(metaEl) metaEl.textContent = '';
+    if(graphCharts['corrScatterChart']){ graphCharts['corrScatterChart'].destroy(); delete graphCharts['corrScatterChart']; }
     return;
   }
-  const W = 640, H = 320, M = { l:60, r:20, t:16, b:40 };
-  const xs = pts.map(p=>p.x), ys = pts.map(p=>p.y);
-  const xMin = Math.min(...xs), xMax = Math.max(...xs);
-  const yMin = Math.min(...ys), yMax = Math.max(...ys);
-  const xRange = (xMax - xMin) || 1, yRange = (yMax - yMin) || 1;
-  const sx = v => M.l + ((v - xMin) / xRange) * (W - M.l - M.r);
-  const sy = v => H - M.b - ((v - yMin) / yRange) * (H - M.t - M.b);
+  const xLabel = CORR_PROG_METRICS.find(p => p.key === xKey)?.label || xKey;
+  const yLabel = CORR_AUD_METRICS.find(a => a.key === yKey)?.label || yKey;
+  const pts = rows.map(r => ({ x: r.prog[xKey], y: r.aud[yKey] })).filter(p => p.x != null && p.y != null && !isNaN(p.x) && !isNaN(p.y));
+
+  if(pts.length < 2){
+    if(metaEl) metaEl.innerHTML = '<span style="color:var(--muted)">Pas assez de points pour tracer un nuage.</span>';
+    if(graphCharts['corrScatterChart']){ graphCharts['corrScatterChart'].destroy(); delete graphCharts['corrScatterChart']; }
+    return;
+  }
 
   const { r } = corrPearson(pts);
-  // Régression linéaire simple pour la droite de tendance
   const n = pts.length;
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
   const mx = xs.reduce((s,v)=>s+v,0)/n, my = ys.reduce((s,v)=>s+v,0)/n;
-  let num=0, den=0;
+  let num = 0, den = 0;
   pts.forEach(p => { num += (p.x-mx)*(p.y-my); den += (p.x-mx)*(p.x-mx); });
-  const slope = den>0 ? num/den : 0;
+  const slope = den > 0 ? num/den : 0;
   const intercept = my - slope*mx;
-  const lineX1 = xMin, lineX2 = xMax;
-  const lineY1 = slope*lineX1 + intercept, lineY2 = slope*lineX2 + intercept;
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const trendLine = [{ x:xMin, y:slope*xMin+intercept }, { x:xMax, y:slope*xMax+intercept }];
+  const trendColor = corrColorForRCanvas(r);
 
-  const dots = pts.map(p => `<circle cx="${sx(p.x).toFixed(1)}" cy="${sy(p.y).toFixed(1)}" r="4.5" fill="var(--cyan)" fill-opacity="0.75" stroke="var(--navy)" stroke-width="0.5"/>`).join('');
-  const axisColor = 'var(--border)';
-  area.innerHTML = `
-    <svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto;background:var(--white);border:1.5px solid var(--border);border-radius:10px">
-      <line x1="${M.l}" y1="${H-M.b}" x2="${W-M.r}" y2="${H-M.b}" stroke="${axisColor}" stroke-width="1"/>
-      <line x1="${M.l}" y1="${M.t}" x2="${M.l}" y2="${H-M.b}" stroke="${axisColor}" stroke-width="1"/>
-      <line x1="${sx(lineX1).toFixed(1)}" y1="${sy(lineY1).toFixed(1)}" x2="${sx(lineX2).toFixed(1)}" y2="${sy(lineY2).toFixed(1)}" stroke="${corrColorForR(r)}" stroke-width="2" stroke-dasharray="5,4"/>
-      ${dots}
-      <text x="${M.l}" y="${H-14}" font-size="10" fill="var(--muted)">${xMin.toLocaleString('fr-FR')}</text>
-      <text x="${W-M.r}" y="${H-14}" font-size="10" fill="var(--muted)" text-anchor="end">${xMax.toLocaleString('fr-FR')}</text>
-      <text x="${M.l-6}" y="${H-M.b+4}" font-size="10" fill="var(--muted)" text-anchor="end">${Math.round(yMin).toLocaleString('fr-FR')}</text>
-      <text x="${M.l-6}" y="${M.t+8}" font-size="10" fill="var(--muted)" text-anchor="end">${Math.round(yMax).toLocaleString('fr-FR')}</text>
-    </svg>
-    <div style="margin-top:6px;font-size:11px;color:var(--text2)">r = <strong style="color:${corrColorForR(r)}">${r===null?'—':r.toFixed(3)}</strong> sur ${pts.length} semaine(s) appariée(s)</div>
-  `;
+  if(metaEl) metaEl.innerHTML = `r = <strong style="color:${corrColorForR(r)}">${r===null?'—':r.toFixed(3)}</strong> sur ${pts.length} semaine(s) appariée(s)`;
+
+  graphSafeNewChart('corrScatterChart', {
+    data: {
+      datasets: [
+        {
+          type: 'scatter', label: 'Semaines', data: pts,
+          backgroundColor: 'rgba(0,184,200,0.75)', borderColor: '#0B1D3A', borderWidth: 1,
+          pointRadius: 6, pointHoverRadius: 8
+        },
+        {
+          type: 'line', label: 'Tendance', data: trendLine,
+          borderColor: trendColor, borderWidth: 2, borderDash: [6,4],
+          pointRadius: 0, fill: false, tension: 0
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      animation: { duration: 900, easing: 'easeOutQuart' },
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => c.datasetIndex === 0
+          ? `${xLabel} : ${c.parsed.x.toLocaleString('fr-FR')}  ·  ${yLabel} : ${c.parsed.y.toLocaleString('fr-FR')}`
+          : 'Tendance' } }
+      },
+      scales: {
+        x: { type:'linear', title:{ display:true, text:xLabel, font:{size:11} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#EEF1F6' } },
+        y: { title:{ display:true, text:yLabel, font:{size:11} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#EEF1F6' } }
+      }
+    }
+  });
 }
 
 /** La semaine en cours (potentiellement 500+ titres) est gardée en
@@ -19108,6 +20110,24 @@ function truncateForPdf(doc, text, maxWidth){
   return t + '…';
 }
 
+/** Réduit la taille de police d'UN texte donné pour qu'il tienne dans une
+ *  largeur donnée, jusqu'à un plancher — ne tronque ("…") qu'en tout
+ *  dernier recours, si même à taille plancher le texte ne rentre toujours
+ *  pas. Utilisé pour Artiste/Titre dans l'export Playlist PDF : un simple
+ *  "…" perdait trop d'information sur les entrées les plus longues
+ *  (featurings multiples, titres à rallonge) — mieux vaut une police
+ *  légèrement plus petite pour CETTE ligne qu'un texte coupé. */
+function fitPdfCellText(doc, text, maxWidth, baseFontSize, minFontSize){
+  let size = baseFontSize;
+  doc.setFontSize(size);
+  while(size > minFontSize && doc.getTextWidth(text) > maxWidth){
+    size -= 0.4;
+    doc.setFontSize(size);
+  }
+  if(doc.getTextWidth(text) > maxWidth) text = truncateForPdf(doc, text, maxWidth);
+  return { text, size };
+}
+
 /** Met en MAJUSCULES un nom d'artiste pour l'export PDF (le champ source
  *  n'est pas forcément déjà en majuscules selon comment il a été saisi). */
 function pdfArtistCase(str){
@@ -19183,7 +20203,10 @@ async function exportPlaylistPDF(){
   // entre artiste/titre/labels. "Catégorie Précédente" en plus de la
   // maquette d'origine (voir t.ancienneCategorie, déjà tracée ailleurs dans
   // l'app à chaque changement de catégorie — pas besoin de recalcul).
-  const cols = { numW: 7, artW: 37, titW: 40, catW: 15, prevCatW: 15, entW: 18 };
+  // Artiste/Titre élargies, Entrée/Labels réduites (les labels tiennent
+  // presque toujours en quelques mots courts — "WEA", "Parlophone" — alors
+  // qu'Artiste/Titre étaient fréquemment tronqués).
+  const cols = { numW: 7, artW: 51, titW: 59, catW: 13, prevCatW: 13, entW: 14 };
   cols.labW = CW - (cols.numW + cols.artW + cols.titW + cols.catW + cols.prevCatW + cols.entW);
 
   // ── Dimensionnement : lignes SERRÉES par défaut (gabarit fixe, calqué sur
@@ -19251,7 +20274,7 @@ async function exportPlaylistPDF(){
     const tx0 = ML + logoW + 4;
     const maxTitleWidth = PW - MR - tx0;
     doc.setFont('BebasNeue','normal');
-    const titleSize = fitPdfFontSize(doc, fullText, maxTitleWidth, 19, 10);
+    const titleSize = fitPdfFontSize(doc, fullText, maxTitleWidth, 23, 10);
     doc.setFontSize(titleSize);
     let tx = tx0;
     const ty = y + logoH/2 + titleSize/2.8;
@@ -19338,16 +20361,21 @@ async function exportPlaylistPDF(){
       doc.text(String(idx + 1), x + cols.numW/2, baselineSmall, {align:'center'});
       x += cols.numW;
 
-      // Artiste — MAJUSCULES, gras
+      // Artiste — MAJUSCULES, gras. Réduit sa propre taille de police (dans
+      // une limite raisonnable) plutôt que de tronquer trop agressivement
+      // les artistes multiples/featurings longs — voir fitPdfCellText.
       doc.setFont('Inter','bold');
-      doc.setFontSize(fontMain);
+      const artFit = fitPdfCellText(doc, pdfArtistCase(t.artist), cols.artW - 3, fontMain, Math.max(5.5, fontMain * 0.7));
+      doc.setFontSize(artFit.size);
       doc.setTextColor(...COL_TEXT);
-      doc.text(truncateForPdf(doc, pdfArtistCase(t.artist), cols.artW - 3), x + 1.5, baseline);
+      doc.text(artFit.text, x + 1.5, baseline);
       x += cols.artW;
 
-      // Titre — Title Case, non gras
+      // Titre — Title Case, non gras (même traitement anti-troncature)
       doc.setFont('Inter','normal');
-      doc.text(truncateForPdf(doc, pdfTitleCase(t.title), cols.titW - 3), x + 1.5, baseline);
+      const titFit = fitPdfCellText(doc, pdfTitleCase(t.title), cols.titW - 3, fontMain, Math.max(5.5, fontMain * 0.7));
+      doc.setFontSize(titFit.size);
+      doc.text(titFit.text, x + 1.5, baseline);
       x += cols.titW;
 
       // Catégorie — badge coloré dimensionné au texte et centré dans la
