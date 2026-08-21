@@ -331,6 +331,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <button onclick="closeMarcheEntityModal()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
     </div>
     <div id="marcheEntitySub" style="font-size:11.5px;color:var(--muted);margin-bottom:14px"></div>
+    <div id="marcheEntityRecatArea" style="margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px"></div>
     <div id="marcheEntityMergeArea" style="margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px"></div>
     <div id="marcheEntityChartsArea" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px"></div>
     <div id="marcheEntityHistoryArea"></div>
@@ -339,13 +340,61 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
 <!-- Agrandissement d'une courbe de la fiche radio -->
 <div id="modalMarcheChartZoom" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.6);z-index:700;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this) closeMarcheChartZoom()">
-  <div style="background:var(--white);border-radius:14px;padding:24px;max-width:820px;width:100%;box-shadow:0 24px 70px rgba(11,29,58,.3)">
+  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:1200px;width:100%;box-shadow:0 24px 70px rgba(11,29,58,.3)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
       <div id="marcheChartZoomTitle" style="font-size:15px;font-weight:800;color:var(--navy)"></div>
       <button onclick="closeMarcheChartZoom()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
     </div>
     <div id="marcheChartZoomSub" style="font-size:11.5px;color:var(--muted);margin-bottom:16px"></div>
-    <div style="position:relative;height:420px"><canvas id="marcheChartZoomCanvas"></canvas></div>
+    <div style="position:relative;height:520px"><canvas id="marcheChartZoomCanvas"></canvas></div>
+  </div>
+</div>
+
+<!-- Vue graphique personnalisée Historique Marché : radios × vagues × critères au choix -->
+<div id="modalMarcheCustomChart" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:700;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeMarcheCustomChartModal()">
+  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:1280px;width:100%;max-height:92vh;overflow:auto;box-shadow:0 24px 70px rgba(11,29,58,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">📈 Vue graphique personnalisée — Historique Marché</div>
+      <button onclick="closeMarcheCustomChartModal()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:16px">Choisissez une ou plusieurs radios, une ou plusieurs vagues et un ou plusieurs critères, puis générez la courbe. AC % et PDA % partagent l'axe de gauche ; DEA (minutes) s'affiche sur un axe séparé à droite si sélectionné.</div>
+
+    <div style="display:grid;grid-template-columns:1.3fr 1fr 0.8fr;gap:16px;margin-bottom:16px">
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Radios <span id="marcheCustomEntityCount" style="font-weight:400;text-transform:none;color:var(--muted)"></span></div>
+          <div style="display:flex;gap:8px">
+            <button onclick="marcheCustomChartToggleAll('entity', true)" style="font-size:10px;font-weight:700;color:var(--cyan);background:none;border:none;cursor:pointer">Tout</button>
+            <button onclick="marcheCustomChartToggleAll('entity', false)" style="font-size:10px;font-weight:700;color:var(--muted);background:none;border:none;cursor:pointer">Aucun</button>
+          </div>
+        </div>
+        <input type="text" id="marcheCustomEntitySearch" placeholder="🔍 Filtrer…" oninput="marcheRenderCustomChartEntityList()" style="width:100%;font-size:11.5px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);margin-bottom:6px">
+        <div id="marcheCustomEntityList" style="max-height:420px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:2px"></div>
+      </div>
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Vagues</div>
+          <div style="display:flex;gap:8px">
+            <button onclick="marcheCustomChartToggleAll('wave', true)" style="font-size:10px;font-weight:700;color:var(--cyan);background:none;border:none;cursor:pointer">Toutes</button>
+            <button onclick="marcheCustomChartToggleAll('wave', false)" style="font-size:10px;font-weight:700;color:var(--muted);background:none;border:none;cursor:pointer">Aucune</button>
+          </div>
+        </div>
+        <div id="marcheCustomWaveList" style="max-height:296px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:2px"></div>
+      </div>
+      <div>
+        <div style="font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Critères</div>
+        <div id="marcheCustomMetricList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:16px"></div>
+        <div style="font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">Période</div>
+        <div style="display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px;margin-bottom:16px">
+          <button id="marcheCustomPeriodBtnLV" onclick="marcheCustomChartSetPeriod('LV')" style="flex:1;font-size:11px;font-weight:800;padding:6px 8px;border-radius:6px;border:none;cursor:pointer">Lundi-Vendredi</button>
+          <button id="marcheCustomPeriodBtnSD" onclick="marcheCustomChartSetPeriod('SD')" style="flex:1;font-size:11px;font-weight:800;padding:6px 8px;border-radius:6px;border:none;cursor:pointer">Samedi-Dimanche</button>
+        </div>
+        <button class="btn-primary" style="width:100%;font-size:12.5px;padding:10px" onclick="marcheGenerateCustomChart()">Générer la courbe</button>
+      </div>
+    </div>
+
+    <div id="marcheCustomChartEmptyBar" style="padding:24px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">Sélectionnez au moins une radio, une vague et un critère, puis cliquez sur « Générer la courbe ».</div>
+    <div id="marcheCustomChartArea" style="display:none;position:relative;height:440px"><canvas id="marcheCustomChartCanvas"></canvas></div>
   </div>
 </div>
 
@@ -569,6 +618,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </button>
         <div id="decGroupMenuTrajectoire" class="dec-group-menu" style="display:none">
           <button id="decTabCycles" onclick="switchDecTab('cycles')" class="dec-subtab-item"><span class="dec-subtab-ic">🧬</span>Cycles de vie</button>
+          <button id="decTabAdoption" onclick="switchDecTab('adoption')" class="dec-subtab-item"><span class="dec-subtab-ic">📅</span>Délai d'adoption</button>
           <button id="decTabBurn"   onclick="switchDecTab('burn')"   class="dec-subtab-item"><span class="dec-subtab-ic">🔥</span>Burn Rate</button>
         </div>
       </div>
@@ -1080,6 +1130,64 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div id="cyclesRecentWrap" style="display:none">
         <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">🔮 Titres récents de la vague en cours — profil le plus proche</div>
         <div id="cyclesRecentList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+
+    </div>
+
+    <!-- ── DÉLAI D'ADOPTION : sortie officielle → entrée playlist, par radio ── -->
+    <div id="decPaneAdoption" style="display:none">
+
+      <!-- En-tête -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="width:4px;height:40px;background:linear-gradient(180deg,#1E6FD9 0%,rgba(30,111,217,.25) 100%);border-radius:4px;flex-shrink:0"></div>
+          <div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Europe 2 &amp; RFM</div>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">📅 Délai d'adoption</h2>
+            <button id="infoAdoptionBtn" onclick="toggleInfoNote('infoAdoption')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              Comment lire cette page
+              <svg class="info-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note explicative -->
+      <div id="infoAdoption" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Principe</strong> — pour chaque titre disposant à la fois d'une date de sortie officielle (iTunes, voir Song Attributs sur la fiche titre) et d'une date d'entrée playlist (Europe 2 et/ou RFM), le délai d'adoption est le nombre de jours entre les deux. Un délai négatif signifie une entrée en playlist AVANT la sortie officielle (service presse, avant-premières).</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">À quoi ça sert ?</strong> Suivre si la programmation devance ou retarde le marché, comparer la réactivité entre Europe 2 et RFM, et repérer une dérive dans le temps (délai qui s'allonge ou se raccourcit vague après vague).</div>
+        <div><strong style="color:var(--navy)">Limite à garder en tête</strong> — cette page ne couvre que vos deux stations (aucune programmation exhaustive de radios concurrentes n'est importée dans FPA). Elle ne porte que sur les titres où les deux dates sont renseignées : plus vous complétez la date de sortie sur les fiches titres (bouton 🔍 ou enrichissement en masse depuis Graphiques → Décennies), plus l'échantillon s'élargit.</div>
+      </div>
+
+      <!-- Bandeau pas assez de données -->
+      <div id="adoptionEmptyBar" style="display:none;padding:24px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
+
+      <div id="adoptionContent" style="display:none">
+        <!-- Cartes de synthèse -->
+        <div id="adoptionSummaryCards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px"></div>
+
+        <!-- Évolution du délai moyen dans le temps -->
+        <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:16px;margin-bottom:20px">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Délai moyen par trimestre d'entrée playlist</div>
+          <div style="position:relative;height:220px"><canvas id="adoptionTrendChart"></canvas></div>
+        </div>
+
+        <!-- Table détaillée -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <input type="text" id="adoptionSearchInput" placeholder="🔍 Rechercher un titre ou artiste…" oninput="renderAdoptionDelayTable()" style="font-size:12px;padding:7px 12px;border-radius:8px;border:1.5px solid var(--border);width:220px">
+          <select id="adoptionStationFilter" onchange="renderAdoptionDelayTable()" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-weight:700">
+            <option value="all">Toutes stations</option>
+            <option value="EUROPE2">Europe 2</option>
+            <option value="RFM">RFM</option>
+          </select>
+          <select id="adoptionSortSelect" onchange="renderAdoptionDelayTable()" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-weight:700">
+            <option value="recent">Entrée la plus récente</option>
+            <option value="delayDesc">Délai le plus long</option>
+            <option value="delayAsc">Délai le plus court</option>
+          </select>
+        </div>
+        <div id="adoptionTableArea"></div>
       </div>
 
     </div>
@@ -1691,6 +1799,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="openMediaAddPeriodModal()">+ Ajouter une vague</button>
       </div>
       <div id="marcheActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openMarcheCustomChartModal()" title="Comparer plusieurs radios, vagues et critères sur une même courbe">📈 Vue graphique personnalisée</button>
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="marcheLoadFromDrive(true)" title="Recharge l'Historique Marché depuis Drive Sync">☁️ Synchroniser Drive</button>
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openMarcheImportModal('paste')" title="Saisir ou coller manuellement les résultats d'une vague (utile pour les anciens rapports Médiamétrie non reconnus automatiquement)">✍️ Saisie manuelle</button>
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="openMarcheImportModal('pdf')">📥 Importer un communiqué (PDF)</button>
@@ -2195,6 +2304,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="display:flex;align-items:center;gap:8px">
             <span id="tevMomentumDot" style="display:none;width:9px;height:9px;border-radius:50%;flex-shrink:0"></span>
             <div id="tevTitle" style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy);line-height:1.2"></div>
+            <span id="tevHeaderNewProdBadge" style="display:none;flex-shrink:0;align-items:center;gap:4px;font-size:10px;font-weight:800;color:#0A8056;background:#E3F6EC;border:1px solid #A8E0C0;border-radius:20px;padding:3px 9px;white-space:nowrap" title="Sortie officielle il y a moins de 18 mois">🆕 Nouvelle prod.</span>
             <a id="tevPlayBadge" href="#" target="_blank" rel="noopener" title="Écouter sur Spotify" onclick="return openSpotifyPopup(this.href)"
               style="display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:19px;height:17px;text-decoration:none;transition:filter .15s"
               onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
@@ -12764,6 +12874,20 @@ function marcheMergeEntitiesSilent(fromSlug, intoSlug){
   });
   marcheAliasMap[fromSlug] = intoSlug;
 }
+/** Corrige la catégorie d'une entité (station/agrégat format/agrégat statut/
+ *  couplage) sur TOUTES les vagues où elle apparaît — utile quand l'import
+ *  automatique a mal classé un agrégat ou un couplage comme une radio
+ *  individuelle (ou inversement). N'affecte pas les alias de fusion. */
+function marcheRecategorizeEntity(slug, newCategory){
+  if(!MARCHE_CATEGORY_LABELS[newCategory]) return;
+  let changed = 0;
+  Object.values(marcheHistory.waves).forEach(w => {
+    if(w.entities[slug]){ w.entities[slug].category = newCategory; changed++; }
+  });
+  if(!changed) return;
+  marcheSaveLocal();
+  marcheSaveToDrive();
+}
 /** Fusionne deux entités (ex. renommage France Bleu → ici) : toutes les
  *  données historiques de `fromSlug` sont recopiées sous `intoSlug` (sans
  *  écraser une valeur déjà présente sous `intoSlug`), puis un alias
@@ -12883,7 +13007,7 @@ async function marcheParseCommuniquePdf(pdf, fileName){
   for(let p=1; p<=pdf.numPages; p++){
     const pg = await pdf.getPage(p);
     const content = await pg.getTextContent();
-    const items = content.items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5] }));
+    const items = content.items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5], width: it.width }));
     const lines = groupPdfItemsIntoLines(items);
     lines.forEach(l => allLines.push(l.text));
     fullText += '\n' + lines.map(l => l.text).join('\n');
@@ -12973,7 +13097,7 @@ async function marcheParseLegacyRapport126000(pdf, fileName){
   for(let p=1; p<=pdf.numPages; p++){
     const pg = await pdf.getPage(p);
     const content = await pg.getTextContent();
-    const items = content.items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5] }));
+    const items = content.items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str, x: it.transform[4], y: it.transform[5], width: it.width }));
     const lines = groupPdfItemsIntoLines(items).sort((a,b) => b.y-a.y);
     const titleLine = lines[0] ? lines[0].text : '';
     if(p===1 && !waveGuess) waveGuess = marcheDetectWaveFromText(titleLine + ' ' + (lines[1]?lines[1].text:''));
@@ -13193,10 +13317,27 @@ function renderMarchePage(){
   if(!marcheUI.waveId || !marcheHistory.waves[marcheUI.waveId]) marcheUI.waveId = waves[waves.length-1].id;
   area.innerHTML = marcheToolbarHtml(waves) + marcheTableHtml();
 }
+/** Supprime une vague entière de l'Historique Marché (toutes radios,
+ *  toutes catégories confondues pour cette vague) — irréversible localement
+ *  une fois confirmé, d'où la double confirmation avec le libellé complet
+ *  de la vague. Ne touche pas aux autres vagues ni aux alias de fusion. */
+function marcheDeleteWave(waveId){
+  if(!requireAdmin()) return;
+  const w = marcheHistory.waves[waveId];
+  if(!w) return;
+  if(!confirm('Supprimer définitivement la vague « ' + w.label + ' » de l\'Historique Marché ?\n\nToutes les radios, agrégats et couplages de cette vague seront perdus (les autres vagues ne sont pas concernées). Cette action est irréversible.')) return;
+  delete marcheHistory.waves[waveId];
+  marcheSaveLocal();
+  marcheSaveToDrive();
+  showToast('✓ Vague « ' + w.label + ' » supprimée', 'success');
+  const remaining = marcheSortedWaves();
+  marcheUI.waveId = remaining.length ? remaining[remaining.length-1].id : null;
+  renderMarchePage();
+}
 function marcheToolbarHtml(waves){
   const currentWave = marcheHistory.waves[marcheUI.waveId];
   const currentSeason = marcheSeasonLabel(currentWave);
-  const seasons = marcheAllSeasons();
+  const seasons = marcheAllSeasons().slice().reverse(); // plus récente en haut
   const wavesInSeason = waves.filter(w => marcheSeasonLabel(w)===currentSeason);
   const seasonOpts = seasons.map(s => `<option value="${s}" ${s===currentSeason?'selected':''}>Saison ${s}</option>`).join('');
   const waveOpts = wavesInSeason.map(w => `<option value="${w.id}" ${w.id===marcheUI.waveId?'selected':''}>${w.waveType} — ${MARCHE_WAVE_LABELS[w.waveType]} ${w.year}</option>`).join('');
@@ -13208,6 +13349,7 @@ function marcheToolbarHtml(waves){
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px">
     <select onchange="marcheUI.category='station';const ws=marcheSortedWaves().filter(w=>marcheSeasonLabel(w)===this.value);if(ws.length)marcheUI.waveId=ws[ws.length-1].id;renderMarchePage()" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-weight:700">${seasonOpts}</select>
     <select onchange="marcheUI.waveId=this.value;renderMarchePage()" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);font-weight:700">${waveOpts}</select>
+    <button onclick="marcheDeleteWave('${currentWave.id}')" title="Supprimer cette vague de l'Historique Marché" style="flex-shrink:0;width:32px;height:32px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:#CC2222;cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center" onmouseenter="this.style.borderColor='#CC2222';this.style.background='#FFEAEA'" onmouseleave="this.style.borderColor='var(--border)';this.style.background='var(--white)'">🗑️</button>
     <div style="display:flex;gap:4px;background:var(--bg);border-radius:8px;padding:3px">
       ${['LV','SD'].map(p => `<button onclick="marcheUI.period='${p}';renderMarchePage()" style="font-size:11px;font-weight:800;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;background:${marcheUI.period===p?'var(--white)':'transparent'};color:${marcheUI.period===p?'var(--navy)':'var(--muted)'};box-shadow:${marcheUI.period===p?'0 1px 4px rgba(11,29,58,.1)':'none'}">${p==='LV'?'Lundi-Vendredi':'Samedi-Dimanche'}</button>`).join('')}
     </div>
@@ -13242,7 +13384,7 @@ function marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, field, f
   const val = m[field];
   const groupBorder = isFirstGroup ? 'border-left:2px solid var(--border)' : '';
   return `
-    <td style="padding:6px 4px 6px 14px;text-align:left;font-weight:800;font-size:16px;color:var(--navy);white-space:nowrap;${groupBorder}">${formatter(val)}</td>
+    <td style="padding:6px 4px 6px 14px;text-align:left;font-weight:800;font-size:13.5px;color:var(--navy);white-space:nowrap;${groupBorder}">${formatter(val)}</td>
     <td style="padding:6px 4px;text-align:left;width:46px">${marcheDeltaBadgeHtml(val, prevChrono, slug, period, field, 'Vs vague précédente')}</td>
     <td style="padding:6px 10px 6px 4px;text-align:left;width:46px">${marcheDeltaBadgeHtml(val, prevYear, slug, period, field, 'Vs même période N-1')}</td>`;
 }
@@ -13284,12 +13426,15 @@ function marcheTableHtml(){
       </tr>
     </thead>
     <tbody>
-      ${rows.map(({slug,ent}) => `<tr style="border-bottom:1px solid var(--border);cursor:pointer" onclick="openMarcheEntityModal('${slug}')" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+      ${rows.map(({slug,ent}, i) => {
+        const zebraBg = i % 2 === 1 ? '#F5F5F7' : 'transparent';
+        return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;background:${zebraBg}" onclick="openMarcheEntityModal('${slug}')" onmouseenter="this.style.background='var(--cyan-light)'" onmouseleave="this.style.background='${zebraBg}'">
           <td style="padding:6px 10px;font-weight:700;color:var(--navy)">${escHtml(ent.label)}</td>
           ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'ac', marcheFmtPct, true)}
           ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'pda', marcheFmtPct, true)}
           ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'dea', v => v!=null?marcheFmtMinToHM(v):'–', true)}
-        </tr>`).join('')}
+        </tr>`;
+      }).join('')}
     </tbody>
   </table>
   </div>`;
@@ -13321,6 +13466,19 @@ function openMarcheEntityModal(slug){
   if(!ent) return;
   document.getElementById('marcheEntityTitle').textContent = ent.label;
   document.getElementById('marcheEntitySub').textContent = MARCHE_CATEGORY_LABELS[ent.category] + ' — historique complet, ' + (marcheUI.period==='LV'?'Lundi-Vendredi':'Samedi-Dimanche');
+
+  // Recatégorisation : corrige un mauvais classement issu de l'import (ex.
+  // un agrégat de format ou un couplage publicitaire reconnu à tort comme
+  // une radio individuelle). Appliquée à TOUTES les vagues de cette entité
+  // — une même radio/agrégat/couplage a toujours la même nature, peu
+  // importe la vague qui l'a mal classée à l'import.
+  const catOptions = Object.keys(MARCHE_CATEGORY_LABELS).map(c => `<option value="${c}" ${c===ent.category?'selected':''}>${MARCHE_CATEGORY_LABELS[c]}</option>`).join('');
+  document.getElementById('marcheEntityRecatArea').innerHTML = `
+    <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:6px">Catégorie (si mal classée à l'import)</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <select id="marcheRecatSelect" style="font-size:11.5px;padding:6px 10px;border-radius:6px;border:1.5px solid var(--border);flex:1">${catOptions}</select>
+      <button class="btn-ghost" style="font-size:11px;padding:6px 12px" onclick="const c=document.getElementById('marcheRecatSelect').value;if(c!=='${ent.category}'){marcheRecategorizeEntity('${slug}',c);closeMarcheEntityModal();renderMarchePage();showToast('Catégorie mise à jour sur toutes les vagues','success');}">Appliquer</button>
+    </div>`;
 
   // Outil de fusion (renommage / doublon) : liste toutes les autres entités
   // de même catégorie rencontrées sur l'historique.
@@ -13359,7 +13517,7 @@ function openMarcheEntityModal(slug){
       const data = histWaves.map(wv => { const v = (wv.entities[slug][period]||{})[field]; return typeof v==='number' ? v : null; });
       marcheEntitySafeNewChart('marcheEntityChart_'+field, {
         type: 'line',
-        data: { labels: waveLabels, datasets: [{ data, borderColor: '#1E6FD9', backgroundColor: 'rgba(30,111,217,.10)', borderWidth: 2, pointRadius: 3, pointBackgroundColor:'#1E6FD9', tension: .25, fill: true, spanGaps: true }] },
+        data: { labels: waveLabels, datasets: [{ data, borderColor: '#1E6FD9', backgroundColor: 'rgba(30,111,217,.10)', borderWidth: 2, pointRadius: 1.5, pointBackgroundColor:'#1E6FD9', tension: .25, fill: true, spanGaps: true }] },
         options: {
           responsive: true, maintainAspectRatio: false,
           plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y) } } },
@@ -13415,7 +13573,7 @@ function marcheOpenChartZoom(field){
   if(el && typeof Chart !== 'undefined'){
     marcheZoomChart = new Chart(el, {
       type: 'line',
-      data: { labels: waveLabels, datasets: [{ data, borderColor: '#1E6FD9', backgroundColor: 'rgba(30,111,217,.10)', borderWidth: 3, pointRadius: 5, pointHoverRadius: 7, pointBackgroundColor:'#1E6FD9', tension: .25, fill: true, spanGaps: true }] },
+      data: { labels: waveLabels, datasets: [{ data, borderColor: '#1E6FD9', backgroundColor: 'rgba(30,111,217,.10)', borderWidth: 2.5, pointRadius: 2.5, pointHoverRadius: 5, pointBackgroundColor:'#1E6FD9', tension: .25, fill: true, spanGaps: true }] },
       options: {
         responsive: true, maintainAspectRatio: false,
         plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y) } } },
@@ -13428,6 +13586,189 @@ function closeMarcheChartZoom(){
   document.getElementById('modalMarcheChartZoom').style.display = 'none';
   try{ if(marcheZoomChart) marcheZoomChart.destroy(); }catch(e){ /* ignoré */ }
   marcheZoomChart = null;
+}
+
+/* ---- Vue graphique personnalisée : radios × vagues × critères au choix ----
+ * Contrairement aux mini-courbes de la fiche radio (un seul titre, tous les
+ * critères), cette vue compare LIBREMENT plusieurs radios sur un ou
+ * plusieurs critères en même temps. Une ligne par combinaison radio×critère
+ * : couleur par radio (palette existante ANALYSE_GENRE_PALETTE), style de
+ * trait par critère (plein=AC, tirets=PDA, pointillés=DEA) pour rester
+ * lisible sans exploser le nombre de couleurs distinctes. AC/PDA partagent
+ * l'axe gauche (%), DEA (minutes) a son propre axe droit si sélectionné. */
+let marcheCustomChart = null;
+let marcheCustomChartPeriod = 'LV';
+const MARCHE_CUSTOM_METRICS = { ac:'AC %', pda:'PDA %', dea:'DEA' };
+const MARCHE_CUSTOM_DASH = { ac: [], pda: [6,3], dea: [2,2] };
+function openMarcheCustomChartModal(){
+  if(!marcheSortedWaves().length){ showToast('Aucune vague dans l\'Historique Marché pour l\'instant', 'err'); return; }
+  document.getElementById('modalMarcheCustomChart').style.display = 'flex';
+  document.getElementById('marcheCustomEntitySearch').value = '';
+  marcheCustomChartPeriod = marcheUI.period || 'LV';
+  try{ marcheRenderCustomChartEntityList(); }catch(err){ console.error('Radios :', err); }
+  try{ marcheRenderCustomChartWaveList(); }catch(err){ console.error('Vagues :', err); }
+  try{ marcheRenderCustomChartMetricList(); }catch(err){ console.error('Critères :', err); }
+  marcheUpdateCustomChartPeriodButtons();
+  document.getElementById('marcheCustomChartEmptyBar').style.display = 'block';
+  document.getElementById('marcheCustomChartArea').style.display = 'none';
+}
+function closeMarcheCustomChartModal(){
+  document.getElementById('modalMarcheCustomChart').style.display = 'none';
+  try{ if(marcheCustomChart) marcheCustomChart.destroy(); }catch(e){ /* ignoré */ }
+  marcheCustomChart = null;
+}
+/** Toutes les entités connues, tous catégories et vagues confondues,
+ *  dédupliquées par slug (première étiquette rencontrée) — la même radio
+ *  garde le même slug d'une vague à l'autre (voir marcheCanonicalSlug).
+ *  Filtre les entités sans slug ou sans étiquette exploitable (cause
+ *  possible d'un tri qui plante silencieusement et vide TOUTE la liste,
+ *  pas seulement l'entrée fautive — .localeCompare(undefined) lève une
+ *  exception) plutôt que de les laisser remonter jusqu'au tri. */
+function marcheAllKnownEntities(){
+  const map = new Map();
+  marcheSortedWaves().forEach(w => Object.keys(w.entities || {}).forEach(slug => {
+    if(!slug || map.has(slug)) return;
+    const ent = w.entities[slug];
+    const label = (ent && typeof ent.label === 'string' && ent.label.trim()) ? ent.label.trim() : slug;
+    map.set(slug, { slug, label, category: ent ? ent.category : null });
+  }));
+  return Array.from(map.values()).sort((a,b) => String(a.label).localeCompare(String(b.label), 'fr'));
+}
+function marcheRenderCustomChartEntityList(){
+  const listEl = document.getElementById('marcheCustomEntityList');
+  const countEl = document.getElementById('marcheCustomEntityCount');
+  try{
+    const q = mediaSlugify(document.getElementById('marcheCustomEntitySearch').value || '');
+    // préserve les cases déjà cochées lors d'un filtrage successif
+    const checkedBefore = new Set(Array.from(listEl.querySelectorAll('input[type=checkbox]:checked')).map(el => el.value));
+    let entities = marcheAllKnownEntities();
+    const totalCount = entities.length;
+    if(q) entities = entities.filter(e => mediaSlugify(e.label).includes(q));
+    const byCategory = {};
+    const order = ['station','format','statut','couplage'];
+    entities.forEach(e => {
+      // Repli défensif sur 'station' si la catégorie est absente ou ne
+      // correspond à aucune des 4 connues — sans ce filet, une entité dans
+      // ce cas disparaissait silencieusement de la liste au lieu d'être
+      // rangée quelque part.
+      const cat = order.includes(e.category) ? e.category : 'station';
+      (byCategory[cat] = byCategory[cat]||[]).push(e);
+    });
+    if(countEl) countEl.textContent = entities.length + ' / ' + totalCount + ' radio(s)';
+    listEl.innerHTML = order.filter(c => byCategory[c]).map(cat => `
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:6px 0 2px">${MARCHE_CATEGORY_LABELS[cat]} <span style="font-weight:400;text-transform:none">(${byCategory[cat].length})</span></div>
+      ${byCategory[cat].map(e => `<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 4px;border-radius:5px;cursor:pointer" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+        <input type="checkbox" value="${e.slug}" ${checkedBefore.has(e.slug)?'checked':''} style="flex-shrink:0">
+        <span style="color:var(--navy)">${escHtml(e.label)}</span>
+      </label>`).join('')}
+    `).join('') || `<div style="font-size:11.5px;color:var(--muted);padding:6px">Aucune radio ne correspond.</div>`;
+  }catch(err){
+    console.error('marcheRenderCustomChartEntityList a échoué :', err);
+    listEl.innerHTML = `<div style="font-size:11.5px;color:#CC2222;padding:6px">⚠️ Erreur d'affichage de la liste (voir la console). Signalez ce message pour correction.</div>`;
+    if(countEl) countEl.textContent = '';
+  }
+}
+function marcheRenderCustomChartWaveList(){
+  const listEl = document.getElementById('marcheCustomWaveList');
+  const waves = marcheSortedWaves().slice().reverse(); // plus récente en haut
+  listEl.innerHTML = waves.map(w => `<label style="display:flex;align-items:center;gap:7px;font-size:12px;padding:3px 4px;border-radius:5px;cursor:pointer" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+    <input type="checkbox" value="${w.id}" style="flex-shrink:0">
+    <span style="color:var(--navy)">${w.waveType} ${w.year}</span><span style="color:var(--muted);font-size:10.5px">${MARCHE_WAVE_LABELS[w.waveType]}</span>
+  </label>`).join('');
+}
+function marcheRenderCustomChartMetricList(){
+  const listEl = document.getElementById('marcheCustomMetricList');
+  listEl.innerHTML = Object.keys(MARCHE_CUSTOM_METRICS).map(m => `<label style="display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:700;color:var(--navy);cursor:pointer">
+    <input type="checkbox" value="${m}" ${m==='ac'?'checked':''}>
+    ${MARCHE_CUSTOM_METRICS[m]}
+  </label>`).join('');
+}
+function marcheCustomChartToggleAll(kind, checked){
+  const listId = kind==='entity' ? 'marcheCustomEntityList' : 'marcheCustomWaveList';
+  document.getElementById(listId).querySelectorAll('input[type=checkbox]').forEach(el => { el.checked = checked; });
+}
+function marcheCustomChartSetPeriod(period){
+  marcheCustomChartPeriod = period;
+  marcheUpdateCustomChartPeriodButtons();
+}
+function marcheUpdateCustomChartPeriodButtons(){
+  [['LV','marcheCustomPeriodBtnLV'],['SD','marcheCustomPeriodBtnSD']].forEach(([p,id]) => {
+    const btn = document.getElementById(id);
+    if(!btn) return;
+    const active = marcheCustomChartPeriod===p;
+    btn.style.background = active ? 'var(--white)' : 'transparent';
+    btn.style.color = active ? 'var(--navy)' : 'var(--muted)';
+    btn.style.boxShadow = active ? '0 1px 4px rgba(11,29,58,.1)' : 'none';
+  });
+}
+function marcheGenerateCustomChart(){
+  const entitySlugs = Array.from(document.getElementById('marcheCustomEntityList').querySelectorAll('input:checked')).map(el => el.value);
+  const waveIds = Array.from(document.getElementById('marcheCustomWaveList').querySelectorAll('input:checked')).map(el => el.value);
+  const metrics = Array.from(document.getElementById('marcheCustomMetricList').querySelectorAll('input:checked')).map(el => el.value);
+  const emptyEl = document.getElementById('marcheCustomChartEmptyBar');
+  const areaEl = document.getElementById('marcheCustomChartArea');
+  if(!entitySlugs.length || !waveIds.length || !metrics.length){
+    emptyEl.textContent = 'Sélectionnez au moins une radio, une vague et un critère, puis cliquez sur « Générer la courbe ».';
+    emptyEl.style.display = 'block';
+    areaEl.style.display = 'none';
+    return;
+  }
+  const waves = marcheSortedWaves().filter(w => waveIds.includes(w.id)); // déjà trié chronologiquement
+  const labels = waves.map(w => w.waveType + ' ' + String(w.year).slice(-2));
+  const entities = marcheAllKnownEntities().filter(e => entitySlugs.includes(e.slug));
+  const period = marcheCustomChartPeriod;
+  const showDea = metrics.includes('dea');
+  const showPct = metrics.includes('ac') || metrics.includes('pda');
+
+  const datasets = [];
+  entities.forEach((ent, ei) => {
+    const color = ANALYSE_GENRE_PALETTE[ei % ANALYSE_GENRE_PALETTE.length];
+    metrics.forEach(metric => {
+      const data = waves.map(w => {
+        const v = (w.entities[ent.slug] && w.entities[ent.slug][period]) ? w.entities[ent.slug][period][metric] : null;
+        return typeof v === 'number' ? v : null;
+      });
+      if(data.every(v => v==null)) return; // rien à tracer pour cette combinaison, on l'omet plutôt qu'une ligne vide dans la légende
+      datasets.push({
+        label: ent.label + ' — ' + MARCHE_CUSTOM_METRICS[metric],
+        data, borderColor: color, backgroundColor: color,
+        borderDash: MARCHE_CUSTOM_DASH[metric], borderWidth: 2, pointRadius: 1.5, pointHoverRadius: 4,
+        tension: .25, fill: false, spanGaps: true,
+        yAxisID: metric==='dea' ? 'y1' : 'y'
+      });
+    });
+  });
+
+  if(!datasets.length){
+    emptyEl.textContent = 'Aucune donnée pour cette combinaison radios/vagues/critères — essayez d\'élargir la sélection.';
+    emptyEl.style.display = 'block';
+    areaEl.style.display = 'none';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  areaEl.style.display = 'block';
+
+  try{ if(marcheCustomChart) marcheCustomChart.destroy(); }catch(e){ /* ignoré */ }
+  const canvas = document.getElementById('marcheCustomChartCanvas');
+  marcheCustomChart = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'bottom', labels:{ boxWidth:14, font:{size:10.5} } },
+        tooltip: { callbacks: { label: ctx => {
+          const isDea = ctx.dataset.yAxisID === 'y1';
+          return ctx.dataset.label + ' : ' + (isDea ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y));
+        } } }
+      },
+      scales: {
+        y: { display: showPct, position:'left', title:{ display:true, text:'AC / PDA (%)', font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#DDE3EE' } },
+        y1: { display: showDea, position:'right', title:{ display:true, text:'DEA (minutes)', font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ drawOnChartArea:false } },
+        x: { ticks:{ color:'#4A5E78' } }
+      }
+    }
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -14113,6 +14454,7 @@ function renderGraphPage(){
       `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-4px 0 10px">
         <span id="analyseDecadeProgress" style="display:none;font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px" title="Récupération en arrière-plan des décennies de sortie manquantes (API iTunes) — n'empêche pas de continuer à travailler"></span>
         <button onclick="analyseRetryFailedDecadesAllArchives()" title="Repasse en file, sur TOUTES les semaines archivées (les deux stations), tous les titres marqués « Inconnue » — pas besoin d'ouvrir chaque semaine une par une. Le recalcul des statistiques se déclenche automatiquement une fois terminé." style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔄 Relancer les décennies en échec (toutes semaines)</button>
+        <button onclick="analyseBackfillReleaseDatesAllArchives()" title="Complète la date de sortie officielle (et le flag Nouvelle Production / délai d'adoption) des titres dont la décennie est déjà connue mais dont la date précise n'a pas encore été captée — utile pour les titres résolus avant l'ajout de ce champ." style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">📅 Compléter les dates de sortie manquantes</button>
         <button onclick="analyseRecalcArchivesFromGraph()" title="Recalcule le Genre et la Décennie de toutes les semaines archivées à partir des données actuellement en cache — nécessaire pour que ce graphique et son sélecteur reflètent les décennies résolues APRÈS l'archivage de chaque semaine" style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔁 Recalculer les statistiques archivées</button>
       </div>`),
     graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
@@ -16011,6 +16353,147 @@ function buildClusterCard(c){
   </div>`;
 }
 
+// ── DÉLAI D'ADOPTION ──────────────────────────────────────────────────────
+// Sortie officielle (iTunes, songAttributes.releaseDate) → entrée playlist
+// (songAttributes.dateEntreeEurope2 / dateEntreeRFM), par titre et par
+// station. Contrairement aux Cycles de vie (qui exploitent l'historique
+// Call Out archivé), cette page lit directement le store partagé
+// songAttributes — pas besoin de vagues Call Out, juste les deux dates.
+// ──────────────────────────────────────────────────────────────────────────
+let adoptionChart = null;
+let adoptionAllRows = [];
+/** Construit la liste des lignes exploitables : un titre peut apparaître
+ *  une ou deux fois (une par station où il a une date d'entrée connue). */
+function buildAdoptionRows(){
+  const rows = [];
+  Object.keys(songAttributes).forEach(key => {
+    const attrs = songAttributes[key];
+    if(!attrs || !attrs.releaseDate) return;
+    const release = new Date(attrs.releaseDate + 'T00:00:00');
+    if(isNaN(release.getTime())) return;
+    [['EUROPE2','dateEntreeEurope2'], ['RFM','dateEntreeRFM']].forEach(([stKey, field]) => {
+      const entreeStr = attrs[field];
+      if(!entreeStr) return;
+      const entree = new Date(entreeStr + 'T00:00:00');
+      if(isNaN(entree.getTime())) return;
+      const delayDays = Math.round((entree.getTime() - release.getTime()) / 86400000);
+      // Retrouve titre/artiste depuis la clé "artiste|||titre" (comiteKey) —
+      // pas de forme lisible stockée ailleurs dans songAttributes lui-même.
+      const parts = key.split('|||');
+      rows.push({
+        key, station: stKey,
+        artist: parts[0] || '', title: parts[1] || '',
+        releaseDate: attrs.releaseDate, entreeDate: entreeStr, delayDays
+      });
+    });
+  });
+  return rows;
+}
+function adoptionQuarterLabel(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  const q = Math.floor(d.getMonth()/3) + 1;
+  return d.getFullYear() + '-T' + q;
+}
+function renderAdoptionDelayPage(){
+  const emptyEl = document.getElementById('adoptionEmptyBar');
+  const contentEl = document.getElementById('adoptionContent');
+  if(!emptyEl) return;
+  const rows = buildAdoptionRows();
+  adoptionAllRows = rows;
+
+  if(!rows.length){
+    emptyEl.style.display = 'block';
+    emptyEl.innerHTML = `📅 Aucun titre avec à la fois une date de sortie officielle ET une date d'entrée playlist connues pour l'instant.<br><span style="font-size:12px;color:var(--muted)">Complétez la date de sortie depuis la fiche titre (bouton 🔍 à côté de la Décennie), ou en masse depuis Graphiques → Décennies → « 📅 Compléter les dates de sortie manquantes ».</span>`;
+    contentEl.style.display = 'none';
+    return;
+  }
+  emptyEl.style.display = 'none';
+  contentEl.style.display = 'block';
+
+  // ── Cartes de synthèse : délai moyen par station + volume ──
+  const cardsEl = document.getElementById('adoptionSummaryCards');
+  const byStation = { EUROPE2: rows.filter(r => r.station==='EUROPE2'), RFM: rows.filter(r => r.station==='RFM') };
+  const avg = arr => arr.length ? Math.round(arr.reduce((s,r) => s+r.delayDays, 0) / arr.length) : null;
+  const fmtDelay = d => d==null ? '—' : (d >= 0 ? d + ' j après sortie' : Math.abs(d) + ' j avant sortie');
+  cardsEl.innerHTML = [
+    { label:'Titres analysés', value: new Set(rows.map(r=>r.key)).size, sub: rows.length + ' entrée(s) station', color:'var(--navy)' },
+    { label:'Délai moyen — Europe 2', value: fmtDelay(avg(byStation.EUROPE2)), sub: byStation.EUROPE2.length + ' titre(s)', color:'#1E6FD9' },
+    { label:'Délai moyen — RFM', value: fmtDelay(avg(byStation.RFM)), sub: byStation.RFM.length + ' titre(s)', color:'#1E6FD9' }
+  ].map(c => `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px">
+    <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px">${c.label}</div>
+    <div style="font-size:${typeof c.value==='number'?'26px':'17px'};font-weight:800;color:${c.color}">${c.value}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:2px">${c.sub}</div>
+  </div>`).join('');
+
+  // ── Courbe de tendance : délai moyen par trimestre d'entrée, une série par station ──
+  const quarters = Array.from(new Set(rows.map(r => adoptionQuarterLabel(r.entreeDate)))).sort();
+  const seriesFor = stKey => quarters.map(q => {
+    const inQ = rows.filter(r => r.station===stKey && adoptionQuarterLabel(r.entreeDate)===q);
+    return inQ.length ? Math.round(inQ.reduce((s,r)=>s+r.delayDays,0)/inQ.length) : null;
+  });
+  if(adoptionChart){ try{ adoptionChart.destroy(); }catch(e){} }
+  const canvas = document.getElementById('adoptionTrendChart');
+  if(canvas && typeof Chart !== 'undefined'){
+    adoptionChart = new Chart(canvas, {
+      type: 'line',
+      data: { labels: quarters, datasets: [
+        { label:'Europe 2', data: seriesFor('EUROPE2'), borderColor:'#1E6FD9', backgroundColor:'rgba(30,111,217,.08)', borderWidth:2.5, pointRadius:3, tension:.25, spanGaps:true },
+        { label:'RFM', data: seriesFor('RFM'), borderColor:'#00B8C8', backgroundColor:'rgba(0,184,200,.08)', borderWidth:2.5, pointRadius:3, tension:.25, spanGaps:true }
+      ]},
+      options: { responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'top', labels:{ boxWidth:10, font:{size:11} } }, tooltip:{ callbacks:{ label: ctx => ctx.dataset.label + ' : ' + (ctx.parsed.y>=0?'+':'') + ctx.parsed.y + ' j' } } },
+        scales:{ y:{ title:{ display:true, text:'Délai moyen (jours)', font:{size:10.5} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#DDE3EE' } }, x:{ ticks:{ color:'#4A5E78' } } }
+      }
+    });
+  }
+
+  renderAdoptionDelayTable();
+}
+function renderAdoptionDelayTable(){
+  const areaEl = document.getElementById('adoptionTableArea');
+  if(!areaEl) return;
+  const search = mediaSlugify(document.getElementById('adoptionSearchInput')?.value || '');
+  const stationFilter = document.getElementById('adoptionStationFilter')?.value || 'all';
+  const sortMode = document.getElementById('adoptionSortSelect')?.value || 'recent';
+
+  let rows = adoptionAllRows.slice();
+  if(stationFilter !== 'all') rows = rows.filter(r => r.station === stationFilter);
+  if(search) rows = rows.filter(r => mediaSlugify(r.title + ' ' + r.artist).includes(search));
+  rows.sort((a,b) => {
+    if(sortMode==='delayDesc') return b.delayDays - a.delayDays;
+    if(sortMode==='delayAsc')  return a.delayDays - b.delayDays;
+    return new Date(b.entreeDate) - new Date(a.entreeDate); // recent
+  });
+
+  if(!rows.length){
+    areaEl.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">Aucun titre ne correspond à ce filtre.</div>`;
+    return;
+  }
+  areaEl.innerHTML = `<div style="overflow-x:auto">
+  <table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="text-align:left;color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--border)">
+      <th style="padding:6px 10px">Titre</th>
+      <th style="padding:6px 10px">Station</th>
+      <th style="padding:6px 10px">Sortie officielle</th>
+      <th style="padding:6px 10px">Entrée playlist</th>
+      <th style="padding:6px 10px;text-align:right">Délai</th>
+    </tr></thead>
+    <tbody>
+      ${rows.map(r => {
+        const badgeColor = r.delayDays < 0 ? '#0A8056' : (r.delayDays > 365 ? '#CC2222' : 'var(--navy)');
+        return `<tr data-evotitle="${evoAttr(r.title, r.artist)}" onclick="openTitleEvolutionModal(this)" style="border-bottom:1px solid var(--border);cursor:pointer" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'">
+          <td style="padding:6px 10px"><div style="font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</div><div style="font-size:11px;color:var(--muted)">${escHtml(titleCaseDisplay(r.artist))}</div></td>
+          <td style="padding:6px 10px;color:var(--text2)">${r.station==='EUROPE2'?'Europe 2':'RFM'}</td>
+          <td style="padding:6px 10px;color:var(--text2)">${new Date(r.releaseDate).toLocaleDateString('fr-FR')}</td>
+          <td style="padding:6px 10px;color:var(--text2)">${new Date(r.entreeDate).toLocaleDateString('fr-FR')}</td>
+          <td style="padding:6px 10px;text-align:right;font-weight:800;color:${badgeColor}">${r.delayDays>=0?'+':''}${r.delayDays} j</td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>
+  </div>`;
+}
+
 function renderLifeCyclesPage(){
   const emptyEl    = document.getElementById('cyclesEmptyBar');
   const summaryEl  = document.getElementById('cyclesSummary');
@@ -16463,6 +16946,8 @@ async function openTevByInfo(info){
   const modal = document.getElementById('modalTitleEvolution');
   document.getElementById('tevTitle').textContent  = title || '';
   document.getElementById('tevArtist').textContent = artist || '';
+  const headerBadge = document.getElementById('tevHeaderNewProdBadge');
+  if(headerBadge) headerBadge.style.display = isNewProduction(getSongAttributes(title, artist).releaseDate) ? 'inline-flex' : 'none';
   document.getElementById('tevBody').innerHTML = '<div style="text-align:center;padding:50px;color:var(--muted);font-size:13px">⏳ Chargement de l\'historique complet…</div>';
   populateTevLogosRow();
   const playBadge = document.getElementById('tevPlayBadge');
@@ -16669,8 +17154,18 @@ async function openTevByInfo(info){
         <input id="tevDecadeInput" type="text" placeholder="ex. 1990s" value="${escHtml((songAttrs.decade && songAttrs.decade !== 'Inconnue') ? songAttrs.decade : '')}"
           onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','decade',this.value)"
           style="flex:1;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
-        <button onclick="tevFetchDecade('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher la décennie de sortie via iTunes"
+        <button onclick="tevFetchDecade('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher la décennie ET la date de sortie via iTunes"
           style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
+      </div>
+    </label>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date de sortie officielle
+      <div style="display:flex;align-items:center;gap:8px;margin-top:5px">
+        <input id="tevReleaseDateInput" type="date" value="${songAttrs.releaseDate || ''}"
+          onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','releaseDate',this.value)"
+          style="flex:1;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+        <button onclick="tevFetchDecade('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher la date de sortie ET la décennie via iTunes (même recherche)"
+          style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
+        <span id="tevNewProdBadge" style="flex-shrink:0;display:${isNewProduction(songAttrs.releaseDate)?'inline-flex':'none'};align-items:center;gap:4px;font-size:10px;font-weight:800;color:#0A8056;background:#E3F6EC;border:1px solid #A8E0C0;border-radius:20px;padding:4px 10px;white-space:nowrap" title="Sortie officielle il y a moins de 18 mois">🆕 Nouvelle prod.</span>
       </div>
     </label>
   </div>`);
@@ -16698,17 +17193,37 @@ async function tevFetchGenre(title, artist){
  *  enregistré dans songAttributes.decade (le store lu par la carte
  *  "Décennies" des Graphiques d'évolution). */
 async function tevFetchDecade(title, artist){
-  showToast('⏳ Recherche de la décennie…', 'success');
+  showToast('⏳ Recherche de la décennie et de la date de sortie…', 'success');
   await itunesRateGate();
   const result = await fetchItunesReleaseDecade(title, artist);
-  if(!result.decade){
-    showToast(result.failed ? 'Requête iTunes en échec, réessayez' : 'Décennie introuvable sur iTunes pour ce titre', 'err');
+  if(!result.decade && !result.releaseDate){
+    showToast(result.failed ? 'Requête iTunes en échec, réessayez' : 'Décennie et date de sortie introuvables sur iTunes pour ce titre', 'err');
     return;
   }
-  updateSongAttribute(title, artist, 'decade', result.decade);
-  const input = document.getElementById('tevDecadeInput');
-  if(input) input.value = result.decade;
-  showToast('✓ Décennie trouvée : ' + result.decade, 'success');
+  if(result.decade){
+    updateSongAttribute(title, artist, 'decade', result.decade);
+    const input = document.getElementById('tevDecadeInput');
+    if(input) input.value = result.decade;
+  }
+  if(result.releaseDate){
+    updateSongAttribute(title, artist, 'releaseDate', result.releaseDate);
+    const input = document.getElementById('tevReleaseDateInput');
+    if(input) input.value = result.releaseDate;
+  }
+  const badge = document.getElementById('tevNewProdBadge');
+  if(badge) badge.style.display = isNewProduction(result.releaseDate) ? 'inline-flex' : 'none';
+  showToast('✓ ' + [result.decade, result.releaseDate].filter(Boolean).join(' · ') + ' trouvé(e)', 'success');
+}
+
+/** "Nouvelle production" au sens quota : sortie officielle il y a moins de
+ *  18 mois à la date du jour. Toujours recalculé à l'affichage (jamais mis
+ *  en cache) pour rester exact même sans revisiter la fiche du titre. */
+function isNewProduction(releaseDateStr){
+  if(!releaseDateStr) return false;
+  const rd = new Date(releaseDateStr + 'T00:00:00');
+  if(isNaN(rd.getTime())) return false;
+  const months = (Date.now() - rd.getTime()) / (1000*60*60*24*30.44);
+  return months >= 0 && months < 18;
 }
 
 function closeTitleEvolutionModal(e){
@@ -19042,9 +19557,10 @@ function songAttributesSaveToStorage(){
 }
 function getSongAttributes(title, artist){
   const key = comiteKey(title, artist);
-  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'', genre:'', decade:'' };
+  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'', genre:'', decade:'', releaseDate:'' };
   if(songAttributes[key].genre === undefined) songAttributes[key].genre = '';
   if(songAttributes[key].decade === undefined) songAttributes[key].decade = '';
+  if(songAttributes[key].releaseDate === undefined) songAttributes[key].releaseDate = '';
   return songAttributes[key];
 }
 
@@ -21697,7 +22213,7 @@ const DEC_TAB_TO_GROUP = {
   matrix:'ranking', spu:'ranking', comp:'ranking',
   radar:'detection', polar:'detection', shazinc:'detection', exclusifs:'detection', watchlist:'detection',
   iedr:'digital', shazlag:'digital', compscore:'digital', opportunity:'digital', benchmark:'digital',
-  cycles:'trajectoire', burn:'trajectoire'
+  cycles:'trajectoire', adoption:'trajectoire', burn:'trajectoire'
 };
 const DEC_GROUP_KEYS = ['ranking','detection','digital','trajectoire'];
 
@@ -21731,7 +22247,7 @@ function switchDecTab(tab){
   if(tab === 'list') tab = 'matrix'; // compat : la liste est désormais intégrée à la matrice
   decActiveTab = tab;
   closeAllDecGroups();
-  ['matrix','spu','comp','burn','polar','shazinc','exclusifs','watchlist','cycles','radar','iedr','shazlag','compscore','opportunity','benchmark'].forEach(t => {
+  ['matrix','spu','comp','burn','polar','shazinc','exclusifs','watchlist','cycles','adoption','radar','iedr','shazlag','compscore','opportunity','benchmark'].forEach(t => {
     document.getElementById('decPane'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'block':'none';
     const b = document.getElementById('decTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(b){
@@ -21755,6 +22271,7 @@ function switchDecTab(tab){
   if(tab==='shazinc') renderShazIncPage();
   if(tab==='exclusifs') renderExclusifsPage();
   if(tab==='cycles')  renderLifeCyclesPage();
+  if(tab==='adoption') renderAdoptionDelayPage();
   if(tab==='radar')   renderRadarPage();
   if(tab==='watchlist') renderWatchlistPage();
   if(tab==='iedr')    renderIedrPage();
@@ -22295,35 +22812,39 @@ function fetchItunesGenre(title, artist, timeoutMs = 7000){
   });
 }
 
-/** Décennie de sortie d'un titre via l'API iTunes Search (même mécanisme
- *  JSONP que fetchItunesGenre ci-dessus) — extrait releaseDate et arrondit
- *  à la décennie ("1990s", "2020s"...). Résout un objet { decade, failed }
- *  plutôt qu'une simple string : distinguer un ÉCHEC TECHNIQUE (timeout,
- *  requête réseau en erreur — typiquement un rate-limit iTunes lors d'un
- *  enrichissement en masse) d'un VRAI "aucun résultat" est nécessaire pour
- *  ne mettre en cache "Inconnue" (jamais retenté ensuite) que dans le
- *  second cas — voir analyseRunDecadeEnrichment ci-dessous. */
+/** Décennie ET date de sortie complète d'un titre via l'API iTunes Search
+ *  (même mécanisme JSONP que fetchItunesGenre ci-dessus) — un seul appel
+ *  extrait à la fois la décennie ("1990s"...) ET la date de sortie précise
+ *  (YYYY-MM-DD, pour le champ "Date de sortie officielle" et le calcul du
+ *  flag "nouvelle production"/délai d'adoption). Résout un objet
+ *  { decade, releaseDate, failed } plutôt qu'une simple string : distinguer
+ *  un ÉCHEC TECHNIQUE (timeout, requête réseau en erreur — typiquement un
+ *  rate-limit iTunes lors d'un enrichissement en masse) d'un VRAI "aucun
+ *  résultat" est nécessaire pour ne mettre en cache "Inconnue" (jamais
+ *  retenté ensuite) que dans le second cas — voir analyseRunDecadeEnrichment
+ *  ci-dessous. */
 function fetchItunesReleaseDecade(title, artist, timeoutMs = 7000){
   return new Promise((resolve) => {
     const cbName = '__fpaItunesDecade_' + Math.floor(Math.random()*1e9);
     const cleanup = (script) => { window[cbName] = () => {}; if(script) script.remove(); };
     const timer = setTimeout(() => {
-      const s = document.getElementById(cbName); cleanup(s); resolve({ decade: null, failed: true });
+      const s = document.getElementById(cbName); cleanup(s); resolve({ decade: null, releaseDate: null, failed: true });
     }, timeoutMs);
     window[cbName] = (data) => {
       clearTimeout(timer);
       const s = document.getElementById(cbName); cleanup(s);
       try{
         const r = data && data.results && data.results[0];
-        const year = r && r.releaseDate ? parseInt(String(r.releaseDate).slice(0,4), 10) : NaN;
-        resolve({ decade: !isNaN(year) ? (Math.floor(year/10)*10 + 's') : null, failed: false });
-      }catch(e){ resolve({ decade: null, failed: false }); }
+        const iso = r && r.releaseDate ? String(r.releaseDate).slice(0,10) : null; // "2023-06-16T00:00:00Z" → "2023-06-16"
+        const year = iso ? parseInt(iso.slice(0,4), 10) : NaN;
+        resolve({ decade: !isNaN(year) ? (Math.floor(year/10)*10 + 's') : null, releaseDate: iso, failed: false });
+      }catch(e){ resolve({ decade: null, releaseDate: null, failed: false }); }
     };
     const term = encodeURIComponent(`${title} ${artist}`.trim());
     const script = document.createElement('script');
     script.id = cbName;
     script.src = `https://itunes.apple.com/search?term=${term}&entity=song&limit=1&callback=${cbName}`;
-    script.onerror = () => { clearTimeout(timer); cleanup(script); resolve({ decade: null, failed: true }); };
+    script.onerror = () => { clearTimeout(timer); cleanup(script); resolve({ decade: null, releaseDate: null, failed: true }); };
     document.body.appendChild(script);
   });
 }
@@ -22403,9 +22924,16 @@ async function analyseRunDecadeEnrichment(){
           decadeEnrichRetryQueue.push(item); // échec technique : pas de "Inconnue", on retentera
         } else {
           attrs.decade = result.decade || 'Inconnue';
+          if(result.releaseDate && !attrs.releaseDate) attrs.releaseDate = result.releaseDate;
           if(result.decade) decadeEnrichResolvedCount++;
           songAttributesSaveToStorage();
         }
+      } else if(result.releaseDate && !attrs.releaseDate){
+        // Décennie déjà connue mais date de sortie précise pas encore captée
+        // (ex. attribut créé avant l'ajout de ce champ) — on la complète tant
+        // qu'on a la réponse iTunes sous la main, sans requête en plus.
+        attrs.releaseDate = result.releaseDate;
+        songAttributesSaveToStorage();
       }
       decadeEnrichDone++;
       if(decadeEnrichDone % 15 === 0 || decadeEnrichQueue.length === 0) analyseRefreshDecadeDependentViews();
@@ -22497,6 +23025,49 @@ async function analyseRefreshArchivedGenreDecadeStats(){
     analyseRefreshDecadeDependentViews();
   }
   return changed;
+}
+
+/** Repasse en file, sur TOUTES les semaines archivées des deux stations, les
+ *  titres dont la DÉCENNIE est déjà connue mais dont la DATE DE SORTIE
+ *  précise n'a pas encore été captée (typiquement des titres résolus avant
+ *  l'ajout de ce champ) — jumelle de analyseRetryFailedDecadesAllArchives
+ *  ci-dessus, même mécanisme de file/throttle iTunes. Ne touche jamais un
+ *  titre marqué "Inconnue" (aucune date à en tirer) ni un titre déjà
+ *  complet. Bouton "📅 Compléter les dates de sortie manquantes" de la carte
+ *  Décennies des Graphiques d'évolution. */
+async function analyseBackfillReleaseDatesAllArchives(){
+  showToast('⏳ Recherche des dates de sortie manquantes dans toutes les semaines archivées…', 'success');
+  await analyseHistoryCacheLoad();
+  const history = analyseLoadHistory();
+  const seen = new Set();
+  let queued = 0;
+  for(const stKey of ['EUROPE2','RFM']){
+    for(const entry of (history[stKey]||[])){
+      const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
+      if(!detail || !detail.rows) continue;
+      detail.rows.forEach(row => {
+        const key = comiteKey(row.title, row.artist);
+        if(seen.has(key)) return;
+        seen.add(key);
+        if(decadeEnrichQueue.some(q => q.key === key)) return;
+        const attrs = getSongAttributes(row.title, row.artist);
+        if(attrs.decade && attrs.decade !== 'Inconnue' && !attrs.releaseDate){
+          decadeEnrichQueue.push({ title: row.title, artist: row.artist, key });
+          queued++;
+        }
+      });
+    }
+  }
+  if(!queued){
+    showToast('Aucune date de sortie manquante trouvée sur l\'ensemble des semaines archivées', 'success');
+    return;
+  }
+  decadeEnrichTotal = decadeEnrichDone + decadeEnrichQueue.length;
+  showToast('📅 Recherche de ' + queued + ' date(s) de sortie manquante(s) sur toutes les semaines archivées…', 'success');
+  if(!decadeEnrichInProgress){
+    decadeEnrichResolvedCount = 0;
+    analyseRunDecadeEnrichment();
+  } else analyseUpdateDecadeProgressUI();
 }
 
 /** Repasse en file, sur TOUTES les semaines archivées des deux stations
@@ -23561,11 +24132,25 @@ function extract538CurrentPdfUrl(html){
  *  car pdf.js renvoie les items dans l'ordre du flux du PDF, qui ne
  *  correspond pas à l'ordre de lecture visuel pour une mise en page en
  *  grille/collage comme celle du Top 50 538 (voir parse538TopSongsFromLines
- *  ci-dessous). */
+ *  ci-dessous).
+ *  Jonction SENSIBLE À L'ÉCART RÉEL entre fragments consécutifs (basée sur
+ *  `width`, quand fourni par l'appelant) plutôt qu'un espace systématique :
+ *  certains PDF Médiamétrie scindent un même nombre ou un même mot en
+ *  plusieurs items pdf.js strictement adjacents (ex. "6," puis "1" pour
+ *  "6,1", écart mesuré de 0,01pt — un artefact de kerning du générateur,
+ *  pas un vrai espace). Un espace systématique y insérait un blanc erroné,
+ *  cassant le nombre en deux et faisant déborder le nom de la ligne sur la
+ *  valeur qui suit (voir le bug « chiffres collés au nom de la radio »).
+ *  Seuil de 1.5pt : bien en dessous d'un espace de mot réel (typiquement
+ *  3-6pt à ces tailles de police), largement au-dessus d'un écart de
+ *  kerning entre fragments d'un même token — sans effet sur les appelants
+ *  qui ne fournissent pas `width` (repli sur l'ancien comportement, un
+ *  espace systématique). */
 function groupPdfItemsIntoLines(items){
-  const pts = items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str.trim(), x: it.x, y: it.y }));
+  const pts = items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str.trim(), x: it.x, y: it.y, width: it.width }));
   pts.sort((a, b) => b.y - a.y || a.x - b.x); // haut → bas, puis gauche → droite
   const Y_TOL = 3; // tolérance verticale (points PDF) pour considérer deux items sur la même ligne
+  const GAP_TOL = 1.5; // en-dessous : fragments du même token, pas de vrai espace
   const lines = [];
   for(const p of pts){
     let line = lines.find(l => Math.abs(l.y - p.y) <= Y_TOL);
@@ -23574,7 +24159,17 @@ function groupPdfItemsIntoLines(items){
   }
   return lines.map(l => {
     const sorted = l.items.slice().sort((a, b) => a.x - b.x);
-    return { y: l.y, text: sorted.map(i => i.str).join(' ').replace(/\s+/g, ' ').trim() };
+    let text = '';
+    sorted.forEach((it, i) => {
+      if(i > 0){
+        const prev = sorted[i-1];
+        const hasWidths = typeof prev.width === 'number' && typeof it.width === 'number';
+        const gap = hasWidths ? (it.x - (prev.x + prev.width)) : Infinity; // pas de width fourni → toujours un espace (comportement historique)
+        if(gap > GAP_TOL) text += ' ';
+      }
+      text += it.str;
+    });
+    return { y: l.y, text: text.replace(/\s+/g, ' ').trim() };
   });
 }
 
@@ -23721,7 +24316,7 @@ async function fetchRadio538TopSongs(){
       const pg = await pdf.getPage(p);
       const content = await pg.getTextContent();
       content.items.forEach(it => {
-        if(it.str && it.str.trim()) items.push({ str: it.str, x: it.transform[4], y: it.transform[5] });
+        if(it.str && it.str.trim()) items.push({ str: it.str, x: it.transform[4], y: it.transform[5], width: it.width });
       });
     }
     lines = groupPdfItemsIntoLines(items);
