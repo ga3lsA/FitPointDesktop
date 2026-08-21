@@ -3832,7 +3832,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.180';
+const FPA_VERSION   = 'v30.182';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -5684,11 +5684,69 @@ function mbUpdateTevBadge(){
 function mbUpdateProgressUI(){
   mbUpdateTevBadge();
 }
+/** Symétrique de analyseBackfillReleaseDatesAllArchives (Décennie/iTunes),
+ *  pour MusicBrainz : balaye TOUTES les semaines archivées des deux
+ *  stations et met en file tout titre jamais interrogé (mbStatus vide) —
+ *  indispensable pour rattraper le catalogue existant, puisque
+ *  mbQueueEnrichment ne se déclenche automatiquement qu'aux imports (donc
+ *  jamais pour les semaines déjà archivées avant l'introduction de cette
+ *  fonctionnalité, ou tant qu'aucun nouvel import n'a eu lieu depuis).
+ *  Déclenchée en cliquant sur le badge MusicBrainz de la fiche titre
+ *  (mbShowStatusToast, ci-dessous) quand il reste du "en attente" et
+ *  qu'aucun enrichissement n'est déjà en cours. */
+async function mbBackfillAllArchives(){
+  if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')){
+    showToast('Proxy MusicBrainz non configuré — voir ⚙️ Configuration FPA', 'err');
+    return;
+  }
+  showToast('⏳ Recherche des ISRC/dates de sortie manquants dans tout le catalogue…', 'success');
+  await analyseHistoryCacheLoad();
+  const history = analyseLoadHistory();
+  const seen = new Set();
+  let queued = 0, totalScanned = 0;
+  const queueIfMissing = (title, artist) => {
+    const key = comiteKey(title, artist);
+    if(seen.has(key)) return;
+    seen.add(key);
+    totalScanned++;
+    if(mbEnrichQueue.some(q => q.key === key)) return;
+    const attrs = getSongAttributes(title, artist);
+    if(!attrs.mbStatus){
+      mbEnrichQueue.push({ title, artist, key });
+      queued++;
+    }
+  };
+  for(const stKey of ['EUROPE2','RFM']){
+    for(const entry of (history[stKey]||[])){
+      const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
+      if(!detail || !detail.rows) continue;
+      detail.rows.forEach(row => queueIfMissing(row.title, row.artist));
+    }
+  }
+  // Couvre aussi Comité, Playlist et Veille : des titres peuvent y figurer
+  // sans jamais être apparus dans une semaine Airplay archivée (ajout
+  // manuel, service presse...) — sans ce complément, ils resteraient
+  // indéfiniment "en attente" dans le badge sans jamais être rattrapables.
+  (comiteTitles||[]).forEach(t => queueIfMissing(t.title, t.artist));
+  (playlistTitles||[]).forEach(t => queueIfMissing(t.title, t.artist));
+  (watchlistTitles||[]).forEach(t => queueIfMissing(t.title, t.artist));
+  if(!queued){
+    showToast('✓ ISRC/date de sortie déjà interrogés pour les ' + totalScanned + ' titre(s) connus — rien à faire', 'success');
+    return;
+  }
+  mbEnrichTotal = mbEnrichDone + mbEnrichQueue.length;
+  showToast('🎵 Lancement de l\'enrichissement MusicBrainz sur ' + queued + ' titre(s) (débit 1/s, ~' + Math.ceil(queued/60) + ' min)…', 'success');
+  if(!mbEnrichInProgress) mbRunEnrichment();
+  else mbUpdateProgressUI();
+}
 /** Résumé cliqué depuis le badge — utile une fois l'enrichissement terminé
  *  (le badge disparaît alors) pour vérifier après coup que ça a bien
  *  tourné : compte, sur l'ensemble des titres connus de songAttributes,
  *  combien ont un ISRC/une date MusicBrainz trouvés, combien sont encore
- *  en attente (jamais interrogés) et combien sont marqués "introuvable". */
+ *  en attente (jamais interrogés) et combien sont marqués "introuvable".
+ *  S'il reste du "en attente" et qu'aucun enrichissement n'est en cours,
+ *  le clic relance directement mbBackfillAllArchives — sans ça, ces titres
+ *  ne seraient jamais rattrapés tant qu'aucun nouvel import n'a lieu. */
 function mbShowStatusToast(){
   if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')){
     showToast('Proxy MusicBrainz non configuré — voir ⚙️ Configuration FPA', 'err');
@@ -5704,7 +5762,11 @@ function mbShowStatusToast(){
     else if(a.mbStatus === 'notfound') notfound++;
     else pending++;
   });
-  showToast('✓ MusicBrainz : ' + found + ' titre(s) enrichi(s) · ' + notfound + ' introuvable(s) · ' + pending + ' pas encore interrogé(s) (se lance au prochain import)', 'success');
+  if(pending > 0){
+    mbBackfillAllArchives();
+    return;
+  }
+  showToast('✓ MusicBrainz : ' + found + ' titre(s) enrichi(s) · ' + notfound + ' introuvable(s)', 'success');
 }
 /** Si la fiche Song Metrics du titre tout juste enrichi est actuellement
  *  ouverte à l'écran, rafraîchit ses champs ISRC/Date de sortie MusicBrainz
@@ -14721,20 +14783,53 @@ function graphAllDecades(stKey){
   });
   return arr;
 }
-/** Semaine d'audience digitale la plus proche de la date de cette semaine
- *  de programmation (± 4 jours — même tolérance que la jointure de l'onglet
- *  Corrélation), retournée en entier (utilisée aussi bien pour l'audience
- *  moyenne 5h-24h que pour le focus tranches musicales ci-dessous). */
+/** Nombre de jours de recouvrement (inclusif) entre deux périodes [aStart,
+ *  aEnd] et [bStart, bEnd] données en ISO "YYYY-MM-DD" — 0 si aucun
+ *  chevauchement. C'est la seule façon fiable de savoir si une semaine de
+ *  programmation et une semaine d'audience digitale se correspondent
+ *  réellement : deux dates de DÉBUT proches (l'ancien critère) peuvent très
+ *  bien appartenir à des périodes qui ne se recouvrent quasiment pas — par
+ *  exemple une audience du 10 au 14 août et une programmation du 14 au 20
+ *  août n'ont qu'UN SEUL jour commun (le 14), alors que leurs débuts ne sont
+ *  qu'à 4 jours d'écart et passaient donc l'ancienne tolérance. */
+function overlapDays(aStart, aEnd, bStart, bEnd){
+  if(!aStart || !bStart) return 0;
+  const s = Math.max(new Date(aStart).getTime(), new Date(bStart).getTime());
+  const e = Math.min(new Date(aEnd || aStart).getTime(), new Date(bEnd || bStart).getTime());
+  return e < s ? 0 : Math.round((e - s) / 86400000) + 1;
+}
+function periodLenDays(start, end){
+  if(!start) return 0;
+  return Math.round((new Date(end || start) - new Date(start)) / 86400000) + 1;
+}
+/** Seuil minimum de recouvrement pour accepter une correspondance : la
+ *  MAJORITÉ de la plus courte des deux périodes (arrondi au supérieur).
+ *  Sans ce seuil, un unique jour commun entre une semaine de programmation
+ *  de 7 jours et une semaine d'audience de 5 jours suffirait à les
+ *  apparier — exactement le cas signalé (programmation 14-20 août appariée
+ *  à une audience 10-14 août pour leur seul jour commun, le 14). En dessous
+ *  de ce seuil, mieux vaut ne renvoyer aucune correspondance qu'une valeur
+ *  trompeuse. */
+function minOverlapThreshold(lenA, lenB){
+  return Math.ceil(Math.min(lenA, lenB) / 2);
+}
+/** Semaine d'audience digitale qui recouvre le PLUS cette semaine de
+ *  programmation (voir overlapDays/minOverlapThreshold ci-dessus) —
+ *  retournée telle quelle (utilisée aussi bien pour l'audience moyenne
+ *  5h-24h que pour le focus tranches musicales ci-dessous). */
 function graphFindAudienceRecord(stKey, week){
   if(!week.weekStart) return null;
   const audWeeks = digitalAudienceHistory[stKey] || {};
   if(audWeeks[week.weekStart]) return audWeeks[week.weekStart];
-  let best = null, bestDiff = Infinity;
+  const progLen = periodLenDays(week.weekStart, week.weekEnd);
+  let best = null, bestOverlap = 0;
   Object.keys(audWeeks).forEach(aw => {
-    const diff = Math.abs(new Date(aw) - new Date(week.weekStart));
-    if(diff < bestDiff){ bestDiff = diff; best = aw; }
+    const rec = audWeeks[aw];
+    const ov = overlapDays(week.weekStart, week.weekEnd, aw, rec.weekEnd);
+    const threshold = minOverlapThreshold(progLen, periodLenDays(aw, rec.weekEnd));
+    if(ov >= threshold && ov > bestOverlap){ bestOverlap = ov; best = rec; }
   });
-  return (best && bestDiff <= 4*86400000) ? audWeeks[best] : null;
+  return best;
 }
 /** Les 4 données d'audience digitale disponibles pour l'overlay des
  *  graphiques d'évolution (un seul choix à la fois — l'ancien comportement
@@ -15590,19 +15685,25 @@ function corrBuildMatches(stKey){
       if(progEntry) matchType = 'manual';
     }
     if(!progEntry){
-      // 1) Correspondance par date réelle — prioritaire quand le fichier de
-      //    programmation a été importé avec une date (import récent, via
-      //    l'import unitaire ou en masse). Tolérance de 4 jours autour de la
-      //    date de la semaine d'audience pour absorber les décalages entre
-      //    la convention Yacast (vendredi→jeudi) et la semaine calendaire.
+      // 1) Correspondance par recouvrement réel des périodes — prioritaire
+      //    quand le fichier de programmation a été importé avec des dates
+      //    (import récent, via l'import unitaire ou en masse). Remplace
+      //    l'ancienne tolérance "±4 jours sur la date de début" (voir
+      //    overlapDays/minOverlapThreshold) : deux semaines dont les débuts
+      //    sont proches peuvent très bien ne partager qu'un jour, voire
+      //    aucun — un simple jour commun ne suffit pas, il faut la majorité
+      //    de la plus courte des deux périodes.
       const dated = progHistory.filter(e => e.weekStart);
       if(dated.length){
-        let best = null, bestDiff = Infinity;
+        const audRec = digitalAudienceHistory[stKey][weekStart];
+        const audLen = periodLenDays(weekStart, audRec.weekEnd);
+        let best = null, bestOverlap = 0;
         dated.forEach(e => {
-          const diff = Math.abs(new Date(e.weekStart) - new Date(weekStart));
-          if(diff < bestDiff){ bestDiff = diff; best = e; }
+          const ov = overlapDays(e.weekStart, e.weekEnd, weekStart, audRec.weekEnd);
+          const threshold = minOverlapThreshold(periodLenDays(e.weekStart, e.weekEnd), audLen);
+          if(ov >= threshold && ov > bestOverlap){ bestOverlap = ov; best = e; }
         });
-        if(best && bestDiff <= 4*86400000){ progEntry = best; matchType = 'date'; }
+        if(best){ progEntry = best; matchType = 'date'; }
       }
     }
     if(!progEntry){
