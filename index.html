@@ -417,6 +417,39 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   </div>
 </div>
 
+<!-- Gestion des entités Historique Marché : renommage, catégorie, fusion — tout en un seul tableau -->
+<div id="modalMarcheManageEntities" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:700;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeMarcheManageEntitiesModal()">
+  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:1100px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 24px 70px rgba(11,29,58,.3)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">🛠️ Gérer les radios — Historique Marché</div>
+      <button onclick="closeMarcheManageEntitiesModal()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:16px">
+      <strong style="color:var(--navy)">Nom</strong> : modifiez et validez (Entrée ou clic ailleurs) pour renommer partout, sur toutes les vagues. Si le nouveau nom correspond à une entrée déjà existante, les deux sont automatiquement <strong>fusionnées</strong> plutôt que dupliquées.<br>
+      <strong style="color:var(--navy)">Catégorie</strong> : change le classement (Radio / Agrégat format / Agrégat statut / Couplage) sur toutes les vagues.<br>
+      <strong style="color:var(--navy)">Fusionner avec</strong> : choisissez une autre entrée pour la fusionner directement dans celle-ci, sans repasser par sa fiche.
+    </div>
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <input type="text" id="marcheManageSearch" placeholder="🔍 Rechercher une radio…" oninput="marcheRenderManageEntitiesTable()" style="flex:1;min-width:200px;font-size:12px;padding:8px 12px;border-radius:8px;border:1.5px solid var(--border)">
+      <select id="marcheManageCategoryFilter" onchange="marcheRenderManageEntitiesTable()" style="font-size:12px;padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-weight:700">
+        <option value="all">Toutes catégories</option>
+        <option value="station">📻 Radios</option>
+        <option value="format">📦 Agrégats — format</option>
+        <option value="statut">🏛️ Agrégats — statut</option>
+        <option value="couplage">🔗 Couplages publicitaires</option>
+      </select>
+      <span id="marcheManageCount" style="font-size:11px;font-weight:700;color:var(--muted)"></span>
+    </div>
+
+    <div id="marcheManageTableArea" style="overflow-x:auto"></div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn-ghost" style="font-size:12px;padding:8px 16px" onclick="closeMarcheManageEntitiesModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
 <div id="modalSaveVague" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:500;align-items:center;justify-content:center">
   <div style="background:var(--white);border-radius:16px;padding:32px;width:480px;max-width:92vw;box-shadow:0 20px 60px rgba(11,29,58,.25)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
@@ -1275,6 +1308,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <input type="checkbox" id="radarUseLive" onchange="renderRadarPage()">
           🔴 Utiliser le Live (Indés/Général/Radio suivie)
         </label>
+        <span style="width:1px;height:20px;background:var(--border)"></span>
+        <label id="radarExclE2Label" style="display:flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text2)" title="Neutralise l'effet mécanique d'Europe 2 sur le Classement Général (Airplay Validé et Live) : au lieu du rang « Rg » brut de Muzicast, reclasse les titres sur (Nb.Diffs total − passages Europe 2), pour qu'une hausse des rotations propre à Europe 2 ne fasse plus mécaniquement gagner de places à un titre dans ce classement.">
+          <input type="checkbox" id="radarExclE2" onchange="renderRadarPage()">
+          🚫 Classement Général sans Europe 2
+        </label>
       </div>
 
       <!-- Résultats -->
@@ -1818,6 +1856,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="openMediaAddPeriodModal()">+ Ajouter une vague</button>
       </div>
       <div id="marcheActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openMarcheManageEntitiesModal()" title="Renommer, fusionner et recatégoriser les radios/agrégats/couplages en un seul endroit, sans passer par chaque fiche vague par vague">🛠️ Gérer les radios</button>
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="openMarcheCustomChartModal()" title="Comparer plusieurs radios, vagues et critères sur une même courbe">📈 Vue graphique personnalisée</button>
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px;color:#B05E00" onclick="openMarcheCleanupModal()" title="Détecte et supprime en masse les entrées corrompues issues d'un import (nom ou valeurs mal segmentés)">🧹 Nettoyer les entrées suspectes</button>
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="marcheLoadFromDrive(true)" title="Recharge l'Historique Marché depuis Drive Sync">☁️ Synchroniser Drive</button>
@@ -12780,6 +12819,32 @@ function marcheLoadLocal(){
   }catch(e){ /* ignoré */ }
   marcheConsolidateBareDuplicates();
   marcheApplyKnownAliases();
+  marcheNormalizeInconsistentLabels();
+}
+/** Rattrape rétroactivement une entité déjà fusionnée dont le libellé
+ *  diffère d'une vague à l'autre (bug corrigé dans marcheMergeEntitiesSilent
+ *  — avant ce correctif, une fusion pouvait laisser un slug affichant DEUX
+ *  libellés différents selon la vague, l'un "survivant" presque au hasard
+ *  dans les vues qui prennent le premier rencontré, ex. "Virgin Radio"
+ *  gardé après une fusion avec "Europe 2"). Choisit le libellé le plus
+ *  fréquent parmi les vagues concernées (à égalité, le plus long — souvent
+ *  le mieux formaté) et l'applique partout. */
+function marcheNormalizeInconsistentLabels(){
+  const bySlug = {}; // slug → { label → nombre de vagues }
+  marcheSortedWaves().forEach(w => Object.keys(w.entities).forEach(slug => {
+    const label = w.entities[slug].label;
+    if(!label) return;
+    (bySlug[slug] = bySlug[slug] || {})[label] = (bySlug[slug][label] || 0) + 1;
+  }));
+  let changed = false;
+  Object.keys(bySlug).forEach(slug => {
+    const labels = Object.keys(bySlug[slug]);
+    if(labels.length < 2) return; // déjà cohérent
+    labels.sort((a,b) => (bySlug[slug][b]-bySlug[slug][a]) || (b.length-a.length));
+    const winner = labels[0];
+    marcheSortedWaves().forEach(w => { if(w.entities[slug] && w.entities[slug].label !== winner){ w.entities[slug].label = winner; changed = true; } });
+  });
+  if(changed) marcheSaveLocal();
 }
 /** Certains PDF Médiamétrie extraient parfois un nom de radio SANS l'espace
  *  interne (ex. "Europe2" au lieu de "Europe 2"), selon le générateur du
@@ -12944,8 +13009,23 @@ function marcheUpsertEntity(waveId, rawLabel, category, period, metrics){
 /** Cœur de la fusion, sans effet de bord de sauvegarde — utilisé à la fois
  *  par la consolidation automatique au chargement (marcheApplyKnownAliases)
  *  et par la fusion manuelle depuis la fiche radio. */
-function marcheMergeEntitiesSilent(fromSlug, intoSlug){
+/** @param {string} [forcedLabel] Si fourni (ex. depuis un renommage), impose
+ *  ce libellé sur toutes les vagues de `intoSlug` après fusion. Sinon,
+ *  choisit le libellé de `intoSlug` s'il en avait déjà un AVANT la fusion
+ *  (sur n'importe quelle vague), sinon celui de `fromSlug` — et l'applique
+ *  de façon homogène partout. Sans cette normalisation finale, une vague où
+ *  `intoSlug` n'existait pas encore récupérait tel quel l'objet de
+ *  `fromSlug` (donc SON libellé), tandis qu'une vague où `intoSlug`
+ *  existait déjà gardait le sien — un même slug pouvait alors afficher DEUX
+ *  libellés différents selon la vague consultée, l'un d'eux "survivant"
+ *  presque au hasard dans les vues qui prennent le premier rencontré. */
+function marcheMergeEntitiesSilent(fromSlug, intoSlug, forcedLabel){
   if(fromSlug === intoSlug) return;
+  let finalLabel = forcedLabel || null;
+  if(!finalLabel){
+    marcheSortedWaves().forEach(w => { if(!finalLabel && w.entities[intoSlug]) finalLabel = w.entities[intoSlug].label; });
+    if(!finalLabel) marcheSortedWaves().forEach(w => { if(!finalLabel && w.entities[fromSlug]) finalLabel = w.entities[fromSlug].label; });
+  }
   Object.values(marcheHistory.waves).forEach(w => {
     const fromEnt = w.entities[fromSlug];
     if(!fromEnt) return;
@@ -12956,6 +13036,9 @@ function marcheMergeEntitiesSilent(fromSlug, intoSlug){
     }
     delete w.entities[fromSlug];
   });
+  if(finalLabel){
+    Object.values(marcheHistory.waves).forEach(w => { if(w.entities[intoSlug]) w.entities[intoSlug].label = finalLabel; });
+  }
   marcheAliasMap[fromSlug] = intoSlug;
   marcheKnownBareSlugs = null; // invalide le cache : fromSlug n'existe plus, à reconstruire au prochain accès
 }
@@ -13047,6 +13130,114 @@ function marcheCleanupDeleteSelected(){
   renderMarchePage();
 }
 
+/* ---- Gestion des entités : renommage / catégorie / fusion en un seul tableau ----
+ * Complète les fiches individuelles (une radio à la fois) pour les cas où
+ * plusieurs entrées doivent être corrigées d'affilée — typiquement après un
+ * import qui a mal classé ou mal orthographié plusieurs radios à la fois. */
+function openMarcheManageEntitiesModal(){
+  if(!requireAdmin()) return;
+  if(!marcheSortedWaves().length){ showToast('Aucune vague dans l\'Historique Marché pour l\'instant', 'err'); return; }
+  document.getElementById('modalMarcheManageEntities').style.display = 'flex';
+  document.getElementById('marcheManageSearch').value = '';
+  document.getElementById('marcheManageCategoryFilter').value = 'all';
+  marcheRenderManageEntitiesTable();
+}
+function closeMarcheManageEntitiesModal(){
+  document.getElementById('modalMarcheManageEntities').style.display = 'none';
+  renderMarchePage(); // reflète les éventuels renommages/fusions/recatégorisations sur la vue principale
+}
+function marcheRenderManageEntitiesTable(){
+  const areaEl = document.getElementById('marcheManageTableArea');
+  const countEl = document.getElementById('marcheManageCount');
+  const rawSearch = (document.getElementById('marcheManageSearch').value || '').trim();
+  const q = rawSearch ? mediaSlugify(rawSearch).replace(/-/g,'') : ''; // voir marcheRenderCustomChartEntityList : mediaSlugify('') renvoie 'x', jamais normaliser une recherche vide
+  const catFilter = document.getElementById('marcheManageCategoryFilter').value;
+
+  let entities = marcheAllKnownEntities();
+  const totalCount = entities.length;
+  if(catFilter !== 'all') entities = entities.filter(e => e.category === catFilter);
+  if(q) entities = entities.filter(e => mediaSlugify(e.label).replace(/-/g,'').includes(q));
+  countEl.textContent = entities.length + ' / ' + totalCount + ' entrée(s)';
+
+  if(!entities.length){
+    areaEl.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">Aucune entrée ne correspond à ce filtre.</div>`;
+    return;
+  }
+  const waveCountBySlug = {};
+  marcheSortedWaves().forEach(w => Object.keys(w.entities).forEach(s => { waveCountBySlug[s] = (waveCountBySlug[s]||0) + 1; }));
+  const catOptions = Object.keys(MARCHE_CATEGORY_LABELS).map(c => `<option value="${c}">${MARCHE_CATEGORY_LABELS[c]}</option>`).join('');
+
+  areaEl.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="text-align:left;color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1.5px solid var(--border)">
+      <th style="padding:6px 8px;width:26%">Nom</th>
+      <th style="padding:6px 8px;width:16%">Catégorie</th>
+      <th style="padding:6px 8px;width:8%">Vagues</th>
+      <th style="padding:6px 8px;width:36%">Fusionner avec…</th>
+      <th style="padding:6px 8px;width:6%"></th>
+    </tr></thead>
+    <tbody>
+      ${entities.map(e => {
+        const others = entities.filter(o => o.slug !== e.slug);
+        const mergeOptions = others.map(o => `<option value="${o.slug}">${escHtml(o.label)} — ${MARCHE_CATEGORY_LABELS[o.category]||''}</option>`).join('');
+        return `<tr style="border-bottom:1px solid var(--border)" data-slug="${e.slug}">
+          <td style="padding:5px 8px">
+            <input type="text" value="${escHtml(e.label)}" onchange="marcheManageHandleRename('${e.slug}', this)"
+              style="width:100%;font-size:12px;font-weight:700;color:var(--navy);padding:5px 7px;border-radius:6px;border:1.5px solid var(--border)">
+          </td>
+          <td style="padding:5px 8px">
+            <select onchange="marcheManageHandleRecategorize('${e.slug}', this.value)" style="width:100%;font-size:11px;padding:5px 6px;border-radius:6px;border:1.5px solid var(--border)">
+              ${catOptions.replace(`value="${e.category}"`, `value="${e.category}" selected`)}
+            </select>
+          </td>
+          <td style="padding:5px 8px;color:var(--text2);text-align:center">${waveCountBySlug[e.slug]||0}</td>
+          <td style="padding:5px 8px">
+            <div style="display:flex;gap:6px">
+              <select id="marcheManageMergeSel_${e.slug}" style="flex:1;font-size:11px;padding:5px 6px;border-radius:6px;border:1.5px solid var(--border)">
+                <option value="">— choisir une entrée —</option>
+                ${mergeOptions}
+              </select>
+              <button onclick="marcheManageHandleMerge('${e.slug}')" style="flex-shrink:0;font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:6px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);cursor:pointer">Fusionner</button>
+            </div>
+          </td>
+          <td style="padding:5px 8px;text-align:center">
+            <button onclick="marcheManageHandleDelete('${e.slug}')" title="Supprimer cette entrée" style="background:none;border:none;color:#CC2222;cursor:pointer;font-size:13px">🗑️</button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+function marcheManageHandleRename(slug, inputEl){
+  const newLabel = inputEl.value;
+  const result = marcheRenameEntity(slug, newLabel);
+  if(!result.ok){ showToast('Nom invalide', 'err'); return; }
+  showToast(result.merged ? '✓ Fusionnée avec l\'entrée existante « ' + newLabel.trim() + ' »' : '✓ Renommée en « ' + newLabel.trim() + ' »', 'success');
+  marcheRenderManageEntitiesTable();
+}
+function marcheManageHandleRecategorize(slug, newCategory){
+  marcheRecategorizeEntity(slug, newCategory);
+  showToast('✓ Catégorie mise à jour', 'success');
+  marcheRenderManageEntitiesTable();
+}
+function marcheManageHandleMerge(slug){
+  const sel = document.getElementById('marcheManageMergeSel_' + slug);
+  const target = sel.value;
+  if(!target){ showToast('Choisissez une entrée à fusionner', 'err'); return; }
+  const targetLabel = sel.selectedOptions[0].text;
+  if(!confirm('Fusionner cette entrée dans « ' + targetLabel + ' » ? Cette action est irréversible.')) return;
+  marcheMergeEntities(slug, target);
+  showToast('✓ Fusion effectuée', 'success');
+  marcheRenderManageEntitiesTable();
+}
+function marcheManageHandleDelete(slug){
+  const row = document.querySelector('#marcheManageTableArea tr[data-slug="' + slug + '"]');
+  const label = row ? row.querySelector('input').value : slug;
+  if(!confirm('Supprimer définitivement « ' + label + ' » de l\'Historique Marché, sur toutes les vagues ? Cette action est irréversible.')) return;
+  marcheDeleteEntityGlobal(slug);
+  showToast('✓ Entrée supprimée', 'success');
+  marcheRenderManageEntitiesTable();
+}
+
 function marcheRecategorizeEntity(slug, newCategory){
   if(!MARCHE_CATEGORY_LABELS[newCategory]) return;
   let changed = 0;
@@ -13056,6 +13247,36 @@ function marcheRecategorizeEntity(slug, newCategory){
   if(!changed) return;
   marcheSaveLocal();
   marcheSaveToDrive();
+}
+/** Une autre entité (n'importe quelle vague) porte-t-elle déjà ce slug ? */
+function marcheEntitySlugExists(slug, excludeSlug){
+  return marcheSortedWaves().some(w => w.entities[slug] && slug !== excludeSlug);
+}
+/** Renomme une entité — renommage "intelligent" : si le nouveau nom
+ *  correspond exactement à une entité DÉJÀ EXISTANTE par ailleurs (ex. on
+ *  renomme "Virgin Radio" en "Europe 2" alors qu'une entrée "Europe 2"
+ *  existe déjà séparément), fusionne automatiquement l'ancienne entrée dans
+ *  celle-ci plutôt que de simplement changer son libellé — évite d'avoir à
+ *  d'abord repérer le doublon puis aller le fusionner manuellement à part.
+ *  Sinon, se contente de changer le libellé affiché sur toutes les vagues,
+ *  sans toucher à l'identifiant technique (slug) de l'entité. */
+function marcheRenameEntity(oldSlug, newLabel){
+  newLabel = (newLabel||'').trim();
+  if(!newLabel) return { ok:false, reason:'empty' };
+  const newSlug = mediaSlugify(newLabel);
+  if(newSlug !== oldSlug && marcheEntitySlugExists(newSlug, oldSlug)){
+    marcheMergeEntitiesSilent(oldSlug, newSlug, newLabel);
+    marcheKnownBareSlugs = null;
+    marcheSaveLocal();
+    marcheSaveToDrive();
+    return { ok:true, merged:true, into:newSlug };
+  }
+  let changed = false;
+  Object.values(marcheHistory.waves).forEach(w => {
+    if(w.entities[oldSlug]){ w.entities[oldSlug].label = newLabel; changed = true; }
+  });
+  if(changed){ marcheSaveLocal(); marcheSaveToDrive(); }
+  return { ok:true, merged:false };
 }
 /** Fusionne deux entités (ex. renommage France Bleu → ici) : toutes les
  *  données historiques de `fromSlug` sont recopiées sous `intoSlug` (sans
@@ -28917,6 +29138,25 @@ function radarFindAirplayEntry(airplayMap, title, artist){
   return best;
 }
 
+/** Rang « Général » alternatif neutralisant l'effet d'Europe 2 : au lieu du
+ *  rang « Rg » brut de Muzicast (qui inclut mécaniquement les passages
+ *  Europe 2 dans le total), reclasse les titres sur (Nb.Diffs total − passages
+ *  Europe 2), parmi les titres présents dans le même export Yacast/Muzicast
+ *  que celui qui a produit ce « Rg » — donc sur le même périmètre de titres,
+ *  juste avec le volume Europe 2 retranché avant classement. Même principe
+ *  que radarComputeDerivedRankMap (rang dérivé d'une radio suivie), mais sur
+ *  le total moins une composante plutôt que sur une seule colonne. */
+function radarComputeGeneralRankMapExclE2(airplayMap){
+  const rankMap = {};
+  if(!airplayMap) return rankMap;
+  const withVal = Object.entries(airplayMap)
+    .filter(([k]) => k.includes('|||'))
+    .map(([k,e]) => ({ key:k, val: Math.max(0, computeTotalAirplayFromEntry(e) - (parseInt(e.e2)||0)) }))
+    .filter(e => e.val > 0);
+  withVal.sort((a,b) => b.val - a.val);
+  withVal.forEach((e,i) => { rankMap[e.key] = i+1; });
+  return rankMap;
+}
 /** Rang dérivé du volume de passages pour une radio donnée, sur une semaine d'airplay donnée */
 function radarComputeDerivedRankMap(airplayMap, radioKey){
   const rankMap = {};
@@ -29049,6 +29289,15 @@ async function computeRadarRows(){
   const curCompRankMap  = radarComputeDerivedRankMap(curAirplaySource, compRadio);
   const prevCompRankMap = radarComputeDerivedRankMap(prevData.airplay, compRadio);
 
+  // Classement Général « sans Europe 2 » : neutralise l'effet mécanique
+  // d'une hausse de rotations propre à Europe 2 sur le classement toutes
+  // radios confondues — voir radarComputeGeneralRankMapExclE2. Calculé sur
+  // les DEUX semaines (courante et référence) pour rester une comparaison
+  // homogène ; sans effet sur les autres critères du Radar.
+  const exclE2 = !!document.getElementById('radarExclE2')?.checked;
+  const curGenRankMap  = exclE2 ? radarComputeGeneralRankMapExclE2(curAirplaySource) : null;
+  const prevGenRankMap = exclE2 ? radarComputeGeneralRankMapExclE2(prevData.airplay) : null;
+
   const rows = [];
   analysisResult.forEach(r => {
     const gains = [];
@@ -29096,15 +29345,20 @@ async function computeRadarRows(){
         if(gain >= threshInd) gains.push({icon:'📻', label:'Classement Indés' + (useLive?' (Live)':''), gain, from:prevInd, to:curInd});
       }
     }
-    // Classement Général (Rg Muzicast, toutes radios confondues — valeur directe, pas dérivée)
+    // Classement Général (Rg Muzicast, toutes radios confondues — valeur
+    // directe par défaut ; rang dérivé "hors Europe 2" si l'option est
+    // cochée, voir radarComputeGeneralRankMapExclE2 ci-dessus).
     const curGenEntry = useLive ? radarFindAirplayEntry(curAirplaySource, r.title, r.artist) : r.airplay;
-    const curGen = curGenEntry ? (parseInt(curGenEntry.rg)||null) : null;
+    const curGen = exclE2
+      ? (radarLookupDerivedRank(curGenRankMap, r.title, r.artist) || null)
+      : (curGenEntry ? (parseInt(curGenEntry.rg)||null) : null);
     if(curGen && prevData.airplay){
-      const prevEntry = radarFindAirplayEntry(prevData.airplay, r.title, r.artist);
-      const prevGen = prevEntry ? (parseInt(prevEntry.rg)||null) : null;
+      const prevGen = exclE2
+        ? (radarLookupDerivedRank(prevGenRankMap, r.title, r.artist) || null)
+        : (() => { const prevEntry = radarFindAirplayEntry(prevData.airplay, r.title, r.artist); return prevEntry ? (parseInt(prevEntry.rg)||null) : null; })();
       if(prevGen){
         const gain = prevGen - curGen;
-        if(gain >= threshGen) gains.push({icon:'🌐', label:'Classement Général' + (useLive?' (Live)':''), gain, from:prevGen, to:curGen});
+        if(gain >= threshGen) gains.push({icon:'🌐', label:'Classement Général' + (useLive?' (Live)':'') + (exclE2?' hors E2':''), gain, from:prevGen, to:curGen});
       }
     }
     // Ajout dans les playlists clés "Futurs Hits" — Deezer ET Spotify.
