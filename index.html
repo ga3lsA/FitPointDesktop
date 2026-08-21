@@ -250,6 +250,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <span id="stationToggleLabel">📻 Europe 2</span>
     </button>
     <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
+    <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
     <span id="fpaRoleBadge" title="" style="font-size:10px;font-weight:800;color:var(--navy);background:var(--cyan-light);border:1px solid var(--cyan-mid);border-radius:20px;padding:4px 10px;white-space:nowrap;flex-shrink:0"></span>
     <button onclick="fpaLogout()" title="Se déconnecter" class="btn-ghost" style="font-size:10.5px;padding:5px 7px;flex-shrink:0">⏏</button>
   </div>
@@ -2544,7 +2545,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="display:flex;align-items:center;gap:8px">
             <span id="tevMomentumDot" style="display:none;width:9px;height:9px;border-radius:50%;flex-shrink:0"></span>
             <div id="tevTitle" style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy);line-height:1.2"></div>
-            <span id="tevHeaderNewProdBadge" style="display:none;flex-shrink:0;align-items:center;gap:4px;font-size:10px;font-weight:800;color:#0A8056;background:#E3F6EC;border:1px solid #A8E0C0;border-radius:20px;padding:3px 9px;white-space:nowrap" title="Sortie officielle il y a moins de 18 mois">🆕 Nouvelle prod.</span>
             <a id="tevPlayBadge" href="#" target="_blank" rel="noopener" title="Écouter sur Spotify" onclick="return openSpotifyPopup(this.href)"
               style="display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:19px;height:17px;text-decoration:none;transition:filter .15s"
               onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
@@ -3781,6 +3781,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy Shazam
         <input id="fpaCfgShazam" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy MusicBrainz (ISRC + date de sortie, fiche titre)
+        <input id="fpaCfgMusicBrainz" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
+      </label>
 
       <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px">Playlists clés Apple Music</div>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Tubes du Moment
@@ -3829,7 +3832,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.174';
+const FPA_VERSION   = 'v30.180';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -3932,6 +3935,7 @@ const FPA_DEFAULT_URLS = {
   appleMusic:  '', // URL Web App Apps Script — proxy Apple Music / iTunes
   kworb:       '', // URL Web App Apps Script — proxy kworb.net
   shazam:      '', // URL Web App Apps Script — proxy Shazam
+  musicbrainz: '', // URL Web App Apps Script — proxy MusicBrainz (ISRC + date de sortie)
   quotasEndpoint: '', // URL Web App Apps Script — Quotas FR (Yacast Gmail)
 };
 
@@ -5516,6 +5520,209 @@ async function fetchDeezerPlaylistViaProxy(playlistId, directUrl){
 
 async function fetchDeezerViaProxy(){
   return fetchDeezerPlaylistViaProxy(DEEZER_FR_PLAYLIST_ID, DEEZER_FR_URL);
+}
+
+// ── Proxy MusicBrainz (ISRC + date de sortie officielle) ────────────────────
+// MusicBrainz n'accepte pas le JSONP nativement ET exige un User-Agent
+// explicite (impossible à définir depuis un fetch() navigateur) — contrai-
+// rement à iTunes Search, un appel direct depuis FPA est donc exclu. Passe
+// obligatoirement par un proxy Apps Script perso (même principe que Deezer/
+// Apple Music/Shazam ci-dessus), qui fait la recherche + le lookup côté
+// serveur avec le bon User-Agent et renvoie {mbid, isrc, releaseDate}.
+// Limite stricte MusicBrainz : 1 requête/seconde — voir musicbrainzRateGate.
+let MUSICBRAINZ_APPS_SCRIPT_PROXY_URL = localStorage.getItem('fpa_musicbrainz_proxy_url') || FPA_DEFAULT_URLS.musicbrainz;
+let _mbCbId = 0;
+function fetchMusicBrainzViaAppsScript(title, artist, timeoutMs = 8000){
+  return new Promise((resolve) => {
+    if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')){ resolve(null); return; }
+    const cbName = '__fpaMB_' + (++_mbCbId);
+    const cleanup = () => {
+      window[cbName] = () => {};
+      const s = document.getElementById('__jsonp_' + cbName);
+      if(s) s.remove();
+    };
+    const timer = setTimeout(() => { cleanup(); resolve(null); }, timeoutMs);
+    window[cbName] = (data) => {
+      clearTimeout(timer);
+      cleanup();
+      if(!data || data.error){ resolve(null); return; }
+      // Date de sortie : on ne retient que la précision jour complète
+      // (YYYY-MM-DD) — MusicBrainz renvoie parfois une date partielle
+      // ("1994" ou "1994-05"), inutilisable telle quelle dans un champ
+      // <input type="date"> et trompeuse si on invente un jour.
+      const rd = data.releaseDate && /^\d{4}-\d{2}-\d{2}$/.test(data.releaseDate) ? data.releaseDate : null;
+      resolve({ mbid: data.mbid || null, isrc: data.isrc || null, releaseDate: rd });
+    };
+    const url = MUSICBRAINZ_APPS_SCRIPT_PROXY_URL
+      + '?callback=' + cbName
+      + '&title=' + encodeURIComponent(title || '')
+      + '&artist=' + encodeURIComponent(artist || '');
+    const script = document.createElement('script');
+    script.id  = '__jsonp_' + cbName;
+    script.src = url;
+    script.onerror = () => { clearTimeout(timer); cleanup(); resolve(null); };
+    document.head.appendChild(script);
+  });
+}
+/** Limiteur de débit dédié MusicBrainz — même principe que itunesRateGate,
+ *  mais plus strict (1 req/s imposé par MusicBrainz elle-même, contre une
+ *  limite officieuse plus large pour iTunes) : intervalle minimum 1100ms et
+ *  AUCUNE concurrence (voir CONCURRENCY=1 dans mbRunEnrichment). */
+let _mbLastRequestAt = 0;
+const MB_MIN_INTERVAL_MS = 1100;
+function musicbrainzRateGate(){
+  return new Promise(resolve => {
+    const now = Date.now();
+    const wait = Math.max(0, _mbLastRequestAt + MB_MIN_INTERVAL_MS - now);
+    _mbLastRequestAt = now + wait;
+    setTimeout(resolve, wait);
+  });
+}
+
+/** File d'enrichissement ISRC + date de sortie (MusicBrainz) en arrière-plan
+ *  — même architecture que la file Décennie (analyseRunDecadeEnrichment,
+ *  voir plus bas dans le fichier) : déclenchée automatiquement après chaque
+ *  import de programmation exhaustive, n'affecte jamais l'affichage immédiat,
+ *  se contente de compléter songAttributes au fil de l'eau. Concurrence
+ *  strictement limitée à 1 (contrairement à Décennie/iTunes qui tolère 2 en
+ *  parallèle) pour respecter la limite MusicBrainz d'1 req/s. Si aucun proxy
+ *  n'est configuré, la file ne se déclenche simplement jamais (no-op
+ *  silencieux, pas de toast d'erreur répété à chaque import). */
+let mbEnrichInProgress = false;
+let mbEnrichQueue = [];
+let mbEnrichRetryQueue = [];
+let mbEnrichTotal = 0;
+let mbEnrichDone = 0;
+function mbQueueEnrichment(rows){
+  if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')) return;
+  const seen = new Set();
+  rows.forEach(row => {
+    const key = comiteKey(row.title, row.artist);
+    if(seen.has(key)) return;
+    seen.add(key);
+    if(mbEnrichQueue.some(q => q.key === key)) return;
+    const attrs = getSongAttributes(row.title, row.artist);
+    if(!attrs.mbStatus) mbEnrichQueue.push({ title: row.title, artist: row.artist, key });
+  });
+  if(!mbEnrichQueue.length) return;
+  mbEnrichTotal = mbEnrichDone + mbEnrichQueue.length;
+  if(!mbEnrichInProgress) mbRunEnrichment();
+  else mbUpdateProgressUI();
+}
+async function mbRunEnrichment(){
+  mbEnrichInProgress = true;
+  mbUpdateProgressUI();
+  const CONCURRENCY = 1;
+  async function worker(){
+    while(mbEnrichQueue.length){
+      const item = mbEnrichQueue.shift();
+      await musicbrainzRateGate();
+      const result = await fetchMusicBrainzViaAppsScript(item.title, item.artist);
+      const attrs = getSongAttributes(item.title, item.artist);
+      if(result === null){
+        mbEnrichRetryQueue.push(item); // échec technique (proxy injoignable, timeout…) : retenté, jamais marqué "notfound"
+      } else {
+        if(result.mbid) attrs.mbid = result.mbid;
+        if(result.isrc && !attrs.isrc) attrs.isrc = result.isrc;
+        if(result.releaseDate && !attrs.mbReleaseDate) attrs.mbReleaseDate = result.releaseDate;
+        attrs.mbStatus = (result.isrc || result.releaseDate) ? 'found' : 'notfound';
+        songAttributesSaveToStorage();
+        mbRefreshOpenTevFields(item.title, item.artist);
+      }
+      mbEnrichDone++;
+      mbUpdateProgressUI();
+    }
+  }
+  await Promise.all(Array.from({length: CONCURRENCY}, worker));
+  if(mbEnrichRetryQueue.length){
+    mbEnrichQueue = mbEnrichRetryQueue;
+    mbEnrichRetryQueue = [];
+    mbEnrichTotal = mbEnrichDone + mbEnrichQueue.length;
+    mbUpdateProgressUI();
+    return mbRunEnrichment();
+  }
+  mbEnrichInProgress = false;
+  mbEnrichDone = 0; mbEnrichTotal = 0;
+  mbUpdateProgressUI();
+}
+/** Badge discret dans le header (visible depuis n'importe quel onglet,
+ *  contrairement au badge Décennie qui ne s'affiche que sur la carte
+ *  "Décennies" des Graphiques) — seule façon de savoir, sans avoir à
+ *  rouvrir une fiche titre au hasard, que l'enrichissement MusicBrainz
+ *  tourne réellement et où il en est. Masqué dès qu'aucun enrichissement
+ *  n'est en cours ET que le proxy n'est pas configuré (rien à montrer). */
+/** Badge MusicBrainz permanent dans l'en-tête de la fiche titre — toujours
+ *  visible tant que la fiche est ouverte (contrairement à l'ancien badge de
+ *  header, qui disparaissait dès l'enrichissement terminé). Son contenu
+ *  change selon l'état : proxy non configuré, enrichissement en cours
+ *  (compteur X/Y global, pas spécifique au titre affiché — un seul
+ *  enrichissement tourne à la fois pour tout FPA), ou bilan global une fois
+ *  la file vide. Cliquer dessus donne le même détail via mbShowStatusToast.
+ *  Appelée à chaque étape de mbRunEnrichment ET à l'ouverture de la fiche
+ *  (openTevByInfo), pour refléter l'état réel même si aucun enrichissement
+ *  n'a eu lieu depuis l'ouverture. */
+function mbUpdateTevBadge(){
+  const el = document.getElementById('tevMbBadge');
+  const modal = document.getElementById('modalTitleEvolution');
+  if(!el || !modal || modal.style.display === 'none') return;
+  if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')){
+    el.textContent = '🎵 MusicBrainz : proxy non configuré';
+    return;
+  }
+  if(mbEnrichInProgress && mbEnrichTotal > 0){
+    el.textContent = '🎵 MusicBrainz : ' + mbEnrichDone + '/' + mbEnrichTotal + ' en cours…';
+    return;
+  }
+  let found = 0, notfound = 0, pending = 0;
+  Object.values(songAttributes).forEach(a => {
+    if(a.mbStatus === 'found') found++;
+    else if(a.mbStatus === 'notfound') notfound++;
+    else pending++;
+  });
+  el.textContent = '🎵 MusicBrainz : ' + found + ' enrichi(s) · ' + notfound + ' introuvable(s) · ' + pending + ' en attente';
+}
+function mbUpdateProgressUI(){
+  mbUpdateTevBadge();
+}
+/** Résumé cliqué depuis le badge — utile une fois l'enrichissement terminé
+ *  (le badge disparaît alors) pour vérifier après coup que ça a bien
+ *  tourné : compte, sur l'ensemble des titres connus de songAttributes,
+ *  combien ont un ISRC/une date MusicBrainz trouvés, combien sont encore
+ *  en attente (jamais interrogés) et combien sont marqués "introuvable". */
+function mbShowStatusToast(){
+  if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')){
+    showToast('Proxy MusicBrainz non configuré — voir ⚙️ Configuration FPA', 'err');
+    return;
+  }
+  if(mbEnrichInProgress){
+    showToast('⏳ Enrichissement en cours : ' + mbEnrichDone + '/' + mbEnrichTotal + ' titre(s) traité(s)', 'success');
+    return;
+  }
+  let found = 0, notfound = 0, pending = 0;
+  Object.values(songAttributes).forEach(a => {
+    if(a.mbStatus === 'found') found++;
+    else if(a.mbStatus === 'notfound') notfound++;
+    else pending++;
+  });
+  showToast('✓ MusicBrainz : ' + found + ' titre(s) enrichi(s) · ' + notfound + ' introuvable(s) · ' + pending + ' pas encore interrogé(s) (se lance au prochain import)', 'success');
+}
+/** Si la fiche Song Metrics du titre tout juste enrichi est actuellement
+ *  ouverte à l'écran, rafraîchit ses champs ISRC/Date de sortie MusicBrainz
+ *  sans attendre une réouverture — l'enrichissement se faisant potentielle-
+ *  ment plusieurs minutes après l'import (débit 1 req/s), l'utilisateur a pu
+ *  entre-temps ouvrir la fiche du titre concerné et verrait sinon des champs
+ *  vides jusqu'à la prochaine fermeture/réouverture. */
+function mbRefreshOpenTevFields(title, artist){
+  const modal = document.getElementById('modalTitleEvolution');
+  if(!modal || modal.style.display === 'none') return;
+  const shownTitle = document.getElementById('tevTitle')?.textContent || '';
+  const shownArtist = document.getElementById('tevArtist')?.textContent || '';
+  if(comiteKey(shownTitle, shownArtist) !== comiteKey(title, artist)) return;
+  const attrs = getSongAttributes(title, artist);
+  const isrcInput = document.getElementById('tevIsrcInput');
+  const mbDateInput = document.getElementById('tevMbReleaseDateInput');
+  if(isrcInput && !isrcInput.matches(':focus')) isrcInput.value = attrs.isrc || '';
+  if(mbDateInput) mbDateInput.value = attrs.mbReleaseDate || '';
 }
 
 /* ── Panneau de configuration du proxy Deezer (URL Apps Script) ── */
@@ -11502,6 +11709,7 @@ async function analyseRecalculateAllArchives(onProgress){
         if(oldFit !== newFit || oldPot !== row.search.potTous || oldFam !== row.search.famTous) titresModifies++;
       });
       if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(detail.rows);
+      if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(detail.rows);
       const newStats = analyseComputeStats(detail.rows);
       entry.stats = newStats;
       detail.rows = detail.rows.map(analyseCleanRowForSave);
@@ -14463,6 +14671,24 @@ function graphAvailableWeeks(stKey){
     return (a.weekLabel||'').localeCompare(b.weekLabel||'', undefined, {numeric:true});
   });
 }
+/** Titre de bulle partagé pour les graphiques par semaine (graphBuildMixedChart,
+ *  graphBuildStackedChart) : numéro de semaine déjà affiché par défaut par
+ *  Chart.js (c'est le label d'axe X), complété par la date précise de la
+ *  semaine (weekStart → weekEnd si les deux sont connus, weekStart seul
+ *  sinon) — sans quoi "S12" reste ambigu d'une saison sur l'autre. */
+function graphTooltipTitle(weeks){
+  return items => {
+    if(!items.length) return '';
+    const w = weeks[items[0].dataIndex];
+    if(!w) return items[0].label || '';
+    const dateBit = w.weekStart
+      ? (w.weekEnd && w.weekEnd !== w.weekStart
+          ? digitalAudienceFmtDate(w.weekStart) + ' → ' + digitalAudienceFmtDate(w.weekEnd)
+          : digitalAudienceFmtDate(w.weekStart))
+      : null;
+    return dateBit ? `${w.weekLabel} — ${dateBit}` : (w.weekLabel || items[0].label || '');
+  };
+}
 function graphWeekRangeSlice(weeks, fromLabel, toLabel){
   let fromIdx = weeks.findIndex(w=>w.weekLabel===fromLabel);
   let toIdx = weeks.findIndex(w=>w.weekLabel===toLabel);
@@ -14745,7 +14971,9 @@ function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, y
       interaction: { mode:'index', intersect:false },
       plugins: {
         legend: { display: barSeries.length>1 || showAudience || showMediametrie, position:'bottom', labels:{ boxWidth:10, font:{size:10.5}, color:'#4A5E78' } },
-        tooltip: { callbacks: { label: c => {
+        tooltip: { callbacks: {
+          title: graphTooltipTitle(weeks),
+          label: c => {
           if(c.dataset.yAxisID === 'y2') return `${c.dataset.label} : ${fmtY2(c.parsed.y)}`;
           if(c.dataset.yAxisID === 'y1') return `${c.dataset.label} : ${fmtY1(c.parsed.y)}`;
           return `${c.dataset.label} : ${c.parsed.y==null?'—':c.parsed.y.toLocaleString('fr-FR')}`;
@@ -14992,7 +15220,9 @@ function graphBuildStackedChart(canvasId, weeks, barSeries, showAudience, stKey,
       interaction: { mode:'index', intersect:false },
       plugins: {
         legend: { display:true, position:'bottom', labels:{ boxWidth:10, font:{size:10.5}, color:'#4A5E78' } },
-        tooltip: { callbacks: { label: c => {
+        tooltip: { callbacks: {
+          title: graphTooltipTitle(weeks),
+          label: c => {
           if(c.dataset.yAxisID === 'y2') return `${c.dataset.label} : ${fmtY2(c.parsed.y)}`;
           if(c.dataset.yAxisID === 'y1') return `${c.dataset.label} : ${fmtY1(c.parsed.y)}`;
           return `${c.dataset.label} : ${c.parsed.y==null?'—':c.parsed.y.toLocaleString('fr-FR')+'%'}`;
@@ -16022,6 +16252,7 @@ function analyseEnrichRowsForBulk(rows, stKey, importedDateStr, refDate){
     row.decade = attrs.decade || null;
   });
   if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(rows);
+  if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(rows);
   return rows;
 }
 
@@ -16314,6 +16545,7 @@ function analyseEnrichRows(){
     row.decade = attrs.decade || null;
   });
   if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(analyseRows);
+  if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(analyseRows);
 }
 
 /** Édition inline Genre/Label/Date d'Entrée directement depuis le tableau
@@ -17755,8 +17987,6 @@ async function openTevByInfo(info){
   const modal = document.getElementById('modalTitleEvolution');
   document.getElementById('tevTitle').textContent  = title || '';
   document.getElementById('tevArtist').textContent = artist || '';
-  const headerBadge = document.getElementById('tevHeaderNewProdBadge');
-  if(headerBadge) headerBadge.style.display = isNewProduction(getSongAttributes(title, artist).releaseDate) ? 'inline-flex' : 'none';
   document.getElementById('tevBody').innerHTML = '<div style="text-align:center;padding:50px;color:var(--muted);font-size:13px">⏳ Chargement de l\'historique complet…</div>';
   populateTevLogosRow();
   const playBadge = document.getElementById('tevPlayBadge');
@@ -17977,10 +18207,28 @@ async function openTevByInfo(info){
         <span id="tevNewProdBadge" style="flex-shrink:0;display:${isNewProduction(songAttrs.releaseDate)?'inline-flex':'none'};align-items:center;gap:4px;font-size:10px;font-weight:800;color:#0A8056;background:#E3F6EC;border:1px solid #A8E0C0;border-radius:20px;padding:4px 10px;white-space:nowrap" title="Sortie officielle il y a moins de 18 mois">🆕 Nouvelle prod.</span>
       </div>
     </label>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">ISRC
+      <div style="display:flex;gap:6px;margin-top:5px">
+        <input id="tevIsrcInput" type="text" placeholder="rempli automatiquement (MusicBrainz)" value="${escHtml(songAttrs.isrc || '')}"
+          onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','isrc',this.value)"
+          style="flex:1;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+        <button onclick="tevFetchMusicBrainz('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher l'ISRC et la date de sortie MusicBrainz maintenant (normalement automatique en tâche de fond après import)"
+          style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
+      </div>
+    </label>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date de sortie (MusicBrainz)
+      <input id="tevMbReleaseDateInput" type="date" value="${songAttrs.mbReleaseDate || ''}" readonly
+        title="Renseignée automatiquement en tâche de fond — première sortie connue par MusicBrainz, peut différer de la date de sortie officielle ci-dessus (source iTunes)"
+        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+    </label>
+    <div style="grid-column:1/-1">
+      <span id="tevMbBadge" onclick="mbShowStatusToast()" title="Enrichissement ISRC + date de sortie (MusicBrainz) — cliquer pour le détail" style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 9px;white-space:nowrap;cursor:pointer"></span>
+    </div>
   </div>`);
 
   document.getElementById('tevBody').innerHTML = sections.join('');
   updateTevNavUI();
+  mbUpdateTevBadge();
 }
 
 /** Recherche le genre via iTunes pour le champ Genre de la fiche Song
@@ -18022,6 +18270,44 @@ async function tevFetchDecade(title, artist){
   const badge = document.getElementById('tevNewProdBadge');
   if(badge) badge.style.display = isNewProduction(result.releaseDate) ? 'inline-flex' : 'none';
   showToast('✓ ' + [result.decade, result.releaseDate].filter(Boolean).join(' · ') + ' trouvé(e)', 'success');
+}
+
+/** Recherche manuelle ISRC + date de sortie MusicBrainz — normalement
+ *  inutile (voir mbQueueEnrichment/mbRunEnrichment, déclenchée automatique-
+ *  ment en tâche de fond après chaque import), mais utile pour forcer une
+ *  nouvelle tentative sur un titre marqué "notfound" ou pour un titre saisi
+ *  manuellement en Comité/Playlist (jamais passé par un import). Respecte le
+ *  même débit 1 req/s que la file de fond (musicbrainzRateGate). */
+async function tevFetchMusicBrainz(title, artist){
+  if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')){
+    showToast('Proxy MusicBrainz non configuré — voir ⚙️ Configuration FPA', 'err');
+    return;
+  }
+  showToast('⏳ Recherche ISRC + date de sortie MusicBrainz…', 'success');
+  await musicbrainzRateGate();
+  const result = await fetchMusicBrainzViaAppsScript(title, artist);
+  if(result === null){
+    showToast('Requête MusicBrainz en échec, réessayez', 'err');
+    return;
+  }
+  if(!result.isrc && !result.releaseDate){
+    showToast('Aucun ISRC ni date de sortie trouvé sur MusicBrainz pour ce titre', 'err');
+    updateSongAttribute(title, artist, 'mbStatus', 'notfound');
+    return;
+  }
+  if(result.mbid) updateSongAttribute(title, artist, 'mbid', result.mbid);
+  if(result.isrc){
+    updateSongAttribute(title, artist, 'isrc', result.isrc);
+    const input = document.getElementById('tevIsrcInput');
+    if(input) input.value = result.isrc;
+  }
+  if(result.releaseDate){
+    updateSongAttribute(title, artist, 'mbReleaseDate', result.releaseDate);
+    const input = document.getElementById('tevMbReleaseDateInput');
+    if(input) input.value = result.releaseDate;
+  }
+  updateSongAttribute(title, artist, 'mbStatus', 'found');
+  showToast('✓ ' + [result.isrc, result.releaseDate].filter(Boolean).join(' · ') + ' trouvé(e)', 'success');
 }
 
 /** "Nouvelle production" au sens quota : sortie officielle il y a moins de
@@ -20366,10 +20652,14 @@ function songAttributesSaveToStorage(){
 }
 function getSongAttributes(title, artist){
   const key = comiteKey(title, artist);
-  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'', genre:'', decade:'', releaseDate:'' };
+  if(!songAttributes[key]) songAttributes[key] = { dateEntreeEurope2:'', dateEntreeRFM:'', label:'', genre:'', decade:'', releaseDate:'', isrc:'', mbReleaseDate:'', mbid:'', mbStatus:'' };
   if(songAttributes[key].genre === undefined) songAttributes[key].genre = '';
   if(songAttributes[key].decade === undefined) songAttributes[key].decade = '';
   if(songAttributes[key].releaseDate === undefined) songAttributes[key].releaseDate = '';
+  if(songAttributes[key].isrc === undefined) songAttributes[key].isrc = '';
+  if(songAttributes[key].mbReleaseDate === undefined) songAttributes[key].mbReleaseDate = '';
+  if(songAttributes[key].mbid === undefined) songAttributes[key].mbid = '';
+  if(songAttributes[key].mbStatus === undefined) songAttributes[key].mbStatus = '';
   return songAttributes[key];
 }
 
@@ -34059,6 +34349,7 @@ function openFpaConfigModal(){
   document.getElementById('fpaCfgDeezer').value        = DEEZER_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgAppleMusic').value    = APPLEMUSIC_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgShazam').value        = SHAZAM_APPS_SCRIPT_PROXY_URL || '';
+  document.getElementById('fpaCfgMusicBrainz').value   = MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgAkpTubesmoment').value = appleKeyPlaylistUrl('tubesmoment');
   document.getElementById('fpaCfgAkpLecode').value      = appleKeyPlaylistUrl('lecode');
   document.getElementById('fpaCfgAkpHitsfrance').value  = appleKeyPlaylistUrl('hitsfrance');
@@ -34082,6 +34373,7 @@ function saveFpaConfigFromModal(){
     ['fpaCfgDeezer',        'fpa_deezer_proxy_url',    v => { DEEZER_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgAppleMusic',    'fpa_applemusic_proxy_url',v => { APPLEMUSIC_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgShazam',        'fpa_shazam_proxy_url',    v => { SHAZAM_APPS_SCRIPT_PROXY_URL = v; }],
+    ['fpaCfgMusicBrainz',   'fpa_musicbrainz_proxy_url', v => { MUSICBRAINZ_APPS_SCRIPT_PROXY_URL = v; }],
   ];
   fields.forEach(([inputId, key, apply]) => {
     const v = document.getElementById(inputId).value.trim();
@@ -34109,6 +34401,7 @@ function copyFpaConfigFromModal(){
     'Proxy Deezer : '          + (document.getElementById('fpaCfgDeezer').value.trim() || '(non configuré)'),
     'Proxy Apple Music : '     + (document.getElementById('fpaCfgAppleMusic').value.trim() || '(non configuré)'),
     'Proxy Shazam : '          + (document.getElementById('fpaCfgShazam').value.trim() || '(non configuré)'),
+    'Proxy MusicBrainz : '     + (document.getElementById('fpaCfgMusicBrainz').value.trim() || '(non configuré)'),
     'Playlist Tubes du Moment : ' + (document.getElementById('fpaCfgAkpTubesmoment').value.trim() || '(non configuré)'),
     'Playlist Le Code : '         + (document.getElementById('fpaCfgAkpLecode').value.trim() || '(non configuré)'),
     'Playlist Hits Français : '   + (document.getElementById('fpaCfgAkpHitsfrance').value.trim() || '(non configuré)'),
