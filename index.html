@@ -2056,6 +2056,19 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </div>
     </div>
 
+    <!-- Accès rapide aux semaines archivées — en haut de page pour éviter de
+         devoir défiler sous le tableau de la semaine en cours d'affichage
+         (qui peut dépasser 900 lignes) pour atteindre la liste archivée qui
+         se trouvait tout en bas. Visible que la semaine en cours soit
+         chargée ou non. Le détail complet (stats par semaine, suppression)
+         reste disponible plus bas, dans le tableau « Historique des
+         semaines archivées », inchangé. -->
+    <div id="analyseWeekArchiveJumpWrap" style="display:none;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <label for="analyseWeekArchiveSelect" style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">📅 Semaine archivée :</label>
+      <select id="analyseWeekArchiveSelect" onchange="if(this.value) analyseViewArchivedWeek(analyseStationKey(), this.value)" style="flex:1;max-width:340px;font-size:12px;padding:8px 12px;border-radius:8px">
+      </select>
+    </div>
+
     <div id="analyseEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center">
       Aucune programmation chargée pour <strong id="analyseEmptyStation">Europe 2</strong>. Importez le fichier « Zoom média » exhaustif (7j/24h) de la semaine via <strong>📥 Importer le fichier hebdo</strong>.
     </div>
@@ -3842,7 +3855,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.189';
+const FPA_VERSION   = 'v30.191';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -5148,7 +5161,7 @@ function updateSugg(i,val){
   const q=val.toUpperCase();
   const matches=fileRows.filter(r=>(r[cols.title]||'').toUpperCase().includes(q)||(r[cols.artist]||'').toUpperCase().includes(q)).slice(0,7);
   if(!matches.length){box.style.display='none';return;}
-  box.innerHTML=matches.map(r=>`<div onclick="pickAnchor(${i},'${jsAttrEscape(r[cols.title]||'')}')" style="padding:9px 13px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'"><span><strong style="color:var(--navy)">${escHtml(r[cols.title]||'')}</strong> <span style="color:var(--muted)">— ${escHtml(r[cols.artist]||'')}</span></span><span style="color:var(--cyan);font-weight:700;font-size:11px">${(parseFloat(r[targetCol])||0).toFixed(2)}</span></div>`).join('');
+  box.innerHTML=matches.map(r=>`<div onclick="pickAnchor(${i},'${jsAttrEscape(r[cols.title]||'')}')" style="padding:9px 13px;cursor:pointer;font-size:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'"><span><strong style="color:var(--navy)">${escHtml(titleCaseDisplay(r[cols.title]||''))}</strong> <span style="color:var(--muted)">— ${escHtml(titleCaseDisplay(r[cols.artist]||''))}</span></span><span style="color:var(--cyan);font-weight:700;font-size:11px">${(parseFloat(r[targetCol])||0).toFixed(2)}</span></div>`).join('');
   box.style.display='block';
 }
 
@@ -7259,8 +7272,8 @@ function renderChartGlobalSearch(){
     return `<button onclick="closeChartGlobalSearch();openTitleEvolutionModal(this)" data-evotitle="${evoDataAttr}" title="Voir l'évolution complète de ce titre"
       style="display:block;width:100%;text-align:left;padding:9px 12px;border:none;border-bottom:1px solid var(--border);background:var(--white);cursor:pointer"
       onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='var(--white)'">
-      <div style="font-size:12px;font-weight:800;color:var(--navy)">${escHtml(r.title)}</div>
-      <div style="font-size:11px;color:var(--text2);margin-bottom:2px">${escHtml(r.artist)}</div>
+      <div style="font-size:12px;font-weight:800;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:2px">${escHtml(titleCaseDisplay(r.artist))}</div>
       <div style="font-size:9.5px;font-weight:700;color:var(--muted)">${escHtml(shown)}</div>
     </button>`;
   }).join('');
@@ -7322,7 +7335,7 @@ function renderChartSearchWebFallback(query, nbSourcesLoaded, box){
     el.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
       ${info.artworkUrl ? `<img src="${info.artworkUrl}" style="width:34px;height:34px;border-radius:6px;object-fit:cover;flex-shrink:0">` : ''}
       <div style="min-width:0">
-        <div style="font-weight:700;color:var(--navy)">✓ Trouvé — ${escHtml(info.trackName||'')} · ${escHtml(info.artistName||'')}</div>
+        <div style="font-weight:700;color:var(--navy)">✓ Trouvé — ${escHtml(info.trackName||'')} · ${escHtml(titleCaseDisplay(info.artistName||''))}</div>
         ${info.releaseDate ? `<div style="color:var(--muted)">Sortie : ${new Date(info.releaseDate).toLocaleDateString('fr-FR')}</div>` : ''}
       </div>
     </div>`;
@@ -7940,7 +7953,7 @@ function showResults(){
   const aRows=validA.map(a=>analysisResult.find(r=>r.title.toUpperCase().includes(a.toUpperCase()))).filter(Boolean);
   document.getElementById('fpRecap').innerHTML=
     `<div style="display:flex;align-items:center;gap:6px;margin-right:8px"><div style="width:8px;height:8px;border-radius:2px;background:var(--cyan)"></div><span style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted)">FIT POINT</span></div>`+
-    aRows.map(r=>`<div style="display:flex;align-items:center;gap:7px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:5px 12px"><span style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)}</span><span style="font-size:11px;color:var(--muted)">${escHtml(r.artist)}</span><span style="background:var(--navy);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:5px">${r.score.toFixed(2)}</span></div>`).join('')+
+    aRows.map(r=>`<div style="display:flex;align-items:center;gap:7px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:5px 12px"><span style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</span><span style="font-size:11px;color:var(--muted)">${escHtml(titleCaseDisplay(r.artist))}</span><span style="background:var(--navy);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:5px">${r.score.toFixed(2)}</span></div>`).join('')+
     `<div style="margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:3px">
        <div style="font-size:11px;color:var(--muted)">Fit Point = <strong style="color:var(--navy)">${fitPoint.toFixed(2)}</strong> · σ = ${stdDev.toFixed(2)} · Fit Zone ≥ ${fitZoneLow.toFixed(1)}</div>
        <div style="font-size:11px;color:var(--muted)">Seuil Power Song (top ${powerPct}%) = <strong style="color:var(--green-text)">${powerThreshold.toFixed(2)}</strong></div>
@@ -8725,8 +8738,8 @@ function liveRenderMainTable(){
       <div>
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoDataAttr}" title="Voir l'évolution complète de ce titre"
           style="font-weight:700;color:var(--navy);cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title || '')}</div>
-        <div style="color:var(--muted);font-size:11px">${escHtml(e.artist || '')}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(e.title || ''))}</div>
+        <div style="color:var(--muted);font-size:11px">${escHtml(titleCaseDisplay(e.artist || ''))}</div>
       </div>
       ${cells}
     </div>`;
@@ -8825,7 +8838,7 @@ function liveRenderChartMiniTable(containerId, rows, savedAvailable){
     return `
     <div style="display:grid;grid-template-columns:${gridCols};gap:6px;align-items:center;padding:6px 10px;border-top:1px solid var(--border);font-size:11.5px">
       <div style="color:var(--muted);font-weight:700">${r.rank}</div>
-      <div><div style="font-weight:700;color:var(--navy)">${escHtml(r.title)}</div><div style="color:var(--muted);font-size:10.5px">${escHtml(r.artist)}</div></div>
+      <div><div style="font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</div><div style="color:var(--muted);font-size:10.5px">${escHtml(titleCaseDisplay(r.artist))}</div></div>
       <div style="text-align:center;line-height:1.3">${cell}</div>
     </div>`;
   }).join('');
@@ -9093,8 +9106,8 @@ function renderTable(){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${JSON.stringify({artist:r.artist, title:r.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;')}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(r.title)}${r.isAnchor?'<span style="font-size:9px;background:var(--cyan-light);color:#007B87;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:700">ANCHOR</span>':''}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:1px">${escHtml(r.artist)}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(r.title))}${r.isAnchor?'<span style="font-size:9px;background:var(--cyan-light);color:#007B87;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:700">ANCHOR</span>':''}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:1px">${escHtml(titleCaseDisplay(r.artist))}</div>
       </div>
       <div><span class="tag" style="background:${c.badgeBg};color:${c.badgeText};border:1px solid ${c.rowBorder}">${c.label}</span></div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 6px;background:${fs.bg};border:1px solid ${fs.border};border-radius:8px">
@@ -11530,8 +11543,8 @@ function renderTitleHistory(){
         style="width:100%;text-align:left;background:none;border:none;cursor:pointer;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1.5px solid var(--border);transition:background .15s"
         onmouseenter="this.style.background='rgba(0,184,200,.06)'" onmouseleave="this.style.background='none'">
         <div>
-          <span style="font-size:14px;font-weight:800;color:var(--navy)">${escHtml(r.title)}</span>
-          <span style="font-size:13px;color:var(--text2);margin-left:6px">${escHtml(r.artist)}</span>
+          <span style="font-size:14px;font-weight:800;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</span>
+          <span style="font-size:13px;color:var(--text2);margin-left:6px">${escHtml(titleCaseDisplay(r.artist))}</span>
           ${r.cat ? `<span style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:2px 7px;font-size:10px;font-weight:700;color:var(--text2);margin-left:8px">${escHtml(r.cat)}</span>` : ''}
           <span style="font-size:10px;color:var(--cyan);font-weight:700;margin-left:8px">📈 Voir l'évolution complète</span>
         </div>
@@ -17132,8 +17145,8 @@ function analyseRowHtml(r){
     <td style="padding:8px 4px" onclick="event.stopPropagation()">${spotifyLink(r.artist, r.title)}</td>
     <td style="padding:8px 4px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</td>
     <td style="padding:8px 10px;min-width:0;max-width:230px">
-      <div style="font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title)}</div>
-      <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist)}</div>
+      <div style="font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.title))}</div>
+      <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.artist))}</div>
     </td>
     <td style="padding:8px 10px;text-align:center">${evoIcon}</td>
     <td style="padding:8px 10px;text-align:right;font-weight:700">${r.nbDiffs}</td>
@@ -17281,6 +17294,24 @@ function renderAnalyseGenreChart(){
   </div>`;
 }
 
+/** Peuple le sélecteur rapide de semaines archivées (en haut de la page,
+ *  voir analyseWeekArchiveJumpWrap) — semaines les plus récentes en premier,
+ *  option vide sélectionnée par défaut pour permettre de re-choisir la même
+ *  semaine sans que le select paraisse "bloqué" sur elle. Masqué s'il n'y a
+ *  aucune semaine archivée pour cette station (rien à sélectionner). */
+function renderAnalyseWeekArchiveSelect(){
+  const wrap = document.getElementById('analyseWeekArchiveJumpWrap');
+  const sel  = document.getElementById('analyseWeekArchiveSelect');
+  if(!wrap || !sel) return;
+  const stKey = analyseStationKey();
+  const weeks = (analyseLoadHistory()[stKey] || []).slice().reverse(); // plus récent en premier
+  if(!weeks.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  const current = analyseWeekMeta && analyseWeekMeta.weekLabel;
+  sel.innerHTML = '<option value="">— Choisir une semaine —</option>' + weeks.map(w =>
+    `<option value="${jsAttrEscape(w.weekLabel)}"${w.weekLabel===current?' selected':''}>${escHtml(w.weekLabel)}${w.weekStart?' ('+digitalAudienceFmtDate(w.weekStart)+')':''} — ${w.stats.nbTitres} titres</option>`
+  ).join('');
+}
 function renderAnalyseHistoryPanel(){
   const area = document.getElementById('analyseHistoryArea');
   if(!area) return;
@@ -17370,6 +17401,7 @@ function renderAnalysePage(){
     renderAnalyseGenreChart();
     renderAnalyseTableArea();
   }
+  renderAnalyseWeekArchiveSelect();
   renderAnalyseHistoryPanel();
 }
 
@@ -17681,7 +17713,7 @@ function buildClusterCard(c){
     : '';
   const examplesHtml = empty
     ? `<div style="font-size:10px;color:var(--muted);font-style:italic">Aucun titre pour l'instant</div>`
-    : c.exampleTitles.map(t => `<div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(t.title)} — ${escHtml(t.artist)}</div>`).join('');
+    : c.exampleTitles.map(t => `<div style="font-size:10px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(titleCaseDisplay(t.title))} — ${escHtml(titleCaseDisplay(t.artist))}</div>`).join('');
   const curveHtml = empty
     ? `<div style="display:flex;align-items:center;justify-content:center;height:50px;color:var(--muted);font-size:10px">Pas encore de trajectoire moyenne</div>`
     : buildClusterCurveSVG(c.avgCurve);
@@ -17885,7 +17917,7 @@ function renderLifeCyclesPage(){
         const nearest = classifyRecentTitle(r, data);
         if(!nearest) return '';
         return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 14px;background:var(--white);border:1.5px solid var(--border);border-radius:9px">
-          <div><span style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)}</span> <span style="font-size:11px;color:var(--muted)">${escHtml(r.artist)} · ${r.nWaves} vague${r.nWaves>1?'s':''}</span></div>
+          <div><span style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</span> <span style="font-size:11px;color:var(--muted)">${escHtml(titleCaseDisplay(r.artist))} · ${r.nWaves} vague${r.nWaves>1?'s':''}</span></div>
           <span style="font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px;background:#F3E8FF;color:#7C3AED;white-space:nowrap">${nearest.icon} ${escHtml(nearest.name)}</span>
         </div>`;
       }).join('');
@@ -18300,8 +18332,8 @@ async function openTevByInfo(info){
   const { artist, title } = info;
 
   const modal = document.getElementById('modalTitleEvolution');
-  document.getElementById('tevTitle').textContent  = title || '';
-  document.getElementById('tevArtist').textContent = artist || '';
+  document.getElementById('tevTitle').textContent  = titleCaseDisplay(title) || '';
+  document.getElementById('tevArtist').textContent = titleCaseDisplay(artist) || '';
   document.getElementById('tevBody').innerHTML = '<div style="text-align:center;padding:50px;color:var(--muted);font-size:13px">⏳ Chargement de l\'historique complet…</div>';
   populateTevLogosRow();
   const playBadge = document.getElementById('tevPlayBadge');
@@ -18793,8 +18825,8 @@ function openHistChartModal(btn){
   catch(e){ return; }
 
   // Remplir l'en-tête de la modale
-  document.getElementById('mhcTitle').textContent  = data.title  || '';
-  document.getElementById('mhcArtist').textContent = data.artist || '';
+  document.getElementById('mhcTitle').textContent  = titleCaseDisplay(data.title)  || '';
+  document.getElementById('mhcArtist').textContent = titleCaseDisplay(data.artist) || '';
   // Label cible : raccourcir le sheetName, préciser l'unité (Rang/Passages) si fournie
   const cibleShort = (data.cible||'').replace(/Recap Tous[_ ]/i,'').replace(/[Rr]é?guliers/,'Réguliers').trim();
   document.getElementById('mhcCible').textContent = cibleShort + (data.unit ? ' · ' + data.unit : '');
@@ -20569,9 +20601,9 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrSpy}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(e.title||''))}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px">
-          <span>${escHtml(e.artist||'')}</span>${peakHtml}
+          <span>${escHtml(titleCaseDisplay(e.artist||''))}</span>${peakHtml}
         </div>
       </div>
       <div style="text-align:right">
@@ -20605,8 +20637,8 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrKP}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.artist||'')}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(e.title||''))}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(titleCaseDisplay(e.artist||''))}</div>
       </div>
       ${showE2KP ? e2CellKP : ''}
     </div>`;
@@ -20634,8 +20666,8 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrR}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.artist||'')}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(e.title||''))}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(titleCaseDisplay(e.artist||''))}</div>
       </div>
       ${showE2R ? e2CellR : ''}
     </div>`;
@@ -20676,9 +20708,9 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrYt}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(e.title||''))}</div>
         <div style="font-size:11px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:6px">
-          <span>${escHtml(e.artist||'')}</span>${peakHtmlYt}
+          <span>${escHtml(titleCaseDisplay(e.artist||''))}</span>${peakHtmlYt}
         </div>
       </div>
       <div style="text-align:right">
@@ -20693,7 +20725,7 @@ function renderChartRow(e){
     return `<div style="display:grid;grid-template-columns:48px 24px minmax(0,1fr);gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
       ${spotifyLink(e.artist, '')}
-      <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(e.artist||'')}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(e.artist||''))}</div>
     </div>`;
   } else {
     // Shazam FR/WW, Deezer France, Futurs Hits, Playlists clés Deezer, Apple Music US/FR, iTunes FR, Billboard US/Global200, kworb radio
@@ -20722,8 +20754,8 @@ function renderChartRow(e){
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttrGen}" title="Voir l'évolution complète de ce titre"
           style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;cursor:pointer;display:inline-block;transition:color .12s"
-          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(e.title||'')}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(e.artist||'')}</div>
+          onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(e.title||''))}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${escHtml(titleCaseDisplay(e.artist||''))}</div>
       </div>
       ${showE2 ? e2Cell : ''}
     </div>`;
@@ -21628,9 +21660,9 @@ async function buildComiteCard(t, series, coverId){
           <img src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
         </div>
         <div style="min-width:0">
-          <div style="font-size:14px;font-weight:800;color:var(--navy);line-height:1.3">${escHtml(t.title)}</div>
+          <div style="font-size:14px;font-weight:800;color:var(--navy);line-height:1.3">${escHtml(titleCaseDisplay(t.title))}</div>
           <div style="font-size:12px;color:var(--text2);display:flex;align-items:center;gap:6px">
-            <span>${escHtml(t.artist)}</span>
+            <span>${escHtml(titleCaseDisplay(t.artist))}</span>
             <span onclick="event.stopPropagation()">${spotifyLink(t.artist, t.title)}</span>
           </div>
         </div>
@@ -21920,7 +21952,11 @@ function unlinkPlaylistBundle(key, silent){
  *  apostrophe, ou en tout début de chaîne. */
 function titleCaseDisplay(str){
   if(!str) return str;
-  return str.replace(/(^|[\s\-'])([a-zàâäéèêëïîôöùûüçñ])/gi, (m, sep, c) => sep + c.toUpperCase());
+  // Passe d'abord tout en minuscule (les exports Yacast/Muzicast livrent
+  // souvent les titres TOUT EN MAJUSCULES) avant de capitaliser la première
+  // lettre de chaque mot — sans cette étape, un titre déjà en majuscules
+  // restait inchangé (seule la lettre déjà capitale était re-capitalisée).
+  return str.toLowerCase().replace(/(^|[\s\-'])([a-zàâäéèêëïîôöùûüçñ])/gi, (m, sep, c) => sep + c.toUpperCase());
 }
 
 function buildPlaylistRow(t, metrics, row360){
@@ -21967,9 +22003,9 @@ function buildPlaylistRow(t, metrics, row360){
 
   const rowHtml = `<div draggable="true" ondragstart="playlistDragStart(event,'${t.key}')" ondragend="playlistDragEnd(event)" style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border);cursor:grab;${partner?'border-left:3px solid var(--cyan)':''}${selected?';background:var(--cyan-light)':(expanded?';background:var(--bg)':'')}">
     ${firstCell}
-    <div style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.artist)}">${escHtml(titleCaseDisplay(t.artist))}</div>
+    <div style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(titleCaseDisplay(t.artist))}">${escHtml(titleCaseDisplay(t.artist))}</div>
     <div style="padding:7px 6px;cursor:pointer" onclick="${playlistLinkMode ? `togglePlaylistLinkSelect('${t.key}','${catNorm}')` : `togglePlaylistExpand('${t.key}')`}">
-      <div style="font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(t.title)}">${escHtml(titleCaseDisplay(t.title))}</div>
+      <div style="font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(titleCaseDisplay(t.title))}">${escHtml(titleCaseDisplay(t.title))}</div>
       ${bundleBadge}
     </div>
     <div style="padding:4px">
@@ -22072,7 +22108,7 @@ async function renderPlaylistPage(){
         return buildPlaylistRow(t, metrics, row360);
       }catch(e){
         console.error('Erreur d\'affichage pour', t.title, t.artist, e);
-        return `<div style="padding:8px 12px;font-size:11px;color:#CC2222;border-bottom:1px solid var(--border)">⚠️ Erreur d'affichage pour « ${escHtml(t.title||'')} » — voir la console pour le détail.</div>`;
+        return `<div style="padding:8px 12px;font-size:11px;color:#CC2222;border-bottom:1px solid var(--border)">⚠️ Erreur d'affichage pour « ${escHtml(titleCaseDisplay(t.title||''))} » — voir la console pour le détail.</div>`;
       }
     }).join('');
     const catColor = PLAYLIST_CAT_COLORS[(group.cat||'').toUpperCase().trim()] || PLAYLIST_CAT_DEFAULT_COLOR;
@@ -23938,8 +23974,8 @@ function renderMatrixSVG(rows, medianScore){
     const cy = r.momentum !== null ? yPos(r.momentum) : yPos(0);
     const rad = bSize(r);
     const col = DEC_QUAD[r.dq].color;
-    const titleRaw = r.title || '';
-    const artistRaw = r.artist || '';
+    const titleRaw = titleCaseDisplay(r.title || '');
+    const artistRaw = titleCaseDisplay(r.artist || '');
     const titleShort = escHtml(titleRaw.length > 18 ? titleRaw.slice(0,16)+'…' : titleRaw);
     const tooltip = escHtml(`${artistRaw} – ${titleRaw}\nPot Score: ${r.score?.toFixed(1)||'–'} | Burn: ${r.burn?.toFixed(1)||'–'}% | Momentum: ${r.momentum!==null?r.momentum.toFixed(2)+' pt/vague':'–'}\nRecommandation: ${DEC_QUAD[r.dq].action}`);
     // Label visible si bulle assez grande
@@ -23987,8 +24023,8 @@ function showDecBubbleDetail(i){
   el.style.display = 'block';
   el.innerHTML = `<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
     <div style="flex:1;min-width:200px">
-      <div style="font-size:15px;font-weight:800;color:var(--navy)">${escHtml(r.title)}</div>
-      <div style="font-size:13px;color:var(--text2);margin-top:2px">${escHtml(r.artist)}</div>
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</div>
+      <div style="font-size:13px;color:var(--text2);margin-top:2px">${escHtml(titleCaseDisplay(r.artist))}</div>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
       <span style="background:${q.bg};border:1.5px solid ${q.border};color:${q.color};font-size:11px;font-weight:800;padding:4px 10px;border-radius:20px">${q.label}</span>
@@ -24049,8 +24085,8 @@ function renderDecisionList(filterQuad){
         <div style="width:10px;height:10px;border-radius:2px;background:${q.color}"></div>
       </div>
       <div style="padding:8px 10px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))}</div>
       </div>
       <div style="padding:8px;font-size:12px;font-weight:700;color:var(--text);text-align:right;font-variant-numeric:tabular-nums">${r.score?.toFixed(1)||'–'}</div>
       <div style="padding:8px;font-size:12px;text-align:right">${burnCol}</div>
@@ -26153,8 +26189,8 @@ function render360Table(){
 
     return `<div style="display:grid;grid-template-columns:1fr repeat(7,112px);gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))}</div>
       </div>
       <div style="text-align:center">${fpBadge}</div>
       <div style="text-align:center">${fitBadge}</div>
@@ -26560,8 +26596,8 @@ function renderSpuPage(){
     return `<div style="display:grid;grid-template-columns:48px 1fr 72px 70px 65px 65px 85px 75px 100px 130px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 6px 10px 14px;font-size:11px;font-weight:700;color:var(--muted);text-align:center">${i+1}</div>
       <div style="padding:10px 10px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)||'–'}${shzBadge}${spyBadgeSpu}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)||'–'} ${r.cat?'<span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:700;color:var(--muted);padding:1px 5px;margin-left:3px">'+escHtml(r.cat)+'</span>':''}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}${shzBadge}${spyBadgeSpu}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'} ${r.cat?'<span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:700;color:var(--muted);padding:1px 5px;margin-left:3px">'+escHtml(r.cat)+'</span>':''}</div>
       </div>
       <div style="padding:10px 8px;text-align:center">${spuBar}</div>
       <div style="padding:10px 8px;font-size:12px;font-weight:600;color:var(--text);text-align:right;font-variant-numeric:tabular-nums">${r.score!=null?r.score.toFixed(1):'–'}</div>
@@ -26828,8 +26864,8 @@ function renderCompPage(){
 
     return `<div style="display:grid;grid-template-columns:1fr 70px 70px 90px 90px 90px 120px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 10px 10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)||'–'}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)||'–'}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}</div>
       </div>
       <div style="padding:10px 8px;font-size:12px;font-weight:600;color:var(--text);text-align:right;font-variant-numeric:tabular-nums">${r.score!=null?r.score.toFixed(1):'–'}</div>
       <div style="padding:10px 8px;font-size:13px;font-weight:800;color:var(--cyan);text-align:right;font-variant-numeric:tabular-nums">${r.e2}</div>
@@ -27097,8 +27133,8 @@ function renderBurnPage(){
 
     return `<div style="display:grid;grid-template-columns:1fr 90px 90px 100px 110px 140px 130px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 10px 10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)||'–'}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)||'–'} <span style="color:var(--muted);font-size:10px">· ${r.series.length} vagues · dernier: ${escHtml(r.lastVagueLabel)}</span></div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'} <span style="color:var(--muted);font-size:10px">· ${r.series.length} vagues · dernier: ${escHtml(r.lastVagueLabel)}</span></div>
       </div>
       <div style="padding:10px 8px;text-align:right">${burnStr}</div>
       <div style="padding:10px 8px;font-size:12px;color:var(--muted);text-align:right">${r.threshold}%</div>
@@ -27439,8 +27475,8 @@ function renderPredictionExitPage(){
       onmouseenter="this.style.background='rgba(0,184,200,.05)'" onmouseleave="this.style.background='${rowBg}'">
       <div style="padding:10px 0 10px 8px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</div>
       <div style="padding:10px 10px 10px 4px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)||'–'}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)||'–'}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}</div>
       </div>
       <div style="padding:10px 8px;text-align:center">
         <span style="font-size:16px;font-weight:800;color:${r.levelColor}">${r.riskScore}</span>
@@ -27932,8 +27968,8 @@ function renderPredictionEntryPage(){
       onmouseenter="this.style.background='rgba(0,184,200,.05)'" onmouseleave="this.style.background='${rowBg}'">
       <div style="padding:10px 0 10px 8px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</div>
       <div style="padding:10px 10px 10px 4px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)||'–'}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)||'–'}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}</div>
       </div>
       <div style="padding:10px 8px;text-align:center">
         <span style="font-size:16px;font-weight:800;color:${r.levelColor}">${r.score}</span>
@@ -28026,8 +28062,8 @@ function openPredDetailModal(btn){
   try { data = JSON.parse(raw.replace(/&quot;/g,'"').replace(/&#39;/g,"'")); }
   catch(e){ return; }
 
-  document.getElementById('pdmTitle').textContent  = data.title  || '';
-  document.getElementById('pdmArtist').textContent = data.artist || '';
+  document.getElementById('pdmTitle').textContent  = titleCaseDisplay(data.title)  || '';
+  document.getElementById('pdmArtist').textContent = titleCaseDisplay(data.artist) || '';
   document.getElementById('pdmSub').textContent    = data.subLabel || '🔬 Détail du calcul';
   document.getElementById('pdmScoreBar').innerHTML = predDetailScoreBarHtml(data.score, data.levelColor, data.levelBg, data.levelBorder, data.levelIcon, data.level, data.coverage);
   document.getElementById('pdmBreakdown').innerHTML = predDetailBreakdownHtml(data.breakdown || []);
@@ -28345,8 +28381,8 @@ function openBurnChartModal(btn){
   try { data = JSON.parse(raw.replace(/&quot;/g,'"').replace(/&#39;/g,"'")); }
   catch(e){ return; }
 
-  document.getElementById('bcmTitle').textContent  = data.title  || '';
-  document.getElementById('bcmArtist').textContent = data.artist || '';
+  document.getElementById('bcmTitle').textContent  = titleCaseDisplay(data.title)  || '';
+  document.getElementById('bcmArtist').textContent = titleCaseDisplay(data.artist) || '';
 
   const series = (data.series||[]).filter(s => s.burn !== null && s.burn !== undefined);
   if(series.length === 0) return;
@@ -28406,8 +28442,8 @@ function openCompDetailModal(btn){
   try { data = JSON.parse(raw.replace(/&quot;/g,'"').replace(/&#39;/g,"'")); }
   catch(e){ return; }
 
-  document.getElementById('cdmTitle').textContent  = data.title  || '';
-  document.getElementById('cdmArtist').textContent = data.artist || '';
+  document.getElementById('cdmTitle').textContent  = titleCaseDisplay(data.title)  || '';
+  document.getElementById('cdmArtist').textContent = titleCaseDisplay(data.artist) || '';
 
   const meta = document.getElementById('cdmMeta');
   const scoreStr = data.score!=null ? data.score.toFixed(1) : '–';
@@ -28651,7 +28687,7 @@ function categComputeCustomFitPoint(){
 
   if(resultEl){
     resultEl.innerHTML = `<span style="color:var(--green-text);font-weight:700">✓ Fit Point = ${categFitPointVal.toFixed(1)}</span>
-      <span style="color:var(--muted)"> — basé sur ${matchedAnchors.length} titre${matchedAnchors.length>1?'s':''} trouvé${matchedAnchors.length>1?'s':''} : ${matchedAnchors.map(a=>escHtml(a.title)+' ('+a.score.toFixed(1)+')').join(', ')}</span>`;
+      <span style="color:var(--muted)"> — basé sur ${matchedAnchors.length} titre${matchedAnchors.length>1?'s':''} trouvé${matchedAnchors.length>1?'s':''} : ${matchedAnchors.map(a=>escHtml(titleCaseDisplay(a.title))+' ('+a.score.toFixed(1)+')').join(', ')}</span>`;
   }
 
   categApplyFitScoreToRows();
@@ -29471,8 +29507,8 @@ function renderCategResultsTable(){
     const fitColor = r.fit===null ? 'var(--muted)' : r.fit>=70 ? 'var(--green-text)' : r.fit>=45 ? 'var(--text)' : '#CC2222';
     return `<div style="display:grid;grid-template-columns:1fr 110px 110px 70px 70px 70px 70px ${hasFit?'70px ':''}90px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:9px 10px 9px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)||'–'}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)||'–'}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}</div>
       </div>
       <div style="padding:9px 8px;font-size:11px;color:var(--muted)">${escHtml(r.prevCat)||'–'}</div>
       <div style="padding:9px 8px">
@@ -30074,7 +30110,7 @@ function renderExclusifsPage(){
       return `
       <div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-top:1px solid var(--border);font-size:12.5px">
         <div style="color:var(--muted);font-weight:700">${idx + 1}</div>
-        <div><div style="font-weight:700;color:var(--navy)">${escHtml(ap.title || '')}</div><div style="color:var(--muted);font-size:11.5px">${escHtml(ap.artist || '')}</div></div>
+        <div><div style="font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(ap.title || ''))}</div><div style="color:var(--muted);font-size:11.5px">${escHtml(titleCaseDisplay(ap.artist || ''))}</div></div>
         ${refVals.map(v => `<div style="text-align:right;font-weight:700;color:${v > 0 ? 'var(--cyan)' : 'var(--muted)'}">${v}</div>`).join('')}
         <div style="text-align:right;font-weight:800;color:var(--navy)">${refTotal}</div>
         <div style="text-align:right;color:${autres > 0 ? '#B05E00' : 'var(--muted)'}">${autres}</div>
@@ -30714,8 +30750,8 @@ function renderPolarPage(){
 
     return `<div style="display:grid;grid-template-columns:1fr 80px 80px 80px 80px 90px 100px 100px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 10px 10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)||'–'}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)||'–'}${r.cat?` <span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:700;color:var(--muted);padding:1px 5px">${escHtml(r.cat)}</span>`:''}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}${r.cat?` <span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:700;color:var(--muted);padding:1px 5px">${escHtml(r.cat)}</span>`:''}</div>
       </div>
       <div style="padding:10px 8px;font-size:12px;font-weight:600;color:var(--text);text-align:right;font-variant-numeric:tabular-nums">${r.score!=null?r.score.toFixed(1):'–'}</div>
       <div style="padding:10px 8px;font-size:12px;font-weight:700;color:#7C3AED;text-align:right;font-variant-numeric:tabular-nums">${r.love!=null?r.love.toFixed(1)+'%':'–'}</div>
@@ -30992,8 +31028,8 @@ function renderShazIncPage(){
 
     return `<div style="display:grid;grid-template-columns:1fr 70px 70px 70px 70px 80px 100px 120px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center${signalFortRow?';border-left:3px solid #E07B00':''}">
       <div style="padding:10px 10px 10px 14px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(r.title)||'–'}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(r.artist)||'–'}${r.cat?` <span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:700;color:var(--muted);padding:1px 5px">${escHtml(r.cat)}</span>`:''}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}${r.cat?` <span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:700;color:var(--muted);padding:1px 5px">${escHtml(r.cat)}</span>`:''}</div>
       </div>
       <div style="padding:10px 8px;font-size:12px;font-weight:600;color:var(--text);text-align:right;font-variant-numeric:tabular-nums">${r.score!=null?r.score.toFixed(1):'–'}</div>
       <div style="padding:10px 8px;text-align:center">${shazBadge}</div>
@@ -31407,8 +31443,8 @@ async function renderRadarPage(){
           <img src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
         </div>
         <div style="min-width:0">
-          <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:2px">${escHtml(r.title||'')}</div>
-          <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${escHtml(r.artist||'')}</div>
+          <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:2px">${escHtml(titleCaseDisplay(r.title||''))}</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${escHtml(titleCaseDisplay(r.artist||''))}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">${badges}</div>
         </div>
       </div>
@@ -31485,8 +31521,8 @@ async function renderHomeRadarSummary(){
   el.innerHTML = rows.slice(0, MAX_SHOWN).map(({r, gains, totalGain}) => `
     <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title, r.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(13,167,107,.5);border-left:3px solid #0DA76B;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06);cursor:pointer">
       <div style="min-width:0;flex:1">
-        <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')} · ${gains.length} signal${gains.length>1?'s':''}</div>
+        <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.title||''))}</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.artist||''))} · ${gains.length} signal${gains.length>1?'s':''}</div>
       </div>
       <span onclick="event.stopPropagation()" style="flex-shrink:0">${spotifyLink(r.artist, r.title)}</span>
       <div style="flex-shrink:0;text-align:center;padding:3px 10px;background:#0DA76B;border-radius:7px">
@@ -31888,9 +31924,9 @@ function dailyMoverCardHtml(g){
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0;flex:1">
         <div style="font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px">
-          ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(g.title)}
+          ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(titleCaseDisplay(g.title))}
         </div>
-        <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.artist)}</div>
+        <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(g.artist))}</div>
       </div>
       <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;background:${positive ? '#E3F7EC' : '#FDEAEA'};color:${positive ? '#0DA76B' : '#CC2222'}">${positive ? '▲' : '▼'} ${fmtDelta(Math.abs(g.totalDelta))}</div>
     </div>
@@ -31913,9 +31949,9 @@ function dailyDiffCardHtml(g){
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="min-width:0;flex:1">
         <div style="font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px">
-          ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(g.title)}
+          ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(titleCaseDisplay(g.title))}
         </div>
-        <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.artist)}</div>
+        <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(g.artist))}</div>
       </div>
       <div style="flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;background:${anyIn ? '#E3F7EC' : '#FDEAEA'};color:${anyIn ? '#0DA76B' : '#CC2222'}">${g.events.length > 1 ? g.events.length + ' signaux' : (anyIn ? 'ENTRÉE' : 'SORTIE')}</div>
     </div>
@@ -32024,9 +32060,9 @@ function dailyTableRowHtml(r){
     <td style="padding:8px 4px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</td>
     <td style="padding:8px 10px 8px 4px;min-width:0;max-width:220px">
       <div style="display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(r.title)}
+        ${watched ? '<span title="Déjà suivi en Veille" style="flex-shrink:0;font-size:11px">🔭</span>' : ''}${escHtml(titleCaseDisplay(r.title))}
       </div>
-      <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist)}</div>
+      <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.artist))}</div>
     </td>
     <td style="padding:8px 10px">${dailyTableChartBadges(r.chartSignals)}</td>
     <td style="padding:8px 10px">${dailyTableEventBadges(r.playlistEvents)}</td>
@@ -32340,8 +32376,8 @@ function renderHomePotentielSummary(){
     const mom = Math.round(getMom(r));
     return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title, r.artist)}" title="Voir la fiche d'évolution complète" style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 12px;border:1.5px solid rgba(224,123,0,.45);border-left:3px solid #E07B00;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06);cursor:pointer">
       <div style="min-width:0;flex:1">
-        <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.title||'')}</div>
-        <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(r.artist||'')}${r.shzRank!==null?' · Shazam #'+r.shzRank:''}${r.inc!==null?' · Inc '+Math.round(r.inc)+'%':''}</div>
+        <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.title||''))}</div>
+        <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.artist||''))}${r.shzRank!==null?' · Shazam #'+r.shzRank:''}${r.inc!==null?' · Inc '+Math.round(r.inc)+'%':''}</div>
       </div>
       <span onclick="event.stopPropagation()" style="flex-shrink:0">${spotifyLink(r.artist, r.title)}</span>
       <div style="flex-shrink:0;text-align:center;padding:3px 10px;background:#E07B00;border-radius:7px">
@@ -32407,8 +32443,8 @@ async function renderHomeDailyOverviewSummary(){
     return `<div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(g.title, g.artist)}" title="Voir la fiche d'évolution complète" style="padding:8px 12px;border:1.5px solid rgba(13,167,107,.4);border-left:3px solid #0DA76B;border-radius:9px;margin-bottom:6px;background:rgba(255,255,255,.06);cursor:pointer">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
         <div style="min-width:0;flex:1">
-          <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.title)}</div>
-          <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(g.artist)}</div>
+          <div style="font-size:12.5px;font-weight:700;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(g.title))}</div>
+          <div style="font-size:10.5px;color:rgba(255,255,255,.5);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(g.artist))}</div>
         </div>
         <span onclick="event.stopPropagation()" style="flex-shrink:0">${spotifyLink(g.artist, g.title)}</span>
         <div style="flex-shrink:0;text-align:center;padding:3px 9px;background:#0DA76B;border-radius:7px;white-space:nowrap">
@@ -33295,7 +33331,7 @@ function renderCompscorePage(){
     const deltaSign = r.delta !== null && r.delta > 0 ? '+' : '';
     return `<div style="display:grid;grid-template-columns:32px 1fr 70px 70px 70px 90px 80px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;background:${i%2===0?'var(--white)':'rgba(240,243,249,.5)'}">
       <div style="color:var(--muted);font-weight:700">${i+1}</div>
-      <div style="min-width:0"><div style="font-weight:700;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.title)}</div><div style="font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.artist)}</div></div>
+      <div style="min-width:0"><div style="font-weight:700;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(titleCaseDisplay(r.title))}</div><div style="font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(titleCaseDisplay(r.artist))}</div></div>
       <div style="text-align:center">${pctCell(r.spyPct)}</div>
       <div style="text-align:center">${pctCell(r.dzPct)}</div>
       <div style="text-align:center">${pctCell(r.amPct)}</div>
@@ -33352,8 +33388,8 @@ function renderOpportunityPage(){
   listEl.innerHTML = rows.map(r => `
     <div style="background:var(--white);border:1.5px solid #FDE68A;border-left:4px solid #F59E0B;border-radius:10px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:8px">
       <div style="min-width:0">
-        <div style="font-weight:800;color:var(--navy);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.title)}</div>
-        <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(r.artist)}</div>
+        <div style="font-weight:800;color:var(--navy);font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(titleCaseDisplay(r.title))}</div>
+        <div style="font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(titleCaseDisplay(r.artist))}</div>
       </div>
       <div style="display:flex;gap:16px;flex-shrink:0">
         <div style="text-align:center"><div style="font-size:9.5px;color:var(--muted);font-weight:700">DIGITAL</div><div style="font-size:15px;font-weight:800;color:#0DA76B">${Math.round(r.dPct)}</div></div>
