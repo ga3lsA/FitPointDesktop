@@ -3832,7 +3832,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.182';
+const FPA_VERSION   = 'v30.183';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -5616,30 +5616,42 @@ async function mbRunEnrichment(){
   async function worker(){
     while(mbEnrichQueue.length){
       const item = mbEnrichQueue.shift();
-      await musicbrainzRateGate();
-      const result = await fetchMusicBrainzViaAppsScript(item.title, item.artist);
-      const attrs = getSongAttributes(item.title, item.artist);
-      if(result === null){
-        mbEnrichRetryQueue.push(item); // échec technique (proxy injoignable, timeout…) : retenté, jamais marqué "notfound"
-      } else {
-        if(result.mbid) attrs.mbid = result.mbid;
-        if(result.isrc && !attrs.isrc) attrs.isrc = result.isrc;
-        if(result.releaseDate && !attrs.mbReleaseDate) attrs.mbReleaseDate = result.releaseDate;
-        attrs.mbStatus = (result.isrc || result.releaseDate) ? 'found' : 'notfound';
-        songAttributesSaveToStorage();
-        mbRefreshOpenTevFields(item.title, item.artist);
+      try{
+        await musicbrainzRateGate();
+        const result = await fetchMusicBrainzViaAppsScript(item.title, item.artist);
+        const attrs = getSongAttributes(item.title, item.artist);
+        if(result === null){
+          mbEnrichRetryQueue.push(item); // échec technique (proxy injoignable, timeout…) : retenté, jamais marqué "notfound"
+        } else {
+          if(result.mbid) attrs.mbid = result.mbid;
+          if(result.isrc && !attrs.isrc) attrs.isrc = result.isrc;
+          if(result.releaseDate && !attrs.mbReleaseDate) attrs.mbReleaseDate = result.releaseDate;
+          attrs.mbStatus = (result.isrc || result.releaseDate) ? 'found' : 'notfound';
+          songAttributesSaveToStorage();
+          mbRefreshOpenTevFields(item.title, item.artist);
+        }
+      }catch(e){
+        // Ne JAMAIS laisser un titre planter toute la file (bug corrigé en
+        // v30.183) : le titre concerné est simplement abandonné (pas
+        // remis en retry indéfini, pour éviter une boucle infinie sur un
+        // titre systématiquement fautif) et le traitement continue.
+        console.error('mbRunEnrichment — titre abandonné (erreur inattendue):', item.title, item.artist, e);
       }
       mbEnrichDone++;
       mbUpdateProgressUI();
     }
   }
-  await Promise.all(Array.from({length: CONCURRENCY}, worker));
-  if(mbEnrichRetryQueue.length){
-    mbEnrichQueue = mbEnrichRetryQueue;
-    mbEnrichRetryQueue = [];
-    mbEnrichTotal = mbEnrichDone + mbEnrichQueue.length;
-    mbUpdateProgressUI();
-    return mbRunEnrichment();
+  try{
+    await Promise.all(Array.from({length: CONCURRENCY}, worker));
+    if(mbEnrichRetryQueue.length){
+      mbEnrichQueue = mbEnrichRetryQueue;
+      mbEnrichRetryQueue = [];
+      mbEnrichTotal = mbEnrichDone + mbEnrichQueue.length;
+      mbUpdateProgressUI();
+      return mbRunEnrichment();
+    }
+  }catch(e){
+    console.error('mbRunEnrichment — arrêt inattendu, file remise à zéro:', e);
   }
   mbEnrichInProgress = false;
   mbEnrichDone = 0; mbEnrichTotal = 0;
@@ -5700,42 +5712,58 @@ async function mbBackfillAllArchives(){
     return;
   }
   showToast('⏳ Recherche des ISRC/dates de sortie manquants dans tout le catalogue…', 'success');
-  await analyseHistoryCacheLoad();
-  const history = analyseLoadHistory();
   const seen = new Set();
-  let queued = 0, totalScanned = 0;
+  let queued = 0, totalScanned = 0, scanErrors = 0;
   const queueIfMissing = (title, artist) => {
-    const key = comiteKey(title, artist);
-    if(seen.has(key)) return;
-    seen.add(key);
-    totalScanned++;
-    if(mbEnrichQueue.some(q => q.key === key)) return;
-    const attrs = getSongAttributes(title, artist);
-    if(!attrs.mbStatus){
-      mbEnrichQueue.push({ title, artist, key });
-      queued++;
-    }
+    if(!title && !artist) return;
+    try{
+      const key = comiteKey(title, artist);
+      if(seen.has(key)) return;
+      seen.add(key);
+      totalScanned++;
+      if(mbEnrichQueue.some(q => q.key === key)) return;
+      const attrs = getSongAttributes(title, artist);
+      if(!attrs.mbStatus){
+        mbEnrichQueue.push({ title, artist, key });
+        queued++;
+      }
+    }catch(e){ scanErrors++; console.error('mbBackfillAllArchives — titre ignoré (erreur):', title, artist, e); }
   };
-  for(const stKey of ['EUROPE2','RFM']){
-    for(const entry of (history[stKey]||[])){
-      const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
-      if(!detail || !detail.rows) continue;
-      detail.rows.forEach(row => queueIfMissing(row.title, row.artist));
+  // Balayage protégé : une semaine archivée corrompue, une entrée Comité/
+  // Playlist/Veille au format inattendu, etc. ne doivent JAMAIS interrompre
+  // tout le balayage — sans quoi mbRunEnrichment() plus bas ne serait jamais
+  // atteint et l'utilisateur resterait bloqué indéfiniment sur "0 enrichis"
+  // sans le moindre message d'erreur (bug réel corrigé en v30.183 : un
+  // balayage interrompu en silence sur une seule semaine parmi des
+  // centaines laissait toute la file d'attente inerte pendant des heures).
+  try{
+    await analyseHistoryCacheLoad();
+    const history = analyseLoadHistory();
+    for(const stKey of ['EUROPE2','RFM']){
+      for(const entry of (history[stKey]||[])){
+        try{
+          const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
+          if(!detail || !detail.rows) continue;
+          detail.rows.forEach(row => { if(row) queueIfMissing(row.title, row.artist); });
+        }catch(e){ scanErrors++; console.error('mbBackfillAllArchives — semaine ignorée (erreur):', stKey, entry.weekLabel, e); }
+      }
     }
-  }
+  }catch(e){ scanErrors++; console.error('mbBackfillAllArchives — erreur historique Analyse:', e); }
   // Couvre aussi Comité, Playlist et Veille : des titres peuvent y figurer
   // sans jamais être apparus dans une semaine Airplay archivée (ajout
   // manuel, service presse...) — sans ce complément, ils resteraient
   // indéfiniment "en attente" dans le badge sans jamais être rattrapables.
-  (comiteTitles||[]).forEach(t => queueIfMissing(t.title, t.artist));
-  (playlistTitles||[]).forEach(t => queueIfMissing(t.title, t.artist));
-  (watchlistTitles||[]).forEach(t => queueIfMissing(t.title, t.artist));
+  try{ (comiteTitles||[]).forEach(t => t && queueIfMissing(t.title, t.artist)); }catch(e){ scanErrors++; console.error('mbBackfillAllArchives — Comité ignoré:', e); }
+  try{ (playlistTitles||[]).forEach(t => t && queueIfMissing(t.title, t.artist)); }catch(e){ scanErrors++; console.error('mbBackfillAllArchives — Playlist ignoré:', e); }
+  try{ (watchlistTitles||[]).forEach(t => t && queueIfMissing(t.title, t.artist)); }catch(e){ scanErrors++; console.error('mbBackfillAllArchives — Veille ignorée:', e); }
+
+  const errNote = scanErrors ? (' (' + scanErrors + ' entrée(s) illisible(s) ignorée(s), voir la console)') : '';
   if(!queued){
-    showToast('✓ ISRC/date de sortie déjà interrogés pour les ' + totalScanned + ' titre(s) connus — rien à faire', 'success');
+    showToast('✓ ISRC/date de sortie déjà interrogés pour les ' + totalScanned + ' titre(s) connus' + errNote + ' — rien à faire', 'success');
     return;
   }
   mbEnrichTotal = mbEnrichDone + mbEnrichQueue.length;
-  showToast('🎵 Lancement de l\'enrichissement MusicBrainz sur ' + queued + ' titre(s) (débit 1/s, ~' + Math.ceil(queued/60) + ' min)…', 'success');
+  showToast('🎵 Lancement de l\'enrichissement MusicBrainz sur ' + queued + ' titre(s) (débit 1/s, ~' + Math.ceil(queued/60) + ' min)' + errNote + '…', scanErrors ? 'err' : 'success');
   if(!mbEnrichInProgress) mbRunEnrichment();
   else mbUpdateProgressUI();
 }
