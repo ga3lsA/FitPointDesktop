@@ -62,6 +62,22 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 .dec-subtab-item.soon .dec-soon-badge{margin-left:auto;font-size:9px;font-weight:800;background:var(--bg);border:1px solid var(--border);color:var(--muted);padding:2px 6px;border-radius:5px;flex-shrink:0}
 @keyframes fpaSpin{to{transform:rotate(360deg)}}
 
+/* Défilement horizontal de la ligne d'onglets — toujours actif (pas
+   seulement sous 900px) : sans ça, dès que le contenu des onglets dépasse
+   l'espace disponible (large ou étroit), il déborde visuellement par-dessus
+   le bloc fixe à droite (station/rôle/déconnexion) plutôt que de défiler
+   proprement — bug réel signalé, corrigé en élargissant cette règle. */
+#headerTabsRow{
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+  scroll-behavior:smooth;
+  padding-bottom:2px;
+  -ms-overflow-style:none;
+}
+#headerTabsRow::-webkit-scrollbar{height:4px}
+#headerTabsRow::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+#headerTabsRow button{flex-shrink:0}
+
 /* ═══════════════════════════════════════════════════════════════════════
    RESPONSIVE MOBILE — corrige les menus inaccessibles sur petit écran.
    Le header utilisait overflow:hidden avec des boutons en flex-wrap:nowrap :
@@ -71,16 +87,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
    la place en masquant les éléments décoratifs non essentiels.
    ═══════════════════════════════════════════════════════════════════════ */
 @media (max-width:900px){
-  #headerTabsRow{
-    overflow-x:auto;
-    -webkit-overflow-scrolling:touch;
-    scroll-behavior:smooth;
-    padding-bottom:2px;
-    -ms-overflow-style:none;
-  }
-  #headerTabsRow::-webkit-scrollbar{height:4px}
-  #headerTabsRow::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
-  #headerTabsRow button{flex-shrink:0}
   #decisionSubTabs{overflow-x:auto;-webkit-overflow-scrolling:touch}
   #decisionSubTabs::-webkit-scrollbar{height:4px}
   #decisionSubTabs::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -186,7 +192,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <span style="color:var(--border);font-size:12px">›</span>
     <span id="s3" class="step">③ Résultats</span>
   </div>
-  <div id="headerTabsRow" style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;flex-shrink:1;min-width:0">
+  <div id="headerTabsRow" style="display:flex;align-items:center;gap:5px;flex-wrap:nowrap;flex:1 1 0px;min-width:0">
     <button id="homeTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="goToFitScoreTable()" title="Retour au tableau Fit Score">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>
     </button>
@@ -235,7 +241,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </button>
       </div>
     </div>
-    <button id="analyseTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleAnalysePage()" title="Analyse exhaustive de la programmation musicale sur une semaine">
+    <button id="analyseTabBtn" class="btn-ghost admin-only" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleAnalysePage()" title="Analyse exhaustive de la programmation musicale sur une semaine">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Analyse
     </button>
@@ -244,12 +250,13 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       Quotas
       <span id="quotasBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
     </button>
+  </div>
+  <div id="headerFixedControls" style="display:flex;align-items:center;gap:5px;flex-shrink:0">
     <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
     <button id="stationToggleBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px;transition:background .15s,border-color .15s,color .15s" onclick="toggleActiveStation()" title="Bascule la station de référence pour tout le Call Out/Historique/Décision (Cycles de vie, Radar, Analyse de potentiel...)">
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a8 8 0 0 1 15-4"/><polyline points="19 3 19 7 15 7"/><path d="M20 13a8 8 0 0 1-15 4"/><polyline points="5 21 5 17 9 17"/></svg>
       <span id="stationToggleLabel">📻 Europe 2</span>
     </button>
-    <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
     <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
     <span id="fpaRoleBadge" title="" style="font-size:10px;font-weight:800;color:var(--navy);background:var(--cyan-light);border:1px solid var(--cyan-mid);border-radius:20px;padding:4px 10px;white-space:nowrap;flex-shrink:0"></span>
     <button onclick="fpaLogout()" title="Se déconnecter" class="btn-ghost" style="font-size:10.5px;padding:5px 7px;flex-shrink:0">⏏</button>
@@ -3186,7 +3193,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
 
         <!-- Programmation musicale (Analyse) — chargement direct depuis la home, Europe 2 et RFM, avec statut de la dernière semaine connue — même famille qu'Airplay, même accent bleu -->
-        <div style="padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #3B82F6">
+        <div style="padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #3B82F6" class="admin-only">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
             <div style="font-size:12.5px;font-weight:800;color:#fff">📊 Programmation musicale</div>
             <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:6px 12px;border-radius:8px;cursor:pointer;white-space:nowrap">
@@ -3247,7 +3254,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
               <div style="font-size:12px;font-weight:700;color:#fff">+ Données individuelles (facultatif)</div>
               <div style="font-size:11px;color:rgba(255,255,255,.45);margin-top:2px;line-height:1.5">Matrice brute par répondant → FPA vous propose automatiquement 1 à 3 titres anchor</div>
             </div>
-            <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 14px;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0">
+            <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:7px 13px;border-radius:8px;cursor:pointer;white-space:nowrap;flex-shrink:0">
               Choisir un fichier
               <input id="rawMatrixInput" type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleRawMatrixFile(event)">
             </label>
@@ -3271,7 +3278,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #10B981">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
             <div style="font-size:12.5px;font-weight:800;color:#fff">🌍 Tous les classements digitaux</div>
-            <button id="homeLoadAllBtn" onclick="loadAllCharts()" style="display:flex;align-items:center;gap:6px;background:var(--cyan);color:var(--navy);border:none;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">
+            <button id="homeLoadAllBtn" onclick="loadAllCharts()" style="display:flex;align-items:center;gap:6px;background:var(--cyan);color:var(--navy);border:1.5px solid var(--cyan);border-radius:8px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               Tout charger
             </button>
@@ -3784,6 +3791,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy MusicBrainz (ISRC + date de sortie, fiche titre)
         <input id="fpaCfgMusicBrainz" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Clé API YouTube Data v3 (abonnés — sonde Classements)
+        <input id="fpaCfgYoutube" type="text" placeholder="AIza..." style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
+        <span style="font-size:10px;color:var(--muted);font-weight:500">Gratuite — console.cloud.google.com → activer « YouTube Data API v3 » → Identifiants → Créer une clé API. Aucune carte bancaire requise.</span>
+      </label>
 
       <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px">Playlists clés Apple Music</div>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Tubes du Moment
@@ -3832,7 +3843,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.183';
+const FPA_VERSION   = 'v30.186';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -4770,11 +4781,15 @@ function renderHomePendingCard(kind){
     const d = new Date(saved.savedAt);
     const dateStr = d.toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'}) + ' à ' + d.toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'});
     if(checkEl) checkEl.innerHTML = `<span title="${label} chargé et Fit Score calculé — ${dateStr}" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#0DA76B;color:#fff;font-size:10px;font-weight:900">✓</span>`;
-    parts.push(`<div style="color:rgba(255,255,255,.85);display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-      <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#0DA76B;color:#fff;font-size:9px;font-weight:900;flex-shrink:0">✓</span>
-      Fit Score calculé pour « ${escHtml(saved.sourceFileName)} » (${(saved.analysisResult||[]).length} titres) — le ${dateStr}
-      <button onclick="resumeAnalysisResults('${kind}')" style="margin-left:4px;background:#0DA76B;color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:10.5px;font-weight:800;cursor:pointer">Voir les résultats</button>
-      <button onclick="clearSavedAnalysis('${kind}')" title="Retirer" style="margin-left:2px;background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:11px">✕</button>
+    parts.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:rgba(255,255,255,.85)">
+      <span style="display:flex;align-items:center;gap:6px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:#0DA76B;color:#fff;font-size:9px;font-weight:900;flex-shrink:0">✓</span>
+        Fit Score calculé pour « ${escHtml(saved.sourceFileName)} » (${(saved.analysisResult||[]).length} titres) — le ${dateStr}
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <button onclick="resumeAnalysisResults('${kind}')" style="background:#0DA76B;color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap">Voir les résultats</button>
+        <button onclick="clearSavedAnalysis('${kind}')" title="Retirer" style="background:none;border:none;color:rgba(255,255,255,.4);cursor:pointer;font-size:11px">✕</button>
+      </span>
     </div>`);
   } else if(checkEl) checkEl.innerHTML = '';
 
@@ -4784,9 +4799,9 @@ function renderHomePendingCard(kind){
     const v = found.vague;
     const count = (v.sheets||[]).reduce((s,sh)=>s+(sh.count||0),0);
     const dateInfo = v.date ? ' — semaine du ' + escHtml(v.date) : '';
-    parts.push(`<div style="color:rgba(255,255,255,.75);margin-top:4px">
-      Dernière vague dans l'historique : « ${escHtml(v.name)} »${dateInfo} (${count} titres)
-      <button onclick="resumeFromHistory('${kind}')" style="margin-left:8px;background:var(--cyan);color:var(--navy);border:none;border-radius:6px;padding:3px 10px;font-size:10.5px;font-weight:800;cursor:pointer">Recharger et calculer</button>
+    parts.push(`<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:rgba(255,255,255,.75);margin-top:4px">
+      <span>Dernière vague dans l'historique : « ${escHtml(v.name)} »${dateInfo} (${count} titres)</span>
+      <button onclick="resumeFromHistory('${kind}')" style="background:var(--cyan);color:var(--navy);border:none;border-radius:8px;padding:7px 13px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;flex-shrink:0">Recharger et calculer</button>
     </div>`);
   } else {
     parts.push(`<div style="color:rgba(255,255,255,.4);margin-top:4px">Aucune vague ${label} dans l'historique pour ${escHtml(STATION_LABELS[ACTIVE_STATION]||'cette station')}</div>`);
@@ -5531,6 +5546,73 @@ async function fetchDeezerViaProxy(){
 // serveur avec le bon User-Agent et renvoie {mbid, isrc, releaseDate}.
 // Limite stricte MusicBrainz : 1 requête/seconde — voir musicbrainzRateGate.
 let MUSICBRAINZ_APPS_SCRIPT_PROXY_URL = localStorage.getItem('fpa_musicbrainz_proxy_url') || FPA_DEFAULT_URLS.musicbrainz;
+
+// ── Sonde YouTube (abonnés — signal faible réseaux sociaux) ─────────────────
+// Contrairement à MusicBrainz/Deezer/Shazam, l'API YouTube Data v3 accepte les
+// appels directs depuis le navigateur avec une simple clé API (CORS autorisé
+// sur les endpoints en lecture seule) — pas besoin de proxy Apps Script ici.
+// Gratuite, quota de 10 000 unités/jour : channels.list coûte 1 unité,
+// search.list (nécessaire pour retrouver la chaîne à partir d'un nom
+// d'artiste) coûte 100 unités — donc ~100 sondes/jour possibles avec le
+// quota gratuit, largement suffisant pour un usage manuel à la demande
+// (voir sonde iTunes existante dans Classements, même principe).
+let YOUTUBE_API_KEY = localStorage.getItem('fpa_youtube_api_key') || '';
+
+/** Sonde à la volée : recherche une chaîne YouTube correspondant à
+ *  artist/title et renvoie ses abonnés. Deux appels API (search puis
+ *  channels) — coût total 101 unités sur le quota gratuit journalier de
+ *  10 000. Renvoie null si pas de clé configurée, pas de résultat, ou en
+ *  cas d'erreur (quota épuisé, réseau...) — jamais d'exception qui
+ *  remonterait à l'appelant, pour rester un simple complément optionnel
+ *  au lien de recherche déjà présent. */
+async function fetchYouTubeChannelInfo(query, timeoutMs = 7000){
+  if(!YOUTUBE_API_KEY) return null;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try{
+    const searchUrl = 'https://www.googleapis.com/youtube/v3/search'
+      + '?part=snippet&type=channel&maxResults=1'
+      + '&q=' + encodeURIComponent(query)
+      + '&key=' + encodeURIComponent(YOUTUBE_API_KEY);
+    const searchResp = await fetch(searchUrl, { signal: controller.signal });
+    if(!searchResp.ok) return null; // quota dépassé (403), clé invalide, etc. — échec silencieux
+    const searchData = await searchResp.json();
+    const item = searchData.items && searchData.items[0];
+    const channelId = item && item.id && item.id.channelId;
+    if(!channelId) return null;
+
+    const statsUrl = 'https://www.googleapis.com/youtube/v3/channels'
+      + '?part=snippet,statistics&id=' + encodeURIComponent(channelId)
+      + '&key=' + encodeURIComponent(YOUTUBE_API_KEY);
+    const statsResp = await fetch(statsUrl, { signal: controller.signal });
+    if(!statsResp.ok) return null;
+    const statsData = await statsResp.json();
+    const chan = statsData.items && statsData.items[0];
+    if(!chan) return null;
+
+    const stats = chan.statistics || {};
+    return {
+      channelTitle: chan.snippet && chan.snippet.title || null,
+      channelUrl: 'https://www.youtube.com/channel/' + channelId,
+      thumbnailUrl: chan.snippet && chan.snippet.thumbnails && (chan.snippet.thumbnails.default || {}).url || null,
+      subscriberCount: (stats.hiddenSubscriberCount) ? null : (stats.subscriberCount != null ? parseInt(stats.subscriberCount, 10) : null),
+      hidden: !!stats.hiddenSubscriberCount
+    };
+  }catch(e){
+    return null; // timeout (AbortError) ou erreur réseau — échec silencieux, voir docstring
+  }finally{
+    clearTimeout(timer);
+  }
+}
+/** Formate un nombre d'abonnés en version courte FR (12 300 → "12,3 k",
+ *  1 400 000 → "1,4 M") — cohérent avec la lecture rapide attendue pour un
+ *  signal faible consulté en un coup d'œil. */
+function formatSubscriberCount(n){
+  if(n == null) return null;
+  if(n >= 1000000) return (n/1000000).toFixed(n >= 10000000 ? 0 : 1).replace('.', ',') + ' M';
+  if(n >= 1000) return (n/1000).toFixed(n >= 10000 ? 0 : 1).replace('.', ',') + ' k';
+  return String(n);
+}
 let _mbCbId = 0;
 function fetchMusicBrainzViaAppsScript(title, artist, timeoutMs = 8000){
   return new Promise((resolve) => {
@@ -7152,17 +7234,18 @@ function renderChartSearchWebFallback(query, nbSourcesLoaded, box){
     <div style="padding:11px 14px;font-size:11.5px;color:var(--muted);border-bottom:1px solid var(--border)">${noDataMsg}</div>
     <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
       <div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">🌐 Signaux faibles — ailleurs sur le web</div>
-      <div id="chartSearchItunesCheck" style="font-size:11.5px;color:var(--muted);margin-bottom:10px">⏳ Vérification sur iTunes / Apple Music…</div>
+      <div id="chartSearchItunesCheck" style="font-size:11.5px;color:var(--muted);margin-bottom:6px">⏳ Vérification sur iTunes / Apple Music…</div>
+      <div id="chartSearchYoutubeCheck" style="font-size:11.5px;color:var(--muted);margin-bottom:10px"></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         <a href="https://open.spotify.com/search/${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🟢 Spotify</a>
-        <a href="https://www.youtube.com/results?search_query=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">▶️ YouTube</a>
+        <a id="chartSearchYoutubeLink" href="https://www.youtube.com/results?search_query=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">▶️ YouTube</a>
         <a href="https://www.deezer.com/search/${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🎧 Deezer</a>
         <a href="https://www.shazam.com/fr/search?term=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🔍 Shazam</a>
         <a href="https://www.tiktok.com/search?q=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🎵 TikTok</a>
         <a href="https://www.instagram.com/explore/search/keyword/?q=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">📸 Instagram</a>
         <a href="https://www.google.com/search?q=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🌐 Google</a>
       </div>
-      <div style="font-size:9.5px;color:var(--muted);margin-top:8px">Spotify/YouTube/Deezer/Shazam/TikTok/Instagram/Google n'offrant pas de recherche publique interrogeable sans clé, ce sont des raccourcis vers leur recherche — pas des données chiffrées comme iTunes ci-dessus.</div>
+      <div style="font-size:9.5px;color:var(--muted);margin-top:8px">Spotify/Deezer/Shazam/TikTok/Instagram/Google n'offrant pas de recherche publique interrogeable sans clé, ce sont des raccourcis vers leur recherche — pas des données chiffrées comme iTunes ci-dessus. YouTube affiche le nombre d'abonnés en direct si une clé API est configurée (⚙️ Configuration FPA), sinon reste un simple raccourci.</div>
     </div>
     <div style="padding:12px 14px">
       <div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">➕ Ajouter rapidement — Station ${STATION_LABELS[ACTIVE_STATION]}</div>
@@ -7188,6 +7271,28 @@ function renderChartSearchWebFallback(query, nbSourcesLoaded, box){
       </div>
     </div>`;
   });
+
+  // Sonde YouTube (abonnés) — voir fetchYouTubeChannelInfo. Silencieuse et
+  // invisible si aucune clé API n'est configurée (cas par défaut), pour ne
+  // jamais laisser un message d'erreur permanent dans ce panneau consulté
+  // très fréquemment.
+  const ytCheckEl = document.getElementById('chartSearchYoutubeCheck');
+  if(YOUTUBE_API_KEY && ytCheckEl){
+    ytCheckEl.textContent = '⏳ Vérification sur YouTube…';
+    fetchYouTubeChannelInfo(query).then(info => {
+      const el = document.getElementById('chartSearchYoutubeCheck');
+      if(!el) return; // panneau changé entre-temps
+      if(!info){ el.innerHTML = ''; return; } // échec silencieux (voir docstring) — le lien de recherche reste disponible
+      const subLabel = info.hidden ? 'abonnés masqués par la chaîne'
+        : (info.subscriberCount != null ? formatSubscriberCount(info.subscriberCount) + ' abonnés' : null);
+      el.innerHTML = `<div style="display:flex;align-items:center;gap:8px">
+        ${info.thumbnailUrl ? `<img src="${info.thumbnailUrl}" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0">` : ''}
+        <div style="min-width:0">▶️ ${escHtml(info.channelTitle||'Chaîne trouvée')}${subLabel ? ' — ' + subLabel : ''}</div>
+      </div>`;
+      const linkEl = document.getElementById('chartSearchYoutubeLink');
+      if(linkEl && info.channelUrl) linkEl.href = info.channelUrl; // pointe directement vers la chaîne trouvée plutôt qu'une recherche générique
+    });
+  }
 }
 
 /** Ajoute rapidement le titre recherché (via le panneau de secours ci-dessus)
@@ -17189,6 +17294,7 @@ function renderAnalysePage(){
 }
 
 function toggleAnalysePage(){
+  if(!analysePageOpen && !requireAdmin()) return; // ouverture réservée à l'admin — la fermeture (si déjà ouvert par erreur) reste possible
   analysePageOpen = !analysePageOpen;
   const btn = document.getElementById('analyseTabBtn');
   if(analysePageOpen){
@@ -32260,6 +32366,7 @@ function updateHomeSummaries(){
  *  dépend lui de la station actuellement active), pour garantir un bon
  *  routage quel que soit l'état de la home au moment du clic. */
 function homeProgTriggerImport(input){
+  if(!requireAdmin()){ input.value = ''; return; }
   const files = Array.from(input.files || []);
   input.value = '';
   if(!files.length) return;
@@ -34479,6 +34586,7 @@ function openFpaConfigModal(){
   document.getElementById('fpaCfgAppleMusic').value    = APPLEMUSIC_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgShazam').value        = SHAZAM_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgMusicBrainz').value   = MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '';
+  document.getElementById('fpaCfgYoutube').value        = YOUTUBE_API_KEY || '';
   document.getElementById('fpaCfgAkpTubesmoment').value = appleKeyPlaylistUrl('tubesmoment');
   document.getElementById('fpaCfgAkpLecode').value      = appleKeyPlaylistUrl('lecode');
   document.getElementById('fpaCfgAkpHitsfrance').value  = appleKeyPlaylistUrl('hitsfrance');
@@ -34503,6 +34611,7 @@ function saveFpaConfigFromModal(){
     ['fpaCfgAppleMusic',    'fpa_applemusic_proxy_url',v => { APPLEMUSIC_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgShazam',        'fpa_shazam_proxy_url',    v => { SHAZAM_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgMusicBrainz',   'fpa_musicbrainz_proxy_url', v => { MUSICBRAINZ_APPS_SCRIPT_PROXY_URL = v; }],
+    ['fpaCfgYoutube',       'fpa_youtube_api_key', v => { YOUTUBE_API_KEY = v; }],
   ];
   fields.forEach(([inputId, key, apply]) => {
     const v = document.getElementById(inputId).value.trim();
@@ -34531,6 +34640,7 @@ function copyFpaConfigFromModal(){
     'Proxy Apple Music : '     + (document.getElementById('fpaCfgAppleMusic').value.trim() || '(non configuré)'),
     'Proxy Shazam : '          + (document.getElementById('fpaCfgShazam').value.trim() || '(non configuré)'),
     'Proxy MusicBrainz : '     + (document.getElementById('fpaCfgMusicBrainz').value.trim() || '(non configuré)'),
+    'Clé API YouTube : '       + (document.getElementById('fpaCfgYoutube').value.trim() ? '(configurée)' : '(non configurée)'),
     'Playlist Tubes du Moment : ' + (document.getElementById('fpaCfgAkpTubesmoment').value.trim() || '(non configuré)'),
     'Playlist Le Code : '         + (document.getElementById('fpaCfgAkpLecode').value.trim() || '(non configuré)'),
     'Playlist Hits Français : '   + (document.getElementById('fpaCfgAkpHitsfrance').value.trim() || '(non configuré)'),
