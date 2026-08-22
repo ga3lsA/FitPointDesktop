@@ -1066,10 +1066,19 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Note explicative repliable -->
       <div id="infoPredEntry" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quels titres ?</strong> Trois viviers, jamais les titres déjà en Playlist : les titres suivis en Veille (Shazam, Spotify, Deezer, iTunes, playlists clés), les titres testés en Call Out/OMT classés Power Song ou Sleeper mais quasiment absents de votre antenne, et — nouveau — <strong>tout le marché suivi par votre import Airplay général</strong> (Yacast/Muzicast, toutes radios confondues) : un titre significativement diffusé chez les concurrents (moyenne ≥5 passages) et quasi absent chez vous entre automatiquement, sans avoir été ajouté en Veille ni testé en Call Out au préalable.</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Méthode de calcul</strong> — 4 signaux déjà présents ailleurs dans FPA, combinés en un score 0-100 pondérable : le classement Recherche interne (Power Song/Sleeper), la traction digitale en Veille, l'écart avec la Concurrence et la Fenêtre d'opportunité. <strong>Le score est renormalisé sur les seuls signaux réellement disponibles</strong> pour ce titre (badge "X/4 signaux") : un titre venu du Marché sans historique Veille ni test Call Out n'est jamais sous-noté faute de ces deux signaux, son score repose alors sur Concurrence + Fenêtre d'opportunité. ≥65 = entrée recommandée, 40-64 = à tester/surveiller, &lt;40 = signal encore faible.</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Biais de format</strong> — la Concurrence ne se calcule plus sur la moyenne de toutes les stations suivies (NRJ et Fun Radio, plus urbaines/dance, gonflaient artificiellement les titres rap/urbains hors format Pop/Hot AC), mais en priorité sur les <strong>stations de référence format</strong> réglables ci-dessous. Quand un titre est fort chez la concurrence toutes stations confondues mais absent des stations de référence, un avertissement ⚠️ l'indique explicitement plutôt que de le recommander à tort. Les styles décochés dans Digital Métrics (onglet IEDR) sont également exclus du vivier Call Out quand la donnée de style existe.</div>
-        <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer les titres qui cumulent plusieurs signaux de percée avant qu'ils ne soient évidents, sans dépendre uniquement d'ajouts manuels en Veille. Chaque recommandation affiche ses raisons dominantes, et le bouton 🔬 son détail de calcul complet — une piste pour le Comité d'Écoute, jamais une décision automatique.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quels titres ?</strong> Trois viviers, jamais les titres déjà en Playlist : les titres suivis en Veille (Shazam, Spotify, Deezer, iTunes, playlists clés), les titres testés en Call Out/OMT classés Power Song ou Sleeper (ou marqués catégorie <strong>RECH</strong>, voir plus bas) mais quasiment absents de votre antenne, et <strong>tout le marché suivi par votre import Airplay général</strong> (Yacast/Muzicast, toutes radios confondues) : un titre significativement diffusé chez les concurrents (moyenne ≥5 passages) et quasi absent chez vous entre automatiquement, sans avoir été ajouté en Veille ni testé en Call Out au préalable.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Exclusion titres anciens</strong> — dès que la date de sortie officielle d'un titre est connue (iTunes, ou MusicBrainz si trouvée) et dépasse <strong>2 ans</strong>, il n'est plus jamais suggéré, pour aucune des deux stations. Un titre sans date connue n'est jamais filtré par cette règle (absence de donnée ≠ preuve d'ancienneté).</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Méthode de calcul</strong> — 4 signaux combinés en un score 0-100 pondérable (curseurs ci-dessus) : Recherche interne, traction digitale Veille, écart avec la Concurrence, Fenêtre d'opportunité. <strong>Renormalisé sur les seuls signaux réellement disponibles</strong> pour ce titre (badge « X/4 signaux ») : un titre du Marché sans historique Veille ni test Call Out n'est jamais sous-noté faute de ces deux signaux, son score repose alors sur Concurrence + Fenêtre d'opportunité. Seuils : ≥65 = entrée recommandée, 40-64 = à tester/surveiller, &lt;40 = signal encore faible.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Signal Recherche interne (détail)</strong> — Power Song = 100. Sleeper = 55, ou <strong>80 si en plus marqué catégorie RECH</strong> (bonus quand un premier choix éditorial a déjà jugé le score et le Fit Score satisfaisants, avant même le test terrain). Un titre marqué RECH mais pas encore classé Power Song/Sleeper obtient un plancher de <strong>45</strong> plutôt que 0 — jamais exclu du vivier au seul motif de l'absence de quadrant gagnant.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Signal Veille (détail)</strong> — bonus fixe de <strong>+15</strong> pour la simple présence en Veille manuelle (un premier choix éditorial, même minime, a déjà été fait en l'ajoutant), auquel s'ajoute la traction digitale mesurée : largeur de sources actives (iTunes, Shazam FR/monde, Spotify, Deezer, playlists clés — jusqu'à 13 pts/source) et progression Shazam France entre deux relevés.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Biais de format</strong> — la Concurrence ne se calcule pas sur la moyenne de toutes les stations suivies (NRJ et Fun Radio, plus urbaines/dance, gonfleraient artificiellement les titres rap/urbains hors format Pop/Hot AC), mais en priorité sur les <strong>stations de référence format</strong> réglables ci-dessous. Un titre fort chez la concurrence toutes stations confondues mais absent des stations de référence déclenche un avertissement ⚠️ explicite plutôt qu'une recommandation à tort. Les styles décochés dans Digital Métrics (onglet IEDR) sont exclus du vivier Call Out quand la donnée de style existe.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Apprentissage par retour terrain (📝)</strong> — pour chaque titre, Oui/Non/Peut-être + raisons cochées. <strong>Scopé par station</strong> : un même titre peut recevoir un retour différent sur Europe 2 et RFM, jamais mélangé. Deux effets distincts :
+          <div style="margin:4px 0 0 12px">
+            · <em>Effet titre</em> — un « Non » retire le titre de la liste active (section « Rejetés »). Un « Oui » simple reste dans la liste (signal d'apprentissage, pas une fin de suivi). Une raison « … titre gold » (Oui ou Non) retire le titre définitivement, quelle que soit la décision — trop ancien pour être une suggestion pertinente, mais l'artiste reste exploitable pour l'apprentissage. « Peut-être » reste toujours visible dans la liste active, avec un badge 🤔 dédié (date + raison + date de relance indicative) — jamais relégué à part.<br>
+            · <em>Effet artiste</em> — seulement certaines raisons (« Artiste format »/« Star du format » en Oui, « Artiste hors format » en Non) : les prochains titres du même artiste sont boostés (+15 pts) ou pénalisés (−35 pts), badge ⭐/⚠️ visible, jamais d'exclusion silencieuse. Cliquer le badge retire le statut. « Titre sans potentiel » et « Artiste dans format mais titre sans potentiel » n'affectent jamais l'artiste, seulement ce titre précis.
+          </div>
+        </div>
+        <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer les titres qui cumulent plusieurs signaux de percée avant qu'ils ne soient évidents, sans dépendre uniquement d'ajouts manuels en Veille, et affiner ces suggestions au fil du temps grâce à vos retours. Chaque recommandation affiche ses raisons dominantes, et le bouton 🔬 son détail de calcul complet — une piste pour le Comité d'Écoute, jamais une décision automatique. Cet algorithme est amené à évoluer ; cette notice est tenue à jour à chaque ajustement de paramètre.</div>
       </div>
 
       <!-- Bandeau pas de données -->
@@ -2545,6 +2554,33 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
   </div>
 </div>
+<div id="modalPredEntryFeedback" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:600;align-items:center;justify-content:center;padding:24px" onclick="closePredEntryFeedbackModal(event)">
+  <div style="background:var(--white);border-radius:16px;box-shadow:0 20px 60px rgba(11,29,58,.25);width:100%;max-width:560px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+    <!-- Header -->
+    <div style="padding:18px 24px 14px;border-bottom:1.5px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-shrink:0">
+      <div>
+        <div id="pefTitle" style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy);line-height:1.2"></div>
+        <div id="pefArtist" style="font-size:13px;color:var(--text2);margin-top:3px"></div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--cyan);margin-top:5px">📝 Retour terrain — Entrée en playlist ?</div>
+      </div>
+      <button onclick="closePredEntryFeedbackModal()" style="flex-shrink:0;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;font-size:16px;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s"
+        onmouseenter="this.style.borderColor='var(--cyan)';this.style.color='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">×</button>
+    </div>
+    <!-- Corps -->
+    <div style="flex:1;overflow-y:auto;padding:22px 28px 28px">
+      <div style="display:flex;gap:8px;margin-bottom:18px">
+        <button id="pefDecOui" onclick="predEntryFeedbackPickDecision('oui')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);font-size:13px;font-weight:800;cursor:pointer;transition:all .15s">✅ Oui</button>
+        <button id="pefDecNon" onclick="predEntryFeedbackPickDecision('non')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);font-size:13px;font-weight:800;cursor:pointer;transition:all .15s">❌ Non</button>
+        <button id="pefDecPeutEtre" onclick="predEntryFeedbackPickDecision('peut-etre')" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);font-size:13px;font-weight:800;cursor:pointer;transition:all .15s">🤔 Peut-être</button>
+      </div>
+      <div id="pefReasonsArea" style="display:none">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Pourquoi ? (une ou plusieurs raisons)</div>
+        <div id="pefReasonsList" style="display:flex;flex-direction:column;gap:6px;margin-bottom:20px"></div>
+        <button onclick="predEntryFeedbackSubmit()" class="btn-primary" style="width:100%;padding:11px;font-size:13px">Enregistrer ce retour</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div id="modalTitleEvolution" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:600;align-items:center;justify-content:center;padding:24px" onclick="closeTitleEvolutionModal(event)">
   <div id="tevCard" style="background:var(--white);border-radius:16px;box-shadow:0 20px 60px rgba(11,29,58,.25);width:100%;max-width:860px;max-height:92vh;overflow:hidden;display:flex;flex-direction:column" onclick="event.stopPropagation()">
     <!-- Header -->
@@ -3855,7 +3891,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.191';
+const FPA_VERSION   = 'v30.204';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -15969,8 +16005,11 @@ const CORR_PROG_METRICS = [
   { key:'avgSpu',     label:'SPU (moy. pondérée)' },
   { key:'avgPot',     label:'Pot Score (moy. pondérée)' },
   { key:'avgFam',     label:'Fam Score (moy. pondérée)' },
-  { key:'avgBurnCO',  label:'Burn Call Out (moy. pondérée)' },
-  { key:'avgBurnOMT', label:'Burn OMT (moy. pondérée)' },
+  // expectNegative:true — à haute dose, le Burn est censé FAIRE BAISSER
+  // l'audience : un r négatif est donc le résultat attendu/confirmant
+  // (vert), pas un signal négatif à corriger. Voir corrColorForR.
+  { key:'avgBurnCO',  label:'Burn Call Out (moy. pondérée)', expectNegative:true },
+  { key:'avgBurnOMT', label:'Burn OMT (moy. pondérée)', expectNegative:true },
 ];
 const CORR_AUD_METRICS = [
   { key:'sessions',        label:'Sessions >30s' },
@@ -15979,22 +16018,32 @@ const CORR_AUD_METRICS = [
   { key:'dureeSec',        label:'Durée moy. (sec)' },
 ];
 
-function corrColorForR(r){
+/** expectNegative=true pour les critères où une corrélation NÉGATIVE avec
+ *  l'audience est le résultat attendu/confirmant plutôt qu'un signal
+ *  inquiétant — c'est le cas du Burn (Call Out et OMT) : à haute dose, le
+ *  Burn est censé faire baisser l'audience, donc un r négatif valide le
+ *  modèle (vert) et un r positif est le signal contre-intuitif à
+ *  investiguer (rouge) — l'inverse de tous les autres critères
+ *  (Fit Score, SPU, Pot/Fam Score, Nb Diffs), où l'on espère au contraire
+ *  une corrélation positive avec l'audience. */
+function corrColorForR(r, expectNegative){
   if(r === null) return 'var(--muted)';
-  const a = Math.abs(r);
-  if(a >= 0.6) return r > 0 ? '#0DA76B' : '#CC2222';
-  if(a >= 0.3) return r > 0 ? '#5B9E3F' : '#E07B00';
+  const signed = expectNegative ? -r : r;
+  const a = Math.abs(signed);
+  if(a >= 0.6) return signed > 0 ? '#0DA76B' : '#CC2222';
+  if(a >= 0.3) return signed > 0 ? '#5B9E3F' : '#E07B00';
   return 'var(--muted)';
 }
 /** Même échelle de couleur que corrColorForR, mais toujours en hexadécimal
  *  littéral — corrColorForR renvoie parfois 'var(--muted)', une variable CSS
  *  que Chart.js ne sait pas résoudre puisqu'il dessine sur un <canvas>, pas
  *  dans le DOM. */
-function corrColorForRCanvas(r){
+function corrColorForRCanvas(r, expectNegative){
   if(r === null) return '#8A94A6';
-  const a = Math.abs(r);
-  if(a >= 0.6) return r > 0 ? '#0DA76B' : '#CC2222';
-  if(a >= 0.3) return r > 0 ? '#5B9E3F' : '#E07B00';
+  const signed = expectNegative ? -r : r;
+  const a = Math.abs(signed);
+  if(a >= 0.6) return signed > 0 ? '#0DA76B' : '#CC2222';
+  if(a >= 0.3) return signed > 0 ? '#5B9E3F' : '#E07B00';
   return '#8A94A6';
 }
 
@@ -16116,11 +16165,16 @@ function renderCorrCombined(){
   }
   const r2pct = Math.round(res.r2 * 100);
   const barsHtml = res.coefs.map(c => {
-    const label = CORR_PROG_METRICS.find(p => p.key === c.key)?.label || c.key;
+    const metric = CORR_PROG_METRICS.find(p => p.key === c.key);
+    const label = metric?.label || c.key;
     const pct = Math.min(100, Math.abs(c.beta) * 50);
-    const color = c.beta >= 0 ? '#0DA76B' : '#CC2222';
+    // Même logique que corrColorForR : pour un critère négatif (Burn), un
+    // bêta négatif est le résultat attendu/confirmant (vert), pas un signal
+    // à corriger (rouge) — voir la définition de CORR_PROG_METRICS.
+    const signedBeta = metric?.expectNegative ? -c.beta : c.beta;
+    const color = signedBeta >= 0 ? '#0DA76B' : '#CC2222';
     return `<div style="margin-bottom:7px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:2px"><span>${escHtml(label)}</span><span style="font-weight:700;color:${color}">${c.beta>=0?'+':''}${c.beta.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:2px"><span>${escHtml(label)}${metric?.expectNegative ? ' <span style="color:var(--muted);font-size:9.5px">(critère négatif)</span>' : ''}</span><span style="font-weight:700;color:${color}">${c.beta>=0?'+':''}${c.beta.toFixed(2)}</span></div>
       <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .6s ease"></div></div>
     </div>`;
   }).join('');
@@ -16234,12 +16288,12 @@ function renderCorrPage(){
       ${CORR_AUD_METRICS.map(a => `<th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">${escHtml(a.label)}</th>`).join('')}
     </tr></thead><tbody>`;
   CORR_PROG_METRICS.forEach(p => {
-    matrixHtml += `<tr><td style="padding:7px 10px;font-weight:700;color:var(--navy)">${escHtml(p.label)}</td>`;
+    matrixHtml += `<tr><td style="padding:7px 10px;font-weight:700;color:var(--navy)">${escHtml(p.label)}${p.expectNegative ? ' <span style="font-weight:500;color:var(--muted);font-size:9.5px" title="Critère négatif : une corrélation négative avec l\'audience est ici le résultat attendu, pas un signal à corriger">(critère négatif)</span>' : ''}</td>`;
     CORR_AUD_METRICS.forEach(a => {
       const pairs = rows.map(r => ({ x: r.prog[p.key], y: r.aud[a.key] }));
       const { r, n } = corrPearson(pairs);
       const disp = r === null ? (n < 3 ? `n=${n}` : '—') : r.toFixed(2);
-      matrixHtml += `<td style="padding:7px 10px;text-align:center;font-weight:800;color:${corrColorForR(r)}" title="${n} semaine(s) appariée(s)">${disp}</td>`;
+      matrixHtml += `<td style="padding:7px 10px;text-align:center;font-weight:800;color:${corrColorForR(r, p.expectNegative)}" title="${n} semaine(s) appariée(s)">${disp}</td>`;
     });
     matrixHtml += '</tr>';
   });
@@ -16291,6 +16345,7 @@ function renderCorrScatter(){
 
   const { r } = corrPearson(pts);
   const n = pts.length;
+  const xMetric = CORR_PROG_METRICS.find(p => p.key === xKey);
   const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
   const mx = xs.reduce((s,v)=>s+v,0)/n, my = ys.reduce((s,v)=>s+v,0)/n;
   let num = 0, den = 0;
@@ -16299,9 +16354,9 @@ function renderCorrScatter(){
   const intercept = my - slope*mx;
   const xMin = Math.min(...xs), xMax = Math.max(...xs);
   const trendLine = [{ x:xMin, y:slope*xMin+intercept }, { x:xMax, y:slope*xMax+intercept }];
-  const trendColor = corrColorForRCanvas(r);
+  const trendColor = corrColorForRCanvas(r, xMetric?.expectNegative);
 
-  if(metaEl) metaEl.innerHTML = `r = <strong style="color:${corrColorForR(r)}">${r===null?'—':r.toFixed(3)}</strong> sur ${pts.length} semaine(s) appariée(s)`;
+  if(metaEl) metaEl.innerHTML = `r = <strong style="color:${corrColorForR(r, xMetric?.expectNegative)}">${r===null?'—':r.toFixed(3)}</strong> sur ${pts.length} semaine(s) appariée(s)${xMetric?.expectNegative ? ' <span style="color:var(--muted);font-size:10px">(critère négatif — un r négatif est ici le résultat attendu)</span>' : ''}`;
 
   graphSafeNewChart('corrScatterChart', {
     data: {
@@ -27264,6 +27319,36 @@ function predExitLifecycleSubscore(lifecyclePhase){
   if(lifecyclePhase === 'mature')  return 45;
   return 0;
 }
+// Archétypes de trajectoire (voir SHAPE_ARCHETYPES) dont le nom contient
+// "Déclin" — Pic Précoce/Tardif/Médian, Déclin Rapide ou Progressif. Les
+// archétypes "Stabilisé" ou "Croissance Continue" ne comptent PAS comme
+// déclin (un plateau n'est pas une chute, une croissance continue encore
+// moins).
+const LIFECYCLE_DECLINE_ARCHETYPE_IDX = [1, 3, 4, 6];
+/** Interroge le système de modèles de cycle de vie (8 archétypes de
+ *  trajectoire, voir classifyShapeArchetype/recomputeLifeCycleClusters) —
+ *  bien plus précis que le simple seuil sur passages cumulés (lifecyclePhase
+ *  ci-dessus) puisqu'il s'appuie sur la FORME RÉELLE de la trajectoire Pot
+ *  Score du titre (position du pic, pente de la chute), propre à ce titre.
+ *  Renvoie null si les clusters n'ont jamais été calculés (page Cycles de
+ *  vie jamais ouverte) ou si ce titre n'a pas encore assez de vagues
+ *  (LIFECYCLE_MIN_WAVES) pour être classé — dans ces deux cas, le garde-fou
+ *  ci-dessous ne s'applique simplement pas, sans pénaliser ni avantager le
+ *  titre. */
+function predExitShapeDeclineInfo(title, artist){
+  const clusterData = loadLifeCycleClusters();
+  if(!clusterData || !clusterData.assignments) return null;
+  const key = histKey(artist, title);
+  const idx = clusterData.assignments[key];
+  if(idx === undefined) return null;
+  const arche = SHAPE_ARCHETYPES[idx];
+  return {
+    idx,
+    name: arche ? arche.name : null,
+    icon: arche ? arche.icon : null,
+    isDecline: LIFECYCLE_DECLINE_ARCHETYPE_IDX.includes(idx)
+  };
+}
 
 /* ── Moteur unifié : calcule score, coverage, breakdown et raisons en une
    seule passe, en RENORMALISANT la pondération sur les seuls signaux
@@ -27272,7 +27357,7 @@ function predExitLifecycleSubscore(lifecyclePhase){
    de classement digital chargés) voit son score artificiellement écrasé par
    des "0" qui ne reflètent pas une absence de risque mais une absence de
    mesure — c'est ce qui masquait des titres comme Muse en v2. ── */
-function predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyclePhase, medianScore, weights){
+function predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyclePhase, medianScore, weights, shapeInfo){
   const perfAvail = !!(dr && dr.score !== null && dr.score !== undefined);
   const perfSub = predExitPerformanceSubscore(dr, medianScore);
   let perfTxt = perfAvail ? `Score Call Out/OMT ${dr.score < medianScore ? 'sous la médiane du corpus' : 'moyen'} (${dr.score.toFixed(1)} vs médiane ${medianScore.toFixed(1)})` : 'Pas de score Call Out/OMT disponible pour ce titre';
@@ -27309,9 +27394,25 @@ function predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyc
 
   const availWeightSum = sigs.filter(s => s.available).reduce((a,s) => a + s.weight, 0);
   const coverage = sigs.filter(s => s.available).length;
-  const score = availWeightSum > 0
+  let score = availWeightSum > 0
     ? Math.round(sigs.filter(s => s.available).reduce((a,s) => a + s.subscore * s.weight, 0) / availWeightSum)
     : 0;
+
+  // ── Garde-fou : modèle de trajectoire (Cycles de vie) confirmé en déclin ──
+  // Contrairement au signal "Cycle de vie" ci-dessus (lcSub — seuil grossier
+  // sur les passages cumulés, un simple proxy), ce garde-fou s'appuie sur la
+  // FORME RÉELLE de la trajectoire Pot Score propre à ce titre (position du
+  // pic, pente de chute), déjà calculée pour tous les titres testés dans la
+  // page Cycles de vie. Un titre dont le modèle confirme qu'il a dépassé son
+  // pic et chute (archétype "Déclin Rapide" ou "Déclin Progressif") voit sa
+  // note de recommandation de sortie forcée à au moins le seuil "Sortie
+  // recommandée" (70), quels que soient les autres signaux — un titre en
+  // déclin avéré selon sa propre trajectoire mérite d'être signalé, même si
+  // sa performance Call Out reste correcte ou que le Burn n'a pas encore
+  // franchi de seuil.
+  const shapeDeclineApplies = !!(shapeInfo && shapeInfo.isDecline);
+  const scoreBeforeShapeGuard = score;
+  if(shapeDeclineApplies && score < 70) score = 70;
 
   const breakdown = sigs.map(s => ({
     label: s.label,
@@ -27328,8 +27429,12 @@ function predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyc
     .sort((a,b) => b.weight - a.weight)
     .slice(0,3)
     .map(c => c.txt);
+  if(shapeDeclineApplies){
+    reasons.unshift(`⛔ Garde-fou trajectoire : modèle « ${shapeInfo.icon || ''} ${shapeInfo.name} » confirmé en déclin — note forcée à ${score} minimum`);
+    if(reasons.length > 3) reasons.length = 3;
+  }
 
-  return { score, coverage, breakdown, reasons };
+  return { score, coverage, breakdown, reasons, shapeInfo, shapeDeclineApplies, scoreBeforeShapeGuard };
 }
 
 /* ── Construire les lignes enrichies pour la Prédiction Sorties ── */
@@ -27380,8 +27485,9 @@ function buildPredictionExitRows(){
     const compRow = compByKey[key] || null;
     const digitalPct = digitalDataLoaded ? iedrDigitalPercentile(digitalSnapshot, title, artist) : null;
     const lifecyclePhase = dr ? getLifecyclePhase(dr.cumPlays) : null;
+    const shapeInfo = predExitShapeDeclineInfo(title, artist);
 
-    const { score:riskScore, coverage, breakdown, reasons } = predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyclePhase, medianScore, weights);
+    const { score:riskScore, coverage, breakdown, reasons, shapeDeclineApplies, scoreBeforeShapeGuard } = predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyclePhase, medianScore, weights, shapeInfo);
 
     let level, levelColor, levelBg, levelBorder, levelIcon;
     if(riskScore >= 70){ level='Sortie recommandée'; levelColor='#CC2222'; levelBg='#FFEAEA'; levelBorder='#F5B8B8'; levelIcon='🔴'; }
@@ -27392,6 +27498,7 @@ function buildPredictionExitRows(){
       title, artist,
       lastBurn: br ? br.lastBurn : null, threshold: br ? br.threshold : null, status: br ? br.status : null,
       momentum: dr ? dr.momentum : null, lifecyclePhase, riskScore, coverage, level, levelColor, levelBg, levelBorder, levelIcon,
+      shapeInfo, shapeDeclineApplies, scoreBeforeShapeGuard,
       breakdown, reasons
     };
   });
@@ -27550,6 +27657,7 @@ const PRED_ENTRY_WEIGHT_LABELS = {
   opportunity: { label:"Fenêtre d'opportunité", desc:'Digital fort, burn faible, radio encore faible (module dédié)' }
 };
 const PRED_ENTRY_MAX_AIRPLAY = 2;    // passages E2/RFM max pour rester considéré comme "pas encore entré"
+const PRED_ENTRY_MAX_AGE_YEARS = 2;  // au-delà, un titre à date de sortie connue n'est plus suggéré du tout, pour aucune station
 const PRED_ENTRY_MARKET_MIN_CONC = 5; // moyenne concurrents (toutes stations) mini pour qu'un titre du marché général mérite d'être remonté ici (filtre le bruit)
 
 // ── Stations de référence pour le format : Europe 2/RFM sont des formats
@@ -27600,16 +27708,259 @@ function resetPredEntryWeights(){
   renderPredictionEntryPage();
 }
 
-/* ── Sous-score 0-100 : Recherche interne (quadrant Fit Point du Call Out/OMT) ── */
-function predEntryInternalSubscore(q){
-  if(q === 'POWER_SONG') return 100;
-  if(q === 'SLEEPER_SONG') return 55;
-  return 0;
+// ══════════════════════════════════════════════════════════════════════════
+// PRÉDICTION ENTRÉES — APPRENTISSAGE PAR RETOUR TERRAIN
+// ══════════════════════════════════════════════════════════════════════════
+// Pour chaque titre suggéré, Oui/Non/Peut-être + raisons cochées (voir
+// PRED_ENTRY_REASONS). Deux effets distincts, gardés bien séparés :
+// - Effet TITRE (toujours) : ce titre précis sort de la liste active (déjà
+//   tranché), sauf "Peut-être" qui le met en veille avec relance automatique.
+// - Effet ARTISTE (seulement certaines raisons) : les PROCHAINS titres du
+//   même artiste sont boostés ou pénalisés. Volontairement un déclassement
+//   fort plutôt qu'une exclusion totale et silencieuse — un titre par
+//   ailleurs très bien noté peut donc quand même ressortir malgré un artiste
+//   pénalisé, avec le badge explicite pour que ce soit visible, jamais caché.
+const PRED_ENTRY_FEEDBACK_KEY      = 'fpa_pred_entry_feedback_v1';
+const PRED_ENTRY_ARTIST_STATUS_KEY = 'fpa_pred_entry_artist_status_v1';
+const PRED_ENTRY_ARTIST_BOOST      = 15;  // points ajoutés au score pour un titre dont l'artiste est marqué format/star
+const PRED_ENTRY_ARTIST_PENALTY    = 35;  // points retirés pour un titre dont l'artiste est marqué hors format
+
+const PRED_ENTRY_REASONS = {
+  oui: [
+    { key:'artiste_format',      label:'Artiste format',                       artistEffect:'boost' },
+    { key:'star_format',         label:'Star du format',                       artistEffect:'boost' },
+    { key:'gros_potentiel',      label:'Titre à gros potentiel' },
+    { key:'gros_environnement',  label:'Gros environnement' },
+    { key:'interessant_developper', label:'Intéressant à développer' },
+    { key:'son_format',          label:'Son dans le format' },
+    { key:'gold_oui',            label:'Oui mais titre gold',                  isGold:true },
+  ],
+  non: [
+    { key:'titre_hors_format',   label:'Titre hors format' },
+    { key:'artiste_hors_format', label:'Artiste hors format',                  artistEffect:'penalty' },
+    { key:'titre_sans_potentiel', label:'Titre sans potentiel' },
+    { key:'artiste_ok_titre_sans_potentiel', label:'Artiste dans format mais titre sans potentiel' },
+    { key:'gold_non',            label:'Non mais titre gold',                  isGold:true },
+  ],
+  'peut-etre': [
+    { key:'trop_tot',              label:'Trop tôt',                 snoozeWeeks:6 },
+    { key:'attente_environnement', label:"En attente d'environnement", snoozeWeeks:3 },
+  ],
+};
+const PRED_ENTRY_DECISION_LABELS = { oui:'✅ Oui', non:'❌ Non', 'peut-etre':'🤔 Peut-être' };
+
+// Un même titre/artiste peut avoir un retour terrain différent selon la
+// station de référence active — un titre hors format pour Europe 2 peut
+// très bien convenir à RFM (positionnements différents), et inversement.
+// Le stockage est donc imbriqué par station ({ EUROPE2:{...}, RFM:{...} }),
+// jamais mélangé. Migration automatique et silencieuse au premier chargement
+// si d'anciennes données "à plat" (avant ce scope, v30.194-199) sont
+// détectées — reversées sous EUROPE2, la station par défaut à l'époque où
+// le feedback a été introduit.
+function loadPredEntryFeedbackAll(){
+  let raw;
+  try{ raw = JSON.parse(localStorage.getItem(PRED_ENTRY_FEEDBACK_KEY) || '{}'); }catch(e){ raw = {}; }
+  const firstVal = raw[Object.keys(raw)[0]];
+  const looksLegacy = firstVal && typeof firstVal === 'object' && 'decision' in firstVal;
+  if(looksLegacy){
+    const migrated = { EUROPE2: raw, RFM: {} };
+    try{ localStorage.setItem(PRED_ENTRY_FEEDBACK_KEY, JSON.stringify(migrated)); }catch(e){}
+    return migrated;
+  }
+  if(!raw.EUROPE2) raw.EUROPE2 = {};
+  if(!raw.RFM) raw.RFM = {};
+  return raw;
+}
+function loadPredEntryFeedback(){
+  return loadPredEntryFeedbackAll()[ACTIVE_STATION] || {};
+}
+function savePredEntryFeedback(stationData){
+  const all = loadPredEntryFeedbackAll();
+  all[ACTIVE_STATION] = stationData;
+  try{ localStorage.setItem(PRED_ENTRY_FEEDBACK_KEY, JSON.stringify(all)); }catch(e){}
+}
+function loadPredEntryArtistStatusAll(){
+  let raw;
+  try{ raw = JSON.parse(localStorage.getItem(PRED_ENTRY_ARTIST_STATUS_KEY) || '{}'); }catch(e){ raw = {}; }
+  const firstVal = raw[Object.keys(raw)[0]];
+  const looksLegacy = firstVal && typeof firstVal === 'object' && 'status' in firstVal;
+  if(looksLegacy){
+    const migrated = { EUROPE2: raw, RFM: {} };
+    try{ localStorage.setItem(PRED_ENTRY_ARTIST_STATUS_KEY, JSON.stringify(migrated)); }catch(e){}
+    return migrated;
+  }
+  if(!raw.EUROPE2) raw.EUROPE2 = {};
+  if(!raw.RFM) raw.RFM = {};
+  return raw;
+}
+function loadPredEntryArtistStatus(){
+  return loadPredEntryArtistStatusAll()[ACTIVE_STATION] || {};
+}
+function savePredEntryArtistStatus(stationData){
+  const all = loadPredEntryArtistStatusAll();
+  all[ACTIVE_STATION] = stationData;
+  try{ localStorage.setItem(PRED_ENTRY_ARTIST_STATUS_KEY, JSON.stringify(all)); }catch(e){}
+}
+/** Enregistre le retour terrain pour un titre : décision + raisons cochées.
+ *  Met à jour en cascade le statut artiste si une des raisons cochées a un
+ *  effet artiste (boost ou pénalité) — jamais l'inverse (une raison
+ *  "titre seul" ne touche jamais l'artiste). En cas de raisons contradictoires
+ *  cochées ensemble (rare mais possible), la pénalité l'emporte sur le boost
+ *  par prudence (mieux vaut resurveiller un bon artiste à tort que laisser
+ *  passer un artiste hors format). */
+function predEntrySaveFeedback(title, artist, decision, raisonKeys){
+  const key = comiteKey(title, artist);
+  const reasonDefs = (PRED_ENTRY_REASONS[decision] || []).filter(r => raisonKeys.includes(r.key));
+
+  const snoozeWeeksList = reasonDefs.map(r => r.snoozeWeeks).filter(Boolean);
+  const snoozeUntil = snoozeWeeksList.length
+    ? new Date(Date.now() + Math.min(...snoozeWeeksList) * 7 * 86400000).toISOString().slice(0,10)
+    : null;
+
+  const feedback = loadPredEntryFeedback();
+  feedback[key] = { title, artist, decision, raisons: raisonKeys, date: new Date().toISOString().slice(0,10), snoozeUntil };
+  savePredEntryFeedback(feedback);
+
+  const hasPenalty = reasonDefs.some(r => r.artistEffect === 'penalty');
+  const hasBoost   = reasonDefs.some(r => r.artistEffect === 'boost');
+  if(hasPenalty || hasBoost){
+    const status = loadPredEntryArtistStatus();
+    const ak = norm(artist);
+    const prevCount = status[ak]?.titlesCount || 0;
+    status[ak] = {
+      artist,
+      status: hasPenalty ? 'penalty' : 'boost',
+      reasonKey: hasPenalty ? 'artiste_hors_format' : (raisonKeys.includes('star_format') ? 'star_format' : 'artiste_format'),
+      date: new Date().toISOString().slice(0,10),
+      titlesCount: prevCount + 1
+    };
+    savePredEntryArtistStatus(status);
+  }
+
+  const toastMsg = `✓ Retour enregistré pour « ${titleCaseDisplay(title)} »`
+    + (hasPenalty ? ` — ${titleCaseDisplay(artist)} marqué hors format pour ses prochains titres`
+      : (hasBoost ? ` — ${titleCaseDisplay(artist)} marqué format pour ses prochains titres` : ''));
+  showToast(toastMsg, 'success');
+  closePredEntryFeedbackModal();
+  renderPredictionEntryPage();
+}
+/** Retire un retour déjà enregistré sur un titre (le fait réapparaître dans
+ *  la liste active) — n'annule PAS un éventuel effet artiste déjà appliqué à
+ *  d'autres titres entre-temps (celui-ci reste un choix explicite séparé,
+ *  à retirer via "Gérer les statuts artiste" si besoin). */
+function predEntryClearFeedback(title, artist){
+  const key = comiteKey(title, artist);
+  const feedback = loadPredEntryFeedback();
+  delete feedback[key];
+  savePredEntryFeedback(feedback);
+  renderPredictionEntryPage();
+}
+function predEntryClearArtistStatus(artist){
+  const status = loadPredEntryArtistStatus();
+  delete status[norm(artist)];
+  savePredEntryArtistStatus(status);
+  renderPredictionEntryPage();
+}
+function predEntryConfirmClearArtistStatus(artist){
+  if(confirm(`Retirer le statut de « ${titleCaseDisplay(artist)} » pour ses prochains titres ?`)) predEntryClearArtistStatus(artist);
 }
 
-/* ── Sous-score 0-100 : traction digitale Veille (largeur de sources + tendance Shazam FR) ── */
+/* ── Modale de saisie du retour terrain ── */
+let predEntryFeedbackCurrent = null; // {title, artist, decision}
+function openPredEntryFeedbackModal(title, artist){
+  predEntryFeedbackCurrent = { title, artist, decision: null };
+  document.getElementById('pefTitle').textContent  = titleCaseDisplay(title)  || '';
+  document.getElementById('pefArtist').textContent = titleCaseDisplay(artist) || '';
+  ['pefDecOui','pefDecNon','pefDecPeutEtre'].forEach(id => {
+    const b = document.getElementById(id);
+    b.style.borderColor = 'var(--border)'; b.style.background = 'var(--white)'; b.style.color = 'var(--text2)';
+  });
+  document.getElementById('pefReasonsArea').style.display = 'none';
+  document.getElementById('pefReasonsList').innerHTML = '';
+
+  // Pré-remplit si un retour existe déjà pour ce titre (modification plutôt
+  // que ré-saisie complète).
+  const existing = loadPredEntryFeedback()[comiteKey(title, artist)];
+  const modal = document.getElementById('modalPredEntryFeedback');
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  if(existing) predEntryFeedbackPickDecision(existing.decision, existing.raisons);
+}
+function closePredEntryFeedbackModal(e){
+  if(e && e.target !== document.getElementById('modalPredEntryFeedback') && e.type === 'click') return;
+  document.getElementById('modalPredEntryFeedback').style.display = 'none';
+  document.body.style.overflow = '';
+  predEntryFeedbackCurrent = null;
+}
+function predEntryFeedbackPickDecision(decision, preCheckedKeys){
+  if(!predEntryFeedbackCurrent) return;
+  predEntryFeedbackCurrent.decision = decision;
+  const colors = { oui:'#0DA76B', non:'#CC2222', 'peut-etre':'#E07B00' };
+  const ids = { oui:'pefDecOui', non:'pefDecNon', 'peut-etre':'pefDecPeutEtre' };
+  Object.keys(ids).forEach(d => {
+    const b = document.getElementById(ids[d]);
+    const on = d === decision;
+    b.style.borderColor = on ? colors[d] : 'var(--border)';
+    b.style.background  = on ? colors[d] : 'var(--white)';
+    b.style.color        = on ? '#fff' : 'var(--text2)';
+  });
+  const list = document.getElementById('pefReasonsList');
+  const pre = preCheckedKeys || [];
+  list.innerHTML = (PRED_ENTRY_REASONS[decision] || []).map(r => `
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer">
+      <input type="checkbox" value="${r.key}" ${pre.includes(r.key)?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:${colors[decision]}">
+      ${escHtml(r.label)}
+    </label>`).join('');
+  document.getElementById('pefReasonsArea').style.display = 'block';
+}
+function predEntryFeedbackSubmit(){
+  if(!predEntryFeedbackCurrent || !predEntryFeedbackCurrent.decision){
+    showToast('Choisissez d\'abord Oui, Non ou Peut-être', 'err');
+    return;
+  }
+  const checked = Array.from(document.querySelectorAll('#pefReasonsList input:checked')).map(el => el.value);
+  if(!checked.length){
+    showToast('Cochez au moins une raison', 'err');
+    return;
+  }
+  const { title, artist, decision } = predEntryFeedbackCurrent;
+  predEntrySaveFeedback(title, artist, decision, checked);
+}
+
+/* ── Catégorie éditoriale "RECH" (Call Out/OMT) : un premier choix éditorial
+   a déjà considéré que ce titre pouvait rejoindre la programmation, mais
+   qu'il fallait le tester au préalable — signal fort, indépendant du
+   quadrant Fit Point (score/fit déjà jugés satisfaisants par un humain en
+   amont du test). Comparaison insensible à la casse/espaces pour absorber
+   les variantes de saisie ("RECH", "Rech", " Rech "...) dans l'export
+   Call Out. ── */
+function isRechCategory(category){
+  return !!(category && String(category).trim().toUpperCase() === 'RECH');
+}
+/* ── Sous-score 0-100 : Recherche interne (quadrant Fit Point du Call Out/OMT
+   + bonus éditorial RECH). Un titre RECH avec un bon quadrant (Power Song)
+   reste au maximum (100, déjà plafonné) ; un Sleeper marqué RECH grimpe
+   nettement (55→80, "bonus encore plus important" quand scores ET fit sont
+   bons) ; un titre marqué RECH mais pas encore classé dans un quadrant
+   gagnant obtient quand même un plancher significatif (45) plutôt que 0 —
+   la sélection éditoriale préalable vaut mieux qu'aucun signal. ── */
+function predEntryInternalSubscore(q, category){
+  const rech = isRechCategory(category);
+  if(q === 'POWER_SONG') return 100;
+  if(q === 'SLEEPER_SONG') return rech ? 80 : 55;
+  return rech ? 45 : 0;
+}
+
+/* ── Sous-score 0-100 : traction digitale Veille (largeur de sources + tendance
+   Shazam FR), + bonus fixe pour la simple présence en Veille manuelle — un
+   premier choix éditorial (même minime) a déjà été fait en l'ajoutant, donc
+   même sans confirmation externe le titre mérite un signal non-nul, plus
+   modeste que le bonus Call Out RECH ci-dessus puisque l'intervention
+   humaine y est moins engageante (ajout de veille vs test terrain complet). ── */
+const PRED_ENTRY_VEILLE_MANUAL_PICK_BONUS = 15;
 function predEntryVeilleSubscore(w){
-  if(!w || !w.history || !w.history.length) return { sub:0, breadth:0, trendDelta:null };
+  if(!w) return { sub:0, breadth:0, trendDelta:null };
+  if(!w.history || !w.history.length) return { sub: PRED_ENTRY_VEILLE_MANUAL_PICK_BONUS, breadth:0, trendDelta:null };
   const last = w.history[w.history.length - 1];
   let breadth = 0;
   if(watchlistSourceFound(last.itunes)) breadth++;
@@ -27629,7 +27980,7 @@ function predEntryVeilleSubscore(w){
     trendDelta = shzPoints[0] - shzPoints[shzPoints.length - 1];
     if(trendDelta > 0) trendSub = Math.min(40, trendDelta * 2);
   }
-  return { sub: Math.min(100, breadthSub * 0.7 + trendSub), breadth, trendDelta };
+  return { sub: Math.min(100, PRED_ENTRY_VEILLE_MANUAL_PICK_BONUS + breadthSub * 0.7 + trendSub), breadth, trendDelta };
 }
 
 /* ── Sous-score 0-100 : Concurrence — calculé en PRIORITÉ sur les stations de
@@ -27712,11 +28063,13 @@ function buildMarketAirplayRows(){
    côté Sorties — un signal sans donnée n'est ni pénalisant ni rassurant, il
    est exclu et son poids reporté sur les signaux disponibles). ── */
 function predEntryCompute(c, compRow, oppRow, weights){
-  const intAvail = c.internalQ !== null && c.internalQ !== undefined;
-  const intSub = predEntryInternalSubscore(c.internalQ);
+  const rech = isRechCategory(c.category);
+  const intAvail = (c.internalQ !== null && c.internalQ !== undefined) || rech;
+  const intSub = predEntryInternalSubscore(c.internalQ, c.category);
+  const quadLabel = c.internalQ === 'POWER_SONG' ? 'Power Song' : c.internalQ === 'SLEEPER_SONG' ? 'Sleeper' : c.internalQ;
   const intTxt = intAvail
-    ? `Testé en Call Out/OMT : classé "${c.internalQ === 'POWER_SONG' ? 'Power Song' : c.internalQ === 'SLEEPER_SONG' ? 'Sleeper' : c.internalQ}" mais quasi absent de l'antenne`
-    : 'Pas encore testé en Call Out/OMT (ou classé Wrong Format/Miss)';
+    ? `Testé en Call Out/OMT : classé "${quadLabel}" mais quasi absent de l'antenne${rech?' · catégorie RECH — premier choix éditorial déjà favorable':''}`
+    : (rech ? 'Catégorie RECH en Call Out/OMT (pas encore de quadrant Power Song/Sleeper) — premier choix éditorial en attente de test' : 'Pas encore testé en Call Out/OMT (ou classé Wrong Format/Miss)');
 
   const veilleAvail = !!c.veilleData;
   const veilleSub = c.veilleData ? c.veilleData.sub : 0;
@@ -27795,14 +28148,19 @@ function buildPredictionEntryRows(){
     };
   });
 
-  // ── Vivier 2 : titres testés en Call Out/OMT, classés Power Song/Sleeper,
-  //    quasi absents de l'antenne. Exclut les styles décochés dans Digital
-  //    Métrics (iedrExcludedSounds) — même logique de hors-format que le
-  //    reste de FPA, appliquée ici quand la donnée de style existe. ──
+  // ── Vivier 2 : titres testés en Call Out/OMT, classés Power Song/Sleeper
+  //    OU marqués catégorie éditoriale RECH (voir isRechCategory) même sans
+  //    quadrant gagnant — un titre RECH signale un premier choix éditorial
+  //    à part entière, il ne doit pas être exclu du vivier au seul motif
+  //    qu'il n'est pas (encore) Power Song/Sleeper. Quasi absents de
+  //    l'antenne. Exclut les styles décochés dans Digital Métrics
+  //    (iedrExcludedSounds) — même logique de hors-format que le reste de
+  //    FPA, appliquée ici quand la donnée de style existe. ──
   if(typeof analysisResult !== 'undefined' && analysisResult && analysisResult.length){
     analysisResult.forEach(r => {
       if(!r.title || !r.artist) return;
-      if(r.q !== 'POWER_SONG' && r.q !== 'SLEEPER_SONG') return;
+      const rech = isRechCategory(r.category);
+      if(r.q !== 'POWER_SONG' && r.q !== 'SLEEPER_SONG' && !rech) return;
       if(r.sound && typeof iedrExcludedSounds !== 'undefined' && iedrExcludedSounds.has(r.sound)) return;
       const e2 = r.airplay ? (parseInt(r.airplay.e2||0)||0) : 0;
       const rfm = r.airplay ? (parseInt(r.airplay.rfm||0)||0) : 0;
@@ -27810,8 +28168,8 @@ function buildPredictionEntryRows(){
       if(own > PRED_ENTRY_MAX_AIRPLAY) return;
       if(isInPlaylist(r.title, r.artist)) return;
       const key = comiteKey(r.title, r.artist);
-      if(candidates[key]) candidates[key].internalQ = r.q;
-      else candidates[key] = { key, title:r.title, artist:r.artist, source:'callout', internalQ:r.q, veilleData:null };
+      if(candidates[key]){ candidates[key].internalQ = r.q; candidates[key].category = r.category; }
+      else candidates[key] = { key, title:r.title, artist:r.artist, source:'callout', internalQ:r.q, category:r.category, veilleData:null };
     });
   }
 
@@ -27832,6 +28190,26 @@ function buildPredictionEntryRows(){
     if(isInPlaylist(m.title, m.artist)) return;
     const key = comiteKey(m.title, m.artist);
     if(!candidates[key]) candidates[key] = { key, title:m.title, artist:m.artist, source:'market', internalQ:null, veilleData:null };
+  });
+
+  // ── Exclusion titres trop anciens : quand la date de sortie officielle est
+  // connue (iTunes, ou remplacée par MusicBrainz si trouvée — voir
+  // songAttributes.releaseDate) et dépasse PRED_ENTRY_MAX_AGE_YEARS, le
+  // titre n'est plus suggéré du tout, pour AUCUNE station — un titre sorti
+  // il y a plus de 2 ans n'a plus sa place parmi des recommandations
+  // d'entrée en playlist, quel que soit le format. Contrairement au
+  // feedback "Gold" (retour terrain explicite, scopé par station), ceci est
+  // une règle factuelle automatique, la même pour Europe 2 et RFM — donc
+  // appliquée AVANT tout calcul de score, silencieusement (pas de titre à
+  // "rejeter" manuellement pour une donnée déjà objective). Un titre sans
+  // date de sortie connue n'est jamais filtré par cette règle — l'absence
+  // de donnée n'est pas une preuve d'ancienneté. ──
+  Object.keys(candidates).forEach(key => {
+    const c = candidates[key];
+    const releaseDate = getSongAttributes(c.title, c.artist).releaseDate;
+    if(!releaseDate) return;
+    const ageMs = Date.now() - new Date(releaseDate + 'T00:00:00').getTime();
+    if(!isNaN(ageMs) && ageMs > PRED_ENTRY_MAX_AGE_YEARS * 365.25 * 86400000) delete candidates[key];
   });
 
   const keys = Object.keys(candidates);
@@ -27860,23 +28238,71 @@ function buildPredictionEntryRows(){
   Object.keys(DEFAULT_PRED_ENTRY_WEIGHTS).forEach(k => { weights[k] = (weightsRaw[k] ?? DEFAULT_PRED_ENTRY_WEIGHTS[k]) / totalW; });
 
   const SOURCE_LABELS = { veille:'🔭 Veille', callout:'🔍 Call Out/OMT', market:'📡 Marché' };
+  const feedback = loadPredEntryFeedback();
+  const artistStatus = loadPredEntryArtistStatus();
+  const today = new Date().toISOString().slice(0,10);
 
   return keys.map(key => {
     const c = candidates[key];
     const compRow = compByKey[key] || null;
     const oppRow = oppByKey[key] || null;
 
-    const { score, coverage, breakdown, reasons } = predEntryCompute(c, compRow, oppRow, weights);
+    const { score:baseScore, coverage, breakdown, reasons } = predEntryCompute(c, compRow, oppRow, weights);
+
+    // ── Effet artiste (apprentissage) : boost ou pénalité sur le score selon
+    // le retour terrain enregistré sur les PRÉCÉDENTS titres de cet artiste
+    // (voir predEntrySaveFeedback) — jamais une exclusion silencieuse, un
+    // déclassement fort mais visible via artistBadge. ──
+    const aStatus = artistStatus[norm(c.artist)] || null;
+    let score = baseScore;
+    if(aStatus){
+      score = aStatus.status === 'penalty'
+        ? Math.max(0, score - PRED_ENTRY_ARTIST_PENALTY)
+        : Math.min(100, score + PRED_ENTRY_ARTIST_BOOST);
+    }
 
     let level, levelColor, levelBg, levelBorder, levelIcon;
     if(score >= 65){ level='Entrée recommandée'; levelColor='var(--green-text)'; levelBg='var(--green-bg)'; levelBorder='var(--green-border)'; levelIcon='🟢'; }
     else if(score >= 40){ level='À tester / surveiller'; levelColor='var(--orange-text)'; levelBg='var(--orange-bg)'; levelBorder='var(--orange-border)'; levelIcon='🟡'; }
     else { level='Signal faible'; levelColor='var(--muted)'; levelBg='var(--bg)'; levelBorder='var(--border)'; levelIcon='⚪'; }
 
+    // ── Statut de retour terrain sur CE titre précis (voir
+    // predEntrySaveFeedback) : 'reviewed' (Non, ou titre marqué Gold quel que
+    // soit Oui/Non — sort de la liste active), 'active' (rien d'enregistré,
+    // Oui déjà coché sans être gold, ou Peut-être). Un "Oui" simple reste
+    // volontairement dans la liste active avec juste un badge — c'est un
+    // signal d'apprentissage sur l'artiste/le titre, pas une décision de
+    // fin de suivi. "Peut-être" reste également TOUJOURS dans la liste
+    // active, avec un badge visible — jamais relégué en fin de page dans
+    // une section à part, même quand une date de relance existe (indiquée
+    // dans le badge à titre informatif uniquement, elle ne masque plus
+    // rien). Un titre "Gold" (déjà sorti depuis longtemps) sort en revanche
+    // définitivement, qu'il soit Oui-gold ou Non-gold : il ne redeviendra
+    // jamais une suggestion d'entrée pertinente, seul l'apprentissage sur
+    // l'artiste éventuel (raisons cochées en plus) reste utile. ──
+    const fb = feedback[key] || null;
+    let feedbackStatus = 'active', feedbackNote = null;
+    if(fb){
+      const raisonDefs = (PRED_ENTRY_REASONS[fb.decision] || []).filter(r => fb.raisons.includes(r.key));
+      const isGold = raisonDefs.some(r => r.isGold);
+      if(fb.decision === 'peut-etre'){
+        const raisonLabel = (PRED_ENTRY_REASONS['peut-etre'].find(r=>fb.raisons.includes(r.key))||{}).label || 'peut-être';
+        feedbackNote = (fb.snoozeUntil && fb.snoozeUntil > today)
+          ? `🤔 Peut-être (« ${raisonLabel} ») le ${new Date(fb.date).toLocaleDateString('fr-FR')} — relance prévue le ${new Date(fb.snoozeUntil).toLocaleDateString('fr-FR')}`
+          : `🤔 Peut-être (« ${raisonLabel} ») le ${new Date(fb.date).toLocaleDateString('fr-FR')} — délai de relance dépassé`;
+      } else if(fb.decision === 'non' || isGold){
+        feedbackStatus = 'reviewed';
+        if(isGold) feedbackNote = `🥇 Titre Gold (${PRED_ENTRY_DECISION_LABELS[fb.decision]}) le ${new Date(fb.date).toLocaleDateString('fr-FR')} — ne sera plus suggéré`;
+      } else if(fb.decision === 'oui'){
+        feedbackNote = `✅ Retour « Oui » enregistré le ${new Date(fb.date).toLocaleDateString('fr-FR')} — reste suivi jusqu'à son entrée effective en Playlist`;
+      }
+    }
+
     return {
-      ...c, compRow, oppRow, score, coverage, level, levelColor, levelBg, levelBorder, levelIcon,
+      ...c, compRow, oppRow, score, baseScore, coverage, level, levelColor, levelBg, levelBorder, levelIcon,
       sourceLabel: SOURCE_LABELS[c.source] || c.source,
-      breakdown, reasons
+      breakdown, reasons,
+      artistStatus: aStatus, feedback: fb, feedbackStatus, feedbackNote
     };
   });
 }
@@ -27937,17 +28363,38 @@ function renderPredictionEntryPage(){
   if(noDataBar) noDataBar.style.display = 'none';
 
   const query = (document.getElementById('predEntryTitleSearch')?.value || '').toUpperCase().trim();
-  let filtered = query
-    ? allRows.filter(r => (r.title||'').toUpperCase().includes(query) || (r.artist||'').toUpperCase().includes(query))
-    : allRows;
+  const matchQuery = r => !query || (r.title||'').toUpperCase().includes(query) || (r.artist||'').toUpperCase().includes(query);
+
+  // ── Sépare la liste active (rien d'enregistré, ou Peut-être dont la
+  // relance est passée) des titres déjà tranchés (Non/Gold) — jamais
+  // perdus, juste rangés à part pour ne pas polluer la liste de travail
+  // (voir buildPredictionEntryRows). Les titres "Peut-être" restent
+  // toujours dans la liste active, avec leur badge 🤔 dédié — plus de
+  // section "En attente" séparée. ──
+  const activeRows   = allRows.filter(r => r.feedbackStatus === 'active'   && matchQuery(r));
+  const reviewedRows = allRows.filter(r => r.feedbackStatus === 'reviewed' && matchQuery(r));
 
   const sortKey = document.getElementById('predEntrySortKey')?.value || 'score';
-  filtered = [...filtered].sort((a,b) => {
+  const sortFn = (a,b) => {
     if(sortKey === 'source') return a.sourceLabel.localeCompare(b.sourceLabel) || b.score - a.score;
     return b.score - a.score;
-  });
+  };
+  const filtered = [...activeRows].sort(sortFn);
 
-  const header = `<div style="display:grid;grid-template-columns:32px 1fr 100px 100px 2fr 150px 40px;gap:0;background:var(--bg);border-bottom:2px solid var(--border)">
+  const artistBadgeHtml = r => {
+    if(!r.artistStatus) return '';
+    const isPenalty = r.artistStatus.status === 'penalty';
+    const color = isPenalty ? '#CC2222' : '#0DA76B';
+    const bg = isPenalty ? '#FFEAEA' : '#E3F6EC';
+    const label = isPenalty ? 'hors format' : (r.artistStatus.reasonKey === 'star_format' ? 'star format' : 'format');
+    return `<span title="${isPenalty?'⚠️':'⭐'} ${escHtml(titleCaseDisplay(r.artist))} marqué ${label} pour ${escHtml(STATION_LABELS[ACTIVE_STATION])} le ${new Date(r.artistStatus.date).toLocaleDateString('fr-FR')} (${r.artistStatus.titlesCount} titre(s) évalué(s)) — score ${isPenalty?'pénalisé de -'+PRED_ENTRY_ARTIST_PENALTY:'boosté de +'+PRED_ENTRY_ARTIST_BOOST} pts. Statut propre à cette station (peut différer pour l'autre station). Cliquer pour retirer ce statut."
+      onclick="event.stopPropagation();predEntryConfirmClearArtistStatus('${jsAttrEscape(r.artist)}')"
+      style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:${color};background:${bg};border:1px solid ${color}55;border-radius:10px;padding:1px 7px;margin-left:6px;cursor:pointer;white-space:nowrap">${isPenalty?'⚠️':'⭐'} ${label}</span>`;
+  };
+
+  const gridCols = '32px 24px 0.85fr 100px 100px 1.3fr 150px 40px';
+  const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:0;background:var(--bg);border-bottom:2px solid var(--border)">
+    <div></div>
     <div></div>
     <div style="padding:8px 10px 8px 4px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Titre / Artiste</div>
     <div style="padding:8px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;text-align:center">Score</div>
@@ -27957,19 +28404,33 @@ function renderPredictionEntryPage(){
     <div></div>
   </div>`;
 
-  const tableRows = filtered.map((r,i) => {
+  const peutEtreBadgeHtml = r => {
+    if(!r.feedback || r.feedback.decision !== 'peut-etre') return '';
+    return `<span title="${escHtml(r.feedbackNote || '')} — cliquer 📝 pour mettre à jour" style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:#B05E00;background:#FEF3C7;border:1px solid #FDE68A;border-radius:10px;padding:1px 7px;margin-left:6px;white-space:nowrap">🤔 Peut-être</span>`;
+  };
+
+  const buildRow = (r,i) => {
     const rowBg = i%2===0 ? 'var(--white)' : 'rgba(240,243,249,.5)';
     const reasonsHtml = r.reasons.length
       ? r.reasons.map(t => `<div style="display:flex;gap:6px;align-items:baseline"><span style="color:var(--muted);flex-shrink:0">·</span><span>${escHtml(t)}</span></div>`).join('')
       : '<span style="color:var(--muted)">–</span>';
+    // La note "Peut-être" devient le badge ci-dessus (toujours visible à
+    // côté du titre) plutôt qu'une ligne de texte séparée — évite le doublon.
+    const noteHtml = (r.feedbackNote && r.feedback?.decision !== 'peut-etre') ? `<div style="font-size:10px;color:var(--cyan);margin-top:2px">${escHtml(r.feedbackNote)}</div>` : '';
 
     return `<div data-evotitle="${evoAttr(r.title, r.artist)}" onclick="openTitleEvolutionModal(this)" title="Voir la fiche Song Metrics et écouter"
-      style="display:grid;grid-template-columns:32px 1fr 100px 100px 2fr 150px 40px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center;cursor:pointer"
+      style="display:grid;grid-template-columns:${gridCols};gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center;cursor:pointer"
       onmouseenter="this.style.background='rgba(0,184,200,.05)'" onmouseleave="this.style.background='${rowBg}'">
       <div style="padding:10px 0 10px 8px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</div>
+      <div style="padding:10px 0;text-align:center" onclick="event.stopPropagation()">
+        <button onclick="openPredEntryFeedbackModal('${jsAttrEscape(r.title)}','${jsAttrEscape(r.artist)}')" title="Donner un retour terrain (Oui/Non/Peut-être)"
+          style="width:22px;height:22px;padding:0;min-width:0;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;flex-shrink:0"
+          onmouseenter="this.style.borderColor='var(--cyan)';this.style.color='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">📝</button>
+      </div>
       <div style="padding:10px 10px 10px 4px">
-        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
+        <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}${artistBadgeHtml(r)}${peutEtreBadgeHtml(r)}</div>
         <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}</div>
+        ${noteHtml}
       </div>
       <div style="padding:10px 8px;text-align:center">
         <span style="font-size:16px;font-weight:800;color:${r.levelColor}">${r.score}</span>
@@ -27984,7 +28445,9 @@ function renderPredictionEntryPage(){
       </div>
       <div style="padding:10px 8px 10px 0;text-align:center" onclick="event.stopPropagation()">${predDetailButton(r, '🔬 Détail du calcul — Entrées')}</div>
     </div>`;
-  }).join('');
+  };
+
+  const tableRows = filtered.map(buildRow).join('');
 
   const strong = filtered.filter(r => r.level==='Entrée recommandée').length;
   const watch  = filtered.filter(r => r.level==='À tester / surveiller').length;
@@ -28009,12 +28472,29 @@ function renderPredictionEntryPage(){
     </div>
   </div>`;
 
+  // ── Sections repliables : Déjà évalués (Oui/Non) + En attente (Peut-être
+  // avec relance à venir) — jamais masqués silencieusement, juste rangés à
+  // part de la liste de travail. ──
+  const buildCollapsible = (id, icon, label, rows) => {
+    if(!rows.length) return '';
+    const sorted = [...rows].sort(sortFn);
+    return `<div style="margin-top:14px">
+      <button onclick="const el=document.getElementById('${id}');const open=el.style.display!=='none';el.style.display=open?'none':'block';this.querySelector('span').textContent=open?'▸':'▾'" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;font-size:12px;font-weight:800;color:var(--text2);padding:6px 0">
+        <span>▸</span> ${icon} ${label} (${rows.length})
+      </button>
+      <div id="${id}" style="display:none;background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden">
+        ${header}${sorted.map(buildRow).join('')}
+      </div>
+    </div>`;
+  };
+
   document.getElementById('predEntryContent').innerHTML = summary +
     `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)">
-      ${header}${tableRows}
+      ${header}${tableRows || '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Aucun candidat actif pour cette recherche — voir « Rejetés »/« En attente » ci-dessous si filtré.</div>'}
     </div>
+    ${buildCollapsible('predEntryReviewedWrap', '❌', 'Rejetés (Non / Gold)', reviewedRows)}
     <div style="margin-top:12px;padding:10px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted)">
-      Score d'entrée = moyenne pondérée de 4 signaux déjà calculés ailleurs dans FPA (Veille, Recherche interne, Concurrence, Fenêtre d'opportunité), renormalisée sur les signaux disponibles pour ce titre. Le vivier Marché (📡) couvre tout titre suivi par votre import Airplay, sans ajout manuel requis. Cliquez 🔬 pour le détail complet. Une piste pour le Comité d'Écoute — pas une décision automatique.
+      Score d'entrée = moyenne pondérée de 4 signaux déjà calculés ailleurs dans FPA (Veille, Recherche interne, Concurrence, Fenêtre d'opportunité), renormalisée sur les signaux disponibles pour ce titre, puis ajustée par le retour terrain appris sur l'artiste (badge ⭐/⚠️ si présent). Le vivier Marché (📡) couvre tout titre suivi par votre import Airplay, sans ajout manuel requis. Cliquez 🔬 pour le détail du calcul, 📝 pour donner un retour terrain (Oui/Non/Peut-être). Une piste pour le Comité d'Écoute — pas une décision automatique.
     </div>`;
 }
 
@@ -28025,15 +28505,19 @@ function renderPredictionEntryPage(){
 // affiché et le jugement terrain (ex. un titre sorti que le score sous-évaluait).
 // ══════════════════════════════════════════════════════════════════════════
 
-function predDetailScoreBarHtml(score, levelColor, levelBg, levelBorder, levelIcon, level, coverage){
+function predDetailScoreBarHtml(score, levelColor, levelBg, levelBorder, levelIcon, level, coverage, shapeDeclineApplies, scoreBeforeShapeGuard){
   const covHtml = (coverage !== undefined && coverage !== null)
     ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${coverage}/4 signaux disponibles cette session${coverage<4?' — score renormalisé sur les signaux disponibles':''}</div>`
+    : '';
+  const guardHtml = shapeDeclineApplies
+    ? `<div style="font-size:11px;color:#B05E00;margin-top:4px">⛔ Score forcé à ${score} par le garde-fou trajectoire (calcul pondéré ci-dessous aurait donné ${scoreBeforeShapeGuard} — le détail par signal reflète donc ce total intermédiaire, avant garde-fou)</div>`
     : '';
   return `<div style="display:flex;align-items:center;gap:14px">
     <div style="font-size:32px;font-weight:800;color:${levelColor}">${score}</div>
     <div>
       <span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;background:${levelBg};border:1.5px solid ${levelBorder};font-size:11px;font-weight:800;color:${levelColor}">${levelIcon} ${escHtml(level)}</span>
       ${covHtml}
+      ${guardHtml}
     </div>
   </div>`;
 }
@@ -28065,7 +28549,7 @@ function openPredDetailModal(btn){
   document.getElementById('pdmTitle').textContent  = titleCaseDisplay(data.title)  || '';
   document.getElementById('pdmArtist').textContent = titleCaseDisplay(data.artist) || '';
   document.getElementById('pdmSub').textContent    = data.subLabel || '🔬 Détail du calcul';
-  document.getElementById('pdmScoreBar').innerHTML = predDetailScoreBarHtml(data.score, data.levelColor, data.levelBg, data.levelBorder, data.levelIcon, data.level, data.coverage);
+  document.getElementById('pdmScoreBar').innerHTML = predDetailScoreBarHtml(data.score, data.levelColor, data.levelBg, data.levelBorder, data.levelIcon, data.level, data.coverage, data.shapeDeclineApplies, data.scoreBeforeShapeGuard);
   document.getElementById('pdmBreakdown').innerHTML = predDetailBreakdownHtml(data.breakdown || []);
 
   const modal = document.getElementById('modalPredDetail');
@@ -28083,10 +28567,11 @@ function predDetailButton(row, subLabel){
     score: row.riskScore !== undefined ? row.riskScore : row.score,
     coverage: row.coverage,
     level: row.level, levelColor: row.levelColor, levelBg: row.levelBg, levelBorder: row.levelBorder, levelIcon: row.levelIcon,
-    breakdown: row.breakdown
+    breakdown: row.breakdown,
+    shapeDeclineApplies: row.shapeDeclineApplies, scoreBeforeShapeGuard: row.scoreBeforeShapeGuard
   }).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
   return `<button onclick="openPredDetailModal(this)" data-preddetail="${payload}" title="Voir le détail du calcul"
-    style="width:26px;height:26px;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);cursor:pointer;font-size:12px;flex-shrink:0"
+    style="width:26px;height:26px;padding:0;min-width:0;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);cursor:pointer;font-size:12px;flex-shrink:0"
     onmouseenter="this.style.borderColor='var(--cyan)';this.style.color='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--muted)'">🔬</button>`;
 }
 
