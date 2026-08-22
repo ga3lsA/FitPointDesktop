@@ -245,11 +245,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
       Analyse
     </button>
-    <button id="quotasTabBtn" class="btn-ghost" style="font-size:10.5px;padding:5px 8px;display:flex;align-items:center;gap:4px" onclick="toggleQuotasPage()" title="Quotas de chansons francophones (Yacast)">
-      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 15s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
-      Quotas
-      <span id="quotasBadge" style="display:none;background:var(--cyan);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center"></span>
-    </button>
   </div>
   <div id="headerFixedControls" style="display:flex;align-items:center;gap:5px;flex-shrink:0">
     <div style="width:1px;height:24px;background:var(--border);opacity:.6"></div>
@@ -3795,6 +3790,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <input id="fpaCfgYoutube" type="text" placeholder="AIza..." style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
         <span style="font-size:10px;color:var(--muted);font-weight:500">Gratuite — console.cloud.google.com → activer « YouTube Data API v3 » → Identifiants → Créer une clé API. Aucune carte bancaire requise.</span>
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy Zyla (Spotify auditeurs mensuels + réseaux sociaux, sonde Classements)
+        <input id="fpaCfgZyla" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
+        <span style="font-size:10px;color:var(--muted);font-weight:500">Payant (zylalabs.com, essai gratuit 7 jours/50 requêtes) — service tiers non officiel, voir Code_gs_Proxy_Zyla.gs pour le déploiement.</span>
+      </label>
 
       <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px">Playlists clés Apple Music</div>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Tubes du Moment
@@ -3843,7 +3842,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.186';
+const FPA_VERSION   = 'v30.189';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -5613,6 +5612,54 @@ function formatSubscriberCount(n){
   if(n >= 1000) return (n/1000).toFixed(n >= 10000 ? 0 : 1).replace('.', ',') + ' k';
   return String(n);
 }
+
+// ── Sonde Zyla (auditeurs mensuels Spotify + réseaux sociaux groupés) ──────
+// Service tiers PAYANT (zylalabs.com) — contrairement à YouTube, Spotify n'a
+// jamais exposé les auditeurs mensuels en API officielle et Instagram ne
+// permet pas la consultation publique d'un compte quelconque ; ceci est un
+// service de ré-analyse (scraping), pas une API officielle. Passe
+// obligatoirement par un proxy Apps Script perso — jamais d'appel direct
+// depuis le navigateur — pour deux raisons : la clé Zyla est payante et ne
+// doit jamais être visible dans le code client (n'importe qui ouvrant les
+// outils de dev du navigateur pourrait la voler et consommer le quota), et
+// rien ne garantit que l'API Zyla autorise le CORS pour un appel direct
+// navigateur. Voir Code_gs_Proxy_Zyla.gs pour le déploiement.
+let ZYLA_APPS_SCRIPT_PROXY_URL = localStorage.getItem('fpa_zyla_proxy_url') || '';
+let _zylaCbId = 0;
+/** Sonde à la volée : renvoie {monthlyListeners, social:{facebook,twitter,
+ *  instagram,youtube,spotify,tiktok}} (chaînes brutes telles que renvoyées
+ *  par Zyla, ex. "20.9M followers" — pas reformatées, juste affichées
+ *  telles quelles) ou null si proxy non configuré / pas de résultat /
+ *  erreur (échec toujours silencieux, jamais d'exception remontée). */
+function fetchZylaArtistInfo(artist, timeoutMs = 8000){
+  return new Promise((resolve) => {
+    if(!/^https:\/\//i.test(ZYLA_APPS_SCRIPT_PROXY_URL || '')){ resolve(null); return; }
+    const cbName = '__fpaZyla_' + (++_zylaCbId);
+    const cleanup = () => {
+      window[cbName] = () => {};
+      const s = document.getElementById('__jsonp_' + cbName);
+      if(s) s.remove();
+    };
+    const timer = setTimeout(() => { cleanup(); resolve(null); }, timeoutMs);
+    window[cbName] = (data) => {
+      clearTimeout(timer);
+      cleanup();
+      if(!data || data.error || data.success === false){ resolve(null); return; }
+      resolve({
+        monthlyListeners: data.monthly_listeners_change || null,
+        social: data.social_media || {}
+      });
+    };
+    const url = ZYLA_APPS_SCRIPT_PROXY_URL
+      + '?callback=' + cbName
+      + '&artist=' + encodeURIComponent(artist || '');
+    const script = document.createElement('script');
+    script.id  = '__jsonp_' + cbName;
+    script.src = url;
+    script.onerror = () => { clearTimeout(timer); cleanup(); resolve(null); };
+    document.head.appendChild(script);
+  });
+}
 let _mbCbId = 0;
 function fetchMusicBrainzViaAppsScript(title, artist, timeoutMs = 8000){
   return new Promise((resolve) => {
@@ -5707,7 +5754,13 @@ async function mbRunEnrichment(){
         } else {
           if(result.mbid) attrs.mbid = result.mbid;
           if(result.isrc && !attrs.isrc) attrs.isrc = result.isrc;
-          if(result.releaseDate && !attrs.mbReleaseDate) attrs.mbReleaseDate = result.releaseDate;
+          // MusicBrainz est considéré plus fiable qu'iTunes pour la date de
+          // sortie (première sortie connue toutes éditions confondues,
+          // contre la fiche iTunes trouvée qui peut être une réédition) —
+          // remplace donc directement la date de sortie officielle quand
+          // trouvée. Si MusicBrainz ne trouve rien, la date iTunes/saisie
+          // manuelle existante n'est jamais touchée.
+          if(result.releaseDate) attrs.releaseDate = result.releaseDate;
           attrs.mbStatus = (result.isrc || result.releaseDate) ? 'found' : 'notfound';
           songAttributesSaveToStorage();
           mbRefreshOpenTevFields(item.title, item.artist);
@@ -5892,9 +5945,11 @@ function mbRefreshOpenTevFields(title, artist){
   if(comiteKey(shownTitle, shownArtist) !== comiteKey(title, artist)) return;
   const attrs = getSongAttributes(title, artist);
   const isrcInput = document.getElementById('tevIsrcInput');
-  const mbDateInput = document.getElementById('tevMbReleaseDateInput');
+  const dateInput = document.getElementById('tevReleaseDateInput');
   if(isrcInput && !isrcInput.matches(':focus')) isrcInput.value = attrs.isrc || '';
-  if(mbDateInput) mbDateInput.value = attrs.mbReleaseDate || '';
+  if(dateInput && !dateInput.matches(':focus')) dateInput.value = attrs.releaseDate || '';
+  const badge = document.getElementById('tevNewProdBadge');
+  if(badge) badge.style.display = isNewProduction(attrs.releaseDate) ? 'inline-flex' : 'none';
 }
 
 /* ── Panneau de configuration du proxy Deezer (URL Apps Script) ── */
@@ -7235,7 +7290,8 @@ function renderChartSearchWebFallback(query, nbSourcesLoaded, box){
     <div style="padding:12px 14px;border-bottom:1px solid var(--border)">
       <div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">🌐 Signaux faibles — ailleurs sur le web</div>
       <div id="chartSearchItunesCheck" style="font-size:11.5px;color:var(--muted);margin-bottom:6px">⏳ Vérification sur iTunes / Apple Music…</div>
-      <div id="chartSearchYoutubeCheck" style="font-size:11.5px;color:var(--muted);margin-bottom:10px"></div>
+      <div id="chartSearchYoutubeCheck" style="font-size:11.5px;color:var(--muted);margin-bottom:6px"></div>
+      <div id="chartSearchZylaCheck" style="font-size:11.5px;color:var(--muted);margin-bottom:10px"></div>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         <a href="https://open.spotify.com/search/${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🟢 Spotify</a>
         <a id="chartSearchYoutubeLink" href="https://www.youtube.com/results?search_query=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">▶️ YouTube</a>
@@ -7245,13 +7301,13 @@ function renderChartSearchWebFallback(query, nbSourcesLoaded, box){
         <a href="https://www.instagram.com/explore/search/keyword/?q=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">📸 Instagram</a>
         <a href="https://www.google.com/search?q=${encoded}" target="_blank" rel="noopener" style="${linkStyle}">🌐 Google</a>
       </div>
-      <div style="font-size:9.5px;color:var(--muted);margin-top:8px">Spotify/Deezer/Shazam/TikTok/Instagram/Google n'offrant pas de recherche publique interrogeable sans clé, ce sont des raccourcis vers leur recherche — pas des données chiffrées comme iTunes ci-dessus. YouTube affiche le nombre d'abonnés en direct si une clé API est configurée (⚙️ Configuration FPA), sinon reste un simple raccourci.</div>
+      <div style="font-size:9.5px;color:var(--muted);margin-top:8px">Deezer/Shazam/TikTok/Google n'offrant pas de recherche publique interrogeable sans clé, ce sont des raccourcis vers leur recherche — pas des données chiffrées comme iTunes ci-dessus. YouTube affiche le nombre d'abonnés en direct si une clé API est configurée (⚙️ Configuration FPA). Spotify/Instagram affichent auditeurs mensuels et abonnés en direct si le proxy Zyla est configuré (service tiers payant, non officiel).</div>
     </div>
     <div style="padding:12px 14px">
       <div style="font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">➕ Ajouter rapidement — Station ${STATION_LABELS[ACTIVE_STATION]}</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
-        <input id="chartSearchQuickArtist" type="text" placeholder="Artiste" style="flex:1;min-width:100px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);font-size:11.5px;font-family:inherit">
-        <input id="chartSearchQuickTitle" type="text" placeholder="Titre" value="${escHtml(query)}" style="flex:1;min-width:100px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);font-size:11.5px;font-family:inherit">
+        <input id="chartSearchQuickArtist" type="text" placeholder="Artiste" value="${escHtml(query)}" style="flex:1;min-width:100px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);font-size:11.5px;font-family:inherit">
+        <input id="chartSearchQuickTitle" type="text" placeholder="Titre" style="flex:1;min-width:100px;padding:6px 8px;border-radius:6px;border:1.5px solid var(--border);font-size:11.5px;font-family:inherit">
       </div>
       <div style="display:flex;gap:6px">
         <button onclick="quickAddFromChartSearch('comite')" style="flex:1;font-size:11px;padding:7px;border-radius:6px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700">⭐ Comité d'Écoute</button>
@@ -7291,6 +7347,30 @@ function renderChartSearchWebFallback(query, nbSourcesLoaded, box){
       </div>`;
       const linkEl = document.getElementById('chartSearchYoutubeLink');
       if(linkEl && info.channelUrl) linkEl.href = info.channelUrl; // pointe directement vers la chaîne trouvée plutôt qu'une recherche générique
+    });
+  }
+
+  // Sonde Zyla (Spotify auditeurs mensuels + réseaux sociaux groupés) — voir
+  // fetchZylaArtistInfo. Même principe que YouTube ci-dessus : silencieuse
+  // et invisible si aucun proxy n'est configuré. Service tiers payant, donc
+  // encore plus important de ne jamais laisser une erreur permanente
+  // s'afficher — un échec (quota épuisé, artiste introuvable...) se traduit
+  // juste par une absence de ligne, sans gêner la consultation du panneau.
+  const zylaCheckEl = document.getElementById('chartSearchZylaCheck');
+  if(ZYLA_APPS_SCRIPT_PROXY_URL && zylaCheckEl){
+    zylaCheckEl.textContent = '⏳ Vérification Spotify / réseaux sociaux (Zyla)…';
+    fetchZylaArtistInfo(query).then(info => {
+      const el = document.getElementById('chartSearchZylaCheck');
+      if(!el) return; // panneau changé entre-temps
+      if(!info){ el.innerHTML = ''; return; } // échec silencieux (voir docstring)
+      const bits = [];
+      if(info.monthlyListeners) bits.push('🟢 ' + escHtml(info.monthlyListeners) + ' auditeurs/mois');
+      const socialIcons = { instagram:'📸', youtube:'▶️', tiktok:'🎵', facebook:'👤', twitter:'𝕏' };
+      Object.keys(socialIcons).forEach(k => {
+        if(info.social && info.social[k]) bits.push(socialIcons[k] + ' ' + escHtml(info.social[k]));
+      });
+      if(!bits.length){ el.innerHTML = ''; return; }
+      el.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px 10px">${bits.map(b => `<span>${b}</span>`).join('')}</div>`;
     });
   }
 }
@@ -18437,7 +18517,7 @@ async function openTevByInfo(info){
         <input id="tevReleaseDateInput" type="date" value="${songAttrs.releaseDate || ''}"
           onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','releaseDate',this.value)"
           style="flex:1;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
-        <button onclick="tevFetchDecade('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher la date de sortie ET la décennie via iTunes (même recherche)"
+        <button onclick="tevFetchDecade('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher la date de sortie ET la décennie via iTunes (même recherche) — écrasée automatiquement par MusicBrainz si trouvée (plus fiable, voir ISRC ci-dessous)"
           style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
         <span id="tevNewProdBadge" style="flex-shrink:0;display:${isNewProduction(songAttrs.releaseDate)?'inline-flex':'none'};align-items:center;gap:4px;font-size:10px;font-weight:800;color:#0A8056;background:#E3F6EC;border:1px solid #A8E0C0;border-radius:20px;padding:4px 10px;white-space:nowrap" title="Sortie officielle il y a moins de 18 mois">🆕 Nouvelle prod.</span>
       </div>
@@ -18447,14 +18527,10 @@ async function openTevByInfo(info){
         <input id="tevIsrcInput" type="text" placeholder="rempli automatiquement (MusicBrainz)" value="${escHtml(songAttrs.isrc || '')}"
           onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','isrc',this.value)"
           style="flex:1;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
-        <button onclick="tevFetchMusicBrainz('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher l'ISRC et la date de sortie MusicBrainz maintenant (normalement automatique en tâche de fond après import)"
+        <button onclick="tevFetchMusicBrainz('${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" title="Rechercher l'ISRC et la date de sortie MusicBrainz maintenant (normalement automatique en tâche de fond après import) — la date de sortie officielle ci-dessus est alors remplacée par celle de MusicBrainz, plus fiable qu'iTunes"
           style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
       </div>
     </label>
-    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date de sortie (MusicBrainz)
-      <input id="tevMbReleaseDateInput" type="date" value="${songAttrs.mbReleaseDate || ''}" readonly
-        title="Renseignée automatiquement en tâche de fond — première sortie connue par MusicBrainz, peut différer de la date de sortie officielle ci-dessus (source iTunes)"
-        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
     </label>
     <div style="grid-column:1/-1">
       <span id="tevMbBadge" onclick="mbShowStatusToast()" title="Enrichissement ISRC + date de sortie (MusicBrainz) — cliquer pour le détail" style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 9px;white-space:nowrap;cursor:pointer"></span>
@@ -18537,9 +18613,11 @@ async function tevFetchMusicBrainz(title, artist){
     if(input) input.value = result.isrc;
   }
   if(result.releaseDate){
-    updateSongAttribute(title, artist, 'mbReleaseDate', result.releaseDate);
-    const input = document.getElementById('tevMbReleaseDateInput');
+    updateSongAttribute(title, artist, 'releaseDate', result.releaseDate); // remplace la date iTunes/manuelle — MusicBrainz plus fiable
+    const input = document.getElementById('tevReleaseDateInput');
     if(input) input.value = result.releaseDate;
+    const badge = document.getElementById('tevNewProdBadge');
+    if(badge) badge.style.display = isNewProduction(result.releaseDate) ? 'inline-flex' : 'none';
   }
   updateSongAttribute(title, artist, 'mbStatus', 'found');
   showToast('✓ ' + [result.isrc, result.releaseDate].filter(Boolean).join(' · ') + ' trouvé(e)', 'success');
@@ -28728,15 +28806,13 @@ function toggleQuotasPage(){
     document.getElementById('steps').style.display   = 'none';
     document.getElementById('backBtn').style.display = 'none';
     document.getElementById('pageQuotas').style.display = 'block';
-    btn.style.borderColor = 'var(--cyan)';
-    btn.style.color       = 'var(--navy)';
-    btn.style.background  = 'var(--cyan-light)';
+    if(btn){ btn.style.borderColor = 'var(--cyan)'; btn.style.color = 'var(--navy)'; btn.style.background = 'var(--cyan-light)'; }
     const input = document.getElementById('quotasEndpointInput');
     if(input) input.value = quotasGetEndpoint();
     quotasRefresh();
   } else {
     document.getElementById('pageQuotas').style.display = 'none';
-    btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
+    if(btn){ btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = ''; }
     restoreMainPage();
   }
 }
@@ -34587,6 +34663,7 @@ function openFpaConfigModal(){
   document.getElementById('fpaCfgShazam').value        = SHAZAM_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgMusicBrainz').value   = MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgYoutube').value        = YOUTUBE_API_KEY || '';
+  document.getElementById('fpaCfgZyla').value            = ZYLA_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgAkpTubesmoment').value = appleKeyPlaylistUrl('tubesmoment');
   document.getElementById('fpaCfgAkpLecode').value      = appleKeyPlaylistUrl('lecode');
   document.getElementById('fpaCfgAkpHitsfrance').value  = appleKeyPlaylistUrl('hitsfrance');
@@ -34612,6 +34689,7 @@ function saveFpaConfigFromModal(){
     ['fpaCfgShazam',        'fpa_shazam_proxy_url',    v => { SHAZAM_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgMusicBrainz',   'fpa_musicbrainz_proxy_url', v => { MUSICBRAINZ_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgYoutube',       'fpa_youtube_api_key', v => { YOUTUBE_API_KEY = v; }],
+    ['fpaCfgZyla',          'fpa_zyla_proxy_url', v => { ZYLA_APPS_SCRIPT_PROXY_URL = v; }],
   ];
   fields.forEach(([inputId, key, apply]) => {
     const v = document.getElementById(inputId).value.trim();
@@ -34641,6 +34719,7 @@ function copyFpaConfigFromModal(){
     'Proxy Shazam : '          + (document.getElementById('fpaCfgShazam').value.trim() || '(non configuré)'),
     'Proxy MusicBrainz : '     + (document.getElementById('fpaCfgMusicBrainz').value.trim() || '(non configuré)'),
     'Clé API YouTube : '       + (document.getElementById('fpaCfgYoutube').value.trim() ? '(configurée)' : '(non configurée)'),
+    'Proxy Zyla : '            + (document.getElementById('fpaCfgZyla').value.trim() || '(non configuré)'),
     'Playlist Tubes du Moment : ' + (document.getElementById('fpaCfgAkpTubesmoment').value.trim() || '(non configuré)'),
     'Playlist Le Code : '         + (document.getElementById('fpaCfgAkpLecode').value.trim() || '(non configuré)'),
     'Playlist Hits Français : '   + (document.getElementById('fpaCfgAkpHitsfrance').value.trim() || '(non configuré)'),
