@@ -1119,6 +1119,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             <div style="font-size:10.5px;color:var(--muted);margin-bottom:10px">Le signal Concurrence se calcule en priorité sur ces stations plutôt que sur la moyenne toutes stations confondues — évite qu'un titre fort chez des stations à un format éloigné (plus urbain/dance) ne soit recommandé à tort pour un format Pop/Hot AC. Ajustez selon votre positionnement.</div>
             <div id="predEntryFormatStationsGrid" style="display:flex;gap:8px;flex-wrap:wrap"></div>
           </div>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Playlists éditoriales clés prises en compte</div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:10px">Décochez celles structurellement hors format (ex. RapCaviar) — elles ne produiront plus de candidat ni de bonus, ni dans le vivier Digital automatique ni dans le signal Veille. Les autres classements digitaux (Shazam, Spotify, Deezer, kworb) ne sont pas concernés par ce réglage.</div>
+            <div id="predEntryPlaylistExclusionsGrid" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          </div>
           <div style="height:1px;background:var(--border);margin:18px 0"></div>
           <!-- Diagnostic : contribution réelle actuelle de chaque vivier -->
           <div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Contribution actuelle par vivier</div>
@@ -3937,7 +3942,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.216';
+const FPA_VERSION   = 'v30.218';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -27940,6 +27945,38 @@ function togglePredEntryFormatStation(key){
   renderPredictionEntryPage();
 }
 
+// ── Playlists éditoriales clés considérées par l'algorithme — certaines
+// playlists (ex. RapCaviar) ne correspondent structurellement à aucun titre
+// format pour Europe 2/RFM ; les inclure ne fait que produire du bruit dans
+// le vivier Digital automatique et le bonus playlists de Veille. Liste
+// d'EXCLUSION (pas d'inclusion) : par défaut aucune playlist n'est exclue
+// (comportement inchangé pour qui n'ajuste rien), à l'utilisateur de retirer
+// celles jugées hors sujet. Rassemble les 3 sources (Spotify/Deezer/Apple)
+// en une seule liste unifiée {id, label, icon, platform} pour l'UI. ──
+const PRED_ENTRY_PLAYLIST_EXCLUSIONS_KEY = 'fpa_pred_entry_playlist_exclusions_v1';
+function predEntryAllKeyPlaylists(){
+  const spotify = (typeof keyPlaylists !== 'undefined' ? keyPlaylists : []).map(p => ({ id:p.id, label:p.label, icon:'🟢', platform:'Spotify' }));
+  const deezer  = (typeof DEEZER_KEY_PLAYLISTS !== 'undefined' ? DEEZER_KEY_PLAYLISTS : []).map(p => ({ id:p.id, label:p.label, icon:p.icon||'🎵', platform:'Deezer' }));
+  const apple   = (typeof APPLE_KEY_PLAYLISTS !== 'undefined' ? APPLE_KEY_PLAYLISTS : []).map(p => ({ id:p.id, label:p.label, icon:p.icon||'🍎', platform:'Apple Music' }));
+  return [...spotify, ...deezer, ...apple];
+}
+function loadPredEntryPlaylistExclusions(){
+  try{
+    const raw = localStorage.getItem(PRED_ENTRY_PLAYLIST_EXCLUSIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+function savePredEntryPlaylistExclusions(arr){
+  try{ localStorage.setItem(PRED_ENTRY_PLAYLIST_EXCLUSIONS_KEY, JSON.stringify(arr)); }catch(e){}
+}
+function togglePredEntryPlaylistExclusion(id){
+  const cur = loadPredEntryPlaylistExclusions();
+  const idx = cur.indexOf(id);
+  if(idx >= 0) cur.splice(idx, 1); else cur.push(id);
+  savePredEntryPlaylistExclusions(cur);
+  renderPredictionEntryPage();
+}
+
 function loadPredEntryWeights(){
   try{
     const raw = localStorage.getItem(PRED_ENTRY_WEIGHTS_KEY);
@@ -27986,8 +28023,11 @@ const predEntryParamsTable_DEFS = [
   { key:'rankTop20Bonus',     group:'Traction digitale — classements', label:'Bonus si top 20', default:20, step:1, min:0, max:100 },
   { key:'rankTop50Threshold', group:'Traction digitale — classements', label:'Seuil "top 50"', default:50, step:1, min:1, max:300 },
   { key:'rankTop50Bonus',     group:'Traction digitale — classements', label:'Bonus si top 50', default:10, step:1, min:0, max:100 },
-  { key:'keyPlaylistBonusPerPlaylist', group:'Traction digitale — classements', label:'Bonus par playlist éditoriale clé (Spotify/Deezer/Apple)', default:10, step:1, min:0, max:50 },
-  { key:'keyPlaylistBonusCap',         group:'Traction digitale — classements', label:'Bonus playlists clés : plafond cumulé', default:30, step:1, min:0, max:100 },
+  { key:'keyPlaylistBonusPerPlaylist', group:'Playlists éditoriales clés', label:'Bonus par playlist éditoriale clé qualifiante', default:10, step:1, min:0, max:50 },
+  { key:'keyPlaylistBonusCap',         group:'Playlists éditoriales clés', label:'Bonus playlists clés : plafond cumulé', default:30, step:1, min:0, max:100 },
+  { key:'keyPlaylistTopN',             group:'Playlists éditoriales clés', label:'Rang max DANS la playlist pour compter (top N)', default:10, step:1, min:1, max:100 },
+  { key:'keyPlaylistMinCount',         group:'Playlists éditoriales clés', label:'Nb minimum de playlists qualifiantes pour le BONUS de score', default:2, step:1, min:1, max:10 },
+  { key:'minKeyPlaylistsToSuggest',    group:'Playlists éditoriales clés', label:'Nb minimum de playlists qualifiantes pour être SUGGÉRÉ (1 à 4) — titres repérés uniquement par playlist, sans classement', default:2, step:1, min:1, max:4 },
   { key:'rankMomentumFactor', group:'Traction digitale — classements', label:'Momentum de rang (tous classements) : multiplicateur', default:2, step:0.5, min:0, max:10 },
   { key:'rankMomentumCap',    group:'Traction digitale — classements', label:'Momentum de rang : bonus plafond', default:30, step:1, min:0, max:100 },
 
@@ -28450,6 +28490,10 @@ function predEntryVeilleSubscore(w){
   if(!w) return { sub:0, breadth:0, trendDelta:null, bestRank:null, keyPlaylistCount:0 };
   if(!w.history || !w.history.length) return { sub: p.veilleManualBonus, breadth:0, trendDelta:null, bestRank:null, keyPlaylistCount:0 };
   const last = w.history[w.history.length - 1];
+  // Playlists désactivées dans les paramètres — jamais comptées, ni pour la
+  // largeur de sources ci-dessous, ni pour le bonus dédié plus bas.
+  const excludedPlaylists = loadPredEntryPlaylistExclusions();
+  const hasQualifyingPlaylist = obj => obj && Object.entries(obj).some(([id, v]) => !excludedPlaylists.includes(id) && watchlistSourceFound(v));
   let breadth = 0;
   if(watchlistSourceFound(last.itunes)) breadth++;
   if(watchlistSourceFound(last.shzFR)) breadth++;
@@ -28457,9 +28501,9 @@ function predEntryVeilleSubscore(w){
   if(watchlistSourceFound(last.spyFR)) breadth++;
   if(watchlistSourceFound(last.dzFR)) breadth++;
   if(last.spKworb && Object.values(last.spKworb).some(v => watchlistSourceFound(v))) breadth++;
-  if(last.kpPlaylists && Object.values(last.kpPlaylists).some(v => watchlistSourceFound(v))) breadth++;
-  if(last.dzkpPlaylists && Object.values(last.dzkpPlaylists).some(v => watchlistSourceFound(v))) breadth++;
-  if(last.akpPlaylists && Object.values(last.akpPlaylists).some(v => watchlistSourceFound(v))) breadth++;
+  if(hasQualifyingPlaylist(last.kpPlaylists)) breadth++;
+  if(hasQualifyingPlaylist(last.dzkpPlaylists)) breadth++;
+  if(hasQualifyingPlaylist(last.akpPlaylists)) breadth++;
   const breadthSub = Math.min(100, breadth * p.veilleBreadthFactor);
 
   // ── Meilleur rang trouvé, tous classements confondus (pas les playlists,
@@ -28475,14 +28519,24 @@ function predEntryVeilleSubscore(w){
     else if(bestRank <= p.rankTop50Threshold) rankBonus = p.rankTop50Bonus;
   }
 
-  // ── Nombre de playlists éditoriales clés distinctes où le titre apparaît
-  // (Spotify + Deezer + Apple Music confondues) — un titre repéré par
-  // plusieurs curateurs à la fois est un signal de confiance éditoriale
-  // fort, indépendant des classements quantitatifs. ──
+  // ── Nombre de playlists éditoriales clés QUALIFIANTES où le titre
+  // apparaît (Spotify + Deezer + Apple Music confondues) : exclut les
+  // playlists désactivées dans les paramètres (ex. RapCaviar, hors format —
+  // voir predEntryAllKeyPlaylists/loadPredEntryPlaylistExclusions), et ne
+  // compte que les entrées dans le top N de LEUR propre playlist
+  // (keyPlaylistTopN) — une présence en fin de playlist ne vaut pas la même
+  // confiance éditoriale qu'une tête de gondole. Le bonus ne s'applique
+  // QUE si au moins keyPlaylistMinCount playlists qualifiantes distinctes
+  // sont trouvées ("pour émerger") — une seule présence, même en tête de
+  // playlist, ne suffit plus à elle seule. ──
   const keyPlaylistCount = [last.kpPlaylists, last.dzkpPlaylists, last.akpPlaylists]
     .filter(Boolean)
-    .reduce((sum, obj) => sum + Object.values(obj).filter(v => watchlistSourceFound(v)).length, 0);
-  const playlistBonus = Math.min(p.keyPlaylistBonusCap, keyPlaylistCount * p.keyPlaylistBonusPerPlaylist);
+    .reduce((sum, obj) => sum + Object.entries(obj).filter(([id, v]) =>
+      !excludedPlaylists.includes(id) && watchlistSourceFound(v) && v <= p.keyPlaylistTopN
+    ).length, 0);
+  const playlistBonus = keyPlaylistCount >= p.keyPlaylistMinCount
+    ? Math.min(p.keyPlaylistBonusCap, keyPlaylistCount * p.keyPlaylistBonusPerPlaylist)
+    : 0;
 
   // ── Tendance Shazam FR (historique, conservée telle quelle) ──
   let trendDelta = null, trendSub = 0;
@@ -28715,6 +28769,7 @@ function predEntryCompute(c, compRow, oppRow, weights){
  *  titres chacune). ── */
 function buildDigitalAutoSnapshots(){
   const p = predEntryParams();
+  const excludedPlaylists = loadPredEntryPlaylistExclusions();
   const today = new Date().toISOString().slice(0, 10);
   const found = {}; // key -> snapshot en construction
 
@@ -28760,6 +28815,7 @@ function buildDigitalAutoSnapshots(){
   // séparé comme Deezer/Apple ci-dessous.
   if(typeof keyPlaylists !== 'undefined'){
     keyPlaylists.forEach(pl => {
+      if(excludedPlaylists.includes(pl.id)) return;
       if(!pl.tracks || !pl.tracks.length) return;
       pl.tracks.forEach(t => {
         if(!t.title || !t.artist) return;
@@ -28773,6 +28829,7 @@ function buildDigitalAutoSnapshots(){
   const scanPlaylists = (list, dataStore, field) => {
     if(typeof list === 'undefined') return;
     (list || []).forEach(pl => {
+      if(excludedPlaylists.includes(pl.id)) return;
       const data = dataStore ? dataStore[pl.id] : null;
       if(!data) return;
       Object.entries(data).forEach(([rank, entry]) => {
@@ -28786,6 +28843,28 @@ function buildDigitalAutoSnapshots(){
   };
   scanPlaylists(typeof DEEZER_KEY_PLAYLISTS !== 'undefined' ? DEEZER_KEY_PLAYLISTS : null, typeof deezerKeyPlaylistData !== 'undefined' ? deezerKeyPlaylistData : null, 'dzkpPlaylists');
   scanPlaylists(typeof APPLE_KEY_PLAYLISTS !== 'undefined' ? APPLE_KEY_PLAYLISTS : null, typeof appleKeyPlaylistData !== 'undefined' ? appleKeyPlaylistData : null, 'akpPlaylists');
+
+  // ── Filtre d'éligibilité final — SEULEMENT pour les titres repérés
+  // uniquement via playlist(s), sans aucun classement (Shazam/Spotify/
+  // Deezer/kworb) : il faut au moins minKeyPlaylistsToSuggest playlists
+  // qualifiantes (déjà filtrées par exclusion + top N ci-dessus) pour que
+  // le titre soit suggéré du tout — pas seulement pour gonfler son score
+  // (voir keyPlaylistMinCount, un réglage différent, dans
+  // predEntryVeilleSubscore). Un titre qui a AUSSI un classement n'est
+  // jamais filtré ici, quel que soit son nombre de playlists — conforme à
+  // "pas de changement pour les autres classements digitaux". ──
+  Object.keys(found).forEach(key => {
+    const snap = found[key];
+    const hasChartSignal = [snap.shzFR, snap.shzWW, snap.spyFR, snap.dzFR, ...Object.values(snap.spKworb || {})]
+      .some(v => watchlistSourceFound(v));
+    if(hasChartSignal) return; // jamais filtré si un classement existe, quel que soit le nb de playlists
+    const qualifyingCount = [snap.kpPlaylists, snap.dzkpPlaylists, snap.akpPlaylists]
+      .filter(Boolean)
+      .reduce((sum, obj) => sum + Object.entries(obj).filter(([id, v]) =>
+        !excludedPlaylists.includes(id) && watchlistSourceFound(v) && v <= p.keyPlaylistTopN
+      ).length, 0);
+    if(qualifyingCount < p.minKeyPlaylistsToSuggest) delete found[key];
+  });
 
   return found;
 }
@@ -29059,6 +29138,20 @@ function renderPredEntryWeightsPanel(){
       const isOn = selected.includes(o.key);
       return `<button onclick="togglePredEntryFormatStation('${o.key}')" style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid ${isOn?'var(--cyan)':'var(--border)'};background:${isOn?'var(--cyan-bg,#E8FBFD)':'var(--white)'};color:${isOn?'var(--navy)':'var(--muted)'};cursor:pointer">${isOn?'✓ ':''}${escHtml(o.label)}</button>`;
     }).join('');
+  }
+
+  const playlistsGrid = document.getElementById('predEntryPlaylistExclusionsGrid');
+  if(playlistsGrid){
+    const allPlaylists = predEntryAllKeyPlaylists();
+    const excluded = loadPredEntryPlaylistExclusions();
+    if(!allPlaylists.length){
+      playlistsGrid.innerHTML = '<span style="font-size:11px;color:var(--muted)">Aucune playlist éditoriale clé configurée pour l\'instant (Classements → Playlists clés).</span>';
+    } else {
+      playlistsGrid.innerHTML = allPlaylists.map(pl => {
+        const isOn = !excluded.includes(pl.id);
+        return `<button onclick="togglePredEntryPlaylistExclusion('${jsAttrEscape(pl.id)}')" title="${pl.platform}" style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:20px;border:1.5px solid ${isOn?'var(--cyan)':'var(--border)'};background:${isOn?'var(--cyan-bg,#E8FBFD)':'var(--white)'};color:${isOn?'var(--navy)':'var(--muted)'};cursor:pointer">${isOn?'✓ ':''}${pl.icon} ${escHtml(pl.label)}</button>`;
+      }).join('');
+    }
   }
 }
 function updatePredEntryWeight(key, value){
