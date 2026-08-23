@@ -1084,7 +1084,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Note explicative repliable -->
       <div id="infoPredEntry" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quels titres ?</strong> Trois viviers, jamais les titres déjà en Playlist : les titres suivis en Veille (Shazam, Spotify, Deezer, iTunes, playlists clés), les titres testés en Call Out/OMT classés Power Song ou Sleeper (ou marqués catégorie <strong>RECH</strong>, voir plus bas) mais quasiment absents de votre antenne, et <strong>tout le marché suivi par votre import Airplay général</strong> (Yacast/Muzicast, toutes radios confondues) : un titre significativement diffusé chez les concurrents et quasi absent chez vous entre automatiquement, sans avoir été ajouté en Veille ni testé en Call Out au préalable.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quels titres ?</strong> Quatre viviers, jamais les titres déjà en Playlist : la <strong>Veille manuelle</strong> (titres ajoutés à la main), le <strong>Digital automatique</strong> (nouveau — scan direct des classements et playlists déjà chargés dans FPA — Shazam FR/monde, Spotify France + marchés kworb, Deezer France, playlists clés Spotify/Deezer/Apple — sans qu'aucune saisie manuelle ne soit nécessaire), les titres testés en <strong>Call Out/OMT</strong> classés Power Song ou Sleeper (ou marqués catégorie <strong>RECH</strong>, voir plus bas), et <strong>tout le marché suivi par votre import Airplay général</strong>. Un titre déjà couvert par la Veille manuelle n'est jamais dédoublé par le Digital automatique — la Veille, plus riche (historique, tendance), reste prioritaire.</div>
         <div style="margin-bottom:6px"><strong style="color:var(--navy)">Exclusion titres anciens</strong> — dès que la date de sortie officielle d'un titre est connue (iTunes, ou MusicBrainz si trouvée) et dépasse le seuil réglable ci-dessous, il n'est plus jamais suggéré, pour aucune des deux stations. Un titre sans date connue n'est jamais filtré par cette règle (absence de donnée ≠ preuve d'ancienneté).</div>
         <div style="margin-bottom:6px"><strong style="color:var(--navy)">Méthode de calcul</strong> — 4 signaux combinés en un score 0-100 pondérable (curseurs ci-dessus) : Recherche interne, traction digitale Veille, écart avec la Concurrence, Fenêtre d'opportunité. <strong>Renormalisé sur les seuls signaux réellement disponibles</strong> pour ce titre (badge « X/4 signaux ») : un titre du Marché sans historique Veille ni test Call Out n'est jamais sous-noté faute de ces deux signaux, son score repose alors sur Concurrence + Fenêtre d'opportunité.</div>
         <div style="margin-bottom:6px"><strong style="color:var(--navy)">Signal Recherche interne</strong> — Power Song au maximum. Sleeper avec un bonus supplémentaire si en plus marqué catégorie RECH (premier choix éditorial déjà favorable, avant même le test terrain). Un titre marqué RECH mais pas encore classé Power Song/Sleeper obtient un plancher significatif plutôt que 0 — jamais exclu du vivier au seul motif de l'absence de quadrant gagnant. Pour tout titre venu du vivier Call Out (donc déjà testé), 5 bonus cumulables supplémentaires — les mêmes critères que Sorties, mais dans le sens inverse (un <em>bon</em> signal pousse ici vers l'entrée) : Fit Score, Fam Score, Momentum positif, Polarisation à adhésion dominante, SPU vert.</div>
@@ -1096,7 +1096,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             · <em>Effet artiste</em> — seulement certaines raisons (« Artiste format »/« Star du format » en Oui, « Artiste hors format » en Non) : les prochains titres du même artiste sont boostés ou pénalisés (valeurs exactes réglables ci-dessous), badge ⭐/⚠️ visible, jamais d'exclusion silencieuse. Cliquer le badge retire le statut. « Titre sans potentiel » et « Artiste dans format mais titre sans potentiel » n'affectent jamais l'artiste, seulement ce titre précis.
           </div>
         </div>
-        <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer les titres qui cumulent plusieurs signaux de percée avant qu'ils ne soient évidents, sans dépendre uniquement d'ajouts manuels en Veille, et affiner ces suggestions au fil du temps grâce à vos retours. Chaque recommandation affiche ses raisons dominantes, et le bouton 🔬 son détail de calcul complet — une piste pour le Comité d'Écoute, jamais une décision automatique. <strong>Tous les seuils et bonus exacts sont ajustables individuellement dans le tableau ci-dessous</strong> ("⚙️ Paramètres de l'algorithme") — cet algorithme est amené à évoluer.</div>
+        <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer les titres qui cumulent plusieurs signaux de percée avant qu'ils ne soient évidents, sans dépendre uniquement d'ajouts manuels en Veille, et affiner ces suggestions au fil du temps grâce à vos retours. Chaque recommandation affiche ses raisons dominantes, et le bouton 🔬 son détail de calcul complet — une piste pour le Comité d'Écoute, jamais une décision automatique. <strong>Tous les seuils et bonus exacts sont ajustables individuellement dans le tableau ci-dessous</strong> ("⚙️ Paramètres de l'algorithme"), avec un <strong>poids global par vivier</strong> (Veille/Call Out/Marché — distinct des pondérations de signaux, qui jouent à l'intérieur du calcul d'un titre) éclairé par un diagnostic en direct montrant la contribution réelle actuelle de chacun. Cet algorithme est amené à évoluer.</div>
       </div>
 
       <!-- Tableau des paramètres ajustables — replié par défaut -->
@@ -1119,6 +1119,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             <div style="font-size:10.5px;color:var(--muted);margin-bottom:10px">Le signal Concurrence se calcule en priorité sur ces stations plutôt que sur la moyenne toutes stations confondues — évite qu'un titre fort chez des stations à un format éloigné (plus urbain/dance) ne soit recommandé à tort pour un format Pop/Hot AC. Ajustez selon votre positionnement.</div>
             <div id="predEntryFormatStationsGrid" style="display:flex;gap:8px;flex-wrap:wrap"></div>
           </div>
+          <div style="height:1px;background:var(--border);margin:18px 0"></div>
+          <!-- Diagnostic : contribution réelle actuelle de chaque vivier -->
+          <div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Contribution actuelle par vivier</div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:10px">Calculé en direct sur vos candidats actuels — utile pour savoir quoi ajuster ci-dessous avant de régler le poids global par vivier (dans le tableau, plus bas).</div>
+          <div id="predEntrySourceDiagnostic" style="margin-bottom:4px"></div>
           <div style="height:1px;background:var(--border);margin:18px 0"></div>
           <!-- Seuils et bonus -->
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
@@ -3925,7 +3930,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.210';
+const FPA_VERSION   = 'v30.213';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -27890,7 +27895,7 @@ const PRED_ENTRY_WEIGHTS_KEY = 'fpa_pred_entry_weights_v1';
 const DEFAULT_PRED_ENTRY_WEIGHTS = { internal:30, veille:25, comp:25, opportunity:20 };
 const PRED_ENTRY_WEIGHT_LABELS = {
   internal: { label:'Recherche interne', desc:'Classement Power Song / Sleeper au dernier Call Out/OMT testé' },
-  veille: { label:'Traction digitale (Veille)', desc:'Nombre de sources actives + progression Shazam France (titres suivis manuellement)' },
+  veille: { label:'Traction digitale (Veille + Digital)', desc:'Nombre de sources actives, rang dans les classements, playlists clés, progression — titres suivis manuellement OU repérés automatiquement (voir viviers)' },
   comp: { label:'Concurrence', desc:'Écart de diffusion avec la moyenne des radios suivies — calculé sur tout le marché, pas seulement les titres testés' },
   opportunity: { label:"Fenêtre d'opportunité", desc:'Digital fort, burn faible, radio encore faible (module dédié)' }
 };
@@ -27981,7 +27986,15 @@ const predEntryParamsTable_DEFS = [
 
   { key:'compFallbackAttenuation', group:'Concurrence', label:'Atténuation si seule la moyenne toutes stations est connue (× )', default:0.5, step:0.05, min:0, max:1 },
   { key:'formatGapRatio', group:'Concurrence', label:'Écart de format : seuil d\'alerte (stations format < × moyenne globale)', default:0.3, step:0.05, min:0, max:1 },
+
+  { key:'digitalAutoChartTopN',  group:'Vivier Digital automatique', label:'Classements domestiques (Shazam FR/monde, Spotify FR, Deezer FR) : top N retenu', default:30, step:5, min:5, max:200 },
+  { key:'digitalAutoKworbTopN',  group:'Vivier Digital automatique', label:'Marchés Spotify étrangers (kworb, 8 pays) : top N retenu', default:15, step:5, min:5, max:100 },
   { key:'marketMinConc', group:'Vivier Marché', label:'Moyenne concurrents mini pour entrer dans le vivier Marché (passages)', default:5, step:0.5, min:0, max:50 },
+
+  { key:'sourceWeightVeille',   group:'Poids global par vivier (origine du candidat)', label:'Veille manuelle — poids global (1 = neutre)', default:1, step:0.1, min:0, max:2 },
+  { key:'sourceWeightDigital',  group:'Poids global par vivier (origine du candidat)', label:'Digital automatique — poids global (1 = neutre)', default:1, step:0.1, min:0, max:2 },
+  { key:'sourceWeightCallOut',  group:'Poids global par vivier (origine du candidat)', label:'Call Out/OMT — poids global (1 = neutre)', default:1, step:0.1, min:0, max:2 },
+  { key:'sourceWeightMarche',   group:'Poids global par vivier (origine du candidat)', label:'Marché — poids global (1 = neutre)', default:1, step:0.1, min:0, max:2 },
 
   { key:'maxAirplay',   group:'Filtres d\'éligibilité', label:'Passages max (E2/RFM) pour rester "pas encore entré"', default:2, step:1, min:0, max:20 },
   { key:'maxAgeYears',  group:'Filtres d\'éligibilité', label:'Âge max du titre si date de sortie connue (années)', default:2, step:0.5, min:0, max:20 },
@@ -27996,6 +28009,51 @@ function renderPredEntryParamsTable(){
 }
 function predEntryParams(){
   return predParamsLoad(PRED_ENTRY_PARAMS_KEY, predEntryParamsTable_DEFS);
+}
+/** Diagnostic de contribution par vivier — répond à "quel est le poids réel
+ *  de chaque source (Veille/Call Out/Marché) dans mes recommandations
+ *  actuelles ?" en calculant, sur le jeu de candidats du moment : le nombre
+ *  de titres par vivier, leur score moyen, et la répartition par niveau
+ *  (🟢/🟡/⚪). C'est cette lecture qui guide l'ajustement du poids global
+ *  par vivier juste en dessous (tableau des paramètres) — sans ce
+ *  diagnostic, impossible de savoir SI un vivier pèse trop avant de le
+ *  corriger à l'aveugle. ── */
+function renderPredEntrySourceDiagnostic(allRows){
+  const el = document.getElementById('predEntrySourceDiagnostic');
+  if(!el) return;
+  const sources = [
+    { key:'veille',  label:'🔭 Veille' },
+    { key:'digital', label:'📊 Digital (auto)' },
+    { key:'callout', label:'🔍 Call Out/OMT' },
+    { key:'market',  label:'📡 Marché' },
+  ];
+  if(!allRows.length){ el.innerHTML = '<div style="font-size:11px;color:var(--muted)">Aucun candidat actuellement — rien à diagnostiquer.</div>'; return; }
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:11.5px">
+    <tr style="border-bottom:1.5px solid var(--border)">
+      <th style="text-align:left;padding:5px 8px 5px 0;color:var(--muted);font-weight:800;font-size:10px;text-transform:uppercase">Vivier</th>
+      <th style="text-align:center;padding:5px 8px;color:var(--muted);font-weight:800;font-size:10px;text-transform:uppercase">Candidats</th>
+      <th style="text-align:center;padding:5px 8px;color:var(--muted);font-weight:800;font-size:10px;text-transform:uppercase">Score moyen</th>
+      <th style="text-align:left;padding:5px 0 5px 8px;color:var(--muted);font-weight:800;font-size:10px;text-transform:uppercase">Répartition</th>
+    </tr>
+    ${sources.map(s => {
+      const rows = allRows.filter(r => r.source === s.key);
+      if(!rows.length) return `<tr style="border-bottom:1px solid var(--border)"><td style="padding:6px 8px 6px 0;color:var(--muted)">${s.label}</td><td colspan="3" style="padding:6px 8px;color:var(--muted);text-align:center">— aucun candidat cette session —</td></tr>`;
+      const avg = Math.round(rows.reduce((a,r) => a+r.score, 0) / rows.length);
+      const strong = rows.filter(r => r.level==='Entrée recommandée').length;
+      const watch  = rows.filter(r => r.level==='À tester / surveiller').length;
+      const weak   = rows.length - strong - watch;
+      const barSeg = (n, color) => n ? `<span style="display:inline-block;height:8px;width:${Math.round(n/rows.length*100)}%;background:${color}"></span>` : '';
+      return `<tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:6px 8px 6px 0;font-weight:700;color:var(--navy)">${s.label}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:700">${rows.length}</td>
+        <td style="padding:6px 8px;text-align:center;font-weight:800;color:${avg>=65?'var(--green-text)':avg>=40?'var(--orange-text)':'var(--muted)'}">${avg}</td>
+        <td style="padding:6px 0 6px 8px">
+          <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--bg);min-width:80px">${barSeg(strong,'#0DA76B')}${barSeg(watch,'#E0A100')}${barSeg(weak,'#C7CDD9')}</div>
+          <div style="font-size:9.5px;color:var(--muted);margin-top:2px">${strong} 🟢 · ${watch} 🟡 · ${weak} ⚪</div>
+        </td>
+      </tr>`;
+    }).join('')}
+  </table>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -28447,11 +28505,14 @@ function predEntryCompute(c, compRow, oppRow, weights){
   ));
   const veilleAvail = veilleHasRealSignal;
   const veilleSub = c.veilleData ? c.veilleData.sub : 0;
+  const isDigitalOrigin = c.source === 'digital';
   let veilleTxt = c.veilleData && !veilleHasRealSignal
     ? 'Ajouté en Veille manuelle, aucune confirmation externe pour l\'instant (source, classement, playlist ou tendance)'
-    : 'Pas suivi en Veille';
+    : (isDigitalOrigin ? 'Aucune traction digitale détectée' : 'Pas suivi en Veille');
   if(c.veilleData && veilleHasRealSignal){
-    veilleTxt = `${c.veilleData.breadth} source${c.veilleData.breadth>1?'s':''} digitale${c.veilleData.breadth>1?'s':''} active${c.veilleData.breadth>1?'s':''} en Veille`;
+    veilleTxt = isDigitalOrigin
+      ? `Repéré automatiquement sur ${c.veilleData.breadth} source${c.veilleData.breadth>1?'s':''} digitale${c.veilleData.breadth>1?'s':''}`
+      : `${c.veilleData.breadth} source${c.veilleData.breadth>1?'s':''} digitale${c.veilleData.breadth>1?'s':''} active${c.veilleData.breadth>1?'s':''} en Veille`;
     if(c.veilleData.bestRank != null) veilleTxt += ` · meilleur rang #${c.veilleData.bestRank} (tous classements)`;
     if(c.veilleData.keyPlaylistCount) veilleTxt += ` · ${c.veilleData.keyPlaylistCount} playlist${c.veilleData.keyPlaylistCount>1?'s':''} éditoriale${c.veilleData.keyPlaylistCount>1?'s':''} clé${c.veilleData.keyPlaylistCount>1?'s':''}`;
     if(c.veilleData.trendDelta !== null) veilleTxt += c.veilleData.trendDelta > 0 ? ` · progression Shazam France (+${c.veilleData.trendDelta} place${c.veilleData.trendDelta>1?'s':''})` : ' · Shazam FR stable ou en baisse';
@@ -28515,9 +28576,108 @@ function predEntryCompute(c, compRow, oppRow, weights){
 }
 
 /* ── Construire les lignes enrichies pour la Prédiction Entrées ── */
+/** Scan automatique des classements/playlists DÉJÀ CHARGÉS dans FPA (Shazam
+ *  FR/monde, Spotify France + marchés kworb, Deezer France, playlists clés
+ *  Spotify/Deezer/Apple), indépendant de toute saisie manuelle en Veille —
+ *  contrairement à Veille (Vivier 1, borné par ce que quelqu'un a tapé à la
+ *  main), ce scan découvre lui-même les titres présents dans ces sources,
+ *  sans qu'un humain ait eu besoin de les pré-sélectionner.
+ *
+ *  Renvoie { key: snapshot } avec un snapshot au MÊME format qu'un relevé
+ *  Veille (voir watchlistCheckOne) — ce qui permet de réutiliser tel quel
+ *  predEntryVeilleSubscore(w) en lui passant { history:[snapshot] } : même
+ *  calcul de rang/playlists clés, juste sans tendance (un seul relevé, pas
+ *  d'historique) ni bonus "choix éditorial manuel" (jamais ajouté à la
+ *  main). Les classements domestiques (Shazam FR/WW, Spotify FR, Deezer FR)
+ *  sont tronqués à digitalAutoChartTopN pour ne remonter que les positions
+ *  vraiment significatives ; les marchés kworb étrangers (8 pays) à un
+ *  seuil plus serré (digitalAutoKworbTopN) pour éviter le bruit d'un titre
+ *  anecdotique sur un marché lointain ; les playlists clés sont prises
+ *  intégralement (déjà naturellement limitées à quelques dizaines de
+ *  titres chacune). ── */
+function buildDigitalAutoSnapshots(){
+  const p = predEntryParams();
+  const today = new Date().toISOString().slice(0, 10);
+  const found = {}; // key -> snapshot en construction
+
+  const ensure = (title, artist) => {
+    const key = comiteKey(title, artist);
+    if(!found[key]) found[key] = { date: today, title, artist, itunes:null, shzFR:null, shzWW:null, spyFR:null, dzFR:null, spKworb:{}, kpPlaylists:{}, dzkpPlaylists:{}, akpPlaylists:{} };
+    return found[key];
+  };
+  const scanChart = (chart, topN, field) => {
+    if(!chart) return;
+    Object.entries(chart).forEach(([rank, entry]) => {
+      const r = parseInt(rank);
+      if(isNaN(r) || r > topN) return;
+      const title = entry.t || entry.title, artist = entry.a || entry.artist;
+      if(!title || !artist) return;
+      const snap = ensure(title, artist);
+      if(snap[field] === null || r < snap[field]) snap[field] = r;
+    });
+  };
+
+  if(typeof chartsLoaded !== 'undefined' && chartsLoaded.fr) scanChart(chartsData.fr, p.digitalAutoChartTopN, 'shzFR');
+  if(typeof chartsLoaded !== 'undefined' && chartsLoaded.ww) scanChart(chartsData.ww, p.digitalAutoChartTopN, 'shzWW');
+  if(typeof spotifyLoaded !== 'undefined' && spotifyLoaded) scanChart(spotifyData, p.digitalAutoChartTopN, 'spyFR');
+  if(typeof deezerLoaded !== 'undefined' && deezerLoaded) scanChart(deezerData, p.digitalAutoChartTopN, 'dzFR');
+
+  if(typeof kworbSpotifyState !== 'undefined'){
+    Object.keys(KWORB_COUNTRIES || {}).forEach(cc => {
+      const st = kworbSpotifyState[cc];
+      if(!st || !st.loaded || !st.data) return;
+      Object.entries(st.data).forEach(([rank, entry]) => {
+        const r = parseInt(rank);
+        if(isNaN(r) || r > p.digitalAutoKworbTopN) return;
+        const title = entry.t || entry.title, artist = entry.a || entry.artist;
+        if(!title || !artist) return;
+        const snap = ensure(title, artist);
+        if(snap.spKworb[cc] === undefined || r < snap.spKworb[cc]) snap.spKworb[cc] = r;
+      });
+    });
+  }
+
+  // Playlists clés Spotify — structure différente : les pistes sont
+  // stockées directement sur p.tracks (voir keyPlaylists), pas dans un store
+  // séparé comme Deezer/Apple ci-dessous.
+  if(typeof keyPlaylists !== 'undefined'){
+    keyPlaylists.forEach(pl => {
+      if(!pl.tracks || !pl.tracks.length) return;
+      pl.tracks.forEach(t => {
+        if(!t.title || !t.artist) return;
+        const snap = ensure(t.title, t.artist);
+        const r = parseInt(t.rank);
+        if(isNaN(r)) return;
+        if(snap.kpPlaylists[pl.id] === undefined || r < snap.kpPlaylists[pl.id]) snap.kpPlaylists[pl.id] = r;
+      });
+    });
+  }
+  const scanPlaylists = (list, dataStore, field) => {
+    if(typeof list === 'undefined') return;
+    (list || []).forEach(pl => {
+      const data = dataStore ? dataStore[pl.id] : null;
+      if(!data) return;
+      Object.entries(data).forEach(([rank, entry]) => {
+        const r = parseInt(rank);
+        const title = entry.t || entry.title, artist = entry.a || entry.artist;
+        if(!title || !artist) return;
+        const snap = ensure(title, artist);
+        if(snap[field][pl.id] === undefined || r < snap[field][pl.id]) snap[field][pl.id] = r;
+      });
+    });
+  };
+  scanPlaylists(typeof DEEZER_KEY_PLAYLISTS !== 'undefined' ? DEEZER_KEY_PLAYLISTS : null, typeof deezerKeyPlaylistData !== 'undefined' ? deezerKeyPlaylistData : null, 'dzkpPlaylists');
+  scanPlaylists(typeof APPLE_KEY_PLAYLISTS !== 'undefined' ? APPLE_KEY_PLAYLISTS : null, typeof appleKeyPlaylistData !== 'undefined' ? appleKeyPlaylistData : null, 'akpPlaylists');
+
+  return found;
+}
+
 function buildPredictionEntryRows(){
   const candidates = {}; // clé comiteKey → {key,title,artist,source,internalQ,veilleData}
   const entryParams = predEntryParams();
+  const marketRows = buildMarketAirplayRows(); // calculé tôt : réutilisé par le vivier Digital automatique ET le vivier Marché plus bas
+  const marketByKey = {};
+  marketRows.forEach(m => { marketByKey[comiteKey(m.title, m.artist)] = m; });
 
   // ── Vivier 1 : Veille (jamais un titre déjà en Playlist) — SCOPÉ PAR
   //    STATION : un titre ajouté en Veille pendant qu'Europe 2 était active
@@ -28532,6 +28692,31 @@ function buildPredictionEntryRows(){
     candidates[w.key] = {
       key:w.key, title:w.title, artist:w.artist, source:'veille',
       internalQ:null, veilleData: predEntryVeilleSubscore(w)
+    };
+  });
+
+  // ── Vivier 1bis : Digital automatique — scan direct des classements et
+  //    playlists déjà chargés (voir buildDigitalAutoSnapshots), SANS
+  //    passer par une pré-sélection manuelle en Veille. Comble le fossé de
+  //    volume entre une Veille bornée par la saisie humaine et un Marché
+  //    qui scanne tout automatiquement — un titre qui perce en digital sans
+  //    que personne ne l'ait encore repéré à la main devient désormais un
+  //    candidat à part entière. Jamais station-scopé (les classements
+  //    digitaux ne sont pas propres à une station) ni écrasé si déjà
+  //    présent via la Veille manuelle (qui a un historique/une tendance
+  //    plus riche, donc prioritaire). ──
+  const digitalSnapshots = buildDigitalAutoSnapshots();
+  Object.entries(digitalSnapshots).forEach(([key, snap]) => {
+    if(candidates[key]) return; // déjà couvert (Veille manuelle), ne pas écraser sa richesse
+    if(isInPlaylist(snap.title, snap.artist)) return;
+    const m = marketByKey[key];
+    if(m){
+      const own = ACTIVE_STATION === 'RFM' ? m.rfm : m.e2;
+      if(own > entryParams.maxAirplay) return;
+    }
+    candidates[key] = {
+      key, title:snap.title, artist:snap.artist, source:'digital',
+      internalQ:null, veilleData: predEntryVeilleSubscore({ history:[snap] })
     };
   });
 
@@ -28577,11 +28762,10 @@ function buildPredictionEntryRows(){
     });
   }
 
-  // Concurrence marché (indexé par comiteKey) — sert à la fois de signal
-  // Concurrence pour tous les candidats, et de 3e vivier ci-dessous.
-  const marketRows = buildMarketAirplayRows();
-  const compByKey = {};
-  marketRows.forEach(r => { compByKey[comiteKey(r.title, r.artist)] = r; });
+  // Concurrence marché — sert à la fois de signal Concurrence pour tous les
+  // candidats, et de 3e vivier ci-dessous (marketRows/marketByKey déjà
+  // calculés plus haut, réutilisés aussi par le vivier Digital automatique).
+  const compByKey = marketByKey;
 
   // ── Vivier 3 : Marché (Airplay général) — tout titre suivi par
   //    Yacast/Muzicast, quasi absent de chez vous mais significativement
@@ -28641,7 +28825,7 @@ function buildPredictionEntryRows(){
   const weights = {};
   Object.keys(DEFAULT_PRED_ENTRY_WEIGHTS).forEach(k => { weights[k] = (weightsRaw[k] ?? DEFAULT_PRED_ENTRY_WEIGHTS[k]) / totalW; });
 
-  const SOURCE_LABELS = { veille:'🔭 Veille', callout:'🔍 Call Out/OMT', market:'📡 Marché' };
+  const SOURCE_LABELS = { veille:'🔭 Veille', digital:'📊 Digital (auto)', callout:'🔍 Call Out/OMT', market:'📡 Marché' };
   const feedback = loadPredEntryFeedback();
   const artistStatus = loadPredEntryArtistStatus();
   const today = new Date().toISOString().slice(0,10);
@@ -28664,6 +28848,20 @@ function buildPredictionEntryRows(){
         ? Math.max(0, score - entryParams.artistPenalty)
         : Math.min(100, score + entryParams.artistBoost);
     }
+    const scoreBeforeSourceWeight = score;
+
+    // ── Poids global par vivier (source du candidat) — distinct des
+    // pondérations de signaux (curseurs) qui jouent À L'INTÉRIEUR du calcul
+    // d'un titre donné. Ici, le réglage agit sur TOUS les candidats d'une
+    // même origine à la fois : si le Marché génère trop de bruit ou que la
+    // Veille pèse trop lourd globalement, ce curseur permet de le corriger
+    // sans toucher aux dizaines de seuils fins déjà réglables. 1.0 = neutre,
+    // <1 atténue, >1 amplifie. Toujours appliqué en dernier, sur le score
+    // déjà final (après apprentissage artiste), pour un effet prévisible et
+    // isolé de tout le reste du calcul. ──
+    const sourceWeightKey = { veille:'sourceWeightVeille', digital:'sourceWeightDigital', callout:'sourceWeightCallOut', market:'sourceWeightMarche' }[c.source];
+    const sourceWeight = sourceWeightKey ? entryParams[sourceWeightKey] : 1;
+    score = Math.max(0, Math.min(100, Math.round(score * sourceWeight)));
 
     let level, levelColor, levelBg, levelBorder, levelIcon;
     if(score >= 65){ level='Entrée recommandée'; levelColor='var(--green-text)'; levelBg='var(--green-bg)'; levelBorder='var(--green-border)'; levelIcon='🟢'; }
@@ -28703,7 +28901,7 @@ function buildPredictionEntryRows(){
     }
 
     return {
-      ...c, compRow, oppRow, score, baseScore, coverage, level, levelColor, levelBg, levelBorder, levelIcon,
+      ...c, compRow, oppRow, score, baseScore, scoreBeforeSourceWeight, coverage, level, levelColor, levelBg, levelBorder, levelIcon,
       sourceLabel: SOURCE_LABELS[c.source] || c.source,
       breakdown, reasons,
       artistStatus: aStatus, feedback: fb, feedbackStatus, feedbackNote
@@ -28759,6 +28957,7 @@ function renderPredictionEntryPage(){
 
   const noDataBar = document.getElementById('predEntryNoDataBar');
   const allRows = buildPredictionEntryRows();
+  renderPredEntrySourceDiagnostic(allRows);
 
   if(!allRows.length){
     if(noDataBar) noDataBar.style.display = 'flex';
