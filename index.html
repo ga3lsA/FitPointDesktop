@@ -998,25 +998,43 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Note explicative repliable -->
       <div id="infoPredExit" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quelle donnée ?</strong> Un score de risque de sortie (0-100) calculé par titre en combinant 4 signaux déjà présents dans FPA : la Performance/Passion Call Out (score vs médiane + Love), l'absence de validation externe (Concurrence + Digital), le cycle de vie et la trajectoire de Burn. Rien n'est recalculé depuis zéro — ce module orchestre les modules Burn Rate, Matrice, Cycles de vie, Concurrence et Digital Métrics.</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Méthode de calcul</strong> — Chaque signal produit un sous-score de 0 à 100, pondéré selon les curseurs ci-dessous (pondérations modifiables, remise à zéro possible). <strong>Le score est renormalisé sur les seuls signaux réellement disponibles</strong> pour ce titre cette session (badge "X/4 signaux") : si la Concurrence ou le Digital ne sont pas chargés, leur poids est reporté sur les signaux disponibles plutôt que de compter pour 0 — un titre n'est jamais artificiellement sous-noté faute de données chargées. ≥70 = sortie recommandée, 45-69 = à surveiller sous 1-2 vagues, &lt;45 = pas de signal. <strong>Le Burn n'est volontairement pas le signal dominant</strong> : un titre peut mériter de sortir sans jamais avoir généré de fatigue (Burn bas), s'il cumule un score Call Out médiocre, aucune passion (Love bas), une absence de reprise chez la concurrence et en digital — c'est désormais capté indépendamment du Burn.</div>
-        <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer en un coup d'œil les titres qui cumulent plusieurs signaux d'essoufflement ou de sous-performance chronique, plutôt que de croiser manuellement Burn Rate, Matrice, Cycles de vie et Concurrence. Chaque recommandation affiche ses raisons dominantes, et le bouton 🔬 son détail de calcul complet — à valider en Comité d'Écoute, jamais une décision automatique.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quelle donnée ?</strong> Un score de risque de sortie (0-100) calculé par titre en combinant 4 signaux déjà présents dans FPA : la Performance/Passion Call Out (score vs médiane + Love + Fit Score + Fam Score + Momentum + Polarisation), l'absence de validation externe (Concurrence + Digital), le cycle de vie et la trajectoire de Burn. Rien n'est recalculé depuis zéro — ce module orchestre les modules Burn Rate, Matrice, Cycles de vie, Concurrence, Digital Métrics, SPU et Polarisation.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Méthode de calcul</strong> — Chaque signal produit un sous-score de 0 à 100, pondéré selon les curseurs ci-dessous (pondérations modifiables, remise à zéro possible). <strong>Le score est renormalisé sur les seuls signaux réellement disponibles</strong> pour ce titre cette session (badge "X/4 signaux") : si la Concurrence ou le Digital ne sont pas chargés, leur poids est reporté sur les signaux disponibles plutôt que de compter pour 0. <strong>Le Burn n'est volontairement pas le signal dominant</strong> : un titre peut mériter de sortir sans jamais avoir généré de fatigue, s'il cumule un score Call Out médiocre, aucune passion, une absence de reprise chez la concurrence et en digital — c'est capté indépendamment du Burn.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Signal Performance/Passion</strong> — au-delà du score vs médiane, des bonus cumulables jusqu'ici jamais exploités par Prédiction : Love bas, Fit Score bas (au cœur de la méthodologie Fit Point), Fam Score bas, Momentum négatif (pente Pot Score sur les 3 dernières vagues), et Polarisation à rejet dominant (% N'aime pas du tout supérieur au % Aime beaucoup, réactions fortes) — jamais dans le sens inverse, pour ne pas pénaliser à tort un titre totémique potentiel.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Garde-fous (score plancher, indépendants de la pondération)</strong> — deux mécanismes forcent la note à un minimum quels que soient les autres signaux, avec la raison toujours affichée explicitement : <strong>trajectoire</strong> (modèle de cycle de vie confirmé en déclin selon la forme réelle de la courbe Pot Score du titre) et <strong>SPU</strong> (Score de Programmation Unifié déjà rouge ailleurs dans FPA, plus modéré car il recoupe partiellement Fit/Fam/Burn déjà comptés). Les deux peuvent se cumuler. La modale 🔬 précise toujours si un garde-fou s'est appliqué et quel aurait été le score sans lui.</div>
+        <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer en un coup d'œil les titres qui cumulent plusieurs signaux d'essoufflement ou de sous-performance chronique, plutôt que de croiser manuellement Burn Rate, Matrice, Cycles de vie, Concurrence, SPU et Polarisation. Chaque recommandation affiche ses raisons dominantes, et le bouton 🔬 son détail de calcul complet — à valider en Comité d'Écoute, jamais une décision automatique. <strong>Tous les seuils et bonus exacts sont ajustables individuellement dans le tableau ci-dessous</strong> ("⚙️ Paramètres de l'algorithme") — cet algorithme est amené à évoluer.</div>
+      </div>
+
+      <!-- Tableau des paramètres ajustables — replié par défaut -->
+      <div style="margin-bottom:18px">
+        <button id="predExitParamsWrapBtn" onclick="toggleInfoNote('predExitParamsWrap')" style="display:flex;align-items:center;gap:6px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-size:11.5px;font-weight:700;color:var(--navy);cursor:pointer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          ⚙️ Paramètres de l'algorithme (seuils et bonus)
+          <svg class="info-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="predExitParamsWrap" style="display:none;margin-top:8px;padding:16px 18px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;box-shadow:var(--shadow)">
+          <!-- Pondérations -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em">Pondération des signaux</span>
+            <button onclick="resetPredExitWeights()" style="font-size:11px;font-weight:700;color:var(--muted);background:none;border:1.5px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer">↺ Réinitialiser</button>
+          </div>
+          <div id="predExitWeightsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 22px"></div>
+          <div id="predExitWeightsTotal" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
+          <div style="height:1px;background:var(--border);margin:18px 0"></div>
+          <!-- Seuils et bonus -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em">Seuils et bonus détaillés</span>
+            <button onclick="predParamsResetAll(PRED_EXIT_PARAMS_KEY, predExitParamsTable_DEFS, renderPredictionExitPage)" style="font-size:11px;font-weight:700;color:var(--muted);background:none;border:1.5px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer;flex-shrink:0;margin-left:10px">↺ Tout réinitialiser</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Chaque valeur est modifiable individuellement — ↺ pour revenir à la valeur par défaut d'une ligne.</div>
+          <div id="predExitParamsTable"></div>
+        </div>
       </div>
 
       <!-- Bandeau pas de données -->
       <div id="predExitNoDataBar" style="display:none;padding:14px 18px;background:#FFF4E0;border:1.5px solid #FFD085;border-radius:10px;margin-bottom:18px;font-size:12px;color:#B05E00;display:flex;align-items:center;gap:10px">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B05E00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span>Au moins 2 vagues d'historique avec données Burn sont nécessaires pour ce module (mêmes conditions que Burn Rate prédictif). Enregistrez davantage de vagues depuis l'historique pour l'activer.</span>
-      </div>
-
-      <!-- Pondérations -->
-      <div id="predExitWeightsPanel" style="padding:16px 18px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;margin-bottom:18px;box-shadow:var(--shadow)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <span style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em">Pondération des signaux</span>
-          <button onclick="resetPredExitWeights()" style="font-size:11px;font-weight:700;color:var(--muted);background:none;border:1.5px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer">↺ Réinitialiser</button>
-        </div>
-        <div id="predExitWeightsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 22px"></div>
-        <div id="predExitWeightsTotal" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
       </div>
 
       <!-- Filtres -->
@@ -1066,40 +1084,56 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Note explicative repliable -->
       <div id="infoPredEntry" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quels titres ?</strong> Trois viviers, jamais les titres déjà en Playlist : les titres suivis en Veille (Shazam, Spotify, Deezer, iTunes, playlists clés), les titres testés en Call Out/OMT classés Power Song ou Sleeper (ou marqués catégorie <strong>RECH</strong>, voir plus bas) mais quasiment absents de votre antenne, et <strong>tout le marché suivi par votre import Airplay général</strong> (Yacast/Muzicast, toutes radios confondues) : un titre significativement diffusé chez les concurrents (moyenne ≥5 passages) et quasi absent chez vous entre automatiquement, sans avoir été ajouté en Veille ni testé en Call Out au préalable.</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Exclusion titres anciens</strong> — dès que la date de sortie officielle d'un titre est connue (iTunes, ou MusicBrainz si trouvée) et dépasse <strong>2 ans</strong>, il n'est plus jamais suggéré, pour aucune des deux stations. Un titre sans date connue n'est jamais filtré par cette règle (absence de donnée ≠ preuve d'ancienneté).</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Méthode de calcul</strong> — 4 signaux combinés en un score 0-100 pondérable (curseurs ci-dessus) : Recherche interne, traction digitale Veille, écart avec la Concurrence, Fenêtre d'opportunité. <strong>Renormalisé sur les seuls signaux réellement disponibles</strong> pour ce titre (badge « X/4 signaux ») : un titre du Marché sans historique Veille ni test Call Out n'est jamais sous-noté faute de ces deux signaux, son score repose alors sur Concurrence + Fenêtre d'opportunité. Seuils : ≥65 = entrée recommandée, 40-64 = à tester/surveiller, &lt;40 = signal encore faible.</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Signal Recherche interne (détail)</strong> — Power Song = 100. Sleeper = 55, ou <strong>80 si en plus marqué catégorie RECH</strong> (bonus quand un premier choix éditorial a déjà jugé le score et le Fit Score satisfaisants, avant même le test terrain). Un titre marqué RECH mais pas encore classé Power Song/Sleeper obtient un plancher de <strong>45</strong> plutôt que 0 — jamais exclu du vivier au seul motif de l'absence de quadrant gagnant.</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Signal Veille (détail)</strong> — bonus fixe de <strong>+15</strong> pour la simple présence en Veille manuelle (un premier choix éditorial, même minime, a déjà été fait en l'ajoutant), auquel s'ajoute la traction digitale mesurée : largeur de sources actives (iTunes, Shazam FR/monde, Spotify, Deezer, playlists clés — jusqu'à 13 pts/source) et progression Shazam France entre deux relevés.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Quels titres ?</strong> Trois viviers, jamais les titres déjà en Playlist : les titres suivis en Veille (Shazam, Spotify, Deezer, iTunes, playlists clés), les titres testés en Call Out/OMT classés Power Song ou Sleeper (ou marqués catégorie <strong>RECH</strong>, voir plus bas) mais quasiment absents de votre antenne, et <strong>tout le marché suivi par votre import Airplay général</strong> (Yacast/Muzicast, toutes radios confondues) : un titre significativement diffusé chez les concurrents et quasi absent chez vous entre automatiquement, sans avoir été ajouté en Veille ni testé en Call Out au préalable.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Exclusion titres anciens</strong> — dès que la date de sortie officielle d'un titre est connue (iTunes, ou MusicBrainz si trouvée) et dépasse le seuil réglable ci-dessous, il n'est plus jamais suggéré, pour aucune des deux stations. Un titre sans date connue n'est jamais filtré par cette règle (absence de donnée ≠ preuve d'ancienneté).</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Méthode de calcul</strong> — 4 signaux combinés en un score 0-100 pondérable (curseurs ci-dessus) : Recherche interne, traction digitale Veille, écart avec la Concurrence, Fenêtre d'opportunité. <strong>Renormalisé sur les seuls signaux réellement disponibles</strong> pour ce titre (badge « X/4 signaux ») : un titre du Marché sans historique Veille ni test Call Out n'est jamais sous-noté faute de ces deux signaux, son score repose alors sur Concurrence + Fenêtre d'opportunité.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Signal Recherche interne</strong> — Power Song au maximum. Sleeper avec un bonus supplémentaire si en plus marqué catégorie RECH (premier choix éditorial déjà favorable, avant même le test terrain). Un titre marqué RECH mais pas encore classé Power Song/Sleeper obtient un plancher significatif plutôt que 0 — jamais exclu du vivier au seul motif de l'absence de quadrant gagnant. Pour tout titre venu du vivier Call Out (donc déjà testé), 5 bonus cumulables supplémentaires — les mêmes critères que Sorties, mais dans le sens inverse (un <em>bon</em> signal pousse ici vers l'entrée) : Fit Score, Fam Score, Momentum positif, Polarisation à adhésion dominante, SPU vert.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Signal Veille</strong> — <strong>ne compte comme disponible que si une vraie confirmation externe existe</strong> (source active, classement, playlist ou tendance) : la simple présence en Veille manuelle, seule et sans rien d'autre, n'est plus considérée comme un signal en soi — elle ne doit pas monopoliser le poids du signal par renormalisation au seul motif d'avoir été repérée. Un petit bonus fixe reste appliqué une fois le signal jugé disponible par ailleurs. <strong>Trois bonus supplémentaires exploitent les rangs précis déjà calculés par FPA</strong> (auparavant seule leur présence comptait, jamais leur position) : un <strong>classement fort</strong> — meilleur rang tous classements confondus (Shazam FR/monde, Spotify France + marchés kworb, Deezer) avec 3 paliers (top 10/20/50) ; une <strong>présence en playlists éditoriales clés</strong> (RapCaviar, New Music Friday, Deezer Hits...), un bonus par playlist distincte, plafonné ; un <strong>momentum de rang généralisé</strong> à tous les classements (pas seulement Shazam FR) pour capter une progression sur Spotify ou Deezer même sans mouvement Shazam.</div>
         <div style="margin-bottom:6px"><strong style="color:var(--navy)">Biais de format</strong> — la Concurrence ne se calcule pas sur la moyenne de toutes les stations suivies (NRJ et Fun Radio, plus urbaines/dance, gonfleraient artificiellement les titres rap/urbains hors format Pop/Hot AC), mais en priorité sur les <strong>stations de référence format</strong> réglables ci-dessous. Un titre fort chez la concurrence toutes stations confondues mais absent des stations de référence déclenche un avertissement ⚠️ explicite plutôt qu'une recommandation à tort. Les styles décochés dans Digital Métrics (onglet IEDR) sont exclus du vivier Call Out quand la donnée de style existe.</div>
         <div style="margin-bottom:6px"><strong style="color:var(--navy)">Apprentissage par retour terrain (📝)</strong> — pour chaque titre, Oui/Non/Peut-être + raisons cochées. <strong>Scopé par station</strong> : un même titre peut recevoir un retour différent sur Europe 2 et RFM, jamais mélangé. Deux effets distincts :
           <div style="margin:4px 0 0 12px">
-            · <em>Effet titre</em> — un « Non » retire le titre de la liste active (section « Rejetés »). Un « Oui » simple reste dans la liste (signal d'apprentissage, pas une fin de suivi). Une raison « … titre gold » (Oui ou Non) retire le titre définitivement, quelle que soit la décision — trop ancien pour être une suggestion pertinente, mais l'artiste reste exploitable pour l'apprentissage. « Peut-être » reste toujours visible dans la liste active, avec un badge 🤔 dédié (date + raison + date de relance indicative) — jamais relégué à part.<br>
-            · <em>Effet artiste</em> — seulement certaines raisons (« Artiste format »/« Star du format » en Oui, « Artiste hors format » en Non) : les prochains titres du même artiste sont boostés (+15 pts) ou pénalisés (−35 pts), badge ⭐/⚠️ visible, jamais d'exclusion silencieuse. Cliquer le badge retire le statut. « Titre sans potentiel » et « Artiste dans format mais titre sans potentiel » n'affectent jamais l'artiste, seulement ce titre précis.
+            · <em>Effet titre</em> — un « Non » retire le titre de la liste active (section « Rejetés »). Un « Oui » simple reste dans la liste (signal d'apprentissage, pas une fin de suivi). Une raison « … titre gold » (Oui ou Non) retire le titre définitivement, quelle que soit la décision — trop ancien pour être une suggestion pertinente, mais l'artiste reste exploitable pour l'apprentissage. « Peut-être » reste toujours visible dans la liste active, avec un badge 🤔 dédié — jamais relégué à part.<br>
+            · <em>Effet artiste</em> — seulement certaines raisons (« Artiste format »/« Star du format » en Oui, « Artiste hors format » en Non) : les prochains titres du même artiste sont boostés ou pénalisés (valeurs exactes réglables ci-dessous), badge ⭐/⚠️ visible, jamais d'exclusion silencieuse. Cliquer le badge retire le statut. « Titre sans potentiel » et « Artiste dans format mais titre sans potentiel » n'affectent jamais l'artiste, seulement ce titre précis.
           </div>
         </div>
-        <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer les titres qui cumulent plusieurs signaux de percée avant qu'ils ne soient évidents, sans dépendre uniquement d'ajouts manuels en Veille, et affiner ces suggestions au fil du temps grâce à vos retours. Chaque recommandation affiche ses raisons dominantes, et le bouton 🔬 son détail de calcul complet — une piste pour le Comité d'Écoute, jamais une décision automatique. Cet algorithme est amené à évoluer ; cette notice est tenue à jour à chaque ajustement de paramètre.</div>
+        <div><strong style="color:var(--navy)">À quoi ça sert ?</strong> Repérer les titres qui cumulent plusieurs signaux de percée avant qu'ils ne soient évidents, sans dépendre uniquement d'ajouts manuels en Veille, et affiner ces suggestions au fil du temps grâce à vos retours. Chaque recommandation affiche ses raisons dominantes, et le bouton 🔬 son détail de calcul complet — une piste pour le Comité d'Écoute, jamais une décision automatique. <strong>Tous les seuils et bonus exacts sont ajustables individuellement dans le tableau ci-dessous</strong> ("⚙️ Paramètres de l'algorithme") — cet algorithme est amené à évoluer.</div>
+      </div>
+
+      <!-- Tableau des paramètres ajustables — replié par défaut -->
+      <div style="margin-bottom:18px">
+        <button id="predEntryParamsWrapBtn" onclick="toggleInfoNote('predEntryParamsWrap')" style="display:flex;align-items:center;gap:6px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:9px 14px;font-size:11.5px;font-weight:700;color:var(--navy);cursor:pointer">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          ⚙️ Paramètres de l'algorithme (seuils et bonus)
+          <svg class="info-chevron" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="transition:transform .2s"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div id="predEntryParamsWrap" style="display:none;margin-top:8px;padding:16px 18px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;box-shadow:var(--shadow)">
+          <!-- Pondérations -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <span style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em">Pondération des signaux</span>
+            <button onclick="resetPredEntryWeights()" style="font-size:11px;font-weight:700;color:var(--muted);background:none;border:1.5px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer">↺ Réinitialiser</button>
+          </div>
+          <div id="predEntryWeightsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 22px"></div>
+          <div id="predEntryWeightsTotal" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Stations de référence pour le format</div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:10px">Le signal Concurrence se calcule en priorité sur ces stations plutôt que sur la moyenne toutes stations confondues — évite qu'un titre fort chez des stations à un format éloigné (plus urbain/dance) ne soit recommandé à tort pour un format Pop/Hot AC. Ajustez selon votre positionnement.</div>
+            <div id="predEntryFormatStationsGrid" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          </div>
+          <div style="height:1px;background:var(--border);margin:18px 0"></div>
+          <!-- Seuils et bonus -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <span style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em">Seuils et bonus détaillés</span>
+            <button onclick="predParamsResetAll(PRED_ENTRY_PARAMS_KEY, predEntryParamsTable_DEFS, renderPredictionEntryPage)" style="font-size:11px;font-weight:700;color:var(--muted);background:none;border:1.5px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer;flex-shrink:0;margin-left:10px">↺ Tout réinitialiser</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-bottom:8px">Chaque valeur est modifiable individuellement — ↺ pour revenir à la valeur par défaut d'une ligne.</div>
+          <div id="predEntryParamsTable"></div>
+        </div>
       </div>
 
       <!-- Bandeau pas de données -->
       <div id="predEntryNoDataBar" style="display:none;padding:14px 18px;background:#FFF4E0;border:1.5px solid #FFD085;border-radius:10px;margin-bottom:18px;font-size:12px;color:#B05E00;display:flex;align-items:center;gap:10px">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B05E00" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span>Aucun candidat détecté pour l'instant : ajoutez des titres en Veille, ou lancez une analyse Call Out/OMT avec des titres testés hors playlist.</span>
-      </div>
-
-      <!-- Pondérations -->
-      <div id="predEntryWeightsPanel" style="padding:16px 18px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;margin-bottom:18px;box-shadow:var(--shadow)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <span style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em">Pondération des signaux</span>
-          <button onclick="resetPredEntryWeights()" style="font-size:11px;font-weight:700;color:var(--muted);background:none;border:1.5px solid var(--border);border-radius:7px;padding:4px 10px;cursor:pointer">↺ Réinitialiser</button>
-        </div>
-        <div id="predEntryWeightsGrid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 22px"></div>
-        <div id="predEntryWeightsTotal" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
-        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-          <div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Stations de référence pour le format</div>
-          <div style="font-size:10.5px;color:var(--muted);margin-bottom:10px">Le signal Concurrence se calcule en priorité sur ces stations plutôt que sur la moyenne toutes stations confondues — évite qu'un titre fort chez des stations à un format éloigné (plus urbain/dance) ne soit recommandé à tort pour un format Pop/Hot AC. Ajustez selon votre positionnement.</div>
-          <div id="predEntryFormatStationsGrid" style="display:flex;gap:8px;flex-wrap:wrap"></div>
-        </div>
       </div>
 
       <!-- Filtres -->
@@ -3891,7 +3925,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.204';
+const FPA_VERSION   = 'v30.210';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -24771,7 +24805,7 @@ function addWatchlistTitle(){
     showToast('Ce titre est déjà en Veille', 'err');
     return;
   }
-  watchlistTitles.push({ key, title, artist, note, addedAt: new Date().toISOString(), history: [] });
+  watchlistTitles.push({ key, title, artist, note, addedAt: new Date().toISOString(), history: [], station: ACTIVE_STATION });
   watchlistSaveToStorage();
   updateWatchlistBadge();
   if(artistInput) artistInput.value = '';
@@ -24791,6 +24825,20 @@ function removeWatchlistTitle(key){
   watchlistSaveToStorage();
   updateWatchlistBadge();
   if(decisionPageOpen && decActiveTab === 'watchlist') renderWatchlistPage();
+}
+/** Cycle le tag de station d'un titre en Veille : Europe 2 → RFM → aucune
+ *  (visible/suggéré sur les deux) → Europe 2... Permet de corriger les
+ *  entrées historiques créées avant l'introduction du scope par station, ou
+ *  de changer d'avis sur une entrée récente sans avoir à la supprimer et la
+ *  re-créer. ── */
+function watchlistToggleStationTag(key){
+  const w = watchlistTitles.find(x => x.key === key);
+  if(!w) return;
+  const order = ['EUROPE2', 'RFM', null];
+  const idx = order.indexOf(w.station || null);
+  w.station = order[(idx + 1) % order.length];
+  watchlistSaveToStorage();
+  renderWatchlistPage();
 }
 
 function updateWatchlistBadge(){
@@ -25095,6 +25143,10 @@ function buildWatchlistCard(w){
           <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoDataAttr}" title="Voir la fiche d'évolution complète"
             style="font-size:14px;font-weight:800;color:var(--navy);cursor:pointer" onmouseenter="this.style.color='var(--cyan)'" onmouseleave="this.style.color='var(--navy)'">${escHtml(titleCaseDisplay(w.title))}</div>
           <div style="font-size:12px;color:var(--text2)">${escHtml(titleCaseDisplay(w.artist))}</div>
+          <span onclick="watchlistToggleStationTag('${jsAttrEscape(w.key)}')" title="${w.station ? 'Suggéré uniquement pour ' + escHtml(STATION_LABELS[w.station]) + ' — cliquer pour changer' : 'Aucune station assignée (ancienne entrée) — suggéré pour les deux stations. Cliquer pour assigner.'}"
+            style="display:inline-flex;align-items:center;gap:3px;margin-top:3px;font-size:9px;font-weight:800;color:${w.station?'var(--navy)':'var(--muted)'};background:${w.station?'var(--cyan-light)':'var(--bg)'};border:1px solid ${w.station?'var(--cyan-mid)':'var(--border)'};border-radius:10px;padding:1px 7px;cursor:pointer;white-space:nowrap">
+            ${w.station ? '📻 '+escHtml(STATION_LABELS[w.station]) : '📻 Toutes stations'}
+          </span>
           ${w.note ? `<div style="font-size:10.5px;color:var(--muted);margin-top:2px">📝 ${escHtml(w.note)}</div>` : ''}
           ${releaseInfo}
         </div>
@@ -27277,17 +27329,166 @@ function resetPredExitWeights(){
   renderPredictionExitPage();
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// PARAMÈTRES AJUSTABLES — SYSTÈME GÉNÉRIQUE (Sorties + Entrées)
+// ══════════════════════════════════════════════════════════════════════════
+// Tous les seuils/bonus/planchers utilisés par les deux algorithmes de
+// Prédiction, jusqu'ici en dur dans le code (et recopiés à la main dans la
+// notice), sont désormais des paramètres éditables via un tableau, stockés
+// dans localStorage, avec valeur par défaut affichée et bouton de
+// réinitialisation par ligne. Globaux (pas de scope par station) : ce sont
+// des choix de calibration méthodologique, pas des observations factuelles
+// comme le feedback Entrées (voir predEntrySaveFeedback plus haut).
+function predParamsLoad(storageKey, defs){
+  let stored = {};
+  try{ stored = JSON.parse(localStorage.getItem(storageKey) || '{}'); }catch(e){ stored = {}; }
+  const out = {};
+  defs.forEach(d => { out[d.key] = (stored[d.key] !== undefined && !isNaN(stored[d.key])) ? stored[d.key] : d.default; });
+  return out;
+}
+function predParamsSave(storageKey, values){
+  try{ localStorage.setItem(storageKey, JSON.stringify(values)); }catch(e){}
+}
+function predParamsSet(storageKey, defs, paramKey, rawValue){
+  const values = predParamsLoad(storageKey, defs);
+  const num = parseFloat(rawValue);
+  if(isNaN(num)) return;
+  values[paramKey] = num;
+  predParamsSave(storageKey, values);
+}
+function predParamsResetOne(storageKey, defs, paramKey, rerenderFn){
+  const values = predParamsLoad(storageKey, defs);
+  const def = defs.find(d => d.key === paramKey);
+  if(!def) return;
+  values[paramKey] = def.default;
+  predParamsSave(storageKey, values);
+  rerenderFn();
+}
+function predParamsResetAll(storageKey, defs, rerenderFn){
+  predParamsSave(storageKey, {});
+  rerenderFn();
+}
+/** Rendu générique : tableau groupé (une section par valeur de `group`),
+ *  une ligne par paramètre — libellé, valeur actuelle éditable, valeur par
+ *  défaut rappelée, bouton ↺ par ligne. Appelle `onChangeFn(paramKey,
+ *  newValue)` à chaque modification (débattu par le navigateur nativement
+ *  via l'input number, pas besoin de debounce côté FPA). */
+function renderPredParamsTable(containerId, storageKey, defs, rerenderFn){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  const values = predParamsLoad(storageKey, defs);
+  const groups = [...new Set(defs.map(d => d.group))];
+  el.innerHTML = groups.map(g => `
+    <div style="margin-bottom:14px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--cyan);margin-bottom:6px">${escHtml(g)}</div>
+      <table style="width:100%;border-collapse:collapse">
+        ${defs.filter(d => d.group === g).map(d => {
+          const current = values[d.key];
+          const isDefault = current === d.default;
+          return `<tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:6px 10px 6px 0;font-size:11.5px;color:var(--text2);width:60%">${escHtml(d.label)}</td>
+            <td style="padding:6px 6px;text-align:right;white-space:nowrap">
+              <input type="number" value="${current}" step="${d.step}" min="${d.min}" max="${d.max}"
+                onchange="predParamsSet('${storageKey}', ${containerId}_DEFS, '${d.key}', this.value); ${rerenderFn}();"
+                style="width:70px;padding:4px 7px;border-radius:6px;border:1.5px solid ${isDefault?'var(--border)':'var(--cyan)'};font-size:11.5px;text-align:right;font-family:inherit">
+            </td>
+            <td style="padding:6px 0 6px 6px;font-size:10px;color:var(--muted);white-space:nowrap">déf. ${d.default}</td>
+            <td style="padding:6px 0 6px 8px;text-align:center">
+              <button onclick="predParamsResetOne('${storageKey}', ${containerId}_DEFS, '${d.key}', ${rerenderFn})" title="Réinitialiser à la valeur par défaut"
+                style="background:none;border:none;color:${isDefault?'var(--border)':'var(--muted)'};cursor:${isDefault?'default':'pointer'};font-size:12px;padding:2px 4px" ${isDefault?'disabled':''}>↺</button>
+            </td>
+          </tr>`;
+        }).join('')}
+      </table>
+    </div>`).join('');
+}
+
+/* ── Définitions des paramètres Sorties — un seul endroit, référencé à la
+   fois par les fonctions de calcul (via predParamsLoad) et par le tableau
+   éditable de l'onglet (renderPredParamsTable). Modifier une valeur par
+   défaut ici suffit à faire évoluer l'algorithme ET sa documentation. ── */
+const PRED_EXIT_PARAMS_KEY = 'fpa_pred_exit_params_v1';
+const predExitParamsTable_DEFS = [
+  { key:'perfMedianFactor',   group:'Performance / Passion', label:'Seuil "nettement sous la médiane" (× médiane du corpus)', default:0.85, step:0.01, min:0, max:1 },
+  { key:'perfMedianHighSub',  group:'Performance / Passion', label:'Sous-score si nettement sous la médiane', default:70, step:1, min:0, max:100 },
+  { key:'perfMedianLowSub',   group:'Performance / Passion', label:'Sous-score si sous la médiane (sans excès)', default:40, step:1, min:0, max:100 },
+  { key:'loveThreshold',      group:'Performance / Passion', label:'Love : seuil "pas de passion" (%)', default:40, step:1, min:0, max:100 },
+  { key:'loveBonus',          group:'Performance / Passion', label:'Love bas : bonus', default:30, step:1, min:0, max:100 },
+  { key:'fitThreshold',       group:'Performance / Passion', label:'Fit Score : seuil bas', default:40, step:1, min:0, max:100 },
+  { key:'fitBonus',           group:'Performance / Passion', label:'Fit Score bas : bonus', default:20, step:1, min:0, max:100 },
+  { key:'famThreshold',       group:'Performance / Passion', label:'Fam Score : seuil bas', default:40, step:1, min:0, max:100 },
+  { key:'famBonus',           group:'Performance / Passion', label:'Fam Score bas : bonus', default:15, step:1, min:0, max:100 },
+  { key:'momentumBonusFactor',group:'Performance / Passion', label:'Momentum négatif : multiplicateur (pts/vague ×)', default:5, step:0.5, min:0, max:20 },
+  { key:'momentumBonusCap',   group:'Performance / Passion', label:'Momentum négatif : bonus plafond', default:25, step:1, min:0, max:100 },
+  { key:'polarThreshold',     group:'Performance / Passion', label:'Polarisation : seuil réactions fortes (%)', default:40, step:1, min:0, max:100 },
+  { key:'polarBonus',         group:'Performance / Passion', label:'Polarisation à rejet dominant : bonus', default:15, step:1, min:0, max:100 },
+
+  { key:'extConcLowThreshold',  group:'Absence de validation externe', label:'Concurrence : seuil "quasi aucune reprise" (passages)', default:3, step:0.5, min:0, max:50 },
+  { key:'extConcLowSub',        group:'Absence de validation externe', label:'Sous-score si concurrence quasi nulle', default:80, step:1, min:0, max:100 },
+  { key:'extConcMidThreshold',  group:'Absence de validation externe', label:'Concurrence : seuil "reprise faible" (passages)', default:8, step:0.5, min:0, max:50 },
+  { key:'extConcMidSub',        group:'Absence de validation externe', label:'Sous-score si reprise faible', default:40, step:1, min:0, max:100 },
+  { key:'extDigitalLowThreshold', group:'Absence de validation externe', label:'Digital : seuil percentile bas (%)', default:20, step:1, min:0, max:100 },
+  { key:'extDigitalLowSub',     group:'Absence de validation externe', label:'Sous-score si percentile digital bas', default:80, step:1, min:0, max:100 },
+  { key:'extDigitalMidThreshold', group:'Absence de validation externe', label:'Digital : seuil percentile moyen (%)', default:40, step:1, min:0, max:100 },
+  { key:'extDigitalMidSub',     group:'Absence de validation externe', label:'Sous-score si percentile digital moyen', default:40, step:1, min:0, max:100 },
+
+  { key:'burnAtThresholdSub',  group:'Burn', label:'Sous-score si statut "Déjà au seuil"', default:100, step:1, min:0, max:100 },
+  { key:'burnImminentSub',     group:'Burn', label:'Sous-score si statut "Sortie imminente"', default:80, step:1, min:0, max:100 },
+  { key:'burnQuestionMarksSub',group:'Burn', label:'Sous-score si statut "Question Marks"', default:50, step:1, min:0, max:100 },
+  { key:'burnDefaultSub',      group:'Burn', label:'Sous-score si marge confortable / pas de donnée', default:10, step:1, min:0, max:100 },
+
+  { key:'lifecycleDeclineSub', group:'Cycle de vie', label:'Sous-score si phase "Fin de cycle"', default:100, step:1, min:0, max:100 },
+  { key:'lifecycleMatureSub',  group:'Cycle de vie', label:'Sous-score si phase "Maturité"', default:45, step:1, min:0, max:100 },
+
+  { key:'trajectoryGuardFloor',group:'Garde-fous', label:'Garde-fou trajectoire : plancher forcé', default:70, step:1, min:0, max:100 },
+  { key:'spuRedThreshold',     group:'Garde-fous', label:'Garde-fou SPU : seuil "rouge"', default:45, step:1, min:0, max:100 },
+  { key:'spuGuardFloor',       group:'Garde-fous', label:'Garde-fou SPU : plancher forcé', default:65, step:1, min:0, max:100 },
+];
+function renderPredExitParamsTable(){
+  renderPredParamsTable('predExitParamsTable', PRED_EXIT_PARAMS_KEY, predExitParamsTable_DEFS, 'renderPredictionExitPage');
+}
+function predExitParams(){
+  return predParamsLoad(PRED_EXIT_PARAMS_KEY, predExitParamsTable_DEFS);
+}
+
 /* ── Sous-score 0-100 : Performance/Passion — score sous la médiane du corpus,
    et/ou Love bas (Call Out/OMT ne déclenche pas de passion, même sans burn) ── */
-function predExitPerformanceSubscore(dr, medianScore){
+/** Sous-score 0-100 : Performance/Passion — Pot Score + Love (déjà en place),
+ *  enrichi de 3 bonus cumulables reflétant des critères FPA jusqu'ici jamais
+ *  exploités par Prédiction :
+ *  - Fit Score bas (<40) : mauvaise adéquation format, signal fort au cœur
+ *    même de la méthodologie Fit Point — bonus le plus élevé des trois.
+ *  - Fam Score bas (<40) : familiarité/notoriété insuffisante.
+ *  - Momentum négatif (pts/vague sur les 3 dernières vagues) : tendance en
+ *    baisse déjà mesurée ailleurs dans FPA, jamais utilisée ici jusqu'à
+ *    présent — plus la pente est négative, plus le bonus est fort (plafonné).
+ *  - Polarisation à rejet dominant (Aime beaucoup < N'aime pas du tout) ET
+ *    réactions fortes (polar ≥ 40) : signal de rejet net, jamais appliqué
+ *    dans le sens inverse (adhésion dominante) pour ne pas pénaliser à tort
+ *    un titre totémique potentiel — Prédiction reste silencieuse sur ce cas,
+ *    laissée à l'appréciation éditoriale plutôt qu'à un bonus automatique. */
+function predExitPerformanceSubscore(dr, medianScore, polar){
   if(!dr || dr.score === null || dr.score === undefined) return 0;
+  const p = predExitParams();
   let sub = 0;
   if(medianScore){
-    if(dr.score < medianScore * 0.85) sub = 70;
-    else if(dr.score < medianScore) sub = 40;
+    if(dr.score < medianScore * p.perfMedianFactor) sub = p.perfMedianHighSub;
+    else if(dr.score < medianScore) sub = p.perfMedianLowSub;
   }
-  if(dr.love !== null && dr.love !== undefined && dr.love < 40){
-    sub = Math.min(100, sub + 30); // bonus "pas de passion", cumulable avec le score bas
+  if(dr.love !== null && dr.love !== undefined && dr.love < p.loveThreshold){
+    sub = Math.min(100, sub + p.loveBonus); // bonus "pas de passion", cumulable avec le score bas
+  }
+  if(dr.fit !== null && dr.fit !== undefined && dr.fit < p.fitThreshold){
+    sub = Math.min(100, sub + p.fitBonus);
+  }
+  if(dr.fam !== null && dr.fam !== undefined && dr.fam < p.famThreshold){
+    sub = Math.min(100, sub + p.famBonus);
+  }
+  if(dr.momentum !== null && dr.momentum !== undefined && dr.momentum < 0){
+    sub = Math.min(100, sub + Math.min(p.momentumBonusCap, Math.abs(dr.momentum) * p.momentumBonusFactor));
+  }
+  if(polar && polar.love !== null && polar.hate !== null && polar.polar !== null && polar.hate > polar.love && polar.polar >= p.polarThreshold){
+    sub = Math.min(100, sub + p.polarBonus);
   }
   return Math.round(sub);
 }
@@ -27295,28 +27496,31 @@ function predExitPerformanceSubscore(dr, medianScore){
 /* ── Sous-score 0-100 : Absence de validation externe — moyenne de deux
    sous-signaux disponibles indépendamment (Concurrence, Digital) ── */
 function predExitExternalAbsenceSubscore(compRow, digitalPct, digitalDataLoaded){
+  const p = predExitParams();
   const parts = [];
   if(compRow && compRow.concAvg !== null && compRow.concAvg !== undefined){
-    parts.push(compRow.concAvg < 3 ? 80 : compRow.concAvg < 8 ? 40 : 0);
+    parts.push(compRow.concAvg < p.extConcLowThreshold ? p.extConcLowSub : compRow.concAvg < p.extConcMidThreshold ? p.extConcMidSub : 0);
   }
   if(digitalDataLoaded){
-    if(digitalPct === null || digitalPct === undefined) parts.push(80); // classements chargés, titre introuvable = absence
-    else parts.push(digitalPct < 20 ? 80 : digitalPct < 40 ? 40 : 0);
+    if(digitalPct === null || digitalPct === undefined) parts.push(p.extDigitalLowSub); // classements chargés, titre introuvable = absence
+    else parts.push(digitalPct < p.extDigitalLowThreshold ? p.extDigitalLowSub : digitalPct < p.extDigitalMidThreshold ? p.extDigitalMidSub : 0);
   }
   if(!parts.length) return 0;
   return Math.round(parts.reduce((a,b)=>a+b,0) / parts.length);
 }
 
 function predExitBurnSubscore(status){
-  if(!status) return 10; // pas de donnée Burn = neutre, jamais pénalisant ni rassurant à lui seul
-  if(status === 'Déjà au seuil')     return 100;
-  if(status === 'Sortie imminente')  return 80;
-  if(status === 'Question Marks')    return 50;
-  return 10; // Marge confortable
+  const p = predExitParams();
+  if(!status) return p.burnDefaultSub; // pas de donnée Burn = neutre, jamais pénalisant ni rassurant à lui seul
+  if(status === 'Déjà au seuil')     return p.burnAtThresholdSub;
+  if(status === 'Sortie imminente')  return p.burnImminentSub;
+  if(status === 'Question Marks')    return p.burnQuestionMarksSub;
+  return p.burnDefaultSub; // Marge confortable
 }
 function predExitLifecycleSubscore(lifecyclePhase){
-  if(lifecyclePhase === 'decline') return 100;
-  if(lifecyclePhase === 'mature')  return 45;
+  const p = predExitParams();
+  if(lifecyclePhase === 'decline') return p.lifecycleDeclineSub;
+  if(lifecyclePhase === 'mature')  return p.lifecycleMatureSub;
   return 0;
 }
 // Archétypes de trajectoire (voir SHAPE_ARCHETYPES) dont le nom contient
@@ -27357,12 +27561,16 @@ function predExitShapeDeclineInfo(title, artist){
    de classement digital chargés) voit son score artificiellement écrasé par
    des "0" qui ne reflètent pas une absence de risque mais une absence de
    mesure — c'est ce qui masquait des titres comme Muse en v2. ── */
-function predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyclePhase, medianScore, weights, shapeInfo){
+function predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyclePhase, medianScore, weights, shapeInfo, polar, spu){
   const perfAvail = !!(dr && dr.score !== null && dr.score !== undefined);
-  const perfSub = predExitPerformanceSubscore(dr, medianScore);
+  const perfSub = predExitPerformanceSubscore(dr, medianScore, polar);
   let perfTxt = perfAvail ? `Score Call Out/OMT ${dr.score < medianScore ? 'sous la médiane du corpus' : 'moyen'} (${dr.score.toFixed(1)} vs médiane ${medianScore.toFixed(1)})` : 'Pas de score Call Out/OMT disponible pour ce titre';
   if(perfAvail && dr.love !== null && dr.love !== undefined && dr.love < 40) perfTxt += ` · Love bas (${dr.love.toFixed(0)}%) — ne déclenche pas de passion`;
   else if(perfAvail) perfTxt += dr.love !== null && dr.love !== undefined ? ` · Love ${dr.love.toFixed(0)}%` : ' · Love non disponible (hors session en cours)';
+  if(perfAvail && dr.fit !== null && dr.fit !== undefined && dr.fit < 40) perfTxt += ` · Fit Score bas (${dr.fit.toFixed(0)})`;
+  if(perfAvail && dr.fam !== null && dr.fam !== undefined && dr.fam < 40) perfTxt += ` · Fam Score bas (${dr.fam.toFixed(0)})`;
+  if(perfAvail && dr.momentum !== null && dr.momentum !== undefined && dr.momentum < 0) perfTxt += ` · Momentum négatif (${dr.momentum.toFixed(1)} pts/vague)`;
+  if(perfAvail && polar && polar.love !== null && polar.hate !== null && polar.polar !== null && polar.hate > polar.love && polar.polar >= 40) perfTxt += ` · Polarisation à rejet dominant (${polar.hate.toFixed(0)}% n'aime pas du tout contre ${polar.love.toFixed(0)}% aime beaucoup)`;
 
   const extAvail = !!((compRow && compRow.concAvg !== null && compRow.concAvg !== undefined) || digitalDataLoaded);
   const extSub = predExitExternalAbsenceSubscore(compRow, digitalPct, digitalDataLoaded);
@@ -27410,9 +27618,23 @@ function predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyc
   // déclin avéré selon sa propre trajectoire mérite d'être signalé, même si
   // sa performance Call Out reste correcte ou que le Burn n'a pas encore
   // franchi de seuil.
+  const exitParams = predExitParams();
   const shapeDeclineApplies = !!(shapeInfo && shapeInfo.isDecline);
   const scoreBeforeShapeGuard = score;
-  if(shapeDeclineApplies && score < 70) score = 70;
+  if(shapeDeclineApplies && score < exitParams.trajectoryGuardFloor) score = exitParams.trajectoryGuardFloor;
+
+  // ── Garde-fou : SPU rouge (Score de Programmation Unifié) ──────────────
+  // Le SPU est déjà un score composite calculé ailleurs dans FPA (Fit + Pot
+  // + Fam + Burn, plafonné par le cycle de vie via le Traffic Light — voir
+  // computeSPU) — jusqu'ici jamais consulté par Prédiction, alors qu'il
+  // existe une vraie cohérence à assurer entre les deux vues. Un titre déjà
+  // signalé rouge voit sa note de sortie forcée à un plancher plus modéré
+  // que le garde-fou trajectoire ci-dessus car le SPU recoupe partiellement
+  // des signaux déjà comptés par ailleurs (Fit/Fam/Burn), pour éviter un
+  // double-comptage trop agressif tout en assurant la cohérence inter-pages.
+  const spuGuardApplies = spu != null && spu < exitParams.spuRedThreshold;
+  const scoreBeforeSpuGuard = score;
+  if(spuGuardApplies && score < exitParams.spuGuardFloor) score = exitParams.spuGuardFloor;
 
   const breakdown = sigs.map(s => ({
     label: s.label,
@@ -27429,12 +27651,16 @@ function predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyc
     .sort((a,b) => b.weight - a.weight)
     .slice(0,3)
     .map(c => c.txt);
+  if(spuGuardApplies){
+    reasons.unshift(`⛔ Garde-fou SPU : Score de Programmation Unifié rouge (${spu}/100) — note forcée à ${Math.max(score, exitParams.spuGuardFloor)} minimum`);
+    if(reasons.length > 3) reasons.length = 3;
+  }
   if(shapeDeclineApplies){
     reasons.unshift(`⛔ Garde-fou trajectoire : modèle « ${shapeInfo.icon || ''} ${shapeInfo.name} » confirmé en déclin — note forcée à ${score} minimum`);
     if(reasons.length > 3) reasons.length = 3;
   }
 
-  return { score, coverage, breakdown, reasons, shapeInfo, shapeDeclineApplies, scoreBeforeShapeGuard };
+  return { score, coverage, breakdown, reasons, shapeInfo, shapeDeclineApplies, scoreBeforeShapeGuard, spuGuardApplies, scoreBeforeSpuGuard };
 }
 
 /* ── Construire les lignes enrichies pour la Prédiction Sorties ── */
@@ -27461,6 +27687,15 @@ function buildPredictionExitRows(){
   const compByKey = {};
   buildCompRows().forEach(r => { compByKey[histKey(r.artist, r.title)] = r; });
 
+  // Polarisation (Call Out détaillé — Aime beaucoup/N'aime pas du tout) et
+  // SPU (Score de Programmation Unifié, déjà composite Fit+Pot+Fam+Burn+cycle
+  // de vie ailleurs dans FPA) — best effort, silencieusement absents si les
+  // données sources ne sont pas chargées.
+  const polarByKey = {};
+  try{ getPolarData().forEach(p => { polarByKey[histKey(p.artist, p.title)] = p; }); }catch(e){}
+  const spuByKey = {};
+  try{ computeSPU(decRows).forEach(r => { if(r.spu != null) spuByKey[histKey(r.artist, r.title)] = r.spu; }); }catch(e){}
+
   // Digital (nécessite au moins un classement Spotify/Deezer/Apple Music chargé — best effort)
   let digitalDataLoaded = false, digitalSnapshot = null;
   try{
@@ -27486,8 +27721,10 @@ function buildPredictionExitRows(){
     const digitalPct = digitalDataLoaded ? iedrDigitalPercentile(digitalSnapshot, title, artist) : null;
     const lifecyclePhase = dr ? getLifecyclePhase(dr.cumPlays) : null;
     const shapeInfo = predExitShapeDeclineInfo(title, artist);
+    const polar = polarByKey[key] || null;
+    const spu = spuByKey[key] != null ? spuByKey[key] : null;
 
-    const { score:riskScore, coverage, breakdown, reasons, shapeDeclineApplies, scoreBeforeShapeGuard } = predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyclePhase, medianScore, weights, shapeInfo);
+    const { score:riskScore, coverage, breakdown, reasons, shapeDeclineApplies, scoreBeforeShapeGuard, spuGuardApplies, scoreBeforeSpuGuard } = predExitCompute(dr, br, compRow, digitalPct, digitalDataLoaded, lifecyclePhase, medianScore, weights, shapeInfo, polar, spu);
 
     let level, levelColor, levelBg, levelBorder, levelIcon;
     if(riskScore >= 70){ level='Sortie recommandée'; levelColor='#CC2222'; levelBg='#FFEAEA'; levelBorder='#F5B8B8'; levelIcon='🔴'; }
@@ -27498,7 +27735,7 @@ function buildPredictionExitRows(){
       title, artist,
       lastBurn: br ? br.lastBurn : null, threshold: br ? br.threshold : null, status: br ? br.status : null,
       momentum: dr ? dr.momentum : null, lifecyclePhase, riskScore, coverage, level, levelColor, levelBg, levelBorder, levelIcon,
-      shapeInfo, shapeDeclineApplies, scoreBeforeShapeGuard,
+      shapeInfo, shapeDeclineApplies, scoreBeforeShapeGuard, spu, spuGuardApplies, scoreBeforeSpuGuard,
       breakdown, reasons
     };
   });
@@ -27539,6 +27776,7 @@ function updatePredExitWeight(key, value){
 /* ── Render principal ── */
 function renderPredictionExitPage(){
   renderPredExitWeightsPanel();
+  renderPredExitParamsTable();
 
   const noDataBar = document.getElementById('predExitNoDataBar');
   const allRows = buildPredictionExitRows();
@@ -27656,9 +27894,6 @@ const PRED_ENTRY_WEIGHT_LABELS = {
   comp: { label:'Concurrence', desc:'Écart de diffusion avec la moyenne des radios suivies — calculé sur tout le marché, pas seulement les titres testés' },
   opportunity: { label:"Fenêtre d'opportunité", desc:'Digital fort, burn faible, radio encore faible (module dédié)' }
 };
-const PRED_ENTRY_MAX_AIRPLAY = 2;    // passages E2/RFM max pour rester considéré comme "pas encore entré"
-const PRED_ENTRY_MAX_AGE_YEARS = 2;  // au-delà, un titre à date de sortie connue n'est plus suggéré du tout, pour aucune station
-const PRED_ENTRY_MARKET_MIN_CONC = 5; // moyenne concurrents (toutes stations) mini pour qu'un titre du marché général mérite d'être remonté ici (filtre le bruit)
 
 // ── Stations de référence pour le format : Europe 2/RFM sont des formats
 // Pop/Hot AC grand public — moyenner la Concurrence sur TOUTES les stations
@@ -27708,6 +27943,61 @@ function resetPredEntryWeights(){
   renderPredictionEntryPage();
 }
 
+/* ── Définitions des paramètres Entrées — voir predExitParamsTable_DEFS pour
+   le principe général (système générique defini plus haut). ── */
+const PRED_ENTRY_PARAMS_KEY = 'fpa_pred_entry_params_v1';
+const predEntryParamsTable_DEFS = [
+  { key:'powerSongSub',   group:'Recherche interne', label:'Sous-score si quadrant "Power Song"', default:100, step:1, min:0, max:100 },
+  { key:'sleeperSongSub', group:'Recherche interne', label:'Sous-score si quadrant "Sleeper"', default:55, step:1, min:0, max:100 },
+  { key:'sleeperRechSub', group:'Recherche interne', label:'Sous-score si "Sleeper" + catégorie RECH', default:80, step:1, min:0, max:100 },
+  { key:'rechFloorSub',   group:'Recherche interne', label:'Plancher si catégorie RECH sans quadrant gagnant', default:45, step:1, min:0, max:100 },
+  { key:'entryFitThreshold',  group:'Recherche interne — bonus Call Out', label:'Fit Score : seuil bon', default:60, step:1, min:0, max:100 },
+  { key:'entryFitBonus',      group:'Recherche interne — bonus Call Out', label:'Fit Score bon : bonus', default:15, step:1, min:0, max:100 },
+  { key:'entryFamThreshold',  group:'Recherche interne — bonus Call Out', label:'Fam Score : seuil bon', default:60, step:1, min:0, max:100 },
+  { key:'entryFamBonus',      group:'Recherche interne — bonus Call Out', label:'Fam Score bon : bonus', default:10, step:1, min:0, max:100 },
+  { key:'entryMomentumFactor',group:'Recherche interne — bonus Call Out', label:'Momentum positif : multiplicateur (pts/vague ×)', default:4, step:0.5, min:0, max:20 },
+  { key:'entryMomentumCap',   group:'Recherche interne — bonus Call Out', label:'Momentum positif : bonus plafond', default:20, step:1, min:0, max:100 },
+  { key:'entryPolarThreshold',group:'Recherche interne — bonus Call Out', label:'Polarisation : seuil réactions fortes (%)', default:40, step:1, min:0, max:100 },
+  { key:'entryPolarBonus',    group:'Recherche interne — bonus Call Out', label:'Polarisation à adhésion dominante : bonus', default:15, step:1, min:0, max:100 },
+  { key:'entrySpuThreshold',  group:'Recherche interne — bonus Call Out', label:'SPU : seuil vert', default:65, step:1, min:0, max:100 },
+  { key:'entrySpuBonus',      group:'Recherche interne — bonus Call Out', label:'SPU vert : bonus', default:15, step:1, min:0, max:100 },
+
+  { key:'veilleManualBonus',  group:'Traction digitale (Veille)', label:'Bonus fixe présence en Veille manuelle', default:5, step:1, min:0, max:100 },
+  { key:'veilleBreadthFactor',group:'Traction digitale (Veille)', label:'Largeur de sources : points par source active', default:13, step:1, min:0, max:50 },
+  { key:'veilleBreadthWeight',group:'Traction digitale (Veille)', label:'Largeur de sources : pondération dans le sous-score', default:0.7, step:0.05, min:0, max:1 },
+  { key:'veilleTrendFactor',  group:'Traction digitale (Veille)', label:'Tendance Shazam FR : multiplicateur', default:2, step:0.5, min:0, max:10 },
+  { key:'veilleTrendCap',     group:'Traction digitale (Veille)', label:'Tendance Shazam FR : bonus plafond', default:40, step:1, min:0, max:100 },
+
+  { key:'rankTop10Threshold', group:'Traction digitale — classements', label:'Seuil "top 10" (meilleur rang parmi tous classements)', default:10, step:1, min:1, max:200 },
+  { key:'rankTop10Bonus',     group:'Traction digitale — classements', label:'Bonus si top 10', default:30, step:1, min:0, max:100 },
+  { key:'rankTop20Threshold', group:'Traction digitale — classements', label:'Seuil "top 20" (Spotify/Deezer/Shazam)', default:20, step:1, min:1, max:200 },
+  { key:'rankTop20Bonus',     group:'Traction digitale — classements', label:'Bonus si top 20', default:20, step:1, min:0, max:100 },
+  { key:'rankTop50Threshold', group:'Traction digitale — classements', label:'Seuil "top 50"', default:50, step:1, min:1, max:300 },
+  { key:'rankTop50Bonus',     group:'Traction digitale — classements', label:'Bonus si top 50', default:10, step:1, min:0, max:100 },
+  { key:'keyPlaylistBonusPerPlaylist', group:'Traction digitale — classements', label:'Bonus par playlist éditoriale clé (Spotify/Deezer/Apple)', default:10, step:1, min:0, max:50 },
+  { key:'keyPlaylistBonusCap',         group:'Traction digitale — classements', label:'Bonus playlists clés : plafond cumulé', default:30, step:1, min:0, max:100 },
+  { key:'rankMomentumFactor', group:'Traction digitale — classements', label:'Momentum de rang (tous classements) : multiplicateur', default:2, step:0.5, min:0, max:10 },
+  { key:'rankMomentumCap',    group:'Traction digitale — classements', label:'Momentum de rang : bonus plafond', default:30, step:1, min:0, max:100 },
+
+  { key:'compFallbackAttenuation', group:'Concurrence', label:'Atténuation si seule la moyenne toutes stations est connue (× )', default:0.5, step:0.05, min:0, max:1 },
+  { key:'formatGapRatio', group:'Concurrence', label:'Écart de format : seuil d\'alerte (stations format < × moyenne globale)', default:0.3, step:0.05, min:0, max:1 },
+  { key:'marketMinConc', group:'Vivier Marché', label:'Moyenne concurrents mini pour entrer dans le vivier Marché (passages)', default:5, step:0.5, min:0, max:50 },
+
+  { key:'maxAirplay',   group:'Filtres d\'éligibilité', label:'Passages max (E2/RFM) pour rester "pas encore entré"', default:2, step:1, min:0, max:20 },
+  { key:'maxAgeYears',  group:'Filtres d\'éligibilité', label:'Âge max du titre si date de sortie connue (années)', default:2, step:0.5, min:0, max:20 },
+
+  { key:'artistBoost',   group:'Apprentissage par retour terrain', label:'Boost artiste marqué "format/star"', default:15, step:1, min:0, max:100 },
+  { key:'artistPenalty', group:'Apprentissage par retour terrain', label:'Pénalité artiste marqué "hors format"', default:35, step:1, min:0, max:100 },
+  { key:'snoozeWeeksTropTot',       group:'Apprentissage par retour terrain', label:'"Trop tôt" : relance indicative après (semaines)', default:6, step:1, min:1, max:52 },
+  { key:'snoozeWeeksEnvironnement', group:'Apprentissage par retour terrain', label:'"En attente d\'environnement" : relance après (semaines)', default:3, step:1, min:1, max:52 },
+];
+function renderPredEntryParamsTable(){
+  renderPredParamsTable('predEntryParamsTable', PRED_ENTRY_PARAMS_KEY, predEntryParamsTable_DEFS, 'renderPredictionEntryPage');
+}
+function predEntryParams(){
+  return predParamsLoad(PRED_ENTRY_PARAMS_KEY, predEntryParamsTable_DEFS);
+}
+
 // ══════════════════════════════════════════════════════════════════════════
 // PRÉDICTION ENTRÉES — APPRENTISSAGE PAR RETOUR TERRAIN
 // ══════════════════════════════════════════════════════════════════════════
@@ -27722,8 +28012,6 @@ function resetPredEntryWeights(){
 //   pénalisé, avec le badge explicite pour que ce soit visible, jamais caché.
 const PRED_ENTRY_FEEDBACK_KEY      = 'fpa_pred_entry_feedback_v1';
 const PRED_ENTRY_ARTIST_STATUS_KEY = 'fpa_pred_entry_artist_status_v1';
-const PRED_ENTRY_ARTIST_BOOST      = 15;  // points ajoutés au score pour un titre dont l'artiste est marqué format/star
-const PRED_ENTRY_ARTIST_PENALTY    = 35;  // points retirés pour un titre dont l'artiste est marqué hors format
 
 const PRED_ENTRY_REASONS = {
   oui: [
@@ -27743,8 +28031,8 @@ const PRED_ENTRY_REASONS = {
     { key:'gold_non',            label:'Non mais titre gold',                  isGold:true },
   ],
   'peut-etre': [
-    { key:'trop_tot',              label:'Trop tôt',                 snoozeWeeks:6 },
-    { key:'attente_environnement', label:"En attente d'environnement", snoozeWeeks:3 },
+    { key:'trop_tot',              label:'Trop tôt' },
+    { key:'attente_environnement', label:"En attente d'environnement" },
   ],
 };
 const PRED_ENTRY_DECISION_LABELS = { oui:'✅ Oui', non:'❌ Non', 'peut-etre':'🤔 Peut-être' };
@@ -27811,8 +28099,10 @@ function savePredEntryArtistStatus(stationData){
 function predEntrySaveFeedback(title, artist, decision, raisonKeys){
   const key = comiteKey(title, artist);
   const reasonDefs = (PRED_ENTRY_REASONS[decision] || []).filter(r => raisonKeys.includes(r.key));
+  const ep = predEntryParams();
 
-  const snoozeWeeksList = reasonDefs.map(r => r.snoozeWeeks).filter(Boolean);
+  const snoozeWeeksMap = { trop_tot: ep.snoozeWeeksTropTot, attente_environnement: ep.snoozeWeeksEnvironnement };
+  const snoozeWeeksList = reasonDefs.map(r => snoozeWeeksMap[r.key]).filter(Boolean);
   const snoozeUntil = snoozeWeeksList.length
     ? new Date(Date.now() + Math.min(...snoozeWeeksList) * 7 * 86400000).toISOString().slice(0,10)
     : null;
@@ -27943,24 +28233,46 @@ function isRechCategory(category){
    nettement (55→80, "bonus encore plus important" quand scores ET fit sont
    bons) ; un titre marqué RECH mais pas encore classé dans un quadrant
    gagnant obtient quand même un plancher significatif (45) plutôt que 0 —
-   la sélection éditoriale préalable vaut mieux qu'aucun signal. ── */
-function predEntryInternalSubscore(q, category){
+   la sélection éditoriale préalable vaut mieux qu'aucun signal.
+   « extras » (Fit/Fam/Momentum/Polarisation/SPU) — disponible uniquement
+   pour les titres venus du vivier Call Out (déjà testés, contrairement à
+   Veille/Marché) : mêmes critères que Sorties, mais dans le sens INVERSE —
+   ici un BON signal pousse vers l'entrée plutôt qu'un mauvais signal vers
+   la sortie. Cumulables entre eux, plafonnés à 100. ── */
+function predEntryInternalSubscore(q, category, extras){
+  const p = predEntryParams();
   const rech = isRechCategory(category);
-  if(q === 'POWER_SONG') return 100;
-  if(q === 'SLEEPER_SONG') return rech ? 80 : 55;
-  return rech ? 45 : 0;
+  let sub;
+  if(q === 'POWER_SONG') sub = p.powerSongSub;
+  else if(q === 'SLEEPER_SONG') sub = rech ? p.sleeperRechSub : p.sleeperSongSub;
+  else sub = rech ? p.rechFloorSub : 0;
+
+  if(extras){
+    if(extras.fit != null && extras.fit >= p.entryFitThreshold) sub = Math.min(100, sub + p.entryFitBonus);
+    if(extras.fam != null && extras.fam >= p.entryFamThreshold) sub = Math.min(100, sub + p.entryFamBonus);
+    if(extras.momentum != null && extras.momentum > 0) sub = Math.min(100, sub + Math.min(p.entryMomentumCap, extras.momentum * p.entryMomentumFactor));
+    if(extras.polar && extras.polar.love != null && extras.polar.hate != null && extras.polar.polar != null
+       && extras.polar.love > extras.polar.hate && extras.polar.polar >= p.entryPolarThreshold) sub = Math.min(100, sub + p.entryPolarBonus);
+    if(extras.spu != null && extras.spu >= p.entrySpuThreshold) sub = Math.min(100, sub + p.entrySpuBonus);
+  }
+  return sub;
 }
 
-/* ── Sous-score 0-100 : traction digitale Veille (largeur de sources + tendance
-   Shazam FR), + bonus fixe pour la simple présence en Veille manuelle — un
-   premier choix éditorial (même minime) a déjà été fait en l'ajoutant, donc
-   même sans confirmation externe le titre mérite un signal non-nul, plus
-   modeste que le bonus Call Out RECH ci-dessus puisque l'intervention
-   humaine y est moins engageante (ajout de veille vs test terrain complet). ── */
-const PRED_ENTRY_VEILLE_MANUAL_PICK_BONUS = 15;
+/* ── Sous-score 0-100 : traction digitale Veille — largeur de sources
+   (combien de sources détectent le titre), bonus fixe présence manuelle,
+   ET (nouveau) exploitation réelle des RANGS numériques déjà calculés par
+   FPA pour chaque source (findInChart renvoie un rang précis, jamais un
+   simple booléen) mais jusqu'ici jetés au profit d'un simple "trouvé/pas
+   trouvé" : classement fort (top 10/20/50, tous classements confondus —
+   Shazam FR/monde, Spotify France + 8 marchés kworb, Deezer), présence
+   dans plusieurs playlists éditoriales clés (RapCaviar, New Music Friday,
+   Deezer Hits...), et momentum de progression généralisé à TOUTES les
+   sources à rang (pas seulement Shazam FR comme avant — voir trendSub
+   ci-dessous, conservé tel quel, et rankMomentumSub qui le complète). ── */
 function predEntryVeilleSubscore(w){
-  if(!w) return { sub:0, breadth:0, trendDelta:null };
-  if(!w.history || !w.history.length) return { sub: PRED_ENTRY_VEILLE_MANUAL_PICK_BONUS, breadth:0, trendDelta:null };
+  const p = predEntryParams();
+  if(!w) return { sub:0, breadth:0, trendDelta:null, bestRank:null, keyPlaylistCount:0 };
+  if(!w.history || !w.history.length) return { sub: p.veilleManualBonus, breadth:0, trendDelta:null, bestRank:null, keyPlaylistCount:0 };
   const last = w.history[w.history.length - 1];
   let breadth = 0;
   if(watchlistSourceFound(last.itunes)) breadth++;
@@ -27972,15 +28284,55 @@ function predEntryVeilleSubscore(w){
   if(last.kpPlaylists && Object.values(last.kpPlaylists).some(v => watchlistSourceFound(v))) breadth++;
   if(last.dzkpPlaylists && Object.values(last.dzkpPlaylists).some(v => watchlistSourceFound(v))) breadth++;
   if(last.akpPlaylists && Object.values(last.akpPlaylists).some(v => watchlistSourceFound(v))) breadth++;
-  const breadthSub = Math.min(100, breadth * 13);
+  const breadthSub = Math.min(100, breadth * p.veilleBreadthFactor);
 
+  // ── Meilleur rang trouvé, tous classements confondus (pas les playlists,
+  // dont l'ordre n'est pas toujours un vrai classement de popularité) ──
+  const chartRanks = [last.shzFR, last.shzWW, last.spyFR, last.dzFR,
+    ...(last.spKworb ? Object.values(last.spKworb) : [])
+  ].filter(v => watchlistSourceFound(v));
+  const bestRank = chartRanks.length ? Math.min(...chartRanks) : null;
+  let rankBonus = 0;
+  if(bestRank !== null){
+    if(bestRank <= p.rankTop10Threshold) rankBonus = p.rankTop10Bonus;
+    else if(bestRank <= p.rankTop20Threshold) rankBonus = p.rankTop20Bonus;
+    else if(bestRank <= p.rankTop50Threshold) rankBonus = p.rankTop50Bonus;
+  }
+
+  // ── Nombre de playlists éditoriales clés distinctes où le titre apparaît
+  // (Spotify + Deezer + Apple Music confondues) — un titre repéré par
+  // plusieurs curateurs à la fois est un signal de confiance éditoriale
+  // fort, indépendant des classements quantitatifs. ──
+  const keyPlaylistCount = [last.kpPlaylists, last.dzkpPlaylists, last.akpPlaylists]
+    .filter(Boolean)
+    .reduce((sum, obj) => sum + Object.values(obj).filter(v => watchlistSourceFound(v)).length, 0);
+  const playlistBonus = Math.min(p.keyPlaylistBonusCap, keyPlaylistCount * p.keyPlaylistBonusPerPlaylist);
+
+  // ── Tendance Shazam FR (historique, conservée telle quelle) ──
   let trendDelta = null, trendSub = 0;
   const shzPoints = w.history.filter(h => watchlistSourceFound(h.shzFR)).map(h => h.shzFR);
   if(shzPoints.length >= 2){
     trendDelta = shzPoints[0] - shzPoints[shzPoints.length - 1];
-    if(trendDelta > 0) trendSub = Math.min(40, trendDelta * 2);
+    if(trendDelta > 0) trendSub = Math.min(p.veilleTrendCap, trendDelta * p.veilleTrendFactor);
   }
-  return { sub: Math.min(100, PRED_ENTRY_VEILLE_MANUAL_PICK_BONUS + breadthSub * 0.7 + trendSub), breadth, trendDelta };
+
+  // ── Momentum généralisé : meilleure progression de rang parmi TOUTES les
+  // sources à classement (pas seulement Shazam FR ci-dessus) — un titre qui
+  // grimpe fort sur Spotify ou Deezer sans forcément bouger sur Shazam FR
+  // mérite d'être reconnu. ──
+  let rankMomentumSub = 0;
+  const rankSourceKeys = ['shzFR','shzWW','spyFR','dzFR', ...Object.keys(last.spKworb || {}).map(cc => 'spKworb.'+cc)];
+  rankSourceKeys.forEach(sk => {
+    const getVal = h => sk.startsWith('spKworb.') ? (h.spKworb ? h.spKworb[sk.slice(8)] : null) : h[sk];
+    const pts = w.history.filter(h => watchlistSourceFound(getVal(h))).map(getVal);
+    if(pts.length >= 2){
+      const delta = pts[0] - pts[pts.length - 1];
+      if(delta > 0) rankMomentumSub = Math.max(rankMomentumSub, Math.min(p.rankMomentumCap, delta * p.rankMomentumFactor));
+    }
+  });
+
+  const sub = Math.min(100, p.veilleManualBonus + breadthSub * p.veilleBreadthWeight + trendSub + rankBonus + playlistBonus + rankMomentumSub);
+  return { sub, breadth, trendDelta, bestRank, keyPlaylistCount, rankBonus, playlistBonus, rankMomentumSub };
 }
 
 /* ── Sous-score 0-100 : Concurrence — calculé en PRIORITÉ sur les stations de
@@ -27997,7 +28349,7 @@ function predEntryCompSubscore(compRow){
   }
   if(compRow.concAvgAll !== null && compRow.concAvgAll > 0){
     const raw = Math.max(0, Math.min(100, Math.round(100 - (own / compRow.concAvgAll) * 100)));
-    return Math.round(raw * 0.5);
+    return Math.round(raw * predEntryParams().compFallbackAttenuation);
   }
   return 0;
 }
@@ -28011,7 +28363,7 @@ function predEntryFormatGapWarning(compRow){
   if(compRow.concAvgFormat === null){
     return `⚠️ Pas de donnée sur les stations de référence format (${refLabels}) — écart de format non vérifiable, score prudent`;
   }
-  if(compRow.concAvgFormat < compRow.concAvgAll * 0.3){
+  if(compRow.concAvgFormat < compRow.concAvgAll * predEntryParams().formatGapRatio){
     return `⚠️ Fort chez la concurrence toutes stations confondues (moy. ${compRow.concAvgAll.toFixed(1)}) mais quasi absent des stations au format proche (${refLabels} : ${compRow.concAvgFormat.toFixed(1)}) — probable écart de format, à valider à l'oreille`;
   }
   return null;
@@ -28065,18 +28417,45 @@ function buildMarketAirplayRows(){
 function predEntryCompute(c, compRow, oppRow, weights){
   const rech = isRechCategory(c.category);
   const intAvail = (c.internalQ !== null && c.internalQ !== undefined) || rech;
-  const intSub = predEntryInternalSubscore(c.internalQ, c.category);
+  const intSub = predEntryInternalSubscore(c.internalQ, c.category, c.extras);
   const quadLabel = c.internalQ === 'POWER_SONG' ? 'Power Song' : c.internalQ === 'SLEEPER_SONG' ? 'Sleeper' : c.internalQ;
-  const intTxt = intAvail
+  let intTxt = intAvail
     ? `Testé en Call Out/OMT : classé "${quadLabel}" mais quasi absent de l'antenne${rech?' · catégorie RECH — premier choix éditorial déjà favorable':''}`
     : (rech ? 'Catégorie RECH en Call Out/OMT (pas encore de quadrant Power Song/Sleeper) — premier choix éditorial en attente de test' : 'Pas encore testé en Call Out/OMT (ou classé Wrong Format/Miss)');
+  if(intAvail && c.extras){
+    const ex = c.extras;
+    if(ex.fit != null && ex.fit >= 60) intTxt += ` · Fit Score bon (${ex.fit.toFixed(0)})`;
+    if(ex.fam != null && ex.fam >= 60) intTxt += ` · Fam Score bon (${ex.fam.toFixed(0)})`;
+    if(ex.momentum != null && ex.momentum > 0) intTxt += ` · Momentum positif (+${ex.momentum.toFixed(1)} pts/vague)`;
+    if(ex.polar && ex.polar.love != null && ex.polar.hate != null && ex.polar.polar != null && ex.polar.love > ex.polar.hate && ex.polar.polar >= 40) intTxt += ` · Polarisation à adhésion dominante (${ex.polar.love.toFixed(0)}% aime beaucoup contre ${ex.polar.hate.toFixed(0)}% n'aime pas du tout)`;
+    if(ex.spu != null && ex.spu >= 65) intTxt += ` · SPU vert (${ex.spu}/100)`;
+  }
 
-  const veilleAvail = !!c.veilleData;
+  // ── La simple présence en Veille manuelle (sans AUCUNE confirmation
+  // externe : ni source active, ni rang, ni playlist, ni tendance) ne
+  // compte PAS comme un signal "disponible" pour la renormalisation — sinon
+  // un titre juste ajouté, sans traction réelle, pouvait voir tout le poids
+  // du signal Veille (25% par défaut) reporté sur lui via la renormalisation
+  // dès que les autres signaux (Call Out, Concurrence, Opportunité) sont
+  // eux aussi absents, gonflant artificiellement son score final au seul
+  // motif d'avoir été repéré manuellement. Le bonus fixe reste appliqué
+  // (modeste, voir veilleManualBonus) une fois le signal jugé disponible
+  // par ailleurs, mais ne suffit plus à lui seul à le rendre disponible. ──
+  const veilleHasRealSignal = !!(c.veilleData && (
+    c.veilleData.breadth > 0 || c.veilleData.bestRank != null || c.veilleData.keyPlaylistCount > 0
+    || (c.veilleData.trendDelta != null && c.veilleData.trendDelta > 0) || c.veilleData.rankMomentumSub > 0
+  ));
+  const veilleAvail = veilleHasRealSignal;
   const veilleSub = c.veilleData ? c.veilleData.sub : 0;
-  let veilleTxt = 'Pas suivi en Veille';
-  if(c.veilleData){
+  let veilleTxt = c.veilleData && !veilleHasRealSignal
+    ? 'Ajouté en Veille manuelle, aucune confirmation externe pour l\'instant (source, classement, playlist ou tendance)'
+    : 'Pas suivi en Veille';
+  if(c.veilleData && veilleHasRealSignal){
     veilleTxt = `${c.veilleData.breadth} source${c.veilleData.breadth>1?'s':''} digitale${c.veilleData.breadth>1?'s':''} active${c.veilleData.breadth>1?'s':''} en Veille`;
+    if(c.veilleData.bestRank != null) veilleTxt += ` · meilleur rang #${c.veilleData.bestRank} (tous classements)`;
+    if(c.veilleData.keyPlaylistCount) veilleTxt += ` · ${c.veilleData.keyPlaylistCount} playlist${c.veilleData.keyPlaylistCount>1?'s':''} éditoriale${c.veilleData.keyPlaylistCount>1?'s':''} clé${c.veilleData.keyPlaylistCount>1?'s':''}`;
     if(c.veilleData.trendDelta !== null) veilleTxt += c.veilleData.trendDelta > 0 ? ` · progression Shazam France (+${c.veilleData.trendDelta} place${c.veilleData.trendDelta>1?'s':''})` : ' · Shazam FR stable ou en baisse';
+    if(c.veilleData.rankMomentumSub > 0) veilleTxt += ' · momentum de rang positif (autre classement)';
   }
 
   const compAvail = !!compRow;
@@ -28138,9 +28517,17 @@ function predEntryCompute(c, compRow, oppRow, weights){
 /* ── Construire les lignes enrichies pour la Prédiction Entrées ── */
 function buildPredictionEntryRows(){
   const candidates = {}; // clé comiteKey → {key,title,artist,source,internalQ,veilleData}
+  const entryParams = predEntryParams();
 
-  // ── Vivier 1 : Veille (jamais un titre déjà en Playlist) ──
+  // ── Vivier 1 : Veille (jamais un titre déjà en Playlist) — SCOPÉ PAR
+  //    STATION : un titre ajouté en Veille pendant qu'Europe 2 était active
+  //    ne doit pas être suggéré pour RFM, et inversement (même logique de
+  //    scope que Comité/Playlist/Airplay ailleurs dans FPA). Les entrées
+  //    historiques créées avant ce marquage (sans champ `station`) restent
+  //    visibles sur les deux stations par sécurité — impossible de deviner
+  //    rétroactivement pour laquelle elles avaient été ajoutées. ──
   (typeof watchlistTitles !== 'undefined' ? watchlistTitles : []).forEach(w => {
+    if(w.station && w.station !== ACTIVE_STATION) return;
     if(isInPlaylist(w.title, w.artist)) return;
     candidates[w.key] = {
       key:w.key, title:w.title, artist:w.artist, source:'veille',
@@ -28155,7 +28542,17 @@ function buildPredictionEntryRows(){
   //    qu'il n'est pas (encore) Power Song/Sleeper. Quasi absents de
   //    l'antenne. Exclut les styles décochés dans Digital Métrics
   //    (iedrExcludedSounds) — même logique de hors-format que le reste de
-  //    FPA, appliquée ici quand la donnée de style existe. ──
+  //    FPA, appliquée ici quand la donnée de style existe.
+  //
+  //    Ces titres étant déjà TESTÉS en Call Out (contrairement aux viviers
+  //    Veille/Marché), ils disposent des mêmes données que celles exploitées
+  //    côté Sorties (Fit Score, Fam Score, Momentum, Polarisation, SPU) —
+  //    voir predEntryInternalSubscore ci-dessous pour leur usage, dans le
+  //    sens inverse de Sorties : ici un BON signal pousse vers l'entrée. ──
+  let polarByKeyEntry = {}, spuByKeyEntry = {};
+  try{ getPolarData().forEach(p => { polarByKeyEntry[histKey(p.artist, p.title)] = p; }); }catch(e){}
+  try{ computeSPU(buildDecisionRows()).forEach(r => { if(r.spu != null) spuByKeyEntry[histKey(r.artist, r.title)] = r.spu; }); }catch(e){}
+
   if(typeof analysisResult !== 'undefined' && analysisResult && analysisResult.length){
     analysisResult.forEach(r => {
       if(!r.title || !r.artist) return;
@@ -28165,11 +28562,18 @@ function buildPredictionEntryRows(){
       const e2 = r.airplay ? (parseInt(r.airplay.e2||0)||0) : 0;
       const rfm = r.airplay ? (parseInt(r.airplay.rfm||0)||0) : 0;
       const own = ACTIVE_STATION === 'RFM' ? rfm : e2;
-      if(own > PRED_ENTRY_MAX_AIRPLAY) return;
+      if(own > entryParams.maxAirplay) return;
       if(isInPlaylist(r.title, r.artist)) return;
       const key = comiteKey(r.title, r.artist);
-      if(candidates[key]){ candidates[key].internalQ = r.q; candidates[key].category = r.category; }
-      else candidates[key] = { key, title:r.title, artist:r.artist, source:'callout', internalQ:r.q, category:r.category, veilleData:null };
+      const extras = {
+        fit: r.fit != null ? r.fit : null,
+        fam: r.fam != null ? r.fam : null,
+        momentum: computeMomentum(r.title, r.artist),
+        polar: polarByKeyEntry[key] || null,
+        spu: spuByKeyEntry[key] != null ? spuByKeyEntry[key] : null
+      };
+      if(candidates[key]){ candidates[key].internalQ = r.q; candidates[key].category = r.category; candidates[key].extras = extras; }
+      else candidates[key] = { key, title:r.title, artist:r.artist, source:'callout', internalQ:r.q, category:r.category, extras, veilleData:null };
     });
   }
 
@@ -28181,12 +28585,12 @@ function buildPredictionEntryRows(){
 
   // ── Vivier 3 : Marché (Airplay général) — tout titre suivi par
   //    Yacast/Muzicast, quasi absent de chez vous mais significativement
-  //    présent chez les concurrents (moy. ≥ PRED_ENTRY_MARKET_MIN_CONC
-  //    passages), jamais ajouté manuellement en Veille ni testé en Call Out ──
+  //    présent chez les concurrents (moy. ≥ marketMinConc passages), jamais
+  //    ajouté manuellement en Veille ni testé en Call Out ──
   marketRows.forEach(m => {
-    if(m.concAvgAll === null || m.concAvgAll < PRED_ENTRY_MARKET_MIN_CONC) return;
+    if(m.concAvgAll === null || m.concAvgAll < entryParams.marketMinConc) return;
     const own = ACTIVE_STATION === 'RFM' ? m.rfm : m.e2;
-    if(own > PRED_ENTRY_MAX_AIRPLAY) return;
+    if(own > entryParams.maxAirplay) return;
     if(isInPlaylist(m.title, m.artist)) return;
     const key = comiteKey(m.title, m.artist);
     if(!candidates[key]) candidates[key] = { key, title:m.title, artist:m.artist, source:'market', internalQ:null, veilleData:null };
@@ -28194,8 +28598,8 @@ function buildPredictionEntryRows(){
 
   // ── Exclusion titres trop anciens : quand la date de sortie officielle est
   // connue (iTunes, ou remplacée par MusicBrainz si trouvée — voir
-  // songAttributes.releaseDate) et dépasse PRED_ENTRY_MAX_AGE_YEARS, le
-  // titre n'est plus suggéré du tout, pour AUCUNE station — un titre sorti
+  // songAttributes.releaseDate) et dépasse le seuil réglable (maxAgeYears),
+  // le titre n'est plus suggéré du tout, pour AUCUNE station — un titre sorti
   // il y a plus de 2 ans n'a plus sa place parmi des recommandations
   // d'entrée en playlist, quel que soit le format. Contrairement au
   // feedback "Gold" (retour terrain explicite, scopé par station), ceci est
@@ -28209,7 +28613,7 @@ function buildPredictionEntryRows(){
     const releaseDate = getSongAttributes(c.title, c.artist).releaseDate;
     if(!releaseDate) return;
     const ageMs = Date.now() - new Date(releaseDate + 'T00:00:00').getTime();
-    if(!isNaN(ageMs) && ageMs > PRED_ENTRY_MAX_AGE_YEARS * 365.25 * 86400000) delete candidates[key];
+    if(!isNaN(ageMs) && ageMs > entryParams.maxAgeYears * 365.25 * 86400000) delete candidates[key];
   });
 
   const keys = Object.keys(candidates);
@@ -28257,8 +28661,8 @@ function buildPredictionEntryRows(){
     let score = baseScore;
     if(aStatus){
       score = aStatus.status === 'penalty'
-        ? Math.max(0, score - PRED_ENTRY_ARTIST_PENALTY)
-        : Math.min(100, score + PRED_ENTRY_ARTIST_BOOST);
+        ? Math.max(0, score - entryParams.artistPenalty)
+        : Math.min(100, score + entryParams.artistBoost);
     }
 
     let level, levelColor, levelBg, levelBorder, levelIcon;
@@ -28351,6 +28755,7 @@ function updatePredEntryWeight(key, value){
 /* ── Render principal ── */
 function renderPredictionEntryPage(){
   renderPredEntryWeightsPanel();
+  renderPredEntryParamsTable();
 
   const noDataBar = document.getElementById('predEntryNoDataBar');
   const allRows = buildPredictionEntryRows();
@@ -28387,7 +28792,8 @@ function renderPredictionEntryPage(){
     const color = isPenalty ? '#CC2222' : '#0DA76B';
     const bg = isPenalty ? '#FFEAEA' : '#E3F6EC';
     const label = isPenalty ? 'hors format' : (r.artistStatus.reasonKey === 'star_format' ? 'star format' : 'format');
-    return `<span title="${isPenalty?'⚠️':'⭐'} ${escHtml(titleCaseDisplay(r.artist))} marqué ${label} pour ${escHtml(STATION_LABELS[ACTIVE_STATION])} le ${new Date(r.artistStatus.date).toLocaleDateString('fr-FR')} (${r.artistStatus.titlesCount} titre(s) évalué(s)) — score ${isPenalty?'pénalisé de -'+PRED_ENTRY_ARTIST_PENALTY:'boosté de +'+PRED_ENTRY_ARTIST_BOOST} pts. Statut propre à cette station (peut différer pour l'autre station). Cliquer pour retirer ce statut."
+    const ep = predEntryParams();
+    return `<span title="${isPenalty?'⚠️':'⭐'} ${escHtml(titleCaseDisplay(r.artist))} marqué ${label} pour ${escHtml(STATION_LABELS[ACTIVE_STATION])} le ${new Date(r.artistStatus.date).toLocaleDateString('fr-FR')} (${r.artistStatus.titlesCount} titre(s) évalué(s)) — score ${isPenalty?'pénalisé de -'+ep.artistPenalty:'boosté de +'+ep.artistBoost} pts. Statut propre à cette station (peut différer pour l'autre station). Cliquer pour retirer ce statut."
       onclick="event.stopPropagation();predEntryConfirmClearArtistStatus('${jsAttrEscape(r.artist)}')"
       style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:${color};background:${bg};border:1px solid ${color}55;border-radius:10px;padding:1px 7px;margin-left:6px;cursor:pointer;white-space:nowrap">${isPenalty?'⚠️':'⭐'} ${label}</span>`;
   };
@@ -28505,12 +28911,15 @@ function renderPredictionEntryPage(){
 // affiché et le jugement terrain (ex. un titre sorti que le score sous-évaluait).
 // ══════════════════════════════════════════════════════════════════════════
 
-function predDetailScoreBarHtml(score, levelColor, levelBg, levelBorder, levelIcon, level, coverage, shapeDeclineApplies, scoreBeforeShapeGuard){
+function predDetailScoreBarHtml(score, levelColor, levelBg, levelBorder, levelIcon, level, coverage, shapeDeclineApplies, scoreBeforeShapeGuard, spuGuardApplies, scoreBeforeSpuGuard){
   const covHtml = (coverage !== undefined && coverage !== null)
     ? `<div style="font-size:11px;color:var(--muted);margin-top:4px">${coverage}/4 signaux disponibles cette session${coverage<4?' — score renormalisé sur les signaux disponibles':''}</div>`
     : '';
-  const guardHtml = shapeDeclineApplies
-    ? `<div style="font-size:11px;color:#B05E00;margin-top:4px">⛔ Score forcé à ${score} par le garde-fou trajectoire (calcul pondéré ci-dessous aurait donné ${scoreBeforeShapeGuard} — le détail par signal reflète donc ce total intermédiaire, avant garde-fou)</div>`
+  const guards = [];
+  if(shapeDeclineApplies) guards.push(`⛔ Score forcé à ${score} par le garde-fou trajectoire (calcul pondéré aurait donné ${scoreBeforeShapeGuard})`);
+  if(spuGuardApplies) guards.push(`⛔ Score forcé à ${score} par le garde-fou SPU (calcul pondéré + garde-fou trajectoire aurait donné ${scoreBeforeSpuGuard})`);
+  const guardHtml = guards.length
+    ? `<div style="font-size:11px;color:#B05E00;margin-top:4px">${guards.join('<br>')} — le détail par signal ci-dessous reflète le total intermédiaire, avant garde-fou(s)</div>`
     : '';
   return `<div style="display:flex;align-items:center;gap:14px">
     <div style="font-size:32px;font-weight:800;color:${levelColor}">${score}</div>
@@ -28549,7 +28958,7 @@ function openPredDetailModal(btn){
   document.getElementById('pdmTitle').textContent  = titleCaseDisplay(data.title)  || '';
   document.getElementById('pdmArtist').textContent = titleCaseDisplay(data.artist) || '';
   document.getElementById('pdmSub').textContent    = data.subLabel || '🔬 Détail du calcul';
-  document.getElementById('pdmScoreBar').innerHTML = predDetailScoreBarHtml(data.score, data.levelColor, data.levelBg, data.levelBorder, data.levelIcon, data.level, data.coverage, data.shapeDeclineApplies, data.scoreBeforeShapeGuard);
+  document.getElementById('pdmScoreBar').innerHTML = predDetailScoreBarHtml(data.score, data.levelColor, data.levelBg, data.levelBorder, data.levelIcon, data.level, data.coverage, data.shapeDeclineApplies, data.scoreBeforeShapeGuard, data.spuGuardApplies, data.scoreBeforeSpuGuard);
   document.getElementById('pdmBreakdown').innerHTML = predDetailBreakdownHtml(data.breakdown || []);
 
   const modal = document.getElementById('modalPredDetail');
@@ -28568,7 +28977,8 @@ function predDetailButton(row, subLabel){
     coverage: row.coverage,
     level: row.level, levelColor: row.levelColor, levelBg: row.levelBg, levelBorder: row.levelBorder, levelIcon: row.levelIcon,
     breakdown: row.breakdown,
-    shapeDeclineApplies: row.shapeDeclineApplies, scoreBeforeShapeGuard: row.scoreBeforeShapeGuard
+    shapeDeclineApplies: row.shapeDeclineApplies, scoreBeforeShapeGuard: row.scoreBeforeShapeGuard,
+    spuGuardApplies: row.spuGuardApplies, scoreBeforeSpuGuard: row.scoreBeforeSpuGuard
   }).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
   return `<button onclick="openPredDetailModal(this)" data-preddetail="${payload}" title="Voir le détail du calcul"
     style="width:26px;height:26px;padding:0;min-width:0;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);cursor:pointer;font-size:12px;flex-shrink:0"
