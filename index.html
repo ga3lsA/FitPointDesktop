@@ -1150,6 +1150,13 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </select>
       </div>
 
+      <!-- Barre d'action groupée — visible dès qu'au moins un titre est coché -->
+      <div id="predEntryBulkBar" style="display:none;align-items:center;gap:12px;margin-bottom:14px;padding:10px 16px;background:var(--navy);border-radius:10px;color:#fff">
+        <span id="predEntryBulkCount" style="font-size:12.5px;font-weight:700;flex:1"></span>
+        <button onclick="openPredEntryBulkFeedbackModal()" style="background:var(--cyan);color:var(--navy);border:none;border-radius:8px;padding:8px 16px;font-size:12px;font-weight:800;cursor:pointer">📝 Appliquer un retour groupé</button>
+        <button onclick="predEntryClearSelection()" style="background:none;border:1.5px solid rgba(255,255,255,.3);color:#fff;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer">Annuler la sélection</button>
+      </div>
+
       <!-- Tableau Prédiction Entrées -->
       <div id="predEntryContent"></div>
     </div>
@@ -3930,7 +3937,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.213';
+const FPA_VERSION   = 'v30.216';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -28154,7 +28161,36 @@ function savePredEntryArtistStatus(stationData){
  *  cochées ensemble (rare mais possible), la pénalité l'emporte sur le boost
  *  par prudence (mieux vaut resurveiller un bon artiste à tort que laisser
  *  passer un artiste hors format). */
-function predEntrySaveFeedback(title, artist, decision, raisonKeys){
+const PRED_ENTRY_FEEDBACK_LOG_KEY = 'fpa_pred_entry_feedback_log_v1';
+/** Journal permanent, append-only, de CHAQUE retour terrain enregistré —
+ *  jamais écrasé, contrairement à `feedback[key]` ci-dessus qui ne garde
+ *  que le dernier état "actuel" par titre (nécessaire pour piloter
+ *  l'affichage : actif/rejeté/gold). Ce journal est ce qui permet à FPA
+ *  d'apprendre "sur la durée" comme demandé : même si tu changes d'avis sur
+ *  un titre, l'historique complet des décisions passées reste consultable,
+ *  y compris pour un futur raffinement de l'algorithme qui voudrait
+ *  s'appuyer sur la trajectoire des retours plutôt que le seul état
+ *  courant. Scopé par station comme le reste du feedback. ── */
+function predEntryLogFeedback(station, entry){
+  let log;
+  try{ log = JSON.parse(localStorage.getItem(PRED_ENTRY_FEEDBACK_LOG_KEY) || '{}'); }catch(e){ log = {}; }
+  if(!log[station]) log[station] = [];
+  log[station].push(entry);
+  try{ localStorage.setItem(PRED_ENTRY_FEEDBACK_LOG_KEY, JSON.stringify(log)); }catch(e){ /* quota localStorage, ignoré */ }
+}
+function predEntryLoadFeedbackLog(station){
+  try{
+    const log = JSON.parse(localStorage.getItem(PRED_ENTRY_FEEDBACK_LOG_KEY) || '{}');
+    return log[station || ACTIVE_STATION] || [];
+  }catch(e){ return []; }
+}
+
+/** Cœur du enregistrement, sans aucun effet de bord UI (pas de toast, pas de
+ *  fermeture de modale, pas de re-rendu) — permet d'appliquer le même
+ *  retour à N titres en boucle (voir openPredEntryBulkFeedbackModal) sans
+ *  déclencher N re-rendus coûteux ni N notifications. Renvoie {hasPenalty,
+ *  hasBoost} pour que l'appelant puisse composer son propre message. */
+function predEntrySaveFeedbackSilent(title, artist, decision, raisonKeys){
   const key = comiteKey(title, artist);
   const reasonDefs = (PRED_ENTRY_REASONS[decision] || []).filter(r => raisonKeys.includes(r.key));
   const ep = predEntryParams();
@@ -28165,26 +28201,37 @@ function predEntrySaveFeedback(title, artist, decision, raisonKeys){
     ? new Date(Date.now() + Math.min(...snoozeWeeksList) * 7 * 86400000).toISOString().slice(0,10)
     : null;
 
+  const now = new Date().toISOString();
   const feedback = loadPredEntryFeedback();
-  feedback[key] = { title, artist, decision, raisons: raisonKeys, date: new Date().toISOString().slice(0,10), snoozeUntil };
+  feedback[key] = { title, artist, decision, raisons: raisonKeys, date: now.slice(0,10), snoozeUntil };
   savePredEntryFeedback(feedback);
+  // Journal permanent — voir predEntryLogFeedback ci-dessus, jamais écrasé
+  // même par un futur changement d'avis sur ce même titre.
+  predEntryLogFeedback(ACTIVE_STATION, { title, artist, decision, raisons: raisonKeys, at: now });
 
   const hasPenalty = reasonDefs.some(r => r.artistEffect === 'penalty');
   const hasBoost   = reasonDefs.some(r => r.artistEffect === 'boost');
   if(hasPenalty || hasBoost){
     const status = loadPredEntryArtistStatus();
     const ak = norm(artist);
-    const prevCount = status[ak]?.titlesCount || 0;
+    const prevEvents = status[ak]?.events || [];
     status[ak] = {
       artist,
       status: hasPenalty ? 'penalty' : 'boost',
       reasonKey: hasPenalty ? 'artiste_hors_format' : (raisonKeys.includes('star_format') ? 'star_format' : 'artiste_format'),
-      date: new Date().toISOString().slice(0,10),
-      titlesCount: prevCount + 1
+      date: now.slice(0,10),
+      // Détail des titres ayant contribué à ce statut — pas seulement un
+      // compteur : indispensable pour comprendre/auditer POURQUOI un
+      // artiste est marqué ainsi, et sur quels titres précis ça s'appuie.
+      events: [...prevEvents, { title, decision, reasonKey: hasPenalty ? 'artiste_hors_format' : (raisonKeys.includes('star_format') ? 'star_format' : 'artiste_format'), date: now.slice(0,10) }],
+      titlesCount: prevEvents.length + 1
     };
     savePredEntryArtistStatus(status);
   }
-
+  return { hasPenalty, hasBoost };
+}
+function predEntrySaveFeedback(title, artist, decision, raisonKeys){
+  const { hasPenalty, hasBoost } = predEntrySaveFeedbackSilent(title, artist, decision, raisonKeys);
   const toastMsg = `✓ Retour enregistré pour « ${titleCaseDisplay(title)} »`
     + (hasPenalty ? ` — ${titleCaseDisplay(artist)} marqué hors format pour ses prochains titres`
       : (hasBoost ? ` — ${titleCaseDisplay(artist)} marqué format pour ses prochains titres` : ''));
@@ -28215,6 +28262,68 @@ function predEntryConfirmClearArtistStatus(artist){
 
 /* ── Modale de saisie du retour terrain ── */
 let predEntryFeedbackCurrent = null; // {title, artist, decision}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SÉLECTION MULTIPLE — retour terrain groupé
+// ══════════════════════════════════════════════════════════════════════════
+// Les listes de recommandations peuvent être longues, surtout en début
+// d'apprentissage — cocher plusieurs titres à la fois pour leur appliquer
+// le même retour (même décision + mêmes raisons) en une seule saisie,
+// plutôt que titre par titre. Map (clé -> {title,artist}), pas un simple
+// Set de clés : la sélection reste valide même si un titre coché disparaît
+// ensuite du DOM (changement de filtre/tri) — la soumission groupée ne
+// dépend jamais de ce qui est affiché au moment du clic, seulement de ce
+// qui a été explicitement coché. Persiste tant que la page Entrées reste
+// ouverte ; se vide après application ou via "Annuler la sélection".
+let predEntrySelectedKeys = new Map();
+
+function predEntryToggleRowSelect(key, checked, title, artist){
+  if(checked) predEntrySelectedKeys.set(key, { title, artist }); else predEntrySelectedKeys.delete(key);
+  predEntryUpdateBulkBar();
+  const allBoxes = document.querySelectorAll('.predEntrySelectRow');
+  const selectAll = document.getElementById('predEntrySelectAllCheckbox');
+  if(selectAll) selectAll.checked = allBoxes.length > 0 && Array.from(allBoxes).every(b => b.checked);
+}
+function predEntryToggleSelectAll(checked){
+  document.querySelectorAll('.predEntrySelectRow').forEach(box => {
+    box.checked = checked;
+    if(checked) predEntrySelectedKeys.set(box.dataset.key, { title: box.dataset.title, artist: box.dataset.artist });
+    else predEntrySelectedKeys.delete(box.dataset.key);
+  });
+  predEntryUpdateBulkBar();
+}
+function predEntryUpdateBulkBar(){
+  const bar = document.getElementById('predEntryBulkBar');
+  if(!bar) return;
+  const n = predEntrySelectedKeys.size;
+  if(!n){ bar.style.display = 'none'; return; }
+  bar.style.display = 'flex';
+  document.getElementById('predEntryBulkCount').textContent = `${n} titre${n>1?'s':''} sélectionné${n>1?'s':''}`;
+}
+function predEntryClearSelection(){
+  predEntrySelectedKeys.clear();
+  renderPredictionEntryPage();
+}
+/** Ouvre la modale de retour terrain en mode GROUPÉ — même UI Oui/Non/
+ *  Peut-être + raisons que la modale titre par titre, mais applique le
+ *  résultat à tous les titres actuellement cochés en une seule saisie.
+ *  Puise directement dans predEntrySelectedKeys (jamais le DOM), donc reste
+ *  fiable même si certains titres cochés ne sont plus affichés (filtre). ── */
+function openPredEntryBulkFeedbackModal(){
+  if(!predEntrySelectedKeys.size) return;
+  const titles = Array.from(predEntrySelectedKeys.values());
+  predEntryFeedbackCurrent = { bulk: titles, decision: null };
+  document.getElementById('pefTitle').textContent  = `${titles.length} titres sélectionnés`;
+  document.getElementById('pefArtist').textContent = titles.slice(0,4).map(t => titleCaseDisplay(t.title)).join(', ') + (titles.length>4 ? `, +${titles.length-4} autre(s)` : '');
+  ['pefDecOui','pefDecNon','pefDecPeutEtre'].forEach(id => {
+    const b = document.getElementById(id);
+    b.style.borderColor = 'var(--border)'; b.style.background = 'var(--white)'; b.style.color = 'var(--text2)';
+  });
+  document.getElementById('pefReasonsArea').style.display = 'none';
+  document.getElementById('pefReasonsList').innerHTML = '';
+  document.getElementById('modalPredEntryFeedback').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
 function openPredEntryFeedbackModal(title, artist){
   predEntryFeedbackCurrent = { title, artist, decision: null };
   document.getElementById('pefTitle').textContent  = titleCaseDisplay(title)  || '';
@@ -28269,6 +28378,15 @@ function predEntryFeedbackSubmit(){
   const checked = Array.from(document.querySelectorAll('#pefReasonsList input:checked')).map(el => el.value);
   if(!checked.length){
     showToast('Cochez au moins une raison', 'err');
+    return;
+  }
+  if(predEntryFeedbackCurrent.bulk){
+    const { bulk, decision } = predEntryFeedbackCurrent;
+    bulk.forEach(t => predEntrySaveFeedbackSilent(t.title, t.artist, decision, checked));
+    showToast(`✓ Retour enregistré pour ${bulk.length} titres`, 'success');
+    predEntrySelectedKeys.clear();
+    closePredEntryFeedbackModal();
+    renderPredictionEntryPage();
     return;
   }
   const { title, artist, decision } = predEntryFeedbackCurrent;
@@ -28997,8 +29115,11 @@ function renderPredictionEntryPage(){
       style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:${color};background:${bg};border:1px solid ${color}55;border-radius:10px;padding:1px 7px;margin-left:6px;cursor:pointer;white-space:nowrap">${isPenalty?'⚠️':'⭐'} ${label}</span>`;
   };
 
-  const gridCols = '32px 24px 0.85fr 100px 100px 1.3fr 150px 40px';
+  const gridCols = '24px 32px 24px 0.8fr 100px 100px 1.2fr 150px 40px';
   const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:0;background:var(--bg);border-bottom:2px solid var(--border)">
+    <div style="display:flex;align-items:center;justify-content:center;padding:8px 0">
+      <input type="checkbox" id="predEntrySelectAllCheckbox" onchange="predEntryToggleSelectAll(this.checked)" title="Tout sélectionner / tout désélectionner (pour un retour terrain groupé)" style="width:14px;height:14px;cursor:pointer">
+    </div>
     <div></div>
     <div></div>
     <div style="padding:8px 10px 8px 4px;font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Titre / Artiste</div>
@@ -29026,6 +29147,10 @@ function renderPredictionEntryPage(){
     return `<div data-evotitle="${evoAttr(r.title, r.artist)}" onclick="openTitleEvolutionModal(this)" title="Voir la fiche Song Metrics et écouter"
       style="display:grid;grid-template-columns:${gridCols};gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center;cursor:pointer"
       onmouseenter="this.style.background='rgba(0,184,200,.05)'" onmouseleave="this.style.background='${rowBg}'">
+      <div style="display:flex;align-items:center;justify-content:center" onclick="event.stopPropagation()">
+        <input type="checkbox" class="predEntrySelectRow" data-key="${jsAttrEscape(r.key)}" data-title="${jsAttrEscape(r.title)}" data-artist="${jsAttrEscape(r.artist)}"
+          ${predEntrySelectedKeys.has(r.key)?'checked':''} onchange="predEntryToggleRowSelect('${jsAttrEscape(r.key)}', this.checked, '${jsAttrEscape(r.title)}', '${jsAttrEscape(r.artist)}')" style="width:14px;height:14px;cursor:pointer">
+      </div>
       <div style="padding:10px 0 10px 8px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</div>
       <div style="padding:10px 0;text-align:center" onclick="event.stopPropagation()">
         <button onclick="openPredEntryFeedbackModal('${jsAttrEscape(r.title)}','${jsAttrEscape(r.artist)}')" title="Donner un retour terrain (Oui/Non/Peut-être)"
@@ -29098,9 +29223,48 @@ function renderPredictionEntryPage(){
       ${header}${tableRows || '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Aucun candidat actif pour cette recherche — voir « Rejetés »/« En attente » ci-dessous si filtré.</div>'}
     </div>
     ${buildCollapsible('predEntryReviewedWrap', '❌', 'Rejetés (Non / Gold)', reviewedRows)}
+    ${buildPredEntryFeedbackLogSection()}
     <div style="margin-top:12px;padding:10px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted)">
       Score d'entrée = moyenne pondérée de 4 signaux déjà calculés ailleurs dans FPA (Veille, Recherche interne, Concurrence, Fenêtre d'opportunité), renormalisée sur les signaux disponibles pour ce titre, puis ajustée par le retour terrain appris sur l'artiste (badge ⭐/⚠️ si présent). Le vivier Marché (📡) couvre tout titre suivi par votre import Airplay, sans ajout manuel requis. Cliquez 🔬 pour le détail du calcul, 📝 pour donner un retour terrain (Oui/Non/Peut-être). Une piste pour le Comité d'Écoute — pas une décision automatique.
     </div>`;
+  predEntryUpdateBulkBar();
+}
+/** Section repliable listant l'intégralité du journal de feedback (voir
+ *  predEntryLogFeedback) — chaque retour terrain jamais enregistré jamais
+ *  perdu, même après avoir changé d'avis sur un titre. Ordre antéchronologique
+ *  (le plus récent en premier). ── */
+function buildPredEntryFeedbackLogSection(){
+  const log = predEntryLoadFeedbackLog(ACTIVE_STATION);
+  if(!log.length) return '';
+  const decisionIcons = { oui:'✅', non:'❌', 'peut-etre':'🤔' };
+  const rows = [...log].reverse().map(e => {
+    const raisonLabels = (PRED_ENTRY_REASONS[e.decision] || []).filter(r => e.raisons.includes(r.key)).map(r => r.label).join(', ');
+    const dt = new Date(e.at);
+    return `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:5px 8px 5px 0;white-space:nowrap;color:var(--muted);font-size:10.5px">${dt.toLocaleDateString('fr-FR')} ${dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}</td>
+      <td style="padding:5px 8px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(e.title))}</td>
+      <td style="padding:5px 8px;color:var(--text2)">${escHtml(titleCaseDisplay(e.artist))}</td>
+      <td style="padding:5px 8px;white-space:nowrap">${decisionIcons[e.decision]||''} ${PRED_ENTRY_DECISION_LABELS[e.decision]?.replace(/^[^ ]+ /,'') || e.decision}</td>
+      <td style="padding:5px 0 5px 8px;color:var(--text2);font-size:11px">${escHtml(raisonLabels)}</td>
+    </tr>`;
+  }).join('');
+  return `<div style="margin-top:14px">
+    <button onclick="const el=document.getElementById('predEntryFeedbackLogWrap');const open=el.style.display!=='none';el.style.display=open?'none':'block';this.querySelector('span').textContent=open?'▸':'▾'" style="display:flex;align-items:center;gap:8px;background:none;border:none;cursor:pointer;font-size:12px;font-weight:800;color:var(--text2);padding:6px 0">
+      <span>▸</span> 📜 Journal du feedback (${log.length})
+    </button>
+    <div id="predEntryFeedbackLogWrap" style="display:none;background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;max-height:400px;overflow-y:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr style="border-bottom:2px solid var(--border);background:var(--bg);position:sticky;top:0">
+          <th style="text-align:left;padding:6px 8px 6px 0;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">Date</th>
+          <th style="text-align:left;padding:6px 8px;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">Titre</th>
+          <th style="text-align:left;padding:6px 8px;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">Artiste</th>
+          <th style="text-align:left;padding:6px 8px;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">Décision</th>
+          <th style="text-align:left;padding:6px 0 6px 8px;font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">Raisons</th>
+        </tr>
+        ${rows}
+      </table>
+    </div>
+  </div>`;
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -35463,6 +35627,108 @@ function updateDriveSyncStatus(errorMsg) {
     ' <span style="color:var(--muted);font-size:9px">· ' + latest + '</span>';
 }
 
+// ── Sauvegarde de l'apprentissage Prédiction (feedback + statuts artiste +
+// journal + paramètres) sur Drive — jusqu'ici, ces données (toutes dans
+// localStorage) n'étaient couvertes QUE par l'export JSON manuel
+// ("💾 Migration vers un autre poste" ci-dessus), jamais par une sauvegarde
+// automatique côté serveur comme les classements.
+//
+// ⚠️ Leçon retenue de l'incident passé (semaines 27-29 perdues suite à une
+// sauvegarde Drive avec détail titre×semaine trop volumineux) : ce bundle
+// EXCLUT délibérément l'historique quotidien par titre de la Veille
+// (`w.history`, jusqu'à 60 relevés × plusieurs dizaines de titres suivis =
+// potentiellement plusieurs centaines de Ko) — seules les métadonnées
+// légères de suivi (quel titre, pour quelle station, depuis quand) sont
+// conservées ; l'historique de classement lui-même est re-collectable en
+// relançant une vérification Veille, donc pas critique à sauvegarder ici.
+// Une vérification de taille explicite refuse tout envoi anormalement gros
+// plutôt que de tenter un envoi risqué en silence. Clé Drive strictement
+// indépendante de charts_index/charts_week_* utilisées pour les classements
+// — aucun risque de collision ou d'écrasement croisé. ──
+const PRED_FEEDBACK_DRIVE_KEY = 'pred_feedback_backup';
+const PRED_FEEDBACK_DRIVE_MAX_BYTES = 150 * 1024; // 150 Ko — largement au-dessus d'un usage réaliste, mais explicite plutôt qu'illimité
+function predFeedbackBuildBackupBundle(){
+  const g = (k, fallback) => { try{ return JSON.parse(localStorage.getItem(k) || fallback); }catch(e){ return JSON.parse(fallback); } };
+  const watchlistLight = g('fpa_watchlist_titles', '[]').map(w => ({
+    key: w.key, title: w.title, artist: w.artist, note: w.note || '', addedAt: w.addedAt, station: w.station || null
+    // volontairement PAS w.history — voir commentaire ci-dessus
+  }));
+  return {
+    savedAt: new Date().toISOString(),
+    feedback: g(PRED_ENTRY_FEEDBACK_KEY, '{}'),
+    artistStatus: g(PRED_ENTRY_ARTIST_STATUS_KEY, '{}'),
+    feedbackLog: g(PRED_ENTRY_FEEDBACK_LOG_KEY, '{}'),
+    watchlistTitlesLight: watchlistLight,
+    entryParams: g(PRED_ENTRY_PARAMS_KEY, '{}'),
+    exitParams: g(PRED_EXIT_PARAMS_KEY, '{}'),
+    entryWeights: g(PRED_ENTRY_WEIGHTS_KEY, '{}'),
+    exitWeights: g(PRED_EXIT_WEIGHTS_KEY, '{}'),
+    formatStations: g(PRED_ENTRY_FORMAT_STATIONS_KEY, '[]'),
+  };
+}
+async function predFeedbackPushToDrive(){
+  if(!requireAdmin()) return;
+  if(!DRIVE_SYNC_URL){ showToast('Drive Sync non configuré', 'err'); return; }
+  const btn = document.getElementById('predFeedbackBackupBtn');
+  if(btn){ btn.disabled = true; btn.textContent = '⏳ Sauvegarde…'; }
+  try{
+    const bundle = predFeedbackBuildBackupBundle();
+    const json = JSON.stringify(bundle);
+    const sizeKB = Math.round(json.length / 1024);
+    // Garde-fou explicite — voir commentaire au-dessus de PRED_FEEDBACK_DRIVE_MAX_BYTES.
+    // Un dépassement signale presque certainement une anomalie (données
+    // corrompues, boucle infinie de journal...) plutôt qu'un usage normal.
+    if(json.length > PRED_FEEDBACK_DRIVE_MAX_BYTES){
+      showToast(`⚠ Sauvegarde annulée — taille anormale (${sizeKB} Ko, seuil ${Math.round(PRED_FEEDBACK_DRIVE_MAX_BYTES/1024)} Ko). Contactez le support avant de forcer un envoi.`, 'err');
+      if(btn){ btn.disabled = false; btn.textContent = '☁️ Sauvegarder maintenant'; }
+      return;
+    }
+    await driveCall('save', PRED_FEEDBACK_DRIVE_KEY, json);
+    try{ localStorage.setItem('fpa_pred_feedback_last_backup', bundle.savedAt); }catch(e){}
+    showToast(`✓ Apprentissage Prédiction sauvegardé sur Drive (${sizeKB} Ko)`, 'success');
+  }catch(e){
+    showToast('Erreur sauvegarde Drive : ' + e.message, 'err');
+  }
+  renderDriveSyncPanel();
+}
+async function predFeedbackRestoreFromDrive(){
+  if(!requireAdmin()) return;
+  if(!DRIVE_SYNC_URL){ showToast('Drive Sync non configuré', 'err'); return; }
+  try{
+    const r = await driveCall('load', PRED_FEEDBACK_DRIVE_KEY);
+    if(!r || !r.data){ showToast('Aucune sauvegarde trouvée sur Drive pour l\'apprentissage Prédiction', 'err'); return; }
+    const bundle = JSON.parse(r.data);
+    if(!confirm(`Restaurer l'apprentissage sauvegardé le ${new Date(bundle.savedAt).toLocaleString('fr-FR')} ?\n\nCela ÉCRASE le feedback/apprentissage actuel de ce poste (retours terrain, statuts artiste, paramètres). La page sera rechargée juste après.`)) return;
+    localStorage.setItem(PRED_ENTRY_FEEDBACK_KEY, JSON.stringify(bundle.feedback || {}));
+    localStorage.setItem(PRED_ENTRY_ARTIST_STATUS_KEY, JSON.stringify(bundle.artistStatus || {}));
+    localStorage.setItem(PRED_ENTRY_FEEDBACK_LOG_KEY, JSON.stringify(bundle.feedbackLog || {}));
+    // La sauvegarde ne contient PAS l'historique de classement par titre
+    // (voir commentaire sur PRED_FEEDBACK_DRIVE_KEY) — on fusionne donc avec
+    // la liste locale déjà présente plutôt que de l'écraser : un titre déjà
+    // suivi ici garde son historique existant, un titre restauré mais absent
+    // localement réapparaît avec un historique vide (se reconstituera à la
+    // prochaine vérification Veille).
+    if(bundle.watchlistTitlesLight){
+      const localByKey = {};
+      (typeof watchlistTitles !== 'undefined' ? watchlistTitles : []).forEach(w => { localByKey[w.key] = w; });
+      const restored = bundle.watchlistTitlesLight.map(w => localByKey[w.key]
+        ? { ...localByKey[w.key], note: w.note, station: w.station } // garde l'historique local, reprend les métadonnées de la sauvegarde
+        : { ...w, history: [] });
+      localStorage.setItem('fpa_watchlist_titles', JSON.stringify(restored));
+    }
+    if(bundle.entryParams) localStorage.setItem(PRED_ENTRY_PARAMS_KEY, JSON.stringify(bundle.entryParams));
+    if(bundle.exitParams) localStorage.setItem(PRED_EXIT_PARAMS_KEY, JSON.stringify(bundle.exitParams));
+    if(bundle.entryWeights) localStorage.setItem(PRED_ENTRY_WEIGHTS_KEY, JSON.stringify(bundle.entryWeights));
+    if(bundle.exitWeights) localStorage.setItem(PRED_EXIT_WEIGHTS_KEY, JSON.stringify(bundle.exitWeights));
+    if(bundle.formatStations) localStorage.setItem(PRED_ENTRY_FORMAT_STATIONS_KEY, JSON.stringify(bundle.formatStations));
+    try{ localStorage.setItem('fpa_pred_feedback_last_backup', bundle.savedAt); }catch(e){}
+    showToast('✓ Apprentissage restauré — rechargement…', 'success');
+    setTimeout(() => location.reload(), 1200);
+  }catch(e){
+    showToast('Erreur restauration Drive : ' + e.message, 'err');
+  }
+}
+
 // ── Panneau Drive Sync ────────────────────────────────────────────────────
 function toggleDriveSyncPanel() {
   if(!requireAdmin()) return;
@@ -35681,7 +35947,7 @@ function renderDriveSyncPanel() {
       <div style="padding:14px 18px;background:var(--white);border-bottom:1.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
         <div>
           <div style="font-size:11px;font-weight:800;color:var(--navy)">💾 Migration vers un autre poste</div>
-          <div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:420px;line-height:1.5">Exporte en un fichier tout ce qui est propre à ce navigateur : URLs des backends, Comité/Playlist/Veille, Playlists Spotify clés, sound codes, Habs(R), Song Attributs (dates d'entrée, label, genre, décennie), historique des vagues et des quotas. Ne couvre pas le Drive Sync lui-même (déjà côté serveur, indépendant du poste).</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:420px;line-height:1.5">Exporte en un fichier tout ce qui est propre à ce navigateur : URLs des backends, Comité/Playlist/Veille, Playlists Spotify clés, sound codes, Habs(R), Song Attributs (dates d'entrée, label, genre, décennie), historique des vagues et des quotas, <strong>apprentissage Prédiction</strong> (feedback, statuts artiste, paramètres). Ne couvre pas le Drive Sync lui-même (déjà côté serveur, indépendant du poste).</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
           <button onclick="exportFpaSettingsJSON()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700">⬇ Tout exporter</button>
@@ -35689,6 +35955,27 @@ function renderDriveSyncPanel() {
             ⬆ Tout importer
             <input type="file" accept=".json" style="display:none" onchange="importFpaSettingsJSON(this)">
           </label>
+        </div>
+      </div>
+      <!-- Sauvegarde Drive de l'apprentissage Prédiction — contrairement au
+           reste (Comité/Playlist/classements), le feedback appris n'était
+           couvert que par l'export manuel ci-dessus, jamais par une vraie
+           sauvegarde côté serveur. Ce bloc comble ce manque. -->
+      <div style="padding:14px 18px;background:var(--white);border-bottom:1.5px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;font-weight:800;color:var(--navy)">🧠 Apprentissage Prédiction (feedback, statuts artiste, paramètres)</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:420px;line-height:1.5">
+            Contrairement aux classements ci-dessus, cette donnée n'est <strong>pas sauvegardée automatiquement</strong> — pensez à cliquer « Sauvegarder » après une session de retours terrain pour ne rien perdre en cas de vidage du navigateur. Fichier de sauvegarde <strong>indépendant</strong> des classements, taille bornée à 150 Ko (garde-fou explicite) — n'inclut volontairement <strong>pas</strong> l'historique de classement par titre en Veille (juste titre/artiste/station), qui se reconstitue de toute façon à la prochaine vérification.
+            ${(() => {
+              let last = null;
+              try{ last = localStorage.getItem('fpa_pred_feedback_last_backup'); }catch(e){}
+              return last ? `<br>Dernière sauvegarde : <strong>${new Date(last).toLocaleString('fr-FR')}</strong>` : '<br><em>Jamais sauvegardé sur Drive.</em>';
+            })()}
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-shrink:0">
+          <button id="predFeedbackBackupBtn" onclick="predFeedbackPushToDrive()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--cyan);color:var(--navy);border:none;cursor:pointer;font-weight:700">☁️ Sauvegarder maintenant</button>
+          <button onclick="predFeedbackRestoreFromDrive()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--white);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700">⬇ Restaurer depuis Drive</button>
         </div>
       </div>
       <!-- Historique détaillé -->
