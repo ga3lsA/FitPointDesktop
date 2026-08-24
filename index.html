@@ -3942,7 +3942,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.218';
+const FPA_VERSION   = 'v30.221';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -5822,6 +5822,13 @@ let mbEnrichQueue = [];
 let mbEnrichRetryQueue = [];
 let mbEnrichTotal = 0;
 let mbEnrichDone = 0;
+// Plafond du balayage complet (mbBackfillAllArchives, badge cliqué) — voir
+// commentaire détaillé sur ce plafond à son point d'usage. Ne concerne PAS
+// l'enrichissement automatique déclenché à l'import (toujours quelques
+// dizaines de titres au plus, jamais un risque de quota). Ajustable si
+// besoin — 500 titres/jour ≈ 8-9 min à 1 req/s, une fraction modeste des
+// 20 000 appels UrlFetch/jour d'un compte Google standard.
+const MB_BACKFILL_MAX_PER_RUN = 500;
 function mbQueueEnrichment(rows){
   if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')) return;
   const seen = new Set();
@@ -5997,8 +6004,28 @@ async function mbBackfillAllArchives(){
     showToast('✓ ISRC/date de sortie déjà interrogés pour les ' + totalScanned + ' titre(s) connus' + errNote + ' — rien à faire', 'success');
     return;
   }
+
+  // ── Plafond de balayage — protège le quota Google Apps Script UrlFetch du
+  // compte (partagé avec TOUS vos autres scripts : DailySnapshot, proxies
+  // Deezer/Apple/kworb/Shazam/Zyla, Drive Sync...), pas seulement celui de
+  // MusicBrainz. Sans plafond, un catalogue avec des mois d'archives peut
+  // mettre plusieurs milliers de titres en file en une seule fois, chacun
+  // consommant un appel UrlFetch côté proxy — largement de quoi épuiser le
+  // quota du jour et faire échouer silencieusement d'autres automatismes du
+  // même compte (c'est très probablement ce qui a fait planter
+  // DailySnapshot.gs malgré un déclencheur inchangé). Le reste (titres non
+  // traités cette fois) reste dans songAttributes sans mbStatus, donc sera
+  // repris automatiquement au prochain lancement (demain, ou après un
+  // nouvel import). ──
+  const excess = queued - MB_BACKFILL_MAX_PER_RUN;
+  if(excess > 0){
+    mbEnrichQueue.length = Math.max(0, mbEnrichQueue.length - excess); // retire l'excédent, les plus anciens ajoutés en dernier restent en attente
+    queued = MB_BACKFILL_MAX_PER_RUN;
+  }
+
   mbEnrichTotal = mbEnrichDone + mbEnrichQueue.length;
-  showToast('🎵 Lancement de l\'enrichissement MusicBrainz sur ' + queued + ' titre(s) (débit 1/s, ~' + Math.ceil(queued/60) + ' min)' + errNote + '…', scanErrors ? 'err' : 'success');
+  const capNote = excess > 0 ? ` — plafonné à ${MB_BACKFILL_MAX_PER_RUN}/jour pour préserver le quota Google partagé avec vos autres scripts (${excess} titre(s) restant(s), relancez demain pour continuer)` : '';
+  showToast('🎵 Lancement de l\'enrichissement MusicBrainz sur ' + queued + ' titre(s) (débit 1/s, ~' + Math.ceil(queued/60) + ' min)' + errNote + capNote + '…', scanErrors ? 'err' : 'success');
   if(!mbEnrichInProgress) mbRunEnrichment();
   else mbUpdateProgressUI();
 }
@@ -33093,6 +33120,16 @@ function buildTevDailySection(title, artist){
  *  de comparaison lissé plutôt qu'un simple J-1, pour ne pas être noyé sous
  *  le bruit quotidien des classements qui bougent beaucoup (Spotify,
  *  Shazam...). */
+/** Un instantané est considéré "vide" (capture échouée côté DailySnapshot.gs
+ *  — typiquement quota Google épuisé, voir échange précédent) si les 3
+ *  catégories (charts/playlists/radios) n'ont RIEN de non-null. À distinguer
+ *  d'un jour "genuinement calme" où le contenu existe mais ne bouge pas —
+ *  ici, le contenu lui-même est absent, pas juste stable. ── */
+function isDailySnapshotEmpty(snap){
+  if(!snap) return true;
+  const bucketHasData = obj => obj && Object.values(obj).some(v => v !== null && v !== undefined);
+  return !bucketHasData(snap.charts) && !bucketHasData(snap.playlists) && !bucketHasData(snap.radios);
+}
 function dailyAverageRankMap(snapshots, bucket, sourceKey, excludeFirst){
   const sums = {}, counts = {};
   snapshots.forEach((snap, i) => {
@@ -33151,7 +33188,7 @@ function dailySourceLogo(srcKey){
   return LOGO_DEEZER; // deezer_top_france, deezer_futurs_hits, titresmoment, globalhits, rapstars, deezerhits, bleublanc, popallstars
 }
 
-function computeDailyMovers(limit = 16){
+function computeDailyMovers(limit = 16, compareIdx = 1){
   if(dailySnapshots.length < 2) return [];
   const today = dailySnapshots[0];
   const byKey = {};
@@ -33160,7 +33197,7 @@ function computeDailyMovers(limit = 16){
     if(!todayMap) return;
     const compareMap = dailyOverviewMode === 'semaine'
       ? dailyAverageRankMap(dailySnapshots, 'charts', srcKey, true)
-      : dailySnapshotRankMap(dailySnapshots[1], 'charts', srcKey);
+      : dailySnapshotRankMap(dailySnapshots[compareIdx], 'charts', srcKey);
     if(!compareMap) return;
     Object.entries(todayMap).forEach(([key, rankToday]) => {
       const rankBefore = compareMap[key];
@@ -33204,12 +33241,12 @@ function dailyPlaylistLabel(srcKey){
   return srcKey;
 }
 
-function computeDailyDiff(bucket){
+function computeDailyDiff(bucket, compareIdx = 1){
   if(dailySnapshots.length < 2) return [];
   const today = dailySnapshots[0];
   const compareSnap = dailyOverviewMode === 'semaine'
     ? (dailySnapshots[7] || dailySnapshots[dailySnapshots.length - 1])
-    : dailySnapshots[1];
+    : dailySnapshots[compareIdx];
   if(!compareSnap || compareSnap === today) return [];
   // Découverte dynamique des sources présentes dans l'instantané (plutôt
   // qu'une liste figée) — nécessaire pour les Playlists clés Spotify, dont
@@ -33495,9 +33532,41 @@ function renderDailyOverview(){
     return;
   }
 
-  const movers = computeDailyMovers();
-  const playlistDiff = computeDailyDiff('playlists');
-  const radioDiff = computeDailyDiff('radios');
+  // ── Résilience aux jours vides (capture échouée côté DailySnapshot.gs —
+  // typiquement quota Google épuisé, voir échange précédent) : plutôt que de
+  // se bloquer sur "hier" (index 1) s'il est vide, on cherche le jour
+  // valide le plus récent avant de renoncer. Le mode Semaine (moyenne
+  // glissante, dailyAverageRankMap) gère déjà naturellement ce cas sans
+  // ajustement — un jour vide n'y contribue simplement à rien à la moyenne.
+  // "Aujourd'hui" lui-même vide (capture du jour manquée) reste en revanche
+  // bloquant : rien à afficher tant que cette capture n'a pas eu lieu. ──
+  if(isDailySnapshotEmpty(dailySnapshots[0])){
+    container.innerHTML = `<div style="padding:24px;text-align:center;color:#B05E00;background:#FFF4E0;border:1.5px solid #FFD085;border-radius:12px;font-size:13px;line-height:1.6">
+      ⚠️ <strong>Capture du jour manquante</strong> — l'instantané du ${escHtml(dailySnapshots[0].date)} est vide (charts, playlists et radios). Le script <strong>DailySnapshot.gs</strong> n'a probablement pas pu s'exécuter (quota Google épuisé, voir échange précédent). Relancez <code>captureDailySnapshot</code> manuellement depuis l'éditeur Apps Script, puis rechargez cette page.
+    </div>`;
+    return;
+  }
+  let compareIdx = null, skippedDays = 0;
+  if(dailyOverviewMode === 'semaine'){
+    compareIdx = Math.min(7, dailySnapshots.length - 1); // dailyAverageRankMap gère lui-même les jours vides
+  } else {
+    for(let i = 1; i < dailySnapshots.length; i++){
+      const cand = dailySnapshots[i];
+      if(cand && cand.date !== dailySnapshots[0].date && !isDailySnapshotEmpty(cand)){ compareIdx = i; skippedDays = i - 1; break; }
+    }
+  }
+  if(compareIdx === null){
+    container.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Aucun jour de comparaison exploitable trouvé dans les ${dailySnapshots.length} derniers instantanés (tous vides ou identiques à aujourd'hui) — vérifiez l'historique côté DailySnapshot.gs.</div>`;
+    return;
+  }
+  const compareSnapCheck = dailySnapshots[compareIdx];
+  const skipNote = skippedDays > 0
+    ? `<div style="margin-top:8px;padding:8px 12px;background:#FFF4E0;border:1px solid #FFD085;border-radius:8px;font-size:11px;color:#B05E00">⚠️ ${skippedDays} jour(s) vide(s) ignoré(s) entre les deux dates comparées (capture(s) échouée(s) côté DailySnapshot.gs) — comparaison contre le dernier jour réellement rempli.</div>`
+    : '';
+
+  const movers = computeDailyMovers(16, compareIdx);
+  const playlistDiff = computeDailyDiff('playlists', compareIdx);
+  const radioDiff = computeDailyDiff('radios', compareIdx);
   const compareLabel = dailyOverviewMode === 'semaine' ? 'vs moyenne des 7 jours précédents' : 'vs hier';
   const activeStyle = 'border:1.5px solid #7C3AED;background:#7C3AED;color:#fff';
   const inactiveStyle = 'border:1.5px solid var(--border);background:var(--white);color:var(--text2)';
@@ -33545,8 +33614,9 @@ function renderDailyOverview(){
           <button onclick="toggleDailyOverviewView('table')" title="Une ligne par titre, colonnes triables" style="font-size:11px;padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:700;${dailyOverviewViewMode === 'table' ? viewActiveStyle : viewInactiveStyle}">📋 Tableau</button>
         </div>
       </div>
-      <span style="font-size:11px;color:var(--muted)">${escHtml(dailySnapshots[0].date)} · ${escHtml(compareLabel)}</span>
+      <span style="font-size:11px;color:var(--muted)" title="Comparaison : ${escHtml(dailySnapshots[0].date)} vs ${escHtml(compareSnapCheck.date)}">${escHtml(dailySnapshots[0].date)} · ${escHtml(compareLabel)} (${escHtml(compareSnapCheck.date)})</span>
     </div>
+    ${skipNote}
 
     ${bodyHtml}`;
 
