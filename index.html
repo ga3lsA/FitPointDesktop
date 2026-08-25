@@ -1902,11 +1902,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
 <!-- PAGE PLAYLIST ─────────────────────────────────────────────────────── -->
 <div id="pagePlaylist" style="display:none">
-  <div style="max-width:1121px;margin:0 auto;padding:24px 16px">
+  <div style="max-width:1360px;margin:0 auto;padding:24px 16px">
 
     <!-- En-tête -->
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap">
-      <div style="display:flex;align-items:flex-start;gap:14px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:14px">
         <div style="width:4px;height:40px;background:linear-gradient(180deg,var(--navy) 0%,rgba(11,29,58,.2) 100%);border-radius:4px;flex-shrink:0"></div>
         <div>
           <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Playlist <span class="station-name">Europe 2</span></div>
@@ -22239,7 +22239,7 @@ function togglePlaylistExpand(key){
  *  catégorie (éditable), ancienne catégorie (badge auto), les 6 métriques
  *  Call Out (Pot Score/Burn/Inconnu × Ensemble/P1), date d'entrée (éditable),
  *  label (éditable), retirer. */
-const PLAYLIST_ROW_GRID = '22px 155px 160px 48px 48px 40px 34px 42px 48px 48px 44px 44px 48px 48px 44px 32px 104px 96px 22px';
+const PLAYLIST_ROW_GRID = '22px 170px 210px 52px 52px 42px 36px 46px 52px 52px 48px 48px 52px 52px 46px 34px 112px 130px 24px';
 
 function playlistNumCell(val, decimals, suffix){
   if(val === null || val === undefined || val === '' || isNaN(parseFloat(val))) return '<span style="color:var(--muted)">–</span>';
@@ -25456,12 +25456,33 @@ function watchlistShowEmpty(msg){
 }
 
 /** Petit badge pour une source dans l'historique d'un titre en Veille. */
-function watchlistSourceBadge(icon, label, value, isRank){
+/** Logo Shazam (aucun asset existant dans FPA, contrairement à Apple/Spotify/
+ *  Deezer — voir LOGO_* et logoImg ci-dessus) et icône Airplay (pas une
+ *  marque : ondes de diffusion, set Lucide Icons, licence ISC). Tracé Shazam
+ *  officiel du projet open source Simple Icons (licence CC0). Utilisés
+ *  uniquement dans la Veille manuelle (voir buildWatchlistCard), à la même
+ *  taille que les logos LOGO_* via logoImg (9-12px, cf. buildDigitalSnapshotSection).
+ */
+const SHAZAM_PATH = 'M12 0C5.373 0-.001 5.371-.001 12c0 6.625 5.374 12 12.001 12s12-5.375 12-12c0-6.629-5.373-12-12-12M9.872 16.736c-1.287 0-2.573-.426-3.561-1.281-1.214-1.049-1.934-2.479-2.029-4.024-.09-1.499.42-2.944 1.436-4.067C6.86 6.101 8.907 4.139 8.993 4.055c.555-.532 1.435-.511 1.966.045.53.557.512 1.439-.044 1.971-.021.02-2.061 1.976-3.137 3.164-.508.564-.764 1.283-.719 2.027.049.789.428 1.529 1.07 2.086.844.73 2.51.891 3.553-.043.619-.559 1.372-1.377 1.38-1.386.52-.567 1.4-.603 1.965-.081.565.52.603 1.402.083 1.969-.035.035-.852.924-1.572 1.572-1.005.902-2.336 1.357-3.666 1.357m8.41-.099c-1.143 1.262-3.189 3.225-3.276 3.309-.27.256-.615.385-.96.385-.368 0-.732-.145-1.006-.43-.531-.559-.512-1.439.044-1.971.021-.02 2.063-1.977 3.137-3.166.508-.563.764-1.283.719-2.027-.048-.789-.428-1.529-1.07-2.084-.844-.73-2.51-.893-3.552.044-.621.556-1.373 1.376-1.38 1.384-.521.566-1.399.604-1.966.084-.564-.521-.604-1.404-.082-1.971.034-.037.85-.926 1.571-1.573 1.979-1.778 5.221-1.813 7.227-.077 1.214 1.051 1.935 2.48 2.028 4.025.092 1.497-.419 2.945-1.434 4.068';
+const RADIO_ICON_PATHS = ['M16.247 7.761a6 6 0 0 1 0 8.478','M19.075 4.933a10 10 0 0 1 0 14.134','M4.925 19.067a10 10 0 0 1 0-14.134','M7.753 16.239a6 6 0 0 1 0-8.478'];
+function shazamLogoSvg(sizePx){
+  return `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 24 24" fill="#0088FF" style="display:inline-block;vertical-align:middle;flex-shrink:0"><path d="${SHAZAM_PATH}"/></svg>`;
+}
+function radioIconSvg(sizePx){
+  return `<svg width="${sizePx}" height="${sizePx}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;flex-shrink:0">${RADIO_ICON_PATHS.map(d=>`<path d="${d}"/>`).join('')}<circle cx="12" cy="12" r="2"/></svg>`;
+}
+
+/** Même gabarit que comiteMiniBadge/comiteAirplayBadge (digital snapshot,
+ *  voir buildDigitalSnapshotSection) : petit logo/icône (9-12px) accolé à un
+ *  court libellé sur la ligne du haut, valeur en dessous. iconLabelHtml est
+ *  déjà assemblé par l'appelant (logo + libellé court éventuel) ; label est
+ *  le libellé complet utilisé comme infobulle. */
+function watchlistSourceBadge(iconLabelHtml, label, value, isRank){
   const found = watchlistSourceFound(value);
   const text = found ? (isRank && typeof value === 'number' ? '#' + value : '✓') : '–';
-  return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:${found?'#EAF7F2':'var(--bg)'};border:1px solid ${found?'#A8E6CE':'var(--border)'};min-width:38px">
-    <span style="font-size:8px;font-weight:800;color:var(--muted)">${icon}</span>
-    <span style="font-size:11px;font-weight:800;color:${found?'#0DA76B':'var(--muted)'}">${text}</span>
+  return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;border-radius:8px;background:${found?'#EAF7F2':'var(--bg)'};border:1px solid ${found?'#A8E6CE':'var(--border)'};min-width:50px">
+    <span style="display:flex;align-items:center;gap:3px;font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap">${iconLabelHtml}</span>
+    <span style="font-size:13px;font-weight:800;color:${found?'#0DA76B':'var(--muted)'}">${text}</span>
   </span>`;
 }
 
@@ -25491,7 +25512,7 @@ function buildWatchlistCard(w){
           const p = keyPlaylists.find(x => x.id === id);
           const label = p ? p.label : id;
           return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:#EAF7F2;border:1px solid #A8E6CE;min-width:38px;max-width:90px">
-        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🎧 ${escHtml(label)}</span>
+        <span style="display:flex;align-items:center;gap:3px;font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">${logoImg(LOGO_SPOTIFY, 'Spotify', 9)} ${escHtml(label)}</span>
         <span style="font-size:11px;font-weight:800;color:#0DA76B">#${v}</span>
       </span>`;
         }).join('')
@@ -25505,7 +25526,7 @@ function buildWatchlistCard(w){
           const p = DEEZER_KEY_PLAYLISTS.find(x => x.id === id);
           const label = p ? p.label : id;
           return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:#F3EAFB;border:1px solid #D9BFF2;min-width:38px;max-width:90px">
-        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🟣 ${escHtml(label)}</span>
+        <span style="display:flex;align-items:center;gap:3px;font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">${logoImg(LOGO_DEEZER, 'Deezer', 9)} ${escHtml(label)}</span>
         <span style="font-size:11px;font-weight:800;color:#A238FF">#${v}</span>
       </span>`;
         }).join('')
@@ -25519,7 +25540,7 @@ function buildWatchlistCard(w){
           const p = APPLE_KEY_PLAYLISTS.find(x => x.id === id);
           const label = p ? p.label : id;
           return `<span title="${escHtml(label)}" style="display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 7px;border-radius:6px;background:#F1F1F3;border:1px solid #D1D1D6;min-width:38px;max-width:90px">
-        <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">🍎 ${escHtml(label)}</span>
+        <span style="display:flex;align-items:center;gap:3px;font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:82px">${logoImg(LOGO_APPLE_MONO, 'Apple Music', 9)} ${escHtml(label)}</span>
         <span style="font-size:11px;font-weight:800;color:#1D1D1F">#${v}</span>
       </span>`;
         }).join('')
@@ -25527,12 +25548,12 @@ function buildWatchlistCard(w){
 
   const currentBadges = last ? `
     <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">
-      ${watchlistSourceBadge('🍎', 'iTunes / Apple Music', last.itunes)}
-      ${watchlistSourceBadge('🎧', 'Shazam France', last.shzFR, true)}
-      ${watchlistSourceBadge('🌍', 'Shazam Monde', last.shzWW, true)}
-      ${watchlistSourceBadge('🟢', 'Spotify France (import)', last.spyFR, true)}
-      ${watchlistSourceBadge('🎵', 'Deezer France', last.dzFR, true)}
-      ${watchlistSourceBadge('📻', 'Airplay', last.airplay, true)}
+      ${watchlistSourceBadge(logoImg(LOGO_APPLE_MONO, 'Apple Music', 9), 'iTunes / Apple Music', last.itunes)}
+      ${watchlistSourceBadge(shazamLogoSvg(10) + ' FR', 'Shazam France', last.shzFR, true)}
+      ${watchlistSourceBadge(shazamLogoSvg(10) + ' WW', 'Shazam Monde', last.shzWW, true)}
+      ${watchlistSourceBadge(logoImg(LOGO_SPOTIFY, 'Spotify', 12), 'Spotify France (import)', last.spyFR, true)}
+      ${watchlistSourceBadge(logoImg(LOGO_DEEZER, 'Deezer', 12), 'Deezer France', last.dzFR, true)}
+      ${watchlistSourceBadge(radioIconSvg(11), 'Airplay', last.airplay, true)}
       ${kworbFoundBadges}
       ${kpFoundBadges}
       ${dzkpFoundBadges}
