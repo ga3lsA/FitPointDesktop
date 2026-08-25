@@ -36397,5 +36397,31 @@ loadLatestAirplayOnStartup();
 })();
 </script>
 
+<script>
+// ── Ouverture directe d'une fiche titre depuis un lien externe (Spin Music TV) ──
+// Usage : fpa.html?openArtist=NOM+ARTISTE&openTitle=TITRE
+// Réutilise telle quelle la fonction openTitleEvolutionModal existante en lui
+// passant un bouton "fictif" porteur du même attribut data-evotitle qu'un
+// clic normal sur un titre du tableau — aucune autre modification de la logique.
+// (tevFindNavItems gère nativement un bouton détaché du DOM : parentElement est
+// null, la boucle s'arrête immédiatement et retourne juste [btn], sans erreur.)
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  const oArtist = params.get('openArtist');
+  const oTitle  = params.get('openTitle');
+  if(!oTitle) return;
+  function tryOpenFromUrl(attemptsLeft){
+    if(typeof openTitleEvolutionModal !== 'function'){
+      if(attemptsLeft>0) setTimeout(()=>tryOpenFromUrl(attemptsLeft-1), 300);
+      return;
+    }
+    const fakeBtn = document.createElement('button');
+    fakeBtn.setAttribute('data-evotitle', JSON.stringify({artist: oArtist||'', title: oTitle}));
+    openTitleEvolutionModal(fakeBtn);
+  }
+  window.addEventListener('load', ()=> setTimeout(()=>tryOpenFromUrl(10), 500));
+})();
+</script>
+
 </body>
 </html>
