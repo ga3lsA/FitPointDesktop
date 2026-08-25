@@ -36412,20 +36412,35 @@ loadLatestAirplayOnStartup();
 //    mémoire (chartsHistoryWeeks déjà en cache), donc quasi instantané.
 //    Ce message listener doit rester actif en permanence (pas seulement au
 //    chargement), d'où sa mise en place ici, séparée du bloc ?openArtist=.
+//
+// Dans les deux cas, on attend que les données nécessaires à une fiche
+// COMPLÈTE soient prêtes avant d'appeler openTitleEvolutionModal :
+//  - la fonction elle-même doit exister (fin du script principal)
+//  - historyLoaded doit être passé à true : c'est le flag posé par
+//    histInit() une fois l'historique Call Out/OMT (historyCache) chargé
+//    depuis IndexedDB — chargement ASYNCHRONE, donc pas garanti fini au
+//    moment où ce script s'exécute. Sans cette attente, la section
+//    "Recherche musicale" de la fiche s'ouvre vide (historyCache encore
+//    vide), même si les données existent bel et bien un instant plus tard.
+function fpaFicheDataReady(){
+  return typeof openTitleEvolutionModal === 'function'
+      && typeof historyLoaded !== 'undefined' && historyLoaded === true;
+}
+function openFicheWhenReady(artist, title, attemptsLeft, onDone){
+  if(fpaFicheDataReady() || attemptsLeft<=0){
+    const fakeBtn = document.createElement('button');
+    fakeBtn.setAttribute('data-evotitle', JSON.stringify({artist: artist||'', title: title}));
+    openTitleEvolutionModal(fakeBtn);
+    if(onDone) onDone();
+    return;
+  }
+  setTimeout(()=>openFicheWhenReady(artist, title, attemptsLeft-1, onDone), 150);
+}
+
 window.addEventListener('message', (event) => {
   const data = event.data;
   if(!data || data.type !== 'smtv-open-title' || !data.title) return;
-  function tryOpen(attemptsLeft){
-    if(typeof openTitleEvolutionModal !== 'function'){
-      if(attemptsLeft>0) setTimeout(()=>tryOpen(attemptsLeft-1), 100);
-      return;
-    }
-    const fakeBtn = document.createElement('button');
-    fakeBtn.setAttribute('data-evotitle', JSON.stringify({artist: data.artist||'', title: data.title}));
-    openTitleEvolutionModal(fakeBtn);
-    window.focus();
-  }
-  tryOpen(20);
+  openFicheWhenReady(data.artist, data.title, 40, ()=> window.focus()); // jusqu'à ~6s d'attente max
 });
 
 // ── Ouverture directe d'une fiche titre depuis un lien externe (Spin Music TV) ──
@@ -36436,28 +36451,12 @@ window.addEventListener('message', (event) => {
 // sur un titre du tableau — aucune autre modification de la logique.
 // (tevFindNavItems gère nativement un bouton détaché du DOM : parentElement est
 // null, la boucle s'arrête immédiatement et retourne juste [btn], sans erreur.)
-//
-// Appel IMMÉDIAT (pas d'attente sur 'load' ni de délai artificiel) : ce script
-// est en toute fin de <body>, donc tous les scripts précédents — dont la
-// déclaration de openTitleEvolutionModal — ont déjà fini de s'exécuter au
-// moment où celui-ci démarre. Le seul temps d'attente restant vient de la
-// fiche elle-même (appels réseau Drive pour l'historique multi-semaines),
-// pas de ce script.
 (function(){
   const params = new URLSearchParams(window.location.search);
   const oArtist = params.get('openArtist');
   const oTitle  = params.get('openTitle');
   if(!oTitle) return;
-  function tryOpenFromUrl(attemptsLeft){
-    if(typeof openTitleEvolutionModal !== 'function'){
-      if(attemptsLeft>0) setTimeout(()=>tryOpenFromUrl(attemptsLeft-1), 100);
-      return;
-    }
-    const fakeBtn = document.createElement('button');
-    fakeBtn.setAttribute('data-evotitle', JSON.stringify({artist: oArtist||'', title: oTitle}));
-    openTitleEvolutionModal(fakeBtn);
-  }
-  tryOpenFromUrl(20);
+  openFicheWhenReady(oArtist, oTitle, 40); // jusqu'à ~6s d'attente max, sinon ouverture quand même (dégradée)
 })();
 </script>
 
