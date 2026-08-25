@@ -36398,13 +36398,51 @@ loadLatestAirplayOnStartup();
 </script>
 
 <script>
+// ── Ouverture d'une fiche titre depuis Spin Music TV ──────────────────────
+// Deux chemins, selon que l'onglet FPA est déjà ouvert ou non :
+//
+// 1) PREMIÈRE ouverture (pas encore d'onglet FPA) : Spin Music TV fait un
+//    window.open() classique vers fpa.html?openArtist=...&openTitle=... —
+//    la page se charge entièrement (lent, inévitable la première fois : tout
+//    l'historique Drive doit être récupéré). Voir bloc ci-dessous.
+//
+// 2) Onglet FPA DÉJÀ ouvert (cas courant après le tout premier clic) :
+//    Spin Music TV envoie directement un postMessage à cet onglet existant
+//    plutôt que de le recharger — la fiche s'ouvre sur les données déjà en
+//    mémoire (chartsHistoryWeeks déjà en cache), donc quasi instantané.
+//    Ce message listener doit rester actif en permanence (pas seulement au
+//    chargement), d'où sa mise en place ici, séparée du bloc ?openArtist=.
+window.addEventListener('message', (event) => {
+  const data = event.data;
+  if(!data || data.type !== 'smtv-open-title' || !data.title) return;
+  function tryOpen(attemptsLeft){
+    if(typeof openTitleEvolutionModal !== 'function'){
+      if(attemptsLeft>0) setTimeout(()=>tryOpen(attemptsLeft-1), 100);
+      return;
+    }
+    const fakeBtn = document.createElement('button');
+    fakeBtn.setAttribute('data-evotitle', JSON.stringify({artist: data.artist||'', title: data.title}));
+    openTitleEvolutionModal(fakeBtn);
+    window.focus();
+  }
+  tryOpen(20);
+});
+
 // ── Ouverture directe d'une fiche titre depuis un lien externe (Spin Music TV) ──
-// Usage : fpa.html?openArtist=NOM+ARTISTE&openTitle=TITRE
-// Réutilise telle quelle la fonction openTitleEvolutionModal existante en lui
-// passant un bouton "fictif" porteur du même attribut data-evotitle qu'un
-// clic normal sur un titre du tableau — aucune autre modification de la logique.
+// Usage : fpa.html?openArtist=NOM+ARTISTE&openTitle=TITRE — utilisé uniquement
+// pour le tout premier appel (voir commentaire ci-dessus). Réutilise telle
+// quelle la fonction openTitleEvolutionModal existante en lui passant un
+// bouton "fictif" porteur du même attribut data-evotitle qu'un clic normal
+// sur un titre du tableau — aucune autre modification de la logique.
 // (tevFindNavItems gère nativement un bouton détaché du DOM : parentElement est
 // null, la boucle s'arrête immédiatement et retourne juste [btn], sans erreur.)
+//
+// Appel IMMÉDIAT (pas d'attente sur 'load' ni de délai artificiel) : ce script
+// est en toute fin de <body>, donc tous les scripts précédents — dont la
+// déclaration de openTitleEvolutionModal — ont déjà fini de s'exécuter au
+// moment où celui-ci démarre. Le seul temps d'attente restant vient de la
+// fiche elle-même (appels réseau Drive pour l'historique multi-semaines),
+// pas de ce script.
 (function(){
   const params = new URLSearchParams(window.location.search);
   const oArtist = params.get('openArtist');
@@ -36412,14 +36450,14 @@ loadLatestAirplayOnStartup();
   if(!oTitle) return;
   function tryOpenFromUrl(attemptsLeft){
     if(typeof openTitleEvolutionModal !== 'function'){
-      if(attemptsLeft>0) setTimeout(()=>tryOpenFromUrl(attemptsLeft-1), 300);
+      if(attemptsLeft>0) setTimeout(()=>tryOpenFromUrl(attemptsLeft-1), 100);
       return;
     }
     const fakeBtn = document.createElement('button');
     fakeBtn.setAttribute('data-evotitle', JSON.stringify({artist: oArtist||'', title: oTitle}));
     openTitleEvolutionModal(fakeBtn);
   }
-  window.addEventListener('load', ()=> setTimeout(()=>tryOpenFromUrl(10), 500));
+  tryOpenFromUrl(20);
 })();
 </script>
 
