@@ -1927,6 +1927,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button onclick="exportPlaylistPDF()" title="Exporter la playlist de la station en cours en PDF" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">📄 PDF</button>
         <button onclick="exportPlaylistExcel()" title="Exporter la playlist de la station en cours en Excel" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#0DA76B;border:1.5px solid #0DA76B;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">📊 Excel</button>
         <button onclick="exportPowerTabPDF()" title="Exporter les titres Power New / Power Intro cochés, avec les Nouveau/Out par rapport à la semaine précédente" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#7C3AED;border:1.5px solid #7C3AED;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">🔌 Power Tab</button>
+        <button onclick="exportCallOutListPDF()" title="Exporter la liste des titres cochés Call Out (partent en recherche) pour la station en cours" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#E67E22;border:1.5px solid #E67E22;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">🎧 Call Out</button>
         <label title="Importer Label / Date d'Entrée depuis un fichier Excel (colonnes Artiste, Titre, Label, Date entrée) — s'applique à la station active" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700;white-space:nowrap;display:inline-flex;align-items:center;gap:5px">
           📥 Importer Excel
           <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handlePlaylistAttributesImport(this)">
@@ -1981,7 +1982,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
     <!-- Note explicative (repliable) -->
     <div id="infoPlaylist" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-      Cochez des titres dans <strong>Classements</strong> (via le bouton "+" à côté de chaque titre, qui propose Comité d'Écoute et/ou Playlist) pour les ajouter ici, ou utilisez <strong>➕ Ajouter un titre manuellement</strong> ci-dessus si le titre ne figure encore dans aucun classement (il se connectera automatiquement aux classements/métriques dès qu'il y apparaîtra). Chaque titre est rattaché à la station active au moment de l'ajout (<span class="station-name">Europe 2</span> ou RFM — bascule avec le bouton 🔁 ci-dessus). Renseignez pour chaque titre sa <strong>Date d'Entrée</strong>, sa <strong>Catégorie</strong> (et au besoin son <strong>Ancienne Catégorie</strong>, modifiable manuellement même si elle se met à jour automatiquement) et son <strong>Label</strong> : la liste est ensuite triée par catégorie dans l'ordre de rotation habituel, avec le Fit Score et le quadrant Fit Point de la vague en cours quand le titre y figure. Les cases <strong>Power (N / I)</strong> marquent les titres Power New et Power Intro ; <strong>🔌 Power Tab</strong> exporte ces sélections en PDF en indiquant automatiquement les Nouveau/Out par rapport à la dernière semaine archivée. <strong>🔗 Créer un paquet</strong> lie 2 titres d'une même catégorie (ils tournent une fois sur deux). <strong>💾 Sauvegarder</strong> archive la Playlist de la semaine sur Drive, indépendamment des classements ; <strong>🗄️ Archives</strong> permet de retrouver une semaine passée ou de rechercher un titre dans l'historique.
+      Cochez des titres dans <strong>Classements</strong> (via le bouton "+" à côté de chaque titre, qui propose Comité d'Écoute et/ou Playlist) pour les ajouter ici, ou utilisez <strong>➕ Ajouter un titre manuellement</strong> ci-dessus si le titre ne figure encore dans aucun classement (il se connectera automatiquement aux classements/métriques dès qu'il y apparaîtra). Chaque titre est rattaché à la station active au moment de l'ajout (<span class="station-name">Europe 2</span> ou RFM — bascule avec le bouton 🔁 ci-dessus). Renseignez pour chaque titre sa <strong>Date d'Entrée</strong>, sa <strong>Catégorie</strong> (et au besoin son <strong>Ancienne Catégorie</strong>, modifiable manuellement même si elle se met à jour automatiquement) et son <strong>Label</strong> : la liste est ensuite triée par catégorie dans l'ordre de rotation habituel, avec le Fit Score, le quadrant Fit Point de la vague en cours et les <strong>Diffusions cumulées</strong> (colonne « Diffusion Europe 2 » / « Diff RFM » des fichiers Call Out/OMT, conservées et mises à jour à chaque import) quand le titre y figure. Les cases <strong>Power (N / I)</strong> marquent les titres Power New et Power Intro ; <strong>🔌 Power Tab</strong> exporte ces sélections en PDF en indiquant automatiquement les Nouveau/Out par rapport à la dernière semaine archivée. La case <strong>Call Out</strong> indique qu'un titre part en recherche (à tester) ; <strong>🎧 Call Out</strong> exporte la liste de tous les titres cochés, triée par artiste. <strong>Cliquez sur le badge d'une catégorie</strong> (en tête de chaque groupe) pour l'exclure — ou la réintégrer — du <strong>📄 PDF</strong> et de l'<strong>📊 Excel</strong> exportés, sans la retirer de la Playlist affichée ici : pratique pour les catégories de mouvement (ex. « R », « O ») qui n'ont pas besoin de figurer dans le compte-rendu envoyé en réunion. <strong>🔗 Créer un paquet</strong> lie 2 titres d'une même catégorie (ils tournent une fois sur deux). <strong>💾 Sauvegarder</strong> archive la Playlist de la semaine sur Drive, indépendamment des classements ; <strong>🗄️ Archives</strong> permet de retrouver une semaine passée ou de rechercher un titre dans l'historique.
     </div>
 
     <!-- Bandeau vide -->
@@ -3657,6 +3658,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <option value="airplay_rtl2"   id="sortOpt_rtl2"   style="display:none">Tri : RTL2 passages ↓</option>
       <option value="airplay_indes"  id="sortOpt_indes"  style="display:none">Tri : Indés classement ↑</option>
       <option value="airplay_rg"     id="sortOpt_rg"     style="display:none">Tri : Général classement ↑</option>
+      <option value="diff"           id="sortOpt_diff"   style="display:none">Tri : Diffusions ↓</option>
     </select>
     <span id="resCount" style="color:var(--muted);font-size:11px;margin-left:auto;font-weight:600"></span>
   </div>
@@ -4277,7 +4279,7 @@ function detectCols(headers){
     pctFam:   find('POT SCORE FAM','PCT FAMILIAR','FAM','FAMILIAR'),
     famScore: find('FAM SCORE','FAMILIARITY'),
     mainScore:find('POT SCORE TOUS','FAM SCORE','FAMILIARITY SCORE'),
-    diffusion:find('DIFFUSION'),
+    diffusion:find('DIFFUSION','DIFF'),
   };
 }
 
@@ -4353,7 +4355,7 @@ function extractCibleLabel(raw,hrIdx){
 function detectScoreCols(headers,rows){
   const EXCL=['RNK','RANK','POS','TITRE','TITLE','ARTISTE','ARTIST','YEAR','ANNEE',
     'SOUND','GENRE','STYLE','LANGUAGE','LANGUE','CAT','CATEGORY','PREVIOUS','MEDIAID',
-    'DIFFUSION','DATE','__EMPTY'];
+    'DIFFUSION','DIFF','DATE','__EMPTY'];
   return headers.filter(h=>{
     const hu=(h||'').toString().toUpperCase().trim();
     if(!hu||EXCL.some(m=>hu.startsWith(m)||hu.includes(m)))return false;
@@ -5329,6 +5331,12 @@ function runAnalysis(){
     return{rnk:rnkVal,title:r[cols.title]||'',artist:r[cols.artist]||'',year:r[cols.year]||'',sound:r[cols.sound]||'',language:r[cols.language]||'',category:r[cols.category]||'',score,fit:Math.round(fit*10)/10,delta:Math.round((score-fitPoint)*100)/100,love:Math.round(love*10)/10,burn:Math.round(burn*10)/10,fam:Math.round(fam*10)/10,cumPlays,q,isAnchor,_rowIndex:r._rowIndex};
   }).filter(Boolean);
   analysisResult.sort((a,b)=>QUAD[a.q].order-QUAD[b.q].order||b.fit-a.fit||b.score-a.score);
+  // Persiste les diffusions cumulées (Diffusion Europe 2 / Diff RFM) de cette
+  // vague dans le store dédié — voir ingestSongDiffusionsFromAnalysis, plus
+  // haut dans le fichier — pour qu'elles restent disponibles (fiche titre,
+  // page Fit Score, Playlist) même après avoir quitté cette analyse, et
+  // synchronisées sur Drive plutôt que limitées à l'historique local des vagues.
+  ingestSongDiffusionsFromAnalysis(analysisResult, ACTIVE_STATION, sourceFileName);
   const persisted = saveCurrentAnalysisToStorage();
   if(!persisted) showToast('⚠️ Résultats calculés mais fichier trop volumineux pour être gardés en mémoire au rechargement de la page', 'err');
   if(typeof renderHomePendingCard === 'function') renderHomePendingCard(currentAnalysisKind());
@@ -7571,7 +7579,7 @@ function quickAddFromChartSearch(target){
       showToast('Déjà dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'err');
       return;
     }
-    playlistTitles.push({ key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, manual: true });
+    playlistTitles.push({ key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, callOut:false, manual: true });
     playlistSaveToStorage();
     updatePlaylistBadge();
     showToast('✓ « ' + titleCaseDisplay(title) + ' » ajouté à la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success');
@@ -9070,6 +9078,33 @@ function sortByAirplay(key){
   renderTable();
 }
 
+/** Valeur de diffusions cumulées à utiliser pour une ligne de résultats —
+ *  priorité à la vague tout juste analysée (r.cumPlays), repli sur le store
+ *  persistant synchronisé Drive (songDiffusions) sinon. Centralisé ici pour
+ *  que l'affichage de la colonne et son tri utilisent exactement la même
+ *  valeur (voir renderTable). */
+function rowDiffValue(r){
+  if(r.cumPlays != null) return r.cumPlays;
+  const stored = getSongDiffusion(r.title, r.artist);
+  return stored ? (ACTIVE_STATION === 'RFM' ? stored.rfm : stored.europe2) : null;
+}
+
+/** Bascule le tri par Diffusions cumulées, sur le même principe que
+ *  sortByAirplay (clic sur l'en-tête de colonne) — option masquée par défaut
+ *  dans le sélecteur, révélée au premier clic. */
+function sortByDiffusions(){
+  const sortSel = document.getElementById('sortBy');
+  airplaySortKey = null;
+  if(sortSel.value === 'diff'){
+    sortSel.value = 'quadrant';
+  } else {
+    const opt = document.getElementById('sortOpt_diff');
+    if(opt) opt.style.display = '';
+    sortSel.value = 'diff';
+  }
+  renderTable();
+}
+
 // ── HELPERS DE RENDU PARTAGÉS ────────────────────────────────────────────
 
 /** Ouvre les liens Spotify dans une petite fenêtre popup réutilisée (même
@@ -9205,17 +9240,27 @@ function renderTable(){
       return (vbOk?vb:0) - (vaOk?va:0);
     });
   }
+  else if(sort==='diff'){
+    data=[...data].sort((a,b)=>{
+      const va = rowDiffValue(a), vb = rowDiffValue(b);
+      const vaOk = va!=null, vbOk = vb!=null;
+      if(!vaOk && !vbOk) return 0;
+      if(!vaOk) return 1;
+      if(!vbOk) return -1;
+      return vb - va;
+    });
+  }
   document.getElementById('resCount').textContent=data.length+' titre'+(data.length>1?'s':'');
 
   // Grille dynamique : UNE seule définition CSS partagée header + lignes
   // Colonnes airplay : propres (E2, RFM) un peu plus larges, concurrentes très compactes
-  // Shazam Monde et Nostalgie retirés du tableau principal (simplification lecture) —
-  // ils restent disponibles dans l'onglet Airplay des Classements / Comité d'Écoute / Radar.
-  const BASE_COLS = '44px 26px minmax(0,1fr) 132px 82px 44px';
-  const spyColStr  = spotifyLoaded ? ' 38px' : '';  // colonne SPY conditionnelle
+  // Shazam et Spotify retirés du tableau principal (déjà disponibles en pages
+  // complètes dédiées, voir Classements) et remplacés par une colonne
+  // Diffusions cumulées, triable comme les colonnes airplay.
+  const BASE_COLS = '44px 26px minmax(0,1fr) 132px 82px 50px';
   const MAIN_TABLE_RADIOS = AIRPLAY_RADIOS.filter(r => r.key !== 'nost');
   const apColsStr = airplayLoaded ? MAIN_TABLE_RADIOS.map(r => r.own ? '36px' : '32px').join(' ') : '';
-  const gridCols  = BASE_COLS + spyColStr + (apColsStr ? ' '+apColsStr : '');
+  const gridCols  = BASE_COLS + (apColsStr ? ' '+apColsStr : '');
 
   // Injecter la grille via une feuille de style dynamique → UNE source de vérité
   let styleTag = document.getElementById('gridStyle');
@@ -9239,10 +9284,14 @@ function renderTable(){
              user-select:none;display:flex;align-items:center;gap:2px"
     >${r.label}${arrow}</span>`;
   }).join('') : '';
+  const diffSortActive = sort === 'diff';
+  const diffArrow = diffSortActive ? `<span style='font-size:8px'>▼</span>` : '';
   hdrEl.innerHTML =
     '<span>RNK</span><span></span><span>TITRE / ARTISTE</span><span>QUADRANT</span><span>FIT SCORE</span>' +
-    '<span title="Shazam France Top 200" style="cursor:help;font-size:9px">🇫🇷SHZ</span>' +
-    (spotifyLoaded ? '<span title="Spotify France Weekly/Daily Top 200" style="cursor:help;font-size:9px;color:#1DB954">🎵SPY</span>' : '') +
+    `<span title="Trier par Diffusions cumulées ↓" onclick="sortByDiffusions()"
+       style="cursor:pointer;font-size:9px;font-weight:800;color:${diffSortActive?'var(--cyan)':'var(--text2)'};
+              ${diffSortActive?'text-decoration:underline;text-underline-offset:3px;':''}
+              user-select:none;display:flex;align-items:center;justify-content:center;gap:2px">DIFF.${diffArrow}</span>` +
     apHdrCells;
 
 
@@ -9255,6 +9304,13 @@ function renderTable(){
     const apCells = airplayLoaded
       ? MAIN_TABLE_RADIOS.map((radio,idx)=>airplayCell(radio, r.airplay, idx)).join('')
       : '';
+
+    // Diffusions cumulées (colonne "Diffusion Europe 2" / "Diff RFM") —
+    // voir rowDiffValue, colonne dédiée triable au même titre que l'airplay.
+    const diffVal = rowDiffValue(r);
+    const diffCellHtml = diffVal != null
+      ? `<div style="font-size:10px;font-weight:700;color:var(--text2);text-align:center;font-variant-numeric:tabular-nums" title="Diffusions cumulées ${escHtml(STATION_LABELS[ACTIVE_STATION])}">${diffVal}</div>`
+      : `<div style="font-size:10px;color:var(--border);text-align:center">–</div>`;
 
     return `<div class="grid-row" style="padding:9px 12px;border-radius:8px;background:${c.rowBg};border:1.5px solid ${r.isAnchor?c.rowBorder:'var(--border)'};box-shadow:${r.isAnchor?'var(--shadow)':'none'}">
       <span style="color:var(--muted);font-size:11px;font-weight:600">${r.isAnchor?'⚓':r.rnk||'–'}</span>
@@ -9270,8 +9326,7 @@ function renderTable(){
         <span style="font-size:13px;font-weight:800;color:${fs.text};line-height:1;font-variant-numeric:tabular-nums">${r.fit.toFixed(1)}</span>
         <div style="width:100%;height:7px;background:var(--white);border-radius:4px;overflow:hidden;border:1px solid ${fs.border}"><div style="width:${fp}%;height:100%;background:${fc};border-radius:4px"></div></div>
       </div>
-      ${shazamBadge(r.shzFR)}
-      ${spotifyLoaded ? spotifyBadge(r.spyFR) : ''}
+      ${diffCellHtml}
       ${apCells}
     </div>`;
   }).join('');
@@ -18738,7 +18793,34 @@ async function openTevByInfo(info){
           style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
       </div>
     </label>
-    </label>
+    ${(() => {
+      // Même repli que sur la Playlist et la page Fit Score (voir
+      // buildPlaylistRow / rowDiffValue) : le titre tel qu'ajouté à la
+      // Playlist (ou tel que saisi ailleurs) peut différer légèrement, texte
+      // pour texte, de celui du fichier Call Out importé — getSongDiffusion()
+      // seule (clé exacte titre+artiste) ne le retrouve alors pas, alors que
+      // row360 (déjà calculé plus haut) le retrouve par similarité. On fusionne
+      // les deux pour la station active avant d'afficher les deux champs.
+      const diffEntry = getSongDiffusion(title, artist);
+      const merged = diffEntry ? { ...diffEntry } : { europe2:null, europe2At:'', rfm:null, rfmAt:'' };
+      const activeField = ACTIVE_STATION === 'RFM' ? 'rfm' : 'europe2';
+      if(row360 && row360.cumPlays != null && merged[activeField] == null){
+        merged[activeField] = row360.cumPlays;
+        // Persiste cette correspondance floue sous l'orthographe EXACTE de ce
+        // titre (celle utilisée ici, Playlist/Comité/etc.) pour que ce soit
+        // une correspondance directe la prochaine fois, sans dépendre à
+        // nouveau de row360 — et pour que cette variante entre dans la
+        // synchro Drive au même titre que celles vues à l'import.
+        const dKey = comiteKey(title, artist);
+        if(!songDiffusions[dKey]) songDiffusions[dKey] = { europe2:null, europe2At:'', europe2Wave:'', rfm:null, rfmAt:'', rfmWave:'' };
+        songDiffusions[dKey][activeField] = row360.cumPlays;
+        if(!songDiffusions[dKey][activeField + 'At']) songDiffusions[dKey][activeField + 'At'] = new Date().toISOString().slice(0, 10);
+        songDiffusionsSaveToStorage();
+        if(typeof songDiffusionsSyncToDrive === 'function') songDiffusionsSyncToDrive();
+      }
+      return buildDiffusionAttrField('Diffusions cumulées Europe 2', merged, 'europe2')
+           + buildDiffusionAttrField('Diffusions cumulées RFM', merged, 'rfm');
+    })()}
     <div style="grid-column:1/-1">
       <span id="tevMbBadge" onclick="mbShowStatusToast()" title="Enrichissement ISRC + date de sortie (MusicBrainz) — cliquer pour le détail" style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 9px;white-space:nowrap;cursor:pointer"></span>
     </div>
@@ -21187,6 +21269,92 @@ function getSongAttributes(title, artist){
   return songAttributes[key];
 }
 
+// ── DIFFUSIONS CUMULÉES — nombre de passages total d'un titre, tel que
+// rapporté par l'institut dans la colonne "Diffusion Europe 2" / "Diff RFM"
+// des fichiers Call Out/OMT (voir detectCols → cols.diffusion, déjà utilisé
+// pour cumPlays/lifecyclePhase dans le module Prédiction). Jusqu'ici cette
+// valeur ne vivait que dans analysisResult (le temps de la session) ou dans
+// l'historique de vagues (IndexedDB, local à ce navigateur) — ce store la
+// rend persistante par titre, indépendamment des vagues, ET synchronisée sur
+// Drive (voir songDiffusionsSaveToDrive/LoadFromDrive, plus bas dans le
+// fichier une fois DRIVE_SYNC_URL disponible), pour rester à jour partout
+// (fiche titre, page Fit Score, Playlist) même sans ré-ouvrir la vague qui a
+// produit la mesure. Un titre a deux valeurs indépendantes (Europe 2 / RFM)
+// exactement comme les Dates d'Entrée de Song Attributs ci-dessus — jamais
+// mélangées entre stations. Payload volontairement minimal (un entier + une
+// date + le nom de la vague par station) pour rester compatible avec le
+// quota Drive (PropertiesService, 500 Ko) même sur plusieurs milliers de titres.
+const SONG_DIFFUSIONS_IDB_KEY = 'fpa_song_diffusions';
+let songDiffusions = songDiffusionsLoadFromStorage();
+function songDiffusionsLoadFromStorage(){
+  try{ return JSON.parse(localStorage.getItem(SONG_DIFFUSIONS_IDB_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+async function songDiffusionsCacheLoad(){
+  try{
+    const fromIdb = await idbGet(SONG_DIFFUSIONS_IDB_KEY);
+    if(fromIdb && Object.keys(fromIdb).length) Object.assign(songDiffusions, fromIdb);
+    else await idbSet(SONG_DIFFUSIONS_IDB_KEY, songDiffusions);
+  }catch(e){ /* IndexedDB indisponible : repli localStorage, alimenté en best-effort ci-dessous */ }
+}
+songDiffusionsCacheLoad();
+function songDiffusionsSaveToStorage(){
+  idbSet(SONG_DIFFUSIONS_IDB_KEY, songDiffusions).catch(e => console.error('Échec de sauvegarde IndexedDB (Diffusions) :', e));
+  try{ localStorage.setItem(SONG_DIFFUSIONS_IDB_KEY, JSON.stringify(songDiffusions)); }catch(e){ /* sans conséquence, IndexedDB fait foi */ }
+}
+/** Lecture seule — ne crée PAS d'entrée par défaut dans le store (contrairement
+ *  à getSongAttributes) pour ne pas alourdir songDiffusions d'entrées vides à
+ *  chaque simple affichage d'une fiche/ligne ; retourne null si le titre n'a
+ *  jamais été rencontré avec une colonne Diffusion exploitable. */
+function getSongDiffusion(title, artist){
+  return songDiffusions[comiteKey(title, artist)] || null;
+}
+
+/** Construit un champ "Diffusions cumulées [station]" pour la section Song
+ *  Attributs de la fiche titre (voir openTevByInfo) — même gabarit visuel
+ *  que les autres champs de cette grille, mais en lecture seule : la valeur
+ *  est alimentée automatiquement à chaque import (ingestSongDiffusionsFromAnalysis),
+ *  pas saisie manuellement. Affiche un tiret et une aide si le titre n'a
+ *  jamais été rencontré avec une colonne Diffusion exploitable pour cette
+ *  station, plutôt que de masquer le champ (cohérence avec les autres
+ *  champs de la grille, toujours visibles même vides). */
+function buildDiffusionAttrField(label, diffEntry, field){
+  const val = diffEntry ? diffEntry[field] : null;
+  const at  = diffEntry ? diffEntry[field + 'At'] : '';
+  const display = (val !== null && val !== undefined)
+    ? `<strong style="color:var(--navy)">${val}</strong>${at ? ' <span style="color:var(--muted);font-weight:600">— au ' + formatDateFr(at) + '</span>' : ''}`
+    : `<span style="color:var(--muted)">— (aucun import avec colonne Diffusion pour l'instant)</span>`;
+  return `<label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">${escHtml(label)}
+      <div style="margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;background:var(--bg);min-height:19px;display:flex;align-items:center" title="Alimenté automatiquement depuis la colonne Diffusion des imports Call Out/OMT">${display}</div>
+    </label>`;
+}
+/** Alimente le store à partir des résultats d'une analyse Call Out/OMT tout
+ *  juste calculée (voir runAnalysis) — un titre par ligne de analysisResult
+ *  dont cumPlays est renseigné. stationKey détermine le champ mis à jour
+ *  (europe2 / rfm), jamais les deux à la fois. Sauvegarde locale + poussée
+ *  Drive groupées en UN seul appel après la boucle plutôt qu'à chaque titre. */
+function ingestSongDiffusionsFromAnalysis(results, stationKey, waveLabel){
+  if(!results || !results.length) return 0;
+  const field = stationKey === 'RFM' ? 'rfm' : 'europe2';
+  const atField = field + 'At', waveField = field + 'Wave';
+  const today = new Date().toISOString().slice(0, 10);
+  let count = 0;
+  results.forEach(r => {
+    if(r.cumPlays === null || r.cumPlays === undefined || isNaN(r.cumPlays)) return;
+    const key = comiteKey(r.title, r.artist);
+    if(!songDiffusions[key]) songDiffusions[key] = { europe2:null, europe2At:'', europe2Wave:'', rfm:null, rfmAt:'', rfmWave:'' };
+    songDiffusions[key][field] = Math.round(r.cumPlays);
+    songDiffusions[key][atField] = today;
+    songDiffusions[key][waveField] = waveLabel || '';
+    count++;
+  });
+  if(count){
+    songDiffusionsSaveToStorage();
+    if(typeof songDiffusionsSyncToDrive === 'function') songDiffusionsSyncToDrive();
+  }
+  return count;
+}
+
 /** Met à jour un attribut partagé et répercute Date d'Entrée / Label sur les
  *  entrées Playlist existantes des deux stations (pour que la Playlist et la
  *  fiche restent synchronisées quel que soit l'endroit où on édite). Le
@@ -21274,7 +21442,7 @@ function dedupePlaylistTitles(){
     const dedupeKey = t.key + '|' + t.station;
     if(seen.has(dedupeKey)){
       const existing = seen.get(dedupeKey);
-      ['categorie','ancienneCategorie','dateEntree','label','powerNew','powerIntro','bundleId'].forEach(f => {
+      ['categorie','ancienneCategorie','dateEntree','label','powerNew','powerIntro','callOut','bundleId'].forEach(f => {
         const existingEmpty = existing[f] === '' || existing[f] === null || existing[f] === undefined || existing[f] === false;
         const currentFilled = t[f] !== '' && t[f] !== null && t[f] !== undefined && t[f] !== false;
         if(existingEmpty && currentFilled) existing[f] = t[f];
@@ -21322,6 +21490,49 @@ function playlistValiditySaveToStorage(){
 function getPlaylistValidity(stKey){
   if(!playlistValidityPeriod[stKey]) playlistValidityPeriod[stKey] = { from:'', to:'' };
   return playlistValidityPeriod[stKey];
+}
+
+/** Catégories EXCLUES du compte-rendu exporté (PDF/Excel), par station —
+ *  permet de garder une catégorie visible et éditable dans l'app (ex. les
+ *  codes de mouvement type "R"/"O" qui n'ont pas vocation à apparaître dans
+ *  le document envoyé en réunion de Comité d'Écoute) sans la retirer de la
+ *  Playlist elle-même. Se déclenche en cliquant sur le badge de catégorie en
+ *  tête de chaque groupe (voir renderPlaylistPage) — persisté en
+ *  localStorage comme playlistValidityPeriod ci-dessus (payload minuscule,
+ *  quelques codes par station, aucun besoin d'IndexedDB). "Non classé" n'est
+ *  de toute façon jamais exporté (voir exportPlaylistPDF/Excel) donc n'a pas
+ *  besoin d'être présent dans cette liste. */
+const PLAYLIST_EXPORT_EXCLUDED_KEY = 'fpa_playlist_export_excluded_cats_v1';
+let playlistExportExcludedCats = playlistExportExcludedLoadFromStorage();
+function playlistExportExcludedLoadFromStorage(){
+  try{ return JSON.parse(localStorage.getItem(PLAYLIST_EXPORT_EXCLUDED_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function playlistExportExcludedSaveToStorage(){
+  try{ localStorage.setItem(PLAYLIST_EXPORT_EXCLUDED_KEY, JSON.stringify(playlistExportExcludedCats)); }catch(e){ /* quota localStorage, ignoré */ }
+}
+function isPlaylistCatExcludedFromExport(cat, stationKey){
+  const st = stationKey || ACTIVE_STATION;
+  const list = playlistExportExcludedCats[st] || [];
+  return list.includes((cat || '').toUpperCase().trim());
+}
+/** Bascule l'inclusion/exclusion d'une catégorie dans le PDF/Excel exporté
+ *  pour la station active — appelé au clic sur le badge de catégorie. */
+function togglePlaylistExportCat(cat){
+  const norm = (cat || '').toUpperCase().trim();
+  if(!norm || norm === 'NON CLASSÉ') return;
+  if(!playlistExportExcludedCats[ACTIVE_STATION]) playlistExportExcludedCats[ACTIVE_STATION] = [];
+  const list = playlistExportExcludedCats[ACTIVE_STATION];
+  const idx = list.indexOf(norm);
+  if(idx === -1){
+    list.push(norm);
+    showToast('🚫 Catégorie « ' + norm + ' » exclue du PDF/Excel exporté', 'success');
+  } else {
+    list.splice(idx, 1);
+    showToast('✓ Catégorie « ' + norm + ' » réintégrée au PDF/Excel exporté', 'success');
+  }
+  playlistExportExcludedSaveToStorage();
+  renderPlaylistPage();
 }
 /** Rafraîchit les 2 champs date de l'en-tête Playlist avec la période de la
  *  station active — appelé par renderPlaylistPage() à chaque rendu (y
@@ -21382,7 +21593,7 @@ function togglePlaylistTitle(title, artist){
     if(removed.bundleId) unlinkPlaylistBundle(removed.key, true);
     playlistTitles.splice(idx, 1);
   } else {
-    playlistTitles.push({key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false});
+    playlistTitles.push({key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, callOut:false});
   }
   playlistSaveToStorage();
   updatePlaylistBadge();
@@ -21412,7 +21623,7 @@ function addManualPlaylistTitle(){
   }
   playlistTitles.push({
     key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION,
-    dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, manual:true
+    dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, callOut:false, manual:true
   });
   playlistSaveToStorage();
   updatePlaylistBadge();
@@ -22028,7 +22239,7 @@ function togglePlaylistExpand(key){
  *  catégorie (éditable), ancienne catégorie (badge auto), les 6 métriques
  *  Call Out (Pot Score/Burn/Inconnu × Ensemble/P1), date d'entrée (éditable),
  *  label (éditable), retirer. */
-const PLAYLIST_ROW_GRID = '22px 155px 200px 48px 48px 40px 34px 48px 48px 44px 44px 48px 48px 44px 104px 82px 22px';
+const PLAYLIST_ROW_GRID = '22px 155px 160px 48px 48px 40px 34px 42px 48px 48px 44px 44px 48px 48px 44px 32px 104px 96px 22px';
 
 function playlistNumCell(val, decimals, suffix){
   if(val === null || val === undefined || val === '' || isNaN(parseFloat(val))) return '<span style="color:var(--muted)">–</span>';
@@ -22175,9 +22386,37 @@ function buildPlaylistRow(t, metrics, row360){
     ? `<span title="${escHtml(quad.label)}" style="display:inline-flex;align-items:center;justify-content:center;width:26px;height:20px;border-radius:6px;background:${quad.badgeBg};color:${quad.badgeText};font-size:12px">${quad.icon}</span>`
     : '<span style="color:var(--muted)">–</span>';
 
+  // Diffusions cumulées (colonne "Diffusion Europe 2" / "Diff RFM" du fichier
+  // Call Out/OMT) — priorité à la vague en cours (row360.cumPlays, retrouvée
+  // par similarité — voir findRow360Match), repli sur le store persistant
+  // synchronisé Drive (songDiffusions, clé exacte) sinon. Quand row360 fournit
+  // la valeur sous une orthographe que le store exact ne connaît pas encore
+  // (titre Playlist légèrement différent de celui du fichier importé), on la
+  // persiste ici sous CETTE orthographe pour ne plus dépendre de row360 par la
+  // suite — même principe que sur la fiche titre (openTevByInfo).
+  const diffFieldPl = t.station === 'RFM' ? 'rfm' : 'europe2';
+  const diffStoredPl = getSongDiffusion(t.title, t.artist);
+  const diffStoredValPl = diffStoredPl ? diffStoredPl[diffFieldPl] : null;
+  const diffValPl = (row360 && row360.cumPlays != null) ? row360.cumPlays : diffStoredValPl;
+  if(row360 && row360.cumPlays != null && diffStoredValPl == null){
+    const dKeyPl = t.key;
+    if(!songDiffusions[dKeyPl]) songDiffusions[dKeyPl] = { europe2:null, europe2At:'', europe2Wave:'', rfm:null, rfmAt:'', rfmWave:'' };
+    songDiffusions[dKeyPl][diffFieldPl] = row360.cumPlays;
+    if(!songDiffusions[dKeyPl][diffFieldPl + 'At']) songDiffusions[dKeyPl][diffFieldPl + 'At'] = new Date().toISOString().slice(0, 10);
+    songDiffusionsSaveToStorage();
+    if(typeof songDiffusionsSyncToDrive === 'function') songDiffusionsSyncToDrive();
+  }
+  const diffCell = diffValPl != null
+    ? `<span title="Diffusions cumulées ${escHtml(STATION_LABELS[t.station])}" style="font-size:11px;font-weight:700;color:var(--text2)">${diffValPl}</span>`
+    : '<span style="color:var(--muted)">–</span>';
+
   const powerCell = `<div style="display:flex;gap:4px;justify-content:center;align-items:center" onclick="event.stopPropagation()">
       <input type="checkbox" name="pl-new-${safeId}" ${t.powerNew?'checked':''} onchange="updatePlaylistField('${t.key}','powerNew',this.checked)" title="Power New" style="width:13px;height:13px;cursor:pointer;accent-color:#0DA76B">
       <input type="checkbox" name="pl-intro-${safeId}" ${t.powerIntro?'checked':''} onchange="updatePlaylistField('${t.key}','powerIntro',this.checked)" title="Power Intro" style="width:13px;height:13px;cursor:pointer;accent-color:#7C3AED">
+    </div>`;
+
+  const callOutCell = `<div style="display:flex;justify-content:center;align-items:center" onclick="event.stopPropagation()">
+      <input type="checkbox" name="pl-callout-${safeId}" ${t.callOut?'checked':''} onchange="updatePlaylistField('${t.key}','callOut',this.checked)" title="Call Out — le titre part en recherche" style="width:13px;height:13px;cursor:pointer;accent-color:#E67E22">
     </div>`;
 
   const rowHtml = `<div draggable="true" ondragstart="playlistDragStart(event,'${t.key}')" ondragend="playlistDragEnd(event)" style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border);cursor:grab;${partner?'border-left:3px solid var(--cyan)':''}${selected?';background:var(--cyan-light)':(expanded?';background:var(--bg)':'')}">
@@ -22200,6 +22439,7 @@ function buildPlaylistRow(t, metrics, row360){
     </div>
     <div style="padding:7px 4px;text-align:center">${fitCell}</div>
     <div style="padding:7px 4px;text-align:center">${quadCell}</div>
+    <div style="padding:7px 4px;text-align:center">${diffCell}</div>
     <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potTous, 1)}</div>
     <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potP1, 1)}</div>
     <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnTous, 0, '%')}</div>
@@ -22207,6 +22447,7 @@ function buildPlaylistRow(t, metrics, row360){
     <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incTous, 0, '%')}</div>
     <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incP1, 0, '%')}</div>
     <div style="padding:4px">${powerCell}</div>
+    <div style="padding:4px">${callOutCell}</div>
     <div style="padding:4px">
       <input type="date" name="pl-date-${safeId}" value="${dateEntreeVal}" onchange="updatePlaylistField('${t.key}','dateEntree',this.value)"
         style="width:100%;padding:4px 3px;border-radius:5px;border:1.5px solid var(--border);font-size:10px;font-family:inherit;color:var(--navy);background:var(--white)">
@@ -22247,14 +22488,14 @@ function playlistShowEmpty(msg){
 }
 
 const PLAYLIST_HEADER_LABELS = [
-  ['', ''], ['Artiste',''], ['Titre',''], ['Catégorie',''], ['Anc. Cat.',''], ['Fit',''], ['Quad.',''],
+  ['', ''], ['Artiste',''], ['Titre',''], ['Catégorie',''], ['Anc. Cat.',''], ['Fit',''], ['Quad.',''], ['Diff.','Cumul.'],
   ['Pot Score','Ensemble'], ['Pot Score','P1'], ['Burn','Ensemble'], ['Burn','P1'],
-  ['Inconnu','Ensemble'], ['Inconnu','P1'], ['Power','N / I'], ["Date d'Entrée",''], ['Label',''], ['','']
+  ['Inconnu','Ensemble'], ['Inconnu','P1'], ['Power','N / I'], ['Call','Out'], ["Date d'Entrée",''], ['Label',''], ['','']
 ];
 
 function playlistTableHeader(){
   const cells = PLAYLIST_HEADER_LABELS.map(([l1,l2], i) => {
-    const align = i <= 2 ? 'left' : (i>=14 ? 'left' : 'center');
+    const align = i <= 2 ? 'left' : (i>=16 ? 'left' : 'center');
     return `<div style="padding:6px 4px;text-align:${align};font-size:8.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;line-height:1.2">${l1}${l2?'<br>'+l2:''}</div>`;
   }).join('');
   return `<div style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;background:var(--bg);border-bottom:2px solid var(--border)">${cells}</div>`;
@@ -22292,10 +22533,23 @@ async function renderPlaylistPage(){
     }).join('');
     const catColor = PLAYLIST_CAT_COLORS[(group.cat||'').toUpperCase().trim()] || PLAYLIST_CAT_DEFAULT_COLOR;
     const catBg = `rgb(${catColor.join(',')})`;
+    // Badge de catégorie cliquable (sauf "Non classé", qui n'est de toute
+    // façon jamais exporté) : bascule l'inclusion de cette catégorie dans le
+    // PDF/Excel exporté sans la retirer de l'affichage de l'app — utile pour
+    // les catégories de mouvement (ex. "R", "O") qui n'ont pas besoin
+    // d'apparaître dans le compte-rendu envoyé en réunion.
+    const catClickable = group.cat !== 'Non classé';
+    const excluded = catClickable && isPlaylistCatExcludedFromExport(group.cat);
+    const excludedBadge = excluded
+      ? `<div style="font-size:10px;font-weight:700;color:#CC2222;background:#FFEAEA;border:1.5px solid #F5B8B8;border-radius:20px;padding:3px 10px;white-space:nowrap">🚫 Exclue du PDF/Excel</div>`
+      : '';
     return `
       <div style="display:flex;align-items:center;gap:10px;margin:18px 0 6px">
-        <div style="font-size:15px;font-weight:800;color:#1e2838;background:${catBg};border-radius:8px;padding:5px 16px;letter-spacing:.02em">${escHtml(group.cat)}</div>
+        <div ${catClickable ? `onclick="togglePlaylistExportCat('${jsAttrEscape(group.cat)}')"` : ''}
+          title="${catClickable ? (excluded ? 'Exclue du PDF/Excel exporté — cliquer pour la réintégrer' : 'Cliquer pour exclure cette catégorie du PDF/Excel exporté') : ''}"
+          style="font-size:15px;font-weight:800;color:#1e2838;background:${catBg};border-radius:8px;padding:5px 16px;letter-spacing:.02em;${catClickable?'cursor:pointer;':''}${excluded?'opacity:.45;text-decoration:line-through':''}">${escHtml(group.cat)}</div>
         <div style="font-size:11.5px;color:var(--navy);font-weight:700;background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:3px 12px">${group.items.length} titre${group.items.length>1?'s':''}</div>
+        ${excludedBadge}
         <div style="flex:1;height:1px;background:var(--border)"></div>
       </div>
       <div ondragover="event.preventDefault();this.style.outline='2px dashed var(--cyan)';this.style.outlineOffset='-2px'"
@@ -22517,10 +22771,15 @@ async function exportPlaylistPDF(){
   // Les titres "Non classé" (catégorie vide ou non reconnue) ne sont jamais
   // imprimés — à la différence de l'affichage dans l'app, qui doit les
   // garder visibles pour permettre de leur assigner une catégorie.
-  const groups = playlistCategoryGroups(stationTitles).filter(g => g.cat !== 'Non classé');
+  const allGroups = playlistCategoryGroups(stationTitles).filter(g => g.cat !== 'Non classé');
+  // Catégories cliquées en "exclues" (voir togglePlaylistExportCat) retirées
+  // du PDF ici uniquement — elles restent visibles et éditables dans l'app.
+  const groups = allGroups.filter(g => !isPlaylistCatExcludedFromExport(g.cat));
   const totalRows = groups.reduce((n, g) => n + g.items.length, 0);
   if(!totalRows){
-    showToast('Aucun titre catégorisé dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' à exporter', 'err');
+    showToast(allGroups.length
+      ? 'Toutes les catégories de la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' sont exclues du PDF — cliquez sur un badge de catégorie pour la réintégrer'
+      : 'Aucun titre catégorisé dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' à exporter', 'err');
     return;
   }
   const TOP_MARGIN = 10, HEADER_LOGO_H = 17, COLBAND_H = 6, COLBAND_GAP = 2, FOOTER_RESERVE = 9;
@@ -22757,10 +23016,15 @@ async function exportPlaylistExcel(){
     showToast('Aucun titre dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' à exporter', 'err');
     return;
   }
-  const groups = playlistCategoryGroups(stationTitles).filter(g => g.cat !== 'Non classé');
+  const allGroups = playlistCategoryGroups(stationTitles).filter(g => g.cat !== 'Non classé');
+  // Catégories cliquées en "exclues" (voir togglePlaylistExportCat) retirées
+  // de l'Excel ici uniquement — elles restent visibles et éditables dans l'app.
+  const groups = allGroups.filter(g => !isPlaylistCatExcludedFromExport(g.cat));
   const totalRows = groups.reduce((n, g) => n + g.items.length, 0);
   if(!totalRows){
-    showToast('Aucun titre catégorisé dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' à exporter', 'err');
+    showToast(allGroups.length
+      ? 'Toutes les catégories de la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' sont exclues de l\'Excel — cliquez sur un badge de catégorie pour la réintégrer'
+      : 'Aucun titre catégorisé dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' à exporter', 'err');
     return;
   }
 
@@ -23046,6 +23310,108 @@ async function exportPowerTabPDF(){
   const powerDateFile = new Date().toISOString().slice(0, 10);
   doc.save('Power Tab ' + STATION_LABELS[ACTIVE_STATION] + ' - ' + powerDateFile + '.pdf');
   showToast('✓ Power Tab exporté en PDF', 'success');
+}
+
+/** Export "CALL OUT" : liste tous les titres cochés Call Out (partent en
+ *  recherche) pour la station active, triés par artiste — destinée à être
+ *  transmise telle quelle à l'institut de recherche (Call Out/OMT), donc
+ *  volontairement indépendante des catégories de rotation affichées dans le
+ *  reste de la Playlist. Même gabarit visuel que Power Tab (exportPowerTabPDF
+ *  ci-dessus), sans le suivi Nouveau/Out qui n'a pas de sens ici. */
+async function exportCallOutListPDF(){
+  if(typeof window.jspdf === 'undefined'){
+    showToast('Bibliothèque PDF non chargée — vérifiez la connexion internet', 'err');
+    return;
+  }
+  const stationTitles = playlistTitles.filter(t => t.station === ACTIVE_STATION);
+  const list = stationTitles.filter(t => t.callOut)
+    .sort((a, b) => pdfArtistCase(a.artist).localeCompare(pdfArtistCase(b.artist), 'fr'));
+  if(!list.length){
+    showToast('Aucun titre coché Call Out pour ' + STATION_LABELS[ACTIVE_STATION], 'err');
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+  const PW = 210, PH = 297, ML = 14, MR = 14;
+  const CW = PW - ML - MR;
+  const COL_ORANGE = [230, 126, 34];
+  const COL_NAVY   = [11, 29, 58];
+  const COL_TEXT   = [30, 40, 56];
+  const COL_MUTED  = [110, 122, 142];
+
+  let y = 0, pageNum = 1;
+
+  function addHeader(){
+    y = 14;
+    if(ACTIVE_STATION === 'EUROPE2') doc.addImage(LOGO_EUROPE2_PDF, 'PNG', ML, y, 32, 12.6);
+    else doc.addImage(LOGO_RFM_PDF, 'PNG', ML, y, 25, 12.8);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(17);
+    doc.setTextColor(...COL_ORANGE);
+    doc.text('CALL OUT — TITRES À TESTER', ML + 40, y + 8);
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(10.5);
+    doc.setTextColor(...COL_NAVY);
+    doc.text(STATION_LABELS[ACTIVE_STATION] + ' — ' + new Date().toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'}), ML + 40, y + 15);
+    y += 24;
+
+    // Bandeau de colonnes
+    doc.setFillColor(...COL_ORANGE);
+    doc.rect(ML, y, CW, 8, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.text('ARTISTE', ML + 4, y + 5.5);
+    doc.text('TITRE', ML + 62, y + 5.5);
+    doc.text('CATÉGORIE', ML + 128, y + 5.5);
+    doc.text("DATE D'ENTRÉE", PW - MR - 2, y + 5.5, {align:'right'});
+    y += 8 + 4;
+  }
+
+  function addFooter(){
+    doc.setFontSize(7.5);
+    doc.setTextColor(...COL_MUTED);
+    doc.setFont('helvetica','normal');
+    doc.text('Liste Call Out générée automatiquement — Fit Point Analyzer', ML, PH - 8);
+    doc.text('Page ' + pageNum, PW - MR, PH - 8, {align:'right'});
+  }
+
+  function checkBreak(h){
+    if(y + h > PH - 16){
+      addFooter();
+      doc.addPage();
+      pageNum++;
+      addHeader();
+    }
+  }
+
+  function titleRow(t){
+    checkBreak(8);
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(...COL_TEXT);
+    doc.text(truncateForPdf(doc, pdfArtistCase(t.artist), 55), ML, y + 5);
+    doc.setFont('helvetica','normal');
+    doc.text(truncateForPdf(doc, pdfTitleCase(t.title), 62), ML + 58, y + 5);
+    doc.setFont('helvetica','bold');
+    doc.setTextColor(...COL_ORANGE);
+    doc.text(truncateForPdf(doc, (t.categorie || '—').toUpperCase(), 34), ML + 124, y + 5);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(...COL_MUTED);
+    doc.text(formatDateFr(t.dateEntree) || '—', PW - MR, y + 5, {align:'right'});
+    y += 7;
+    doc.setDrawColor(230, 230, 230);
+    doc.line(ML, y - 1.5, PW - MR, y - 1.5);
+  }
+
+  addHeader();
+  list.forEach(titleRow);
+  addFooter();
+
+  const dateFile = new Date().toISOString().slice(0, 10);
+  doc.save('Call Out - Titres a tester ' + STATION_LABELS[ACTIVE_STATION] + ' - ' + dateFile + '.pdf');
+  showToast('✓ Liste Call Out exportée en PDF (' + list.length + ' titre' + (list.length > 1 ? 's' : '') + ')', 'success');
 }
 
 // ── ARCHIVES PLAYLIST SUR DRIVE — indépendantes des sauvegardes de
@@ -25294,7 +25660,7 @@ function watchlistPromote(key, target){
       showToast('Déjà dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'err');
       return;
     }
-    playlistTitles.push({ key, title: w.title, artist: w.artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, manual: true });
+    playlistTitles.push({ key, title: w.title, artist: w.artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, callOut:false, manual: true });
     playlistSaveToStorage();
     updatePlaylistBadge();
     showToast('✓ « ' + titleCaseDisplay(w.title) + ' » ajouté à la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success');
@@ -35095,6 +35461,57 @@ async function drivePing() {
   try { await driveCall('ping'); return true; }
   catch(e) { return false; }
 }
+
+// ── DIFFUSIONS CUMULÉES — synchronisation Drive (voir songDiffusions et
+// ingestSongDiffusionsFromAnalysis, définis avec Song Attributs) ───────────
+const SONG_DIFFUSIONS_DRIVE_KEY = 'song_diffusions';
+let songDiffusionsDriveSyncTimer = null;
+/** Poussée Drive différée (5 s) après une ingestion — regroupe plusieurs
+ *  imports rapprochés (ex. Europe 2 puis RFM à la suite) en une seule
+ *  écriture Drive plutôt qu'un appel par vague importée. Silencieuse (pas de
+ *  toast) : cette synchro est un aparté, pas une action explicite de Gaël. */
+function songDiffusionsSyncToDrive(){
+  if(!DRIVE_SYNC_URL) return;
+  clearTimeout(songDiffusionsDriveSyncTimer);
+  songDiffusionsDriveSyncTimer = setTimeout(() => {
+    driveCall('save', SONG_DIFFUSIONS_DRIVE_KEY, JSON.stringify(songDiffusions))
+      .catch(e => console.error('Échec de synchronisation Drive (Diffusions) :', e));
+  }, 5000);
+}
+/** Charge les diffusions Drive et fusionne dans le store local — la valeur la
+ *  plus RÉCENTE (europe2At/rfmAt) l'emporte champ par champ, pour ne jamais
+ *  faire régresser une mesure plus fraîche saisie localement (ex. import fait
+ *  entre-temps sur un autre poste, pas encore redescendu ici). Appelée une
+ *  fois au démarrage (voir l'appel juste après cette fonction) et peut être
+ *  rappelée manuellement (bouton Drive Sync) via songDiffusionsLoadFromDrive(true). */
+async function songDiffusionsLoadFromDrive(manual){
+  if(!DRIVE_SYNC_URL){ if(manual) showToast('URL Drive Sync non configurée', 'err'); return; }
+  try{
+    const r = await driveCall('load', SONG_DIFFUSIONS_DRIVE_KEY);
+    if(!r || !r.data){ if(manual) showToast('Aucune diffusion enregistrée sur Drive pour l\'instant', 'success'); return; }
+    const remote = JSON.parse(r.data);
+    Object.keys(remote).forEach(key => {
+      const rem = remote[key];
+      if(!songDiffusions[key]){ songDiffusions[key] = rem; return; }
+      const loc = songDiffusions[key];
+      ['europe2','rfm'].forEach(field => {
+        const atField = field + 'At', waveField = field + 'Wave';
+        if(rem[atField] && (!loc[atField] || rem[atField] > loc[atField])){
+          loc[field] = rem[field]; loc[atField] = rem[atField]; loc[waveField] = rem[waveField];
+        }
+      });
+    });
+    songDiffusionsSaveToStorage();
+    if(manual) showToast('✓ Diffusions synchronisées depuis Drive', 'success');
+  }catch(e){
+    if(manual) showToast('Erreur de synchronisation Drive (Diffusions) : ' + e.message, 'err');
+  }
+}
+// Chargement initial silencieux — placé ici (et non près de la définition du
+// store, avec Song Attributs) car DRIVE_SYNC_URL n'est déclarée qu'à cet
+// endroit du fichier ; songDiffusionsCacheLoad() (IndexedDB locale, sans
+// dépendance à Drive) a déjà tourné bien plus tôt au chargement de la page.
+songDiffusionsLoadFromDrive();
 
 /** Dédoublonne chartsHistoryIndex par date (au cas où plusieurs entrées
  *  pointeraient par accident vers le même panier hebdomadaire — bug d'index
