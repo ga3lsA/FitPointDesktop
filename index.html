@@ -3885,6 +3885,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy MusicBrainz (ISRC + date de sortie, fiche titre)
         <input id="fpaCfgMusicBrainz" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:2px">
+          <span id="fpaMbPauseStatus" style="font-size:10px;color:var(--muted);font-weight:500"></span>
+          <button id="fpaMbPauseBtn" onclick="setMbEnrichmentPaused(!MB_ENRICHMENT_PAUSED)" style="font-size:10.5px;font-weight:700;padding:4px 10px;border-radius:7px;cursor:pointer;flex-shrink:0"></button>
+        </div>
       </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Clé API YouTube Data v3 (abonnés — sonde Classements)
         <input id="fpaCfgYoutube" type="text" placeholder="AIza..." style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
@@ -3942,7 +3946,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.221';
+const FPA_VERSION   = 'v30.222';
 const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -5829,7 +5833,40 @@ let mbEnrichDone = 0;
 // besoin — 500 titres/jour ≈ 8-9 min à 1 req/s, une fraction modeste des
 // 20 000 appels UrlFetch/jour d'un compte Google standard.
 const MB_BACKFILL_MAX_PER_RUN = 500;
+
+// ── Interrupteur de pause MusicBrainz — activé à la demande (quota Google
+// UrlFetch épuisé, partagé avec DailySnapshot.gs, le proxy kworb et les
+// autres scripts du compte). Coupe TOUS les points d'entrée MusicBrainz
+// (déclenchement auto à l'import, balayage complet, recherche manuelle
+// depuis la fiche titre) sans rien perdre : les titres déjà enrichis
+// gardent leurs données, ceux en attente resteront simplement non enrichis
+// jusqu'à réactivation — rien n'est supprimé ni écrasé. Persisté dans
+// localStorage, donc la pause survit à un rechargement de page. ──
+let MB_ENRICHMENT_PAUSED = localStorage.getItem('fpa_mb_enrichment_paused') === '1';
+function setMbEnrichmentPaused(paused){
+  MB_ENRICHMENT_PAUSED = paused;
+  try{ localStorage.setItem('fpa_mb_enrichment_paused', paused ? '1' : '0'); }catch(e){}
+  showToast(paused ? '⏸️ Enrichissement MusicBrainz mis en pause (préserve le quota Google partagé)' : '▶️ Enrichissement MusicBrainz réactivé', 'success');
+  renderMbPauseButton();
+}
+function renderMbPauseButton(){
+  const btn = document.getElementById('fpaMbPauseBtn');
+  const status = document.getElementById('fpaMbPauseStatus');
+  if(!btn || !status) return;
+  if(MB_ENRICHMENT_PAUSED){
+    btn.textContent = '▶️ Réactiver';
+    btn.style.background = 'var(--cyan)'; btn.style.color = 'var(--navy)'; btn.style.border = 'none';
+    status.textContent = '⏸️ En pause — aucun appel MusicBrainz ne sera fait (import, balayage, fiche titre)';
+    status.style.color = '#B05E00';
+  } else {
+    btn.textContent = '⏸️ Mettre en pause';
+    btn.style.background = 'var(--white)'; btn.style.color = 'var(--text2)'; btn.style.border = '1.5px solid var(--border)';
+    status.textContent = 'Actif';
+    status.style.color = 'var(--muted)';
+  }
+}
 function mbQueueEnrichment(rows){
+  if(MB_ENRICHMENT_PAUSED) return;
   if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')) return;
   const seen = new Set();
   rows.forEach(row => {
@@ -5846,6 +5883,7 @@ function mbQueueEnrichment(rows){
   else mbUpdateProgressUI();
 }
 async function mbRunEnrichment(){
+  if(MB_ENRICHMENT_PAUSED){ mbEnrichInProgress = false; return; }
   mbEnrichInProgress = true;
   mbUpdateProgressUI();
   const CONCURRENCY = 1;
@@ -5949,6 +5987,10 @@ function mbUpdateProgressUI(){
  *  (mbShowStatusToast, ci-dessous) quand il reste du "en attente" et
  *  qu'aucun enrichissement n'est déjà en cours. */
 async function mbBackfillAllArchives(){
+  if(MB_ENRICHMENT_PAUSED){
+    showToast('⏸️ Enrichissement MusicBrainz en pause — réactivez-le dans ⚙️ Configuration FPA pour relancer le balayage', 'err');
+    return;
+  }
   if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')){
     showToast('Proxy MusicBrainz non configuré — voir ⚙️ Configuration FPA', 'err');
     return;
@@ -18755,6 +18797,10 @@ async function tevFetchDecade(title, artist){
  *  manuellement en Comité/Playlist (jamais passé par un import). Respecte le
  *  même débit 1 req/s que la file de fond (musicbrainzRateGate). */
 async function tevFetchMusicBrainz(title, artist){
+  if(MB_ENRICHMENT_PAUSED){
+    showToast('⏸️ Enrichissement MusicBrainz en pause — réactivez-le dans ⚙️ Configuration FPA', 'err');
+    return;
+  }
   if(!/^https:\/\//i.test(MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '')){
     showToast('Proxy MusicBrainz non configuré — voir ⚙️ Configuration FPA', 'err');
     return;
@@ -36242,6 +36288,7 @@ function openFpaConfigModal(){
   document.getElementById('fpaCfgAppleMusic').value    = APPLEMUSIC_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgShazam').value        = SHAZAM_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgMusicBrainz').value   = MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '';
+  renderMbPauseButton();
   document.getElementById('fpaCfgYoutube').value        = YOUTUBE_API_KEY || '';
   document.getElementById('fpaCfgZyla').value            = ZYLA_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgAkpTubesmoment').value = appleKeyPlaylistUrl('tubesmoment');
