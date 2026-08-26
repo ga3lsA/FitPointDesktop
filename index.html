@@ -7198,7 +7198,7 @@ let _kworbCbId = 0;
  *  Lu par l'appelant juste après l'appel pour un diagnostic précis. */
 let lastKworbProxyError = '';
 
-function fetchKworbViaAppsScript(targetUrl, timeoutMs = 8000){
+function fetchKworbViaAppsScript(targetUrl, timeoutMs = 15000){
   return new Promise((resolve) => {
     lastKworbProxyError = '';
     // Garde-fou HTTPS : voir le commentaire équivalent dans fetchDeezerViaAppsScript.
@@ -7237,10 +7237,29 @@ function fetchKworbViaAppsScript(targetUrl, timeoutMs = 8000){
   });
 }
 
+/** kworb.net est un petit site sans grosse infrastructure (pas de CDN) —
+ *  il connaît régulièrement des creux de lenteur ou d'indisponibilité de
+ *  quelques secondes à quelques minutes, sans horaire garanti (souvent
+ *  perçus le matin, à l'heure où l'onglet International est rouvert pour
+ *  la première fois de la journée et enchaîne plusieurs pays d'un coup).
+ *  fetchKworbViaAppsScript ne fait qu'UNE tentative ; ce wrapper en ajoute
+ *  une seconde avant d'abandonner, pour absorber ces creux transitoires
+ *  sans que Gaël ait à relancer manuellement. À utiliser à la place de
+ *  fetchKworbViaAppsScript partout où c'est pratique (voir fetchKworbPage). */
+async function fetchKworbViaAppsScriptWithRetry(targetUrl, attempts = 2){
+  let html = null;
+  for(let i = 0; i < attempts; i++){
+    html = await fetchKworbViaAppsScript(targetUrl);
+    if(html) return html;
+    if(i < attempts - 1) await new Promise(r => setTimeout(r, 1200));
+  }
+  return html;
+}
+
 /** Fetch d'une page kworb.net : proxy perso en priorité (fiable, illimité),
  *  repli sur la cascade de proxies CORS publics si non configuré ou en échec. */
 async function fetchKworbPage(targetUrl, parserFn){
-  const html = await fetchKworbViaAppsScript(targetUrl);
+  const html = await fetchKworbViaAppsScriptWithRetry(targetUrl);
   if(html){
     const parsed = parserFn(html);
     if(parsed) return parsed;
@@ -33467,7 +33486,15 @@ async function loadDailySnapshots(){
     }
   }catch(e){
     dailySnapshots = [];
-    if(container) container.innerHTML = `<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">❌ ${escHtml(e.message)}</div>`;
+    const isQuotaErr = /quota|urlfetch|too many/i.test(e.message || '');
+    if(container){
+      container.innerHTML = isQuotaErr
+        ? `<div style="padding:24px;text-align:center;color:#B05E00;background:#FFF4E0;border:1.5px solid #FFD085;border-radius:12px;font-size:13px;line-height:1.6">
+            ⚠️ <strong>Erreur du script DailySnapshot.gs</strong> : <code>${escHtml(e.message)}</code>
+            <div style="margin-top:12px">${dailySnapshotDiagnosticHtml()}</div>
+          </div>`
+        : `<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">❌ ${escHtml(e.message)}</div>`;
+    }
     return;
   }
   renderDailyOverview();
@@ -33953,6 +33980,30 @@ function toggleDailyOverviewView(mode){
   renderDailyOverview();
 }
 
+/** Bloc de diagnostic réutilisé partout où la Vue d'ensemble quotidienne (ou
+ *  son résumé sur la home) manque d'historique exploitable pour s'afficher —
+ *  ne se contente plus d'un vague "revenez demain" : le quota Google
+ *  UrlFetch (20 000 appels/jour) est PARTAGÉ par TOUT le compte entre
+ *  DailySnapshot.gs, le proxy kworb, l'enrichissement MusicBrainz et les
+ *  autres scripts — un balayage MusicBrainz ou une rafale d'appels peut à
+ *  lui seul épuiser le quota et empêcher DailySnapshot.gs de tourner, sans
+ *  que rien ne soit cassé côté FPA. Vérifie dynamiquement l'état du
+ *  commutateur de pause MusicBrainz (MB_ENRICHMENT_PAUSED) pour orienter
+ *  directement vers la cause la plus fréquente plutôt que de forcer à
+ *  deviner. Le compte à rebours du quota se réinitialise 24h après le
+ *  premier appel de la journée (pas à minuit pile). */
+function dailySnapshotDiagnosticHtml(){
+  const mbLine = MB_ENRICHMENT_PAUSED
+    ? '<span style="color:#0DA76B;font-weight:700">⏸️ déjà en pause</span> — ce n\'est probablement pas la cause'
+    : '<span style="color:#B05E00;font-weight:700">▶️ actif</span> — suspect n°1 si un balayage complet (🔍 MusicBrainz) a tourné récemment ; ⚙️ Configuration FPA pour le mettre en pause';
+  return `<div style="text-align:left;display:inline-block;max-width:440px;font-size:12.5px">
+    <div style="margin-bottom:6px">Causes les plus probables, dans l'ordre :</div>
+    <div style="margin-bottom:5px">1. <strong>Quota Google UrlFetch épuisé</strong> (20 000 appels/jour, partagé par tout le compte). Enrichissement MusicBrainz : ${mbLine}.</div>
+    <div style="margin-bottom:5px">2. Le déclencheur quotidien de <strong>DailySnapshot.gs</strong> ne s'est pas exécuté — journal ⏱️ <em>Exécutions</em> dans l'éditeur Apps Script pour le message d'erreur exact (typiquement <code>urlfetch</code> si c'est bien le quota).</div>
+    <div>3. Une fois la cause corrigée, relancez <code>captureDailySnapshot</code> manuellement depuis l'éditeur Apps Script si besoin, puis rechargez cette page — le quota se réinitialise de toute façon 24h après le premier appel de la journée.</div>
+  </div>`;
+}
+
 function renderDailyOverview(){
   const container = document.getElementById('dailyOverviewContainer');
   if(!container) return;
@@ -33965,7 +34016,10 @@ function renderDailyOverview(){
     return;
   }
   if(dailySnapshots.length < 2){
-    container.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Pas encore assez d\'historique (au moins 2 jours nécessaires). Revenez demain, ou vérifiez que le déclencheur quotidien Apps Script est bien actif.</div>';
+    container.innerHTML = `<div style="padding:24px;text-align:center;color:#B05E00;background:#FFF4E0;border:1.5px solid #FFD085;border-radius:12px;font-size:13px;line-height:1.6">
+      ⚠️ <strong>Pas assez d'historique</strong> (${dailySnapshots.length} jour${dailySnapshots.length > 1 ? 's' : ''} seulement sur les 8 derniers demandés) — la capture quotidienne échoue, ce n'est pas un souci d'affichage FPA.
+      <div style="margin-top:12px">${dailySnapshotDiagnosticHtml()}</div>
+    </div>`;
     return;
   }
 
@@ -33979,7 +34033,8 @@ function renderDailyOverview(){
   // bloquant : rien à afficher tant que cette capture n'a pas eu lieu. ──
   if(isDailySnapshotEmpty(dailySnapshots[0])){
     container.innerHTML = `<div style="padding:24px;text-align:center;color:#B05E00;background:#FFF4E0;border:1.5px solid #FFD085;border-radius:12px;font-size:13px;line-height:1.6">
-      ⚠️ <strong>Capture du jour manquante</strong> — l'instantané du ${escHtml(dailySnapshots[0].date)} est vide (charts, playlists et radios). Le script <strong>DailySnapshot.gs</strong> n'a probablement pas pu s'exécuter (quota Google épuisé, voir échange précédent). Relancez <code>captureDailySnapshot</code> manuellement depuis l'éditeur Apps Script, puis rechargez cette page.
+      ⚠️ <strong>Capture du jour manquante</strong> — l'instantané du ${escHtml(dailySnapshots[0].date)} est vide (charts, playlists et radios).
+      <div style="margin-top:12px">${dailySnapshotDiagnosticHtml()}</div>
     </div>`;
     return;
   }
@@ -34271,7 +34326,7 @@ async function renderHomeDailyOverviewSummary(){
     try{ await loadDailySnapshots(); }catch(e){ /* géré ci-dessous */ }
   }
   if(dailySnapshots.length < 2){
-    el.innerHTML = '<div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Pas encore assez d\'historique (au moins 2 jours nécessaires).</div>';
+    el.innerHTML = `<div style="padding:6px 2px;color:rgba(255,255,255,.55);font-size:12px">⚠️ Pas assez d'historique — capture(s) échouée(s) côté DailySnapshot.gs, probablement quota Google épuisé. <span onclick="goToDailyOverviewPage()" style="color:#fff;text-decoration:underline;cursor:pointer;font-weight:700">Voir le détail →</span></div>`;
     return;
   }
 
