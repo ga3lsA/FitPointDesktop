@@ -4224,7 +4224,27 @@ function goToFitScoreTable(){
   }
 }
 
+/** Persistance de la page "overlay" actuellement ouverte (Playlist, Comité,
+ *  Décision, Analyse, Quotas, Classements, Historique, Données brutes,
+ *  Catégorisation) — pour qu'un simple rechargement de page (F5) rouvre la
+ *  même page plutôt que de retomber sur l'accueil à chaque fois. Voir les
+ *  appels dans chaque toggle*Page() ci-dessous (sauvegarde à l'ouverture,
+ *  effacement à la fermeture ou via goHome), et la restauration au
+ *  démarrage tout à la fin du script (LAST_PAGE_TOGGLERS). Le flux
+ *  d'analyse en cours (upload → config → résultats) n'est volontairement
+ *  PAS concerné : le fichier importé ne survit de toute façon pas à un
+ *  rechargement, rien de cohérent à y restaurer.
+ */
+const LAST_OPEN_PAGE_KEY = 'fpa_last_open_page';
+function saveLastOpenPage(key){
+  try{ localStorage.setItem(LAST_OPEN_PAGE_KEY, key); }catch(e){ /* sans conséquence */ }
+}
+function clearLastOpenPage(){
+  try{ localStorage.removeItem(LAST_OPEN_PAGE_KEY); }catch(e){ /* sans conséquence */ }
+}
+
 function goHome(){
+  clearLastOpenPage();
   // Fermer toutes les pages overlay
   ['pageRawData','pageHistory','pageCharts','pageDecision','pageCateg','pageComite','pagePlaylist','pageQuotas','pageAnalyse'].forEach(id=>{
     const el=document.getElementById(id); if(el)el.style.display='none';
@@ -4234,7 +4254,7 @@ function goHome(){
     const btn=document.getElementById(id);
     if(btn){btn.style.borderColor='';btn.style.color='';btn.style.background='';}
   });
-  rawDataPageOpen=false; historyPageOpen=false; chartsPageOpen=false; decisionPageOpen=false; categPageOpen=false; comitePageOpen=false; quotasPageOpen=false; analysePageOpen=false;
+  rawDataPageOpen=false; historyPageOpen=false; chartsPageOpen=false; decisionPageOpen=false; categPageOpen=false; comitePageOpen=false; playlistPageOpen=false; quotasPageOpen=false; analysePageOpen=false;
   // Masquer les étapes et le bouton retour
   document.getElementById('steps').style.display='none';
   document.getElementById('backBtn').style.display='none';
@@ -9578,11 +9598,13 @@ function toggleRawDataPage(){
     renderRawDataSheetTabs();
     renderRawDataTable();
     syncDatasTabBtnStyle();
+    saveLastOpenPage('rawdata');
   } else {
     document.getElementById('pageRawData').style.display = 'none';
     btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
     restoreMainPage();
     syncDatasTabBtnStyle();
+    clearLastOpenPage();
   }
 }
 
@@ -10500,11 +10522,13 @@ function toggleHistoryPage(){
     populateHistRadioFilter();
     renderTitleHistory();
     syncDatasTabBtnStyle();
+    saveLastOpenPage('history');
   } else {
     document.getElementById('pageHistory').style.display = 'none';
     btn.style.borderColor=''; btn.style.color=''; btn.style.background='';
     restoreMainPage();
     syncDatasTabBtnStyle();
+    clearLastOpenPage();
   }
 }
 
@@ -17696,10 +17720,12 @@ function toggleAnalysePage(){
         renderAnalyseHistoryPanel();
       });
     }
+    saveLastOpenPage('analyse');
   } else {
     document.getElementById('pageAnalyse').style.display = 'none';
     btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
     restoreMainPage();
+    clearLastOpenPage();
   }
 }
 
@@ -19576,6 +19602,7 @@ function toggleChartsPage(){
     if(searchResultsBox){ searchResultsBox.style.display = 'none'; searchResultsBox.innerHTML = ''; }
     renderChartTable();
     updateLoadAllChartsStatus();
+    saveLastOpenPage('charts');
   } else {
     document.getElementById('pageCharts').style.display = 'none';
     btn.style.borderColor = '';
@@ -19583,6 +19610,7 @@ function toggleChartsPage(){
     btn.style.background = '';
     // Restituer l'état précédent
     restoreMainPage();
+    clearLastOpenPage();
   }
 }
 
@@ -24187,7 +24215,9 @@ document.addEventListener('click', e => {
 // ══════════════════════════════════════════════════════════════════════════
 
 let decisionPageOpen = false;
-let decActiveTab = 'radar';
+let decActiveTab = (function(){
+  try{ return localStorage.getItem('fpa_last_dec_tab') || 'radar'; }catch(e){ return 'radar'; }
+})();
 
 /* ── Ouvrir / fermer la page Décision ── */
 function toggleDecisionPage(){
@@ -24217,10 +24247,12 @@ function toggleDecisionPage(){
     // la Matrice : switchDecTab() se charge de synchroniser l'affichage du
     // panneau ET le surlignage des boutons de groupe/sous-onglet.
     switchDecTab(decActiveTab);
+    saveLastOpenPage('decision');
   } else {
     document.getElementById('pageDecision').style.display = 'none';
     btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
     restoreMainPage();
+    clearLastOpenPage();
   }
 }
 
@@ -24263,6 +24295,10 @@ document.addEventListener('click', e => {
 function switchDecTab(tab){
   if(tab === 'list') tab = 'matrix'; // compat : la liste est désormais intégrée à la matrice
   decActiveTab = tab;
+  // Persisté avec la page elle-même (voir LAST_OPEN_PAGE_KEY) : un rechargement
+  // rouvre non seulement la page Décision, mais le bon sous-onglet (ex. Veille),
+  // au lieu de retomber systématiquement sur Radar par défaut.
+  try{ localStorage.setItem('fpa_last_dec_tab', tab); }catch(e){ /* sans conséquence */ }
   closeAllDecGroups();
   ['matrix','spu','comp','burn','polar','shazinc','exclusifs','watchlist','cycles','adoption','radar','iedr','shazlag','compscore','opportunity','benchmark','predExit','predEntry'].forEach(t => {
     document.getElementById('decPane'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'block':'none';
@@ -30566,10 +30602,12 @@ function toggleCategPage(){
     }
     categGoStep(1);
     if(categRules.length === 0) categInitDefaultRule();
+    saveLastOpenPage('categ');
   } else {
     document.getElementById('pageCateg').style.display = 'none';
     btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
     restoreMainPage();
+    clearLastOpenPage();
   }
 }
 
@@ -30595,10 +30633,12 @@ function toggleComitePage(){
     btn.style.color       = 'var(--navy)';
     btn.style.background  = 'var(--cyan-light)';
     renderComitePage();
+    saveLastOpenPage('comite');
   } else {
     document.getElementById('pageComite').style.display = 'none';
     btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
     restoreMainPage();
+    clearLastOpenPage();
   }
 }
 
@@ -30624,10 +30664,12 @@ function togglePlaylistPage(){
     btn.style.color       = 'var(--navy)';
     btn.style.background  = 'var(--cyan-light)';
     renderPlaylistPage();
+    saveLastOpenPage('playlist');
   } else {
     document.getElementById('pagePlaylist').style.display = 'none';
     btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = '';
     restoreMainPage();
+    clearLastOpenPage();
   }
 }
 
@@ -30680,10 +30722,12 @@ function toggleQuotasPage(){
     const input = document.getElementById('quotasEndpointInput');
     if(input) input.value = quotasGetEndpoint();
     quotasRefresh();
+    saveLastOpenPage('quotas');
   } else {
     document.getElementById('pageQuotas').style.display = 'none';
     if(btn){ btn.style.borderColor = ''; btn.style.color = ''; btn.style.background = ''; }
     restoreMainPage();
+    clearLastOpenPage();
   }
 }
 
@@ -36880,6 +36924,39 @@ renderAirplayImportZones();
 // loadLatestAirplayOnStartup) : la version complète loadChartsHistoryFromDrive()
 // s'exécute normalement plus tard, à l'arrivée sur la page Fit Score.
 loadLatestAirplayOnStartup();
+
+// ── Restauration de la page ouverte avant un rechargement (F5) ────────────
+// Un simple rechargement de navigateur ré-exécute tout ce script depuis le
+// début — sans ça, on retombe systématiquement sur l'accueil (pageUpload)
+// quelle que soit la page consultée juste avant. Voir saveLastOpenPage /
+// clearLastOpenPage (définies avec goHome, tout en haut du script) et les
+// appels dans chaque toggle*Page ci-dessus. Placé ici (fin de script) pour
+// être sûr que toutes les fonctions de page référencées existent déjà.
+(function(){
+  const LAST_PAGE_TOGGLERS = {
+    rawdata:  toggleRawDataPage,
+    history:  toggleHistoryPage,
+    charts:   toggleChartsPage,
+    decision: toggleDecisionPage,
+    categ:    toggleCategPage,
+    comite:   toggleComitePage,
+    playlist: togglePlaylistPage,
+    quotas:   toggleQuotasPage,
+    analyse:  toggleAnalysePage
+  };
+  let lastPage = null;
+  try{ lastPage = localStorage.getItem(LAST_OPEN_PAGE_KEY); }catch(e){ /* sans conséquence */ }
+  const toggler = lastPage && LAST_PAGE_TOGGLERS[lastPage];
+  if(toggler){
+    // Chaque toggle*Page fait un simple `xxxPageOpen = !xxxPageOpen` — au
+    // premier chargement de la page, ce flag vaut toujours false, donc
+    // l'appeler ici l'OUVRE bien (jamais l'inverse). Si la page nécessite
+    // un accès admin (Analyse) et que ce n'est pas le cas ici, le garde-fou
+    // déjà présent dans toggleAnalysePage s'en charge tout seul.
+    try{ toggler(); }catch(e){ console.error('Restauration de la dernière page ouverte échouée :', e); clearLastOpenPage(); }
+  }
+})();
+
 
 // Affiche le numéro de version + date/heure de génération dans l'en-tête
 (function(){
