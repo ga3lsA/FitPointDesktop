@@ -1418,7 +1418,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div style="display:flex;align-items:flex-start;gap:14px">
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#1E6FD9 0%,rgba(30,111,217,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
-            <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Europe 2 &amp; RFM</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Europe <span style="color:#E61E82">2</span> &amp; RFM</div>
             <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;display:flex;align-items:center;gap:10px">📅 Délai d'adoption</h2>
             <button id="infoAdoptionBtn" onclick="toggleInfoNote('infoAdoption')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -7155,6 +7155,13 @@ function parseKworbListeners(html){
  *  l'affichage suive la station de référence en cours plutôt que d'être
  *  toujours Europe 2. */
 function activeStationRadioLabel(){ return ACTIVE_STATION === 'RFM' ? 'RFM' : 'E2'; }
+/** Variante HTML de activeStationRadioLabel(), avec le "2" d'"E2" en fuchsia
+ *  (voir airplayLabelHtml/stationNameHtml) — pour les en-têtes de colonnes
+ *  des classements digitaux (Spotify, YouTube...) où "E2 rang" est affiché
+ *  en <span>. Ne PAS utiliser dans un attribut title="" (voir les nombreux
+ *  autres appels à activeStationRadioLabel() plus bas, volontairement
+ *  laissés en texte brut). */
+function activeStationRadioLabelHtml(){ return ACTIVE_STATION === 'RFM' ? 'RFM' : 'E<span style="color:' + STATION_BRAND_COLOR.EUROPE2 + '">2</span>'; }
 
 /** Rang de la STATION ACTIVE (Europe 2 ou RFM, jamais les deux) dans le
  *  classement airplay de la dernière semaine chargée — utilisé pour la
@@ -8227,6 +8234,18 @@ const AIRPLAY_RADIOS = [
   {key:'indes', label:'Indés',  col:'Classement Les Indés Radios',own:false},
   {key:'rg',    label:'Général', col:'Rg',                        own:false}, // Classement toutes radios confondues (Muzicast) — rang direct, pas un volume
 ];
+
+/** Libellé court d'une radio ("E2", "RFM"...) en HTML, avec le "2" d'"E2"
+ *  coloré en fuchsia (même détail que stationNameHtml pour "Europe 2" en
+ *  toutes lettres — voir plus haut) — utilisé dans les en-têtes de colonnes
+ *  Airplay des tableaux de classements. Pas pour un contexte d'attribut
+ *  (title=""), ni pour un <option> de <select> : le HTML n'y serait pas
+ *  interprété, utiliser radioDef.label brut dans ces cas-là. */
+function airplayLabelHtml(radioDef){
+  return radioDef && radioDef.key === 'e2'
+    ? 'E<span style="color:' + STATION_BRAND_COLOR.EUROPE2 + '">2</span>'
+    : (radioDef ? radioDef.label : '');
+}
 
 // Radios supplémentaires affichées UNIQUEMENT dans l'onglet Airplay de la page
 // Classements (pas dans le tableau principal, ni Comité d'Écoute, Radar, IEDR,
@@ -9321,7 +9340,7 @@ function renderTable(){
       style="cursor:pointer;font-size:9px;font-weight:800;color:${r.own?'var(--cyan)':'var(--text2)'};
              ${isActive ? 'text-decoration:underline;text-underline-offset:3px;color:var(--cyan);' : ''}
              user-select:none;display:flex;align-items:center;gap:2px"
-    >${r.label}${arrow}</span>`;
+    >${airplayLabelHtml(r)}${arrow}</span>`;
   }).join('') : '';
   const diffSortActive = sort === 'diff';
   const diffArrow = diffSortActive ? `<span style='font-size:8px'>▼</span>` : '';
@@ -11291,6 +11310,20 @@ const STATION_AIRPLAY_TYPE = { EUROPE2: 'fortes', RFM: 'faibles' };
 // pour teinter le sélecteur et le point sous le logo de la station active.
 const STATION_BRAND_COLOR = { EUROPE2: '#E61E82', RFM: '#0056A3' };
 
+/** Libellé de station en HTML, avec le "2" d'"Europe 2" coloré en fuchsia
+ *  (détail esthétique demandé — même couleur que STATION_BRAND_COLOR.EUROPE2
+ *  ci-dessus, pour rester cohérent avec le sélecteur de station). RFM n'a
+ *  pas de chiffre, renvoyé tel quel. Utilisé partout où le nom de station
+ *  est injecté en HTML (pas dans un attribut title/alt : le HTML y serait
+ *  affiché tel quel plutôt qu'interprété — voir STATION_LABELS pour la
+ *  version texte brut à utiliser dans ces cas-là). */
+function stationNameHtml(stationKey){
+  const label = STATION_LABELS[stationKey] || '';
+  return stationKey === 'EUROPE2'
+    ? label.replace(/2$/, '<span style="color:' + STATION_BRAND_COLOR.EUROPE2 + '">2</span>')
+    : label;
+}
+
 function toggleActiveStation(){
   ACTIVE_STATION = ACTIVE_STATION === 'EUROPE2' ? 'RFM' : 'EUROPE2';
   try { localStorage.setItem('fpa_active_station', ACTIVE_STATION); } catch(e){}
@@ -11341,6 +11374,9 @@ function toggleActiveStation(){
 
 function updateStationToggleUI(){
   const el = document.getElementById('stationToggleLabel');
+  // Texte brut ici (pas stationNameHtml) : ce bouton a un fond déjà teinté en
+  // fuchsia pour Europe 2 (STATION_BRAND_COLOR, juste en dessous) — un "2" en
+  // fuchsia sur un fond fuchsia serait invisible.
   if(el) el.textContent = STATION_ICONS[ACTIVE_STATION] + ' ' + STATION_LABELS[ACTIVE_STATION];
   // Fond teinté du sélecteur (fuchsia Europe 2 / bleu RFM) pour une identification
   // immédiate de la station active, en plus du libellé texte.
@@ -11359,9 +11395,12 @@ function updateStationToggleUI(){
   if(dotE2) dotE2.style.display = ACTIVE_STATION === 'EUROPE2' ? 'block' : 'none';
   if(dotRFM) dotRFM.style.display = ACTIVE_STATION === 'RFM' ? 'block' : 'none';
   // Rafraîchit toutes les mentions statiques de la station (notes méthodologiques,
-  // en-têtes de page...) marquées avec la classe partagée "station-name".
+  // en-têtes de page...) marquées avec la classe partagée "station-name" — le
+  // "2" d'"Europe 2" est coloré en fuchsia (même couleur de marque que
+  // STATION_BRAND_COLOR.EUROPE2 ci-dessus, pour rester cohérent avec le
+  // sélecteur de station) ; RFM n'a pas de chiffre à traiter.
   document.querySelectorAll('.station-name').forEach(span => {
-    span.textContent = STATION_LABELS[ACTIVE_STATION];
+    span.innerHTML = stationNameHtml(ACTIVE_STATION);
   });
   // Logo de la station à côté des titres des pages d'analyse (Décision +
   // Analyse) — réutilise le logo déjà chargé dans l'en-tête (balise <img
@@ -14736,6 +14775,19 @@ function marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, field, f
     <td style="padding:6px 4px;text-align:left;width:46px">${marcheDeltaBadgeHtml(val, prevChrono, slug, period, field, 'Vs vague précédente')}</td>
     <td style="padding:6px 10px 6px 4px;text-align:left;width:46px">${marcheDeltaBadgeHtml(val, prevYear, slug, period, field, 'Vs même période N-1')}</td>`;
 }
+/** Couleur de marque pour un libellé de radio de l'Historique Marché —
+ *  Europe 2 en fuchsia, RFM en bleu (mêmes couleurs que STATION_BRAND_COLOR,
+ *  pour rester cohérent avec le reste de FPA), toute autre radio (concurrents)
+ *  en navy normal. Détection par slug normalisé (mediaSlugify), pas par
+ *  comparaison de texte exacte : le libellé extrait d'un PDF Médiamétrie peut
+ *  varier légèrement d'une vague à l'autre ("Europe 2", "EUROPE2"...). */
+function marcheRadioLabelColor(label){
+  const slug = mediaSlugify(label).replace(/-/g, '');
+  if(slug === 'europe2') return STATION_BRAND_COLOR.EUROPE2;
+  if(slug === 'rfm') return STATION_BRAND_COLOR.RFM;
+  return 'var(--navy)';
+}
+
 function marcheTableHtml(){
   const w = marcheHistory.waves[marcheUI.waveId];
   const prevChrono = marcheFindPrevChrono(marcheUI.waveId);
@@ -14777,7 +14829,7 @@ function marcheTableHtml(){
       ${rows.map(({slug,ent}, i) => {
         const zebraBg = i % 2 === 1 ? '#F5F5F7' : 'transparent';
         return `<tr style="border-bottom:1px solid var(--border);cursor:pointer;background:${zebraBg}" onclick="openMarcheEntityModal('${slug}')" onmouseenter="this.style.background='var(--cyan-light)'" onmouseleave="this.style.background='${zebraBg}'">
-          <td style="padding:6px 10px;font-weight:700;color:var(--navy)">${escHtml(ent.label)}</td>
+          <td style="padding:6px 10px;font-weight:700;color:${marcheRadioLabelColor(ent.label)}">${escHtml(ent.label)}</td>
           ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'ac', marcheFmtPct, true)}
           ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'pda', marcheFmtPct, true)}
           ${marcheMetricCellsHtml(ent, prevChrono, prevYear, slug, period, 'dea', v => v!=null?marcheFmtMinToHM(v):'–', true)}
@@ -14813,7 +14865,8 @@ function openMarcheEntityModal(slug){
   const ent = w.entities[slug];
   if(!ent) return;
   marcheEntityModalSlug = slug;
-  document.getElementById('marcheEntityTitle').textContent = ent.label;
+  document.getElementById('marcheEntityTitle').innerHTML = escHtml(ent.label);
+  document.getElementById('marcheEntityTitle').style.color = marcheRadioLabelColor(ent.label);
   document.getElementById('marcheEntitySub').textContent = MARCHE_CATEGORY_LABELS[ent.category] + ' — historique complet, ' + (marcheUI.period==='LV'?'Lundi-Vendredi':'Samedi-Dimanche');
 
   // Recatégorisation : corrige un mauvais classement issu de l'import (ex.
@@ -17635,7 +17688,7 @@ function renderAnalysePage(){
   const stKey = analyseStationKey();
   const stLabel = STATION_LABELS[stKey];
   ['analyseStationLabel','analyseEmptyStation'].forEach(id => {
-    const el = document.getElementById(id); if(el) el.textContent = stLabel;
+    const el = document.getElementById(id); if(el) el.innerHTML = stationNameHtml(stKey);
   });
   // Synchronise le bandeau (libellé + dates) ET les champs du formulaire
   // avec la semaine réellement affichée (analyseWeekMeta) — jusqu'ici seul
@@ -20763,31 +20816,31 @@ function renderChartTable(){
         style="cursor:pointer;font-weight:800;color:${r.own?'var(--cyan)':'var(--text2)'};${ml}
                ${isActive ? 'text-decoration:underline;text-underline-offset:3px;color:var(--cyan);' : ''}
                user-select:none"
-      >${r.label}${arrow}</span>`;
+      >${airplayLabelHtml(r)}${arrow}</span>`;
     }).join('');
     hdrEl.style.gridTemplateColumns = '48px 24px 26px minmax(0,1fr) ' + AIRPLAY_RADIOS_CHART.map(()=>'52px').join(' ');
     hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + apCols;
   } else if(activeChartTab === 'spyfr' || KWORB_COUNTRY_TABS.includes(activeChartTab)){
     const spyGridH = airplayLoaded ? '48px 24px 26px minmax(0,1fr) 90px 36px 64px' : '48px 24px 26px minmax(0,1fr) 90px 36px';
     hdrEl.style.gridTemplateColumns = spyGridH;
-    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:#1DB954;font-weight:800;text-align:right">Streams</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:#1DB954;font-weight:800;text-align:right">Streams</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabelHtml() + ' rang</span>') : '');
   } else if(activeChartTab === 'yt' || KWORB_YOUTUBE_TABS.includes(activeChartTab)){
     const ytGridH = airplayLoaded ? '48px 24px 26px minmax(0,1fr) 90px 36px 64px' : '48px 24px 26px minmax(0,1fr) 90px 36px';
     hdrEl.style.gridTemplateColumns = ytGridH;
-    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:#FF0000;font-weight:800;text-align:right">Vues</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:#FF0000;font-weight:800;text-align:right">Vues</span><span style="text-align:center">±</span>' + (airplayLoaded ? ('<span style="color:var(--cyan);font-weight:800;text-align:center" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabelHtml() + ' rang</span>') : '');
   } else if(activeChartTab.startsWith('kp_')){
     // ── Playlist Spotify clé — pas de streams/peak (non fournis par l'embed) ──
     const showE2KP = airplayLoaded;
     hdrEl.style.gridTemplateColumns = showE2KP ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
-    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + (showE2KP ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + (showE2KP ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabelHtml() + ' rang</span>') : '');
   } else if(activeChartTab.startsWith('radio_')){
     // ── Radio clé (Top Songs) — pas de streams/peak (non fournis) ──
     const showE2R = airplayLoaded;
     hdrEl.style.gridTemplateColumns = showE2R ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
-    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + (showE2R ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>') : '');
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span>' + (showE2R ? ('<span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabelHtml() + ' rang</span>') : '');
   } else if((activeChartTab === 'shzfr' || activeChartTab === 'dzfr' || activeChartTab === 'fh' || activeChartTab.startsWith('dzkp_') || activeChartTab.startsWith('akp_') || activeChartTab === 'amus' || activeChartTab === 'amfr' || activeChartTab === 'itfr' || activeChartTab === 'bbus' || activeChartTab === 'bbg200' || activeChartTab === 'kwradio') && airplayLoaded){
     hdrEl.style.gridTemplateColumns = '48px 24px 26px minmax(0,1fr) 64px';
-    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabel() + ' rang</span>';
+    hdrEl.innerHTML = '<span>#</span><span></span><span></span><span>TITRE / ARTISTE</span><span style="color:var(--cyan);font-weight:800" title="Rang ' + STATION_LABELS[ACTIVE_STATION] + ' dans le classement airplay">' + activeStationRadioLabelHtml() + ' rang</span>';
   } else if(activeChartTab === 'kwtop'){
     hdrEl.style.gridTemplateColumns = '48px 24px minmax(0,1fr)';
     hdrEl.innerHTML = '<span>#</span><span></span><span>ARTISTE</span>';
@@ -21910,7 +21963,7 @@ function comiteAirplayBadge(radioDef, points){
   const valStr = has ? (isRank ? '#'+last.val : last.val) : '–';
   const color = radioDef.own ? 'var(--cyan)' : 'var(--navy)';
   return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:44px">
-    <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap">${radioDef.label}</span>
+    <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap">${airplayLabelHtml(radioDef)}</span>
     <span style="font-size:13px;font-weight:800;color:${has?color:'var(--border)'}">${valStr}</span>
     ${deltaHtml}
   </div>`;
@@ -21934,7 +21987,7 @@ function comiteAirplayRankBadge(radioDef, points){
   const valStr = has ? '#'+last.val : '–';
   const color = radioDef.own ? 'var(--cyan)' : 'var(--navy)';
   return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:8px;min-width:44px">
-    <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap">${radioDef.label}</span>
+    <span style="font-size:8px;font-weight:800;color:var(--muted);white-space:nowrap">${airplayLabelHtml(radioDef)}</span>
     <span style="font-size:13px;font-weight:800;color:${has?color:'var(--border)'}">${valStr}</span>
     ${deltaHtml}
   </div>`;
