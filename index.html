@@ -2098,7 +2098,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <button id="analyseSubMediaBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('media')">📡 Médiamétrie</button>
       <button id="analyseSubGraphBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('graph')">📈 Graphiques</button>
       <button id="analyseSubCorrBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('corr')">🔗 Corrélation</button>
+      <button id="analyseSubTargetBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('target')">🎯 Cible de recherche</button>
     </div>
+
+    <div id="analyseTargetContainer" style="display:none"></div>
 
     <div id="analyseProgContainer">
 
@@ -11354,6 +11357,7 @@ function toggleActiveStation(){
       if(analyseSubView === 'media'     && typeof renderMediaPage === 'function')          renderMediaPage();
       if(analyseSubView === 'graph'     && typeof renderGraphPage === 'function')          renderGraphPage();
       if(analyseSubView === 'corr'      && typeof renderCorrPage === 'function')           renderCorrPage();
+      if(analyseSubView === 'target'    && typeof renderSearchTargetPage === 'function')   renderSearchTargetPage();
     }
   }
   // Le résumé Call Out/OMT de la home est filtré par station active
@@ -12458,16 +12462,18 @@ function analyseSetSubView(view){
   const corrBtn = document.getElementById('analyseSubCorrBtn');
   const mediaBtn = document.getElementById('analyseSubMediaBtn');
   const graphBtn = document.getElementById('analyseSubGraphBtn');
+  const targetBtn = document.getElementById('analyseSubTargetBtn');
   const progC   = document.getElementById('analyseProgContainer');
   const audC    = document.getElementById('analyseAudienceContainer');
   const corrC   = document.getElementById('analyseCorrContainer');
   const mediaC  = document.getElementById('analyseMediaContainer');
   const graphC  = document.getElementById('analyseGraphContainer');
+  const targetC = document.getElementById('analyseTargetContainer');
   const progAct = document.getElementById('analyseProgActions');
   const audAct  = document.getElementById('digitalAudienceActions');
   const mediaAct = document.getElementById('mediaActions');
   const marcheAct = document.getElementById('marcheActions');
-  [[progBtn,'prog'],[audBtn,'audience'],[corrBtn,'corr'],[mediaBtn,'media'],[graphBtn,'graph']].forEach(([btn,v]) => {
+  [[progBtn,'prog'],[audBtn,'audience'],[corrBtn,'corr'],[mediaBtn,'media'],[graphBtn,'graph'],[targetBtn,'target']].forEach(([btn,v]) => {
     if(!btn) return;
     const active = v === view;
     btn.style.borderBottomColor = active ? 'var(--navy)' : 'transparent';
@@ -12478,6 +12484,7 @@ function analyseSetSubView(view){
   if(corrC)   corrC.style.display   = view==='corr'      ? 'block' : 'none';
   if(mediaC)  mediaC.style.display  = view==='media'     ? 'block' : 'none';
   if(graphC)  graphC.style.display  = view==='graph'     ? 'block' : 'none';
+  if(targetC) targetC.style.display = view==='target'    ? 'block' : 'none';
   if(progAct) progAct.style.display = view==='prog'     ? 'flex'  : 'none';
   if(audAct)  audAct.style.display  = view==='audience' ? 'flex'  : 'none';
   if(mediaAct) mediaAct.style.display = view==='media'  ? 'flex'  : 'none';
@@ -12499,10 +12506,15 @@ function analyseSetSubView(view){
     }
     mediaSetInnerTab(mediaInnerTab);
   }
+  if(view==='target' && !searchTargetDriveLoaded){
+    searchTargetLoadLocal();
+    if(DRIVE_SYNC_URL) searchTargetLoadFromDrive(false);
+  }
   if(view==='audience') renderDigitalAudiencePage();
   if(view==='media' && mediaInnerTab==='live') renderMediaPage();
   if(view==='graph') renderGraphPage();
   if(view==='corr') renderCorrPage();
+  if(view==='target') renderSearchTargetPage();
 }
 
 function digitalAudienceLoadLocal(){
@@ -13283,6 +13295,301 @@ async function mediaLoadHistoryFromDrive(manual){
     if(manual) showToast('Erreur de synchronisation Drive : ' + e.message, 'err');
     return { ok:false, reason:e.message };
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CIBLE DE RECHERCHE — critères sociodémo/comportementaux sur lesquels la
+// musique est testée en Call Out/OMT (âge, sexe, géographie, écoute radio,
+// montage musical de contrôle), propres à chaque station et modifiables ici
+// intégralement — ces critères évoluent au fil des années, donc rien n'est
+// figé en dur dans le code : chaque section et chaque ligne sont éditables,
+// ajoutables, supprimables. Même schéma de persistance que Médiamétrie
+// ci-dessus (local + Drive, fusion au chargement Drive plutôt qu'écrasement).
+// ══════════════════════════════════════════════════════════════════════════
+const TARGET_LOCAL_KEY = 'fpa_search_target_v1';
+const TARGET_DRIVE_KEY = 'search_target_criteria';
+const TARGET_SEED = {
+  RFM: {
+    sections: [
+      { id:'age',    title:'Âge',         items: ["40-53 ans (50% de 40-46 ans / 50% de 47-53 ans)"] },
+      { id:'sexe',   title:'Sexe',        items: ["50% femmes / 50% hommes"] },
+      { id:'geo',    title:'Géographie',  items: ["15-20% Paris et sa banlieue / 80-85% Province"] },
+      { id:'ecoute', title:'Écoute radio', items: [
+          "40% de RFM préférée / 15% de RTL2 préférée / 15% de Chérie FM préférée / 15% de Nostalgie préférée / 15% NRJ préférée",
+          "100% des RFM préférés doivent écouter régulièrement RFM (tous les jours / presque tous les jours)",
+          "100% des NRJ préférés doivent avoir écouté RFM ou/et Nostalgie sur les 7 derniers jours"
+        ] }
+    ],
+    montage: { minScore: 7, songs: [
+      "Michael Jackson - Beat It", "Ace of Base - All that she wants", "Alex Warren - Fever dream",
+      "Katy Perry - I kissed a girl", "Talk Talk - Such a shame", "Christophe Willem - Double je"
+    ] }
+  },
+  EUROPE2: {
+    sections: [
+      { id:'age',    title:'Âge',         items: [] },
+      { id:'sexe',   title:'Sexe',        items: [] },
+      { id:'geo',    title:'Géographie',  items: [] },
+      { id:'ecoute', title:'Écoute radio', items: [] }
+    ],
+    montage: { minScore: 7, songs: [] }
+  }
+};
+let searchTargetConfig = { EUROPE2: null, RFM: null };
+let searchTargetDriveLoaded = false;
+
+function targetGet(stKey){
+  if(!searchTargetConfig[stKey]) searchTargetConfig[stKey] = JSON.parse(JSON.stringify(TARGET_SEED[stKey] || { sections:[], montage:{ minScore:7, songs:[] } }));
+  return searchTargetConfig[stKey];
+}
+function searchTargetLoadLocal(){
+  try{
+    const raw = localStorage.getItem(TARGET_LOCAL_KEY);
+    if(raw){ searchTargetConfig = JSON.parse(raw); return; }
+  }catch(e){ /* ignoré */ }
+  searchTargetConfig = JSON.parse(JSON.stringify(TARGET_SEED));
+  searchTargetSaveLocal();
+}
+function searchTargetSaveLocal(){
+  try{ localStorage.setItem(TARGET_LOCAL_KEY, JSON.stringify(searchTargetConfig)); }
+  catch(e){ /* quota localStorage, ignoré */ }
+}
+async function searchTargetSaveToDrive(){
+  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  try{
+    await driveCall('save', TARGET_DRIVE_KEY, JSON.stringify(searchTargetConfig));
+    return { ok:true };
+  }catch(e){
+    showToast('Erreur de sauvegarde Drive (Cible de recherche) : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }
+}
+async function searchTargetLoadFromDrive(manual){
+  if(!DRIVE_SYNC_URL){ if(manual) showToast('URL Drive Sync non configurée', 'err'); return { ok:false, reason:'no_url' }; }
+  try{
+    const r = await driveCall('load', TARGET_DRIVE_KEY);
+    searchTargetDriveLoaded = true;
+    if(!r || !r.data){ if(manual) renderSearchTargetPage(); return { ok:true, empty:true }; }
+    // Le Drive fait foi entière ici (contrairement à Médiamétrie, qui fusionne
+    // par période) : la Cible de recherche est un document unique par station,
+    // pas une liste d'entrées horodatées à fusionner — la version la plus
+    // récemment sauvegardée (forcément la plus à jour) remplace le local.
+    searchTargetConfig = JSON.parse(r.data);
+    searchTargetSaveLocal();
+    if(manual) showToast('Cible de recherche synchronisée depuis Drive', 'success');
+    renderSearchTargetPage();
+    return { ok:true };
+  }catch(e){
+    searchTargetDriveLoaded = true;
+    if(manual) showToast('Erreur de synchronisation Drive : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }
+}
+function searchTargetPersist(){
+  searchTargetSaveLocal();
+  searchTargetSaveToDrive();
+}
+
+function targetUpdateSectionTitle(stKey, sectionId, value){
+  const sec = targetGet(stKey).sections.find(s => s.id === sectionId);
+  if(sec){ sec.title = value; searchTargetPersist(); }
+}
+function targetUpdateItem(stKey, sectionId, idx, value){
+  const sec = targetGet(stKey).sections.find(s => s.id === sectionId);
+  if(sec && sec.items[idx] !== undefined){ sec.items[idx] = value; searchTargetPersist(); }
+}
+function targetAddItem(stKey, sectionId){
+  const sec = targetGet(stKey).sections.find(s => s.id === sectionId);
+  if(sec){ sec.items.push(''); searchTargetPersist(); renderSearchTargetPage(); }
+}
+function targetRemoveItem(stKey, sectionId, idx){
+  const sec = targetGet(stKey).sections.find(s => s.id === sectionId);
+  if(sec){ sec.items.splice(idx, 1); searchTargetPersist(); renderSearchTargetPage(); }
+}
+function targetAddSection(stKey){
+  const cfg = targetGet(stKey);
+  cfg.sections.push({ id: 'sec' + Date.now(), title: 'Nouveau critère', items: [''] });
+  searchTargetPersist(); renderSearchTargetPage();
+}
+function targetRemoveSection(stKey, sectionId){
+  if(!confirm('Supprimer ce critère et toutes ses lignes ?')) return;
+  const cfg = targetGet(stKey);
+  cfg.sections = cfg.sections.filter(s => s.id !== sectionId);
+  searchTargetPersist(); renderSearchTargetPage();
+}
+function targetUpdateMontageMinScore(stKey, value){
+  const cfg = targetGet(stKey);
+  cfg.montage.minScore = value === '' ? null : parseFloat(value);
+  searchTargetPersist();
+}
+function targetUpdateMontageSong(stKey, idx, value){
+  const cfg = targetGet(stKey);
+  if(cfg.montage.songs[idx] === value) { renderSearchTargetPage(); return; } // pas de changement : referme quand même l'édition
+  cfg.montage.songs[idx] = value;
+  searchTargetPersist();
+  renderSearchTargetPage();
+}
+function targetAddMontageSong(stKey){
+  targetGet(stKey).montage.songs.push('');
+  searchTargetPersist(); renderSearchTargetPage();
+}
+function targetRemoveMontageSong(stKey, idx){
+  targetGet(stKey).montage.songs.splice(idx, 1);
+  searchTargetPersist(); renderSearchTargetPage();
+}
+
+/** Découpe une entrée de montage "Artiste - Titre" (format libre saisi par
+ *  Gaël) en {artist, title} pour la recherche du dernier résultat de test —
+ *  coupe sur le PREMIER " - " rencontré, ce qui gère correctement les titres
+ *  contenant eux-mêmes un tiret (ex. "Ace of Base - All that she wants"). */
+function parseMontageSong(song){
+  const s = (song || '').trim();
+  const idx = s.indexOf(' - ');
+  if(idx < 0) return { artist:'', title: s };
+  return { artist: s.slice(0, idx).trim(), title: s.slice(idx + 3).trim() };
+}
+
+/** Bascule une ligne de montage entre affichage classement (titre/artiste
+ *  stylés, cliquable vers la fiche titre) et édition (champ texte libre
+ *  "Artiste - Titre") — voir renderSearchTargetPage. Pas de nouvel état
+ *  persisté : simple bascule d'affichage DOM, réinitialisée au prochain
+ *  rendu de la page. */
+function targetToggleMontageEdit(idx){
+  const row = document.getElementById('montageRow' + idx);
+  const edit = document.getElementById('montageEdit' + idx);
+  if(!row || !edit) return;
+  const nowEditing = edit.style.display === 'none';
+  edit.style.display = nowEditing ? 'flex' : 'none';
+  row.style.display = nowEditing ? 'none' : 'flex';
+  if(nowEditing){ const inp = edit.querySelector('input'); if(inp){ inp.focus(); inp.select(); } }
+}
+
+function renderSearchTargetPage(){
+  const el = document.getElementById('analyseTargetContainer');
+  if(!el) return;
+  const stKey = analyseStationKey();
+  const cfg = targetGet(stKey);
+
+  const sectionsHtml = cfg.sections.map(sec => `
+    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+        <input type="text" value="${escHtml(sec.title)}" onchange="targetUpdateSectionTitle('${stKey}','${sec.id}',this.value)"
+          style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy);border:none;background:transparent;padding:2px 4px;border-radius:5px;flex:1;min-width:0"
+          onfocus="this.style.background='var(--bg)'" onblur="this.style.background='transparent'">
+        <button onclick="targetRemoveSection('${stKey}','${sec.id}')" title="Supprimer ce critère" style="flex-shrink:0;width:24px;height:24px;padding:0;border-radius:6px;background:var(--white);border:1.5px solid var(--border);color:#CC2222;cursor:pointer;font-size:12px">✕</button>
+      </div>
+      ${sec.items.map((item, idx) => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="color:var(--cyan);font-size:13px;flex-shrink:0">➢</span>
+          <input type="text" value="${escHtml(item)}" onchange="targetUpdateItem('${stKey}','${sec.id}',${idx},this.value)"
+            style="flex:1;min-width:0;font-size:12.5px;color:var(--text2);padding:6px 9px;border-radius:7px;border:1.5px solid var(--border)">
+          <button onclick="targetRemoveItem('${stKey}','${sec.id}',${idx})" title="Retirer cette ligne" style="flex-shrink:0;width:22px;height:22px;padding:0;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px">✕</button>
+        </div>`).join('')}
+      <button onclick="targetAddItem('${stKey}','${sec.id}')" style="font-size:11px;font-weight:700;color:var(--cyan);background:none;border:none;cursor:pointer;padding:4px 4px 0;margin-left:21px">+ Ajouter une ligne</button>
+    </div>`).join('');
+
+  const montage = cfg.montage || { minScore:7, songs:[] };
+  // Moyenne du montage — sur les scores "Ensemble" et "P1" tels qu'affichés
+  // par titre (Pot Score si testé en Call Out, Fam Score si testé en OMT,
+  // voir plus bas) : mélange volontairement les deux sources sous un même
+  // intitulé "score" puisque le montage combine souvent des classiques testés
+  // par l'une ou l'autre au fil des ans — ne compte que les titres ayant
+  // effectivement un résultat, indiqué par le "sur N/6" à côté.
+  const montageScores = montage.songs.map(song => {
+    const { title, artist } = parseMontageSong(song);
+    return title ? analyseGetSearchScores(title, artist) : null;
+  });
+  const ensembleVals = montageScores.filter(Boolean).map(s => s.potTous ?? s.famTous).filter(v => v !== null && v !== undefined);
+  const p1Vals        = montageScores.filter(Boolean).map(s => s.potP1 ?? s.famP1).filter(v => v !== null && v !== undefined);
+  const avg = arr => arr.length ? Math.round(arr.reduce((a,b) => a+b, 0) / arr.length) : null;
+  const avgEnsemble = avg(ensembleVals), avgP1 = avg(p1Vals);
+  const montageAvgLine = (avgEnsemble !== null || avgP1 !== null)
+    ? `<div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;padding:8px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:12px">
+        <strong style="color:var(--navy)">Moyenne du montage</strong>
+        <span style="color:var(--text2)">Ensemble <strong style="color:var(--navy)">${avgEnsemble ?? '–'}</strong> <span style="color:var(--muted);font-size:10.5px">(sur ${ensembleVals.length}/${montage.songs.length})</span></span>
+        <span style="color:var(--text2)">P1 <strong style="color:var(--navy)">${avgP1 ?? '–'}</strong> <span style="color:var(--muted);font-size:10.5px">(sur ${p1Vals.length}/${montage.songs.length})</span></span>
+      </div>`
+    : '';
+  const montageHtml = `
+    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:16px 18px">
+      <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy);margin-bottom:10px">🎼 Montage musical</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12.5px;color:var(--text2)">
+        Tous les répondants doivent donner au minimum une note de
+        <input type="number" min="0" max="10" step="0.5" value="${montage.minScore ?? ''}" onchange="targetUpdateMontageMinScore('${stKey}',this.value)"
+          style="width:56px;text-align:center;font-size:12.5px;font-weight:800;color:var(--navy);padding:5px 6px;border-radius:6px;border:1.5px solid var(--border)"> / 10
+        au montage suivant :
+      </div>
+      ${montageAvgLine}
+      ${montage.songs.map((song, idx) => {
+        const { title, artist } = parseMontageSong(song);
+        // analyseGetSearchScores combine Call Out (Pot Score) ET OMT (Fam
+        // Score, colonnes nommées différemment — voir son commentaire) ; sans
+        // referenceDate, elle renvoie le dernier résultat connu tous types
+        // confondus, quelle que soit la source d'origine du titre.
+        const s = montageScores[idx];
+        const fmtVal = v => (v === null || v === undefined) ? '–' : Math.round(v);
+        let resultLine = '';
+        if(s){
+          const hasCO  = s.potTous !== null || s.potP1 !== null;
+          const hasOMT = s.famTous !== null || s.famP1 !== null;
+          const parts = [];
+          if(hasCO)  parts.push(`Pot Score Ensemble <strong style="color:var(--navy)">${fmtVal(s.potTous)}</strong> · P1 <strong style="color:var(--navy)">${fmtVal(s.potP1)}</strong>`);
+          if(hasOMT) parts.push(`Fam Score Ensemble <strong style="color:var(--navy)">${fmtVal(s.famTous)}</strong> · P1 <strong style="color:var(--navy)">${fmtVal(s.famP1)}</strong>`);
+          if(parts.length) resultLine = `<div style="margin:2px 0 6px 26px;font-size:11px;color:var(--muted)">Dernier test — ${parts.join(' &nbsp;·&nbsp; ')}</div>`;
+        }
+        // Bouton dédié pour ouvrir la fiche titre (Song Full Metrics) — porté
+        // par la ligne entière en mode affichage (voir plus bas), donc plus
+        // besoin d'une icône séparée pour ça ici.
+        return `
+        <div id="montageRow${idx}" style="display:flex;align-items:center;gap:10px;margin-bottom:2px;padding:5px 6px;border-radius:8px;cursor:${title ? 'pointer' : 'default'}"
+          ${title ? `onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(title, artist)}" title="Voir la fiche titre complète" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background='transparent'"` : ''}>
+          <span style="color:var(--muted);font-size:11px;width:14px;flex-shrink:0;text-align:right">${idx + 1}.</span>
+          <div id="montageCover${idx}" style="display:none;flex-shrink:0;width:32px;height:32px;border-radius:6px;overflow:hidden;background:var(--bg);border:1.5px solid var(--border)">
+            <img src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
+          </div>
+          <div style="min-width:0;flex:1">
+            <div style="font-size:12px;font-weight:700;color:var(--navy);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${title ? escHtml(titleCaseDisplay(title)) : '<span style="color:var(--muted);font-style:italic;font-weight:400">Titre non renseigné</span>'}</div>
+            ${artist ? `<div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(artist))}</div>` : ''}
+          </div>
+          <button onclick="event.stopPropagation();targetToggleMontageEdit(${idx})" title="Modifier ce titre" style="flex-shrink:0;width:24px;height:24px;padding:0;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px">✎</button>
+          <button onclick="event.stopPropagation();targetRemoveMontageSong('${stKey}',${idx})" title="Retirer ce titre" style="flex-shrink:0;width:22px;height:22px;padding:0;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px">✕</button>
+        </div>
+        <div id="montageEdit${idx}" style="display:none;align-items:center;gap:8px;margin:2px 0 8px 24px">
+          <input type="text" value="${escHtml(song)}" placeholder="Artiste - Titre"
+            onblur="targetUpdateMontageSong('${stKey}',${idx},this.value)" onkeydown="if(event.key==='Enter') this.blur()"
+            style="flex:1;min-width:0;font-size:12.5px;color:var(--text2);padding:6px 9px;border-radius:7px;border:1.5px solid var(--cyan)">
+        </div>
+        ${resultLine}`;
+      }).join('')}
+      <button onclick="targetAddMontageSong('${stKey}')" style="font-size:11px;font-weight:700;color:var(--cyan);background:none;border:none;cursor:pointer;padding:4px 4px 0 26px">+ Ajouter un titre au montage</button>
+    </div>`;
+
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:12px;color:var(--muted)">Critères sociodémo et comportementaux sur lesquels la musique <strong style="color:var(--navy)">${escHtml(STATION_LABELS[stKey])}</strong> est testée en Call Out/OMT — tous les champs sont modifiables directement ci-dessous.</div>
+      <button class="btn-ghost" style="font-size:11px;padding:7px 12px" onclick="targetAddSection('${stKey}')">+ Ajouter un critère</button>
+    </div>
+    ${sectionsHtml || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;margin-bottom:14px">Aucun critère renseigné pour l\'instant.</div>'}
+    ${montageHtml}
+  `;
+
+  // Pochettes des titres du montage (API iTunes Search, JSONP, pas de proxy)
+  // — chargées en parallèle après le rendu, sur le même principe que le
+  // Comité d'Écoute (buildComiteCard) : placeholder masqué, rempli et révélé
+  // à l'arrivée du résultat ; getElementById renvoie null et le résultat est
+  // ignoré si la page a été re-rendue entre-temps (changement de station).
+  montage.songs.forEach((song, idx) => {
+    const { title, artist } = parseMontageSong(song);
+    if(!title) return;
+    fetchItunesArtwork(title, artist).then(url => {
+      if(!url) return;
+      const wrap = document.getElementById('montageCover' + idx);
+      if(!wrap) return;
+      const img = wrap.querySelector('img');
+      if(img) img.src = url;
+      wrap.style.display = 'block';
+    });
+  });
 }
 
 function mediaWaveSortKey(period){
