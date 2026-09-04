@@ -984,6 +984,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
         <!-- Légende niveau de risque -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button id="predFeedbackBackupBtnExit" onclick="predFeedbackPushToDrive('predFeedbackBackupBtnExit')" title="Sauvegarde l'apprentissage Prédiction (tous les choix Sorties/Entrées) sur Drive — la même sauvegarde que dans le panneau Drive Sync, en accès direct pour ne pas avoir à s'en souvenir après une session de décisions"
+            style="display:flex;align-items:center;gap:5px;font-size:11px;padding:6px 12px;border-radius:20px;background:var(--cyan-light);border:1.5px solid var(--cyan-mid);color:#007B87;cursor:pointer;font-weight:700">☁️ Sauvegarder l'apprentissage</button>
           <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:var(--green-bg);border:1.5px solid var(--green-border)">
             <span style="font-size:11px;font-weight:800;color:var(--green-text)">🟢 Pas de signal</span>
           </div>
@@ -1070,6 +1072,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
         <!-- Légende niveau -->
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button id="predFeedbackBackupBtnEntry" onclick="predFeedbackPushToDrive('predFeedbackBackupBtnEntry')" title="Sauvegarde l'apprentissage Prédiction (tous les choix Sorties/Entrées) sur Drive — la même sauvegarde que dans le panneau Drive Sync, en accès direct pour ne pas avoir à s'en souvenir après une session de décisions"
+            style="display:flex;align-items:center;gap:5px;font-size:11px;padding:6px 12px;border-radius:20px;background:var(--cyan-light);border:1.5px solid var(--cyan-mid);color:#007B87;cursor:pointer;font-weight:700">☁️ Sauvegarder l'apprentissage</button>
           <div style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;background:var(--bg);border:1.5px solid var(--border)">
             <span style="font-size:11px;font-weight:800;color:var(--muted)">⚪ Signal faible</span>
           </div>
@@ -3874,6 +3878,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy Deezer
         <input id="fpaCfgDeezer" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
       </label>
+      <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy Deezer Artiste (photos, Cible de recherche → Artistes totémiques)
+        <input id="fpaCfgDeezerArtist" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
+      </label>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy Apple Music (Top 100)
         <input id="fpaCfgAppleMusic" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
       </label>
@@ -4043,6 +4050,7 @@ function initPlatformLogosInTabs(){
 const FPA_DEFAULT_URLS = {
   driveSync:   '', // URL Web App Apps Script — Drive Sync (sauvegarde des semaines)
   deezer:      '', // URL Web App Apps Script — proxy Deezer
+  deezerArtist: '', // URL Web App Apps Script — proxy Deezer Artiste (photo, Cible de recherche)
   appleMusic:  '', // URL Web App Apps Script — proxy Apple Music / iTunes
   kworb:       '', // URL Web App Apps Script — proxy kworb.net
   shazam:      '', // URL Web App Apps Script — proxy Shazam
@@ -5560,6 +5568,13 @@ const DEEZER_FR_URL = 'https://api.deezer.com/playlist/' + DEEZER_FR_PLAYLIST_ID
 // Configurable via le panneau ⚙️ à côté du bouton "Charger Deezer France"
 // (voir toggleDeezerProxyPanel / renderDeezerProxyPanel plus bas).
 let DEEZER_APPS_SCRIPT_PROXY_URL = localStorage.getItem('fpa_deezer_proxy_url') || FPA_DEFAULT_URLS.deezer;
+/** Proxy Apps Script DÉDIÉ à la recherche de photos d'artiste (Cible de
+ *  recherche → Artistes totémiques) — volontairement séparé du proxy Deezer
+ *  ci-dessus (qui ne sait récupérer qu'une playlist par ID) pour ne jamais
+ *  risquer de casser ce dernier : action différente (recherche par nom),
+ *  déploiement Apps Script différent (voir Code_gs_Proxy_DeezerArtist.gs). */
+let DEEZER_ARTIST_PROXY_URL = localStorage.getItem('fpa_deezer_artist_proxy_url') || FPA_DEFAULT_URLS.deezerArtist;
+let _deezerArtistCbId = 0;
 
 let deezerData      = {};   // {rang: {a, t}}
 let deezerLoaded    = false;
@@ -5648,6 +5663,61 @@ function fetchDeezerViaAppsScript(playlistId = DEEZER_FR_PLAYLIST_ID, timeoutMs 
     script.onerror = () => { clearTimeout(timer); cleanup(); resolve(null); };
     document.head.appendChild(script);
   });
+}
+
+/** Recherche de photos d'artiste via l'API Deezer (proxy dédié, voir plus
+ *  haut) — pour les Artistes totémiques de la Cible de recherche. Renvoie un
+ *  tableau de candidats {name, picture, link} (5 max, triés par pertinence
+ *  Deezer) plutôt qu'un seul résultat : une recherche automatique ne peut
+ *  pas garantir qu'une photo est "valorisante", donc Gaël choisit lui-même
+ *  parmi les candidats plutôt que de se voir imposer le premier résultat. */
+let lastDeezerArtistError = '';
+function fetchDeezerArtistCandidates(query, timeoutMs = 12000){
+  return new Promise((resolve) => {
+    lastDeezerArtistError = '';
+    if(!/^https:\/\//i.test(DEEZER_ARTIST_PROXY_URL || '')){ lastDeezerArtistError = 'URL du proxy non configurée'; resolve(null); return; }
+    if(!query){ resolve(null); return; }
+
+    const cbName = '__fpaDZA_' + (++_deezerArtistCbId);
+    const cleanup = () => {
+      window[cbName] = () => {};
+      const s = document.getElementById('__jsonp_' + cbName);
+      if(s) s.remove();
+    };
+    const timer = setTimeout(() => { cleanup(); lastDeezerArtistError = 'Délai dépassé (' + (timeoutMs/1000) + 's) — le script .gs n\'a pas répondu à temps'; resolve(null); }, timeoutMs);
+
+    window[cbName] = (data) => {
+      clearTimeout(timer);
+      cleanup();
+      if(!data || data.error){ lastDeezerArtistError = (data && data.error) ? data.error : 'Réponse vide du proxy'; resolve(null); return; }
+      if(!Array.isArray(data.results) || !data.results.length){ lastDeezerArtistError = 'Deezer n\'a renvoyé aucun résultat pour cette recherche'; resolve(null); return; }
+      resolve(data.results);
+    };
+
+    const url = DEEZER_ARTIST_PROXY_URL
+      + '?callback=' + cbName
+      + '&q=' + encodeURIComponent(query);
+
+    const script = document.createElement('script');
+    script.id  = '__jsonp_' + cbName;
+    script.src = url;
+    script.onerror = () => { clearTimeout(timer); cleanup(); lastDeezerArtistError = 'Échec de chargement du script JSONP (réseau, ou URL du proxy invalide)'; resolve(null); };
+    document.head.appendChild(script);
+  });
+}
+
+/** kworb.net et Deezer partagent le même souci : une seule tentative peut
+ *  échouer pour une raison transitoire (rate-limit Deezer, cold start Apps
+ *  Script...). Une seconde tentative avant d'abandonner suffit presque
+ *  toujours — même principe que fetchKworbViaAppsScriptWithRetry. */
+async function fetchDeezerArtistCandidatesWithRetry(query, attempts = 2){
+  let results = null;
+  for(let i = 0; i < attempts; i++){
+    results = await fetchDeezerArtistCandidates(query);
+    if(results) return results;
+    if(i < attempts - 1) await new Promise(r => setTimeout(r, 1200));
+  }
+  return results;
 }
 
 /** Fetch générique d'une playlist Deezer par ID : proxy perso en priorité,
@@ -7620,7 +7690,8 @@ function quickAddFromChartSearch(target){
       showToast('Déjà dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'err');
       return;
     }
-    playlistTitles.push({ key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, callOut:false, manual: true });
+    const fill = playlistAutoFillFields(title, artist, ACTIVE_STATION);
+    playlistTitles.push({ key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree: fill.dateEntree, categorie:'', label: fill.label, powerNew:false, powerIntro:false, callOut:false, manual: true });
     playlistSaveToStorage();
     updatePlaylistBadge();
     showToast('✓ « ' + titleCaseDisplay(title) + ' » ajouté à la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success');
@@ -13323,7 +13394,8 @@ const TARGET_SEED = {
     montage: { minScore: 7, songs: [
       "Michael Jackson - Beat It", "Ace of Base - All that she wants", "Alex Warren - Fever dream",
       "Katy Perry - I kissed a girl", "Talk Talk - Such a shame", "Christophe Willem - Double je"
-    ] }
+    ] },
+    totemicArtists: [null, null, null, null, null]
   },
   EUROPE2: {
     sections: [
@@ -13332,14 +13404,19 @@ const TARGET_SEED = {
       { id:'geo',    title:'Géographie',  items: [] },
       { id:'ecoute', title:'Écoute radio', items: [] }
     ],
-    montage: { minScore: 7, songs: [] }
+    montage: { minScore: 7, songs: [] },
+    totemicArtists: [null, null, null, null, null]
   }
 };
 let searchTargetConfig = { EUROPE2: null, RFM: null };
 let searchTargetDriveLoaded = false;
 
 function targetGet(stKey){
-  if(!searchTargetConfig[stKey]) searchTargetConfig[stKey] = JSON.parse(JSON.stringify(TARGET_SEED[stKey] || { sections:[], montage:{ minScore:7, songs:[] } }));
+  if(!searchTargetConfig[stKey]) searchTargetConfig[stKey] = JSON.parse(JSON.stringify(TARGET_SEED[stKey] || { sections:[], montage:{ minScore:7, songs:[] }, totemicArtists:[null,null,null,null,null] }));
+  // Rétrocompatibilité : une config sauvegardée avant l'ajout des Artistes
+  // totémiques n'a pas ce champ — on le crée à la volée plutôt que de planter.
+  if(!Array.isArray(searchTargetConfig[stKey].totemicArtists)) searchTargetConfig[stKey].totemicArtists = [null,null,null,null,null];
+  while(searchTargetConfig[stKey].totemicArtists.length < 5) searchTargetConfig[stKey].totemicArtists.push(null);
   return searchTargetConfig[stKey];
 }
 function searchTargetLoadLocal(){
@@ -13464,6 +13541,128 @@ function targetToggleMontageEdit(idx){
   if(nowEditing){ const inp = edit.querySelector('input'); if(inp){ inp.focus(); inp.select(); } }
 }
 
+// ── ARTISTES TOTÉMIQUES — 5 par station, photo cherchée automatiquement
+// (proxy Deezer dédié, voir fetchDeezerArtistCandidates) à partir du seul nom
+// tapé ; Gaël garde la main pour choisir la photo la plus "valorisante" parmi
+// les candidats renvoyés, ou coller une URL manuelle si la recherche ne donne
+// rien de bon (photo promo non disponible sur Deezer, orthographe rare...).
+function targetToggleTotemicEdit(idx){
+  const disp = document.getElementById('totemicNameDisplay' + idx);
+  const edit = document.getElementById('totemicNameEdit' + idx);
+  if(!disp || !edit) return;
+  const nowEditing = edit.style.display === 'none';
+  edit.style.display = nowEditing ? 'flex' : 'none';
+  disp.style.display = nowEditing ? 'none' : 'block';
+  if(nowEditing){ const inp = edit.querySelector('input'); if(inp){ inp.focus(); inp.select(); } }
+}
+function targetToggleTotemicUrlInput(idx){
+  const el = document.getElementById('totemicUrlInput' + idx);
+  if(!el) return;
+  el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+  if(el.style.display === 'flex'){ const inp = el.querySelector('input'); if(inp) inp.focus(); }
+}
+async function targetSetTotemicName(stKey, idx, name){
+  name = (name || '').trim();
+  const cfg = targetGet(stKey);
+  if(!name){ cfg.totemicArtists[idx] = null; searchTargetPersist(); renderSearchTargetPage(); return; }
+  const prev = cfg.totemicArtists[idx];
+  if(prev && prev.name === name){ renderSearchTargetPage(); return; } // pas de changement : referme juste l'édition
+  cfg.totemicArtists[idx] = { name, photoUrl: null, candidates: [], candidateIdx: 0 };
+  searchTargetPersist(); renderSearchTargetPage();
+  await targetSearchTotemicPhoto(stKey, idx);
+}
+async function targetSearchTotemicPhoto(stKey, idx){
+  const cfg = targetGet(stKey);
+  const slot = cfg.totemicArtists[idx];
+  if(!slot || !slot.name) return;
+  const btn = document.getElementById('totemicSearchBtn' + idx);
+  if(btn){ btn.disabled = true; btn.textContent = '⏳'; }
+  const results = await fetchDeezerArtistCandidatesWithRetry(slot.name);
+  if(btn){ btn.disabled = false; btn.textContent = '🔍'; }
+  // Le nom a pu changer (ou le slot être effacé) pendant l'attente réseau —
+  // on relit l'état actuel plutôt que de réutiliser "slot" capturé avant l'await.
+  const current = targetGet(stKey).totemicArtists[idx];
+  if(!current || current.name !== slot.name) return;
+  if(!results || !results.length){
+    showToast('« ' + slot.name + ' » — ' + (lastDeezerArtistError || 'aucune photo trouvée') + '. Collez une URL manuelle (🔗) si besoin.', 'err');
+    return;
+  }
+  current.candidates = results;
+  current.candidateIdx = 0;
+  current.photoUrl = results[0].picture;
+  searchTargetPersist(); renderSearchTargetPage();
+}
+function targetCycleTotemicPhoto(stKey, idx, dir){
+  const slot = targetGet(stKey).totemicArtists[idx];
+  if(!slot || !slot.candidates || !slot.candidates.length) return;
+  const n = slot.candidates.length;
+  slot.candidateIdx = (slot.candidateIdx + dir + n) % n;
+  slot.photoUrl = slot.candidates[slot.candidateIdx].picture;
+  searchTargetPersist(); renderSearchTargetPage();
+}
+function targetSetTotemicPhotoUrl(stKey, idx, url){
+  url = (url || '').trim();
+  if(!url) return;
+  const slot = targetGet(stKey).totemicArtists[idx];
+  if(!slot) return;
+  slot.photoUrl = url;
+  slot.candidates = []; // URL manuelle : plus de candidats Deezer à faire défiler
+  slot.candidateIdx = 0;
+  searchTargetPersist(); renderSearchTargetPage();
+}
+function targetClearTotemicArtist(stKey, idx){
+  targetGet(stKey).totemicArtists[idx] = null;
+  searchTargetPersist(); renderSearchTargetPage();
+}
+
+function totemicCardHtml(stKey, idx){
+  const slot = targetGet(stKey).totemicArtists[idx];
+  const brandColor = STATION_BRAND_COLOR[stKey] || 'var(--cyan)';
+  const hasName = slot && slot.name;
+  const hasMulti = slot && slot.candidates && slot.candidates.length > 1;
+
+  const photoArea = slot && slot.photoUrl
+    ? `<img src="${escHtml(slot.photoUrl)}" alt="${escHtml(slot.name)}" style="width:100%;height:100%;object-fit:cover;display:block">`
+    : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--border)">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      </div>`;
+
+  return `
+    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column;min-width:0">
+      <div style="position:relative;width:100%;aspect-ratio:3/4;background:var(--bg)"
+        ${hasMulti ? `onmouseenter="this.querySelector('.totemic-arrows').style.opacity=1" onmouseleave="this.querySelector('.totemic-arrows').style.opacity=0"` : ''}>
+        ${photoArea}
+        ${hasMulti ? `
+        <div class="totemic-arrows" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:space-between;padding:0 4px;opacity:0;transition:opacity .15s;pointer-events:none">
+          <button onclick="event.stopPropagation();targetCycleTotemicPhoto('${stKey}',${idx},-1)" title="Photo précédente" style="pointer-events:auto;width:24px;height:24px;border-radius:50%;background:rgba(11,29,58,.65);border:none;color:#fff;cursor:pointer;font-size:12px">‹</button>
+          <button onclick="event.stopPropagation();targetCycleTotemicPhoto('${stKey}',${idx},1)" title="Photo suivante" style="pointer-events:auto;width:24px;height:24px;border-radius:50%;background:rgba(11,29,58,.65);border:none;color:#fff;cursor:pointer;font-size:12px">›</button>
+        </div>
+        <div style="position:absolute;bottom:4px;left:0;right:0;text-align:center;font-size:9px;font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.6)">${slot.candidateIdx + 1}/${slot.candidates.length}</div>` : ''}
+      </div>
+      <div style="padding:8px 10px;border-top:3px solid ${brandColor}">
+        <div id="totemicNameDisplay${idx}" onclick="targetToggleTotemicEdit(${idx})" title="Cliquer pour modifier le nom"
+          style="font-size:12px;font-weight:800;color:var(--navy);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;min-height:16px">
+          ${hasName ? escHtml(slot.name) : '<span style="color:var(--muted);font-weight:600;font-style:italic">+ Ajouter un artiste</span>'}
+        </div>
+        <div id="totemicNameEdit${idx}" style="display:none;gap:4px;margin-top:4px">
+          <input type="text" value="${hasName ? escHtml(slot.name) : ''}" placeholder="Nom de l'artiste"
+            onblur="targetSetTotemicName('${stKey}',${idx},this.value)" onkeydown="if(event.key==='Enter') this.blur()"
+            style="flex:1;min-width:0;font-size:11.5px;text-align:center;padding:5px 6px;border-radius:6px;border:1.5px solid var(--cyan)">
+        </div>
+        ${hasName ? `
+        <div style="display:flex;justify-content:center;gap:4px;margin-top:6px">
+          <button id="totemicSearchBtn${idx}" onclick="targetSearchTotemicPhoto('${stKey}',${idx})" title="Rechercher une photo (Deezer)" style="width:22px;height:22px;padding:0;border-radius:5px;background:var(--bg);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:10px">🔍</button>
+          <button onclick="targetToggleTotemicUrlInput(${idx})" title="Coller une URL d'image manuelle" style="width:22px;height:22px;padding:0;border-radius:5px;background:var(--bg);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:10px">🔗</button>
+          <button onclick="targetClearTotemicArtist('${stKey}',${idx})" title="Effacer cet artiste" style="width:22px;height:22px;padding:0;border-radius:5px;background:var(--bg);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:10px">✕</button>
+        </div>
+        <div id="totemicUrlInput${idx}" style="display:none;gap:4px;margin-top:4px">
+          <input type="text" placeholder="URL de l'image" onblur="targetSetTotemicPhotoUrl('${stKey}',${idx},this.value)" onkeydown="if(event.key==='Enter') this.blur()"
+            style="flex:1;min-width:0;font-size:10.5px;padding:5px 6px;border-radius:6px;border:1.5px solid var(--border)">
+        </div>` : ''}
+      </div>
+    </div>`;
+}
+
 function renderSearchTargetPage(){
   const el = document.getElementById('analyseTargetContainer');
   if(!el) return;
@@ -13564,6 +13763,15 @@ function renderSearchTargetPage(){
       <button onclick="targetAddMontageSong('${stKey}')" style="font-size:11px;font-weight:700;color:var(--cyan);background:none;border:none;cursor:pointer;padding:4px 4px 0 26px">+ Ajouter un titre au montage</button>
     </div>`;
 
+  const totemicHtml = `
+    <div style="margin-top:20px">
+      <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy);margin-bottom:4px">⭐ Artistes totémiques</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-bottom:10px">Tapez un nom pour chercher automatiquement une photo (Deezer) — plusieurs résultats sont proposés au survol de la photo, ou collez une URL avec 🔗 si la recherche ne trouve rien de satisfaisant.</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px">
+        ${[0,1,2,3,4].map(i => totemicCardHtml(stKey, i)).join('')}
+      </div>
+    </div>`;
+
   el.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
       <div style="font-size:12px;color:var(--muted)">Critères sociodémo et comportementaux sur lesquels la musique <strong style="color:var(--navy)">${escHtml(STATION_LABELS[stKey])}</strong> est testée en Call Out/OMT — tous les champs sont modifiables directement ci-dessous.</div>
@@ -13571,6 +13779,7 @@ function renderSearchTargetPage(){
     </div>
     ${sectionsHtml || '<div style="padding:20px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;margin-bottom:14px">Aucun critère renseigné pour l\'instant.</div>'}
     ${montageHtml}
+    ${totemicHtml}
   `;
 
   // Pochettes des titres du montage (API iTunes Search, JSONP, pas de proxy)
@@ -15507,8 +15716,19 @@ const GRAPH_COLORS = ['#00B8C8','#7C3AED','#0DA76B','#E07B00','#CC2222','#5B3FA8
  *  réutilisée automatiquement à chaque nouvelle semaine — l'utilisateur
  *  n'a besoin de catégoriser un label qu'une seule fois. Un label non
  *  encore affecté reste dans un panier "Non affecté" distinct d'"Indé"
- *  (Indé est un choix explicite, pas une valeur par défaut). */
+ *  (Indé est un choix explicite, pas une valeur par défaut).
+ *
+ *  Niveau intermédiaire optionnel : un GROUPE (ex. plusieurs labels qui
+ *  appartiennent au même groupe indépendant, lui-même racheté par une
+ *  major). Un label est SOIT rattaché à un groupe (qui porte alors la
+ *  major), SOIT affecté directement à une major — jamais les deux à la
+ *  fois : rattacher un label à un groupe efface toute affectation directe
+ *  existante, et vice versa (voir graphAssignLabelMajorOrGroup). Voir
+ *  resolveLabelMajor pour la résolution finale utilisée par le graphique. */
 const LABEL_MAJOR_KEY = 'fpa_label_major_map_v1';
+const LABEL_GROUPS_KEY = 'fpa_label_groups_v1';       // ['Groupe A', 'Groupe B', ...] — liste des groupes existants
+const GROUP_MAJOR_KEY  = 'fpa_group_major_map_v1';    // { 'Groupe A': 'Sony', ... }
+const LABEL_GROUP_KEY   = 'fpa_label_group_map_v1';   // { 'Label X': 'Groupe A', ... }
 const MAJORS = ['Sony','Universal','Warner','Indé'];
 const MAJOR_COLORS = { Sony:'#E07B00', Universal:'#0B6E99', Warner:'#CC2222', 'Indé':'#0DA76B', 'Non affecté':'#8A94A6' };
 
@@ -15519,6 +15739,40 @@ function labelMajorLoadMap(){
 function labelMajorSaveMap(map){
   try{ localStorage.setItem(LABEL_MAJOR_KEY, JSON.stringify(map)); }
   catch(e){ showToast('Erreur de sauvegarde de l\'affectation labels → majors', 'err'); }
+}
+function labelGroupsLoad(){
+  try{ return JSON.parse(localStorage.getItem(LABEL_GROUPS_KEY) || '[]'); }
+  catch(e){ return []; }
+}
+function labelGroupsSave(list){
+  try{ localStorage.setItem(LABEL_GROUPS_KEY, JSON.stringify(list)); }
+  catch(e){ showToast('Erreur de sauvegarde des groupes de labels', 'err'); }
+}
+function groupMajorLoadMap(){
+  try{ return JSON.parse(localStorage.getItem(GROUP_MAJOR_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function groupMajorSaveMap(map){
+  try{ localStorage.setItem(GROUP_MAJOR_KEY, JSON.stringify(map)); }
+  catch(e){ showToast('Erreur de sauvegarde de l\'affectation groupes → majors', 'err'); }
+}
+function labelGroupLoadMap(){
+  try{ return JSON.parse(localStorage.getItem(LABEL_GROUP_KEY) || '{}'); }
+  catch(e){ return {}; }
+}
+function labelGroupSaveMap(map){
+  try{ localStorage.setItem(LABEL_GROUP_KEY, JSON.stringify(map)); }
+  catch(e){ showToast('Erreur de sauvegarde de l\'affectation labels → groupes', 'err'); }
+}
+/** Major finale d'un label, en tenant compte du niveau groupe intermédiaire
+ *  — priorité au groupe s'il en a un (même si ce groupe n'a pas encore de
+ *  major définie, auquel cas le label reste "Non affecté" plutôt que de
+ *  retomber sur une éventuelle ancienne affectation directe obsolète).
+ *  Repli sur l'affectation directe label → major sinon. */
+function resolveLabelMajor(label){
+  const group = labelGroupLoadMap()[label];
+  if(group) return groupMajorLoadMap()[group] || null;
+  return labelMajorLoadMap()[label] || null;
 }
 /** Tous les labels rencontrés sur l'historique complet de la station (pas
  *  seulement la période sélectionnée), pour que les sélecteurs restent
@@ -15996,7 +16250,7 @@ function graphCardShell(key, title, subtitle, withManagePanel, withStationLogo, 
     ${extraHeaderHtml || ''}
     <div id="graph${key}Controls" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:14px"></div>
     ${withManagePanel ? `<div id="graphLabelsManageWrap" style="display:none;margin-bottom:14px;padding:12px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px">
-      <div style="font-size:11.5px;font-weight:800;color:var(--navy);margin-bottom:8px">⚙️ Affectation des labels aux majors</div>
+      <div style="font-size:11.5px;font-weight:800;color:var(--navy);margin-bottom:8px">⚙️ Affectation des labels aux majors (via groupe ou directement)</div>
       <div id="graphLabelsManageArea"></div>
     </div>` : ''}
     <div style="position:relative;height:300px"><canvas id="graph${key}Chart"></canvas></div>
@@ -16282,36 +16536,122 @@ function graphToggleLabelsManage(){
   wrap.style.display = show ? 'block' : 'none';
   if(show) graphRenderLabelsManage();
 }
-/** Panneau d'affectation label → major, réutilisé au fil des semaines : la
- *  liste couvre tous les labels rencontrés dans l'historique de la station,
- *  chacun avec un sélecteur simple. Toute modification est immédiatement
- *  persistée (voir labelMajorSaveMap) et redessine le graphique si la vue
- *  "par major" est active. */
+/** Panneau d'affectation label → (groupe →) major, réutilisé au fil des
+ *  semaines : la liste couvre tous les labels rencontrés dans l'historique
+ *  de la station. Deux sections : les groupes eux-mêmes (créer/renommer/
+ *  supprimer, affecter à une major), puis chaque label (affectation directe
+ *  à une major OU à un groupe). Toute modification est immédiatement
+ *  persistée et redessine le graphique si la vue "par major" est active. */
 function graphRenderLabelsManage(){
   const stKey = graphUI.station;
   const area = document.getElementById('graphLabelsManageArea');
-  const map = labelMajorLoadMap();
+  const groups = labelGroupsLoad();
+  const gMajors = groupMajorLoadMap();
+  const labelGroups = labelGroupLoadMap();
+  const directMap = labelMajorLoadMap();
   const allLabels = graphAllLabels(stKey);
+
+  const groupsHtml = `
+    <div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.04em">Groupes</div>
+        <button class="btn-ghost" style="font-size:10px;padding:4px 10px" onclick="graphAddGroup()">+ Nouveau groupe</button>
+      </div>
+      ${groups.length ? groups.map(g => `
+        <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
+          <input type="text" value="${escHtml(g)}" onchange="graphRenameGroup('${escHtml(g).replace(/'/g,"\\'")}', this.value)"
+            style="flex:1;font-size:11.5px;font-weight:600;padding:4px 8px;border-radius:6px;border:1.5px solid var(--border)">
+          <select style="font-size:11px;padding:4px 8px;border-radius:6px" onchange="graphAssignGroupMajor('${escHtml(g).replace(/'/g,"\\'")}', this.value)">
+            <option value="">— Non affecté —</option>
+            ${MAJORS.map(m => `<option value="${m}" ${gMajors[g]===m?'selected':''}>${m}</option>`).join('')}
+          </select>
+          <button onclick="graphDeleteGroup('${escHtml(g).replace(/'/g,"\\'")}')" title="Supprimer ce groupe" style="width:22px;height:22px;padding:0;border-radius:6px;background:var(--white);border:1.5px solid var(--border);color:#CC2222;cursor:pointer;font-size:11px">✕</button>
+        </div>`).join('') : '<div style="font-size:11px;color:var(--muted)">Aucun groupe pour l\'instant — un label peut toujours être affecté directement à une major ci-dessous.</div>'}
+    </div>
+    <div style="height:1px;background:var(--border);margin-bottom:14px"></div>
+  `;
+
   if(!allLabels.length){
-    area.innerHTML = '<div style="font-size:11.5px;color:var(--muted)">Aucun label rencontré pour l\'instant sur cette station.</div>';
+    area.innerHTML = groupsHtml + '<div style="font-size:11.5px;color:var(--muted)">Aucun label rencontré pour l\'instant sur cette station.</div>';
     return;
   }
+
   const rows = allLabels.map(label => {
-    const current = map[label] || '';
-    const options = ['<option value="">— Non affecté —</option>'].concat(
-      MAJORS.map(m => `<option value="${m}" ${current===m?'selected':''}>${m}</option>`)
-    ).join('');
+    const group = labelGroups[label];
+    const current = group ? ('G:' + group) : (directMap[label] ? ('M:' + directMap[label]) : '');
+    const escLabel = escHtml(label).replace(/'/g,"\\'");
+    let options = '<option value="">— Non affecté —</option>';
+    options += `<optgroup label="Major directe">${MAJORS.map(m => `<option value="M:${m}" ${current==='M:'+m?'selected':''}>${m}</option>`).join('')}</optgroup>`;
+    if(groups.length) options += `<optgroup label="Groupe">${groups.map(g => `<option value="G:${escHtml(g)}" ${current==='G:'+g?'selected':''}>${escHtml(g)}</option>`).join('')}</optgroup>`;
     return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1;font-size:11.5px;font-weight:600">${escHtml(label)}</div>
-      <select style="font-size:11px;padding:4px 8px;border-radius:6px" onchange="graphAssignLabelMajor('${escHtml(label).replace(/'/g,"\\'")}', this.value)">${options}</select>
+      <div style="flex:1;font-size:11.5px;font-weight:600">${escHtml(label)}${group ? ` <span style="font-size:10px;font-weight:600;color:var(--muted)">(groupe : ${escHtml(group)})</span>` : ''}</div>
+      <select style="font-size:11px;padding:4px 8px;border-radius:6px;max-width:220px" onchange="graphAssignLabelMajorOrGroup('${escLabel}', this.value)">${options}</select>
     </div>`;
   }).join('');
-  area.innerHTML = `<div style="max-height:280px;overflow-y:auto">${rows}</div>`;
+  area.innerHTML = groupsHtml + `<div style="font-size:11px;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">Labels</div><div style="max-height:280px;overflow-y:auto">${rows}</div>`;
 }
-function graphAssignLabelMajor(label, major){
-  const map = labelMajorLoadMap();
-  if(major) map[label] = major; else delete map[label];
-  labelMajorSaveMap(map);
+
+function graphAddGroup(){
+  const name = (prompt('Nom du nouveau groupe (ex. un label indépendant qui en regroupe plusieurs) :') || '').trim();
+  if(!name) return;
+  const groups = labelGroupsLoad();
+  if(groups.includes(name)){ showToast('Ce groupe existe déjà', 'err'); return; }
+  groups.push(name);
+  labelGroupsSave(groups);
+  graphRenderLabelsManage();
+}
+function graphRenameGroup(oldName, newName){
+  newName = (newName || '').trim();
+  if(!newName || newName === oldName){ graphRenderLabelsManage(); return; }
+  const groups = labelGroupsLoad();
+  const idx = groups.indexOf(oldName);
+  if(idx === -1) return;
+  if(groups.includes(newName)){ showToast('Un groupe porte déjà ce nom', 'err'); graphRenderLabelsManage(); return; }
+  groups[idx] = newName;
+  labelGroupsSave(groups);
+  // Répercute le renommage dans les deux maps qui référencent ce nom, pour
+  // ne jamais laisser un label ou une major pointer vers un groupe fantôme.
+  const gMajors = groupMajorLoadMap();
+  if(gMajors[oldName] !== undefined){ gMajors[newName] = gMajors[oldName]; delete gMajors[oldName]; groupMajorSaveMap(gMajors); }
+  const labelMap = labelGroupLoadMap();
+  let changed = false;
+  Object.keys(labelMap).forEach(l => { if(labelMap[l] === oldName){ labelMap[l] = newName; changed = true; } });
+  if(changed) labelGroupSaveMap(labelMap);
+  graphRenderLabelsManage();
+  graphRenderCard('labels');
+}
+function graphDeleteGroup(name){
+  if(!confirm('Supprimer le groupe « ' + name + ' » ? Les labels qui lui étaient rattachés repasseront à "Non affecté" (ils ne retombent pas automatiquement sur une ancienne affectation directe).')) return;
+  labelGroupsSave(labelGroupsLoad().filter(g => g !== name));
+  const gMajors = groupMajorLoadMap();
+  delete gMajors[name];
+  groupMajorSaveMap(gMajors);
+  const labelMap = labelGroupLoadMap();
+  let changed = false;
+  Object.keys(labelMap).forEach(l => { if(labelMap[l] === name){ delete labelMap[l]; changed = true; } });
+  if(changed) labelGroupSaveMap(labelMap);
+  graphRenderLabelsManage();
+  graphRenderCard('labels');
+}
+function graphAssignGroupMajor(name, major){
+  const map = groupMajorLoadMap();
+  if(major) map[name] = major; else delete map[name];
+  groupMajorSaveMap(map);
+  graphRenderCard('labels');
+}
+/** value : '' (non affecté), 'M:Sony' (major directe) ou 'G:NomDuGroupe'
+ *  (rattachement à un groupe) — toujours mutuellement exclusif : affecter
+ *  l'un efface systématiquement l'autre pour ce label. */
+function graphAssignLabelMajorOrGroup(label, value){
+  const directMap = labelMajorLoadMap();
+  const groupMap = labelGroupLoadMap();
+  delete directMap[label];
+  delete groupMap[label];
+  if(value.startsWith('M:')) directMap[label] = value.slice(2);
+  else if(value.startsWith('G:')) groupMap[label] = value.slice(2);
+  labelMajorSaveMap(directMap);
+  labelGroupSaveMap(groupMap);
+  graphRenderLabelsManage();
   graphRenderCard('labels');
 }
 
@@ -16345,17 +16685,18 @@ function graphRenderLabelsCard(stKey, weeks){
   const range = graphWeekRangeSlice(weeks, f.from, f.to);
   let series;
   if(f.mode === 'major'){
-    const map = labelMajorLoadMap();
     // "Non affecté" n'apparaît que s'il existe réellement des labels non
     // catégorisés dans la période affichée — pas de bruit inutile une fois
-    // que tout est renseigné.
-    const hasUnassigned = range.some(w => (w.stats.labelDistribution||[]).some(l => !map[l.label]));
+    // que tout est renseigné. resolveLabelMajor tient compte du niveau
+    // groupe intermédiaire (voir plus haut) avant de retomber sur
+    // l'affectation directe label → major.
+    const hasUnassigned = range.some(w => (w.stats.labelDistribution||[]).some(l => !resolveLabelMajor(l.label)));
     const buckets = hasUnassigned ? [...MAJORS, 'Non affecté'] : MAJORS;
     series = buckets.map(major => ({
       label: major, color: MAJOR_COLORS[major],
       data: range.map(w => {
         const dist = w.stats.labelDistribution || [];
-        const pct = dist.filter(l => (map[l.label] || 'Non affecté') === major).reduce((s,l) => s+l.pct, 0);
+        const pct = dist.filter(l => (resolveLabelMajor(l.label) || 'Non affecté') === major).reduce((s,l) => s+l.pct, 0);
         return Math.round(pct*10)/10;
       })
     }));
@@ -21468,6 +21809,18 @@ function evoAttr(title, artist){
 }
 
 function comiteKey(title, artist){ return norm(artist||'') + '|||' + norm(title||''); }
+
+/** Pré-remplit Date d'Entrée et Label depuis le store Song Attributs au
+ *  moment où un titre entre en Playlist — sans ça, un titre déjà connu (déjà
+ *  vu dans une semaine de programmation importée via l'Analyse, ou déjà
+ *  renseigné manuellement ailleurs) repartait à vide à chaque nouvel ajout,
+ *  alors que l'info existe déjà dans FPA. Champ Date d'Entrée propre à la
+ *  station active (dateEntreeEurope2/dateEntreeRFM), Label commun aux deux. */
+function playlistAutoFillFields(title, artist, stationKey){
+  const attrs = getSongAttributes(title, artist);
+  const dateField = stationKey === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+  return { dateEntree: attrs[dateField] || '', label: attrs.label || '' };
+}
 // Compatibilité ascendante : les entrées sauvegardées avant le rattachement
 // à la station active n'ont pas de champ .station — on les considère comme
 // Europe 2 (station principale historique de l'appli).
@@ -21992,7 +22345,7 @@ function togglePlaylistTitle(title, artist){
     if(removed.bundleId) unlinkPlaylistBundle(removed.key, true);
     playlistTitles.splice(idx, 1);
   } else {
-    playlistTitles.push({key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, callOut:false});
+    playlistTitles.push({key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, ...playlistAutoFillFields(title, artist, ACTIVE_STATION), categorie:'', powerNew:false, powerIntro:false, callOut:false});
   }
   playlistSaveToStorage();
   updatePlaylistBadge();
@@ -22022,7 +22375,7 @@ function addManualPlaylistTitle(){
   }
   playlistTitles.push({
     key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION,
-    dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, callOut:false, manual:true
+    ...playlistAutoFillFields(title, artist, ACTIVE_STATION), categorie:'', powerNew:false, powerIntro:false, callOut:false, manual:true
   });
   playlistSaveToStorage();
   updatePlaylistBadge();
@@ -26092,7 +26445,7 @@ function watchlistPromote(key, target){
       showToast('Déjà dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'err');
       return;
     }
-    playlistTitles.push({ key, title: w.title, artist: w.artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree:'', categorie:'', label:'', powerNew:false, powerIntro:false, callOut:false, manual: true });
+    playlistTitles.push({ key, title: w.title, artist: w.artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, ...playlistAutoFillFields(w.title, w.artist, ACTIVE_STATION), categorie:'', powerNew:false, powerIntro:false, callOut:false, manual: true });
     playlistSaveToStorage();
     updatePlaylistBadge();
     showToast('✓ « ' + titleCaseDisplay(w.title) + ' » ajouté à la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success');
@@ -35989,6 +36342,26 @@ async function songDiffusionsLoadFromDrive(manual){
 // dépendance à Drive) a déjà tourné bien plus tôt au chargement de la page.
 songDiffusionsLoadFromDrive();
 
+/** Purge automatique des chunks orphelins (voir action 'cleanup_chunks' du
+ *  script Drive Sync, et le bouton manuel "🧹 Nettoyer les chunks orphelins"
+ *  dans le panneau Drive Sync) — silencieuse, une fois par démarrage de
+ *  session. Un envoi interrompu (page fermée, coupure réseau en plein
+ *  enregistrement) laisse des chunks temporaires dans PropertiesService
+ *  (quota fixe de 500 Ko, partagé par toutes les données FPA sur ce script)
+ *  qui ne se nettoient jamais tout seuls sinon — d'où le message "quota de
+ *  stockage des propriétés dépassé" qui finit par apparaître même pour une
+ *  sauvegarde qui n'a rien à voir avec l'envoi interrompu à l'origine. Cet
+ *  appel automatique évite d'avoir à s'en souvenir ; le bouton manuel reste
+ *  disponible pour un nettoyage à la demande si besoin. Silencieux : pas de
+ *  toast ici (ce n'est pas une action demandée par Gaël), juste une trace
+ *  dans la console pour qui voudrait vérifier.
+ */
+if(DRIVE_SYNC_URL){
+  driveCall('cleanup_chunks').then(r => {
+    if(r && r.deleted) console.log('[FPA] Nettoyage automatique Drive Sync : ' + r.deleted + ' chunk(s) orphelin(s) supprimé(s), ' + (r.freedChars||0).toLocaleString('fr-FR') + ' caractères libérés.');
+  }).catch(() => { /* best-effort, jamais bloquant au démarrage */ });
+}
+
 /** Dédoublonne chartsHistoryIndex par date (au cas où plusieurs entrées
  *  pointeraient par accident vers le même panier hebdomadaire — bug d'index
  *  historique, cf. doublons "S26" observés), en gardant l'entrée la plus
@@ -36768,10 +37141,15 @@ function predFeedbackBuildBackupBundle(){
     formatStations: g(PRED_ENTRY_FORMAT_STATIONS_KEY, '[]'),
   };
 }
-async function predFeedbackPushToDrive(){
+async function predFeedbackPushToDrive(btnId = 'predFeedbackBackupBtn'){
   if(!requireAdmin()) return;
   if(!DRIVE_SYNC_URL){ showToast('Drive Sync non configuré', 'err'); return; }
-  const btn = document.getElementById('predFeedbackBackupBtn');
+  // btnId : plusieurs boutons appellent cette même fonction (panneau Drive
+  // Sync, et désormais directement les pages Prédiction Sorties/Entrées pour
+  // ne plus avoir à y penser après une session de décisions) — chacun garde
+  // son propre état visuel "en cours" plutôt que de se marcher dessus.
+  const btn = document.getElementById(btnId);
+  const origLabel = btn ? btn.textContent : '';
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Sauvegarde…'; }
   try{
     const bundle = predFeedbackBuildBackupBundle();
@@ -36782,7 +37160,7 @@ async function predFeedbackPushToDrive(){
     // corrompues, boucle infinie de journal...) plutôt qu'un usage normal.
     if(json.length > PRED_FEEDBACK_DRIVE_MAX_BYTES){
       showToast(`⚠ Sauvegarde annulée — taille anormale (${sizeKB} Ko, seuil ${Math.round(PRED_FEEDBACK_DRIVE_MAX_BYTES/1024)} Ko). Contactez le support avant de forcer un envoi.`, 'err');
-      if(btn){ btn.disabled = false; btn.textContent = '☁️ Sauvegarder maintenant'; }
+      if(btn){ btn.disabled = false; btn.textContent = origLabel; }
       return;
     }
     await driveCall('save', PRED_FEEDBACK_DRIVE_KEY, json);
@@ -36791,6 +37169,7 @@ async function predFeedbackPushToDrive(){
   }catch(e){
     showToast('Erreur sauvegarde Drive : ' + e.message, 'err');
   }
+  if(btn){ btn.disabled = false; btn.textContent = origLabel; }
   renderDriveSyncPanel();
 }
 async function predFeedbackRestoreFromDrive(){
@@ -37178,6 +37557,7 @@ function openFpaConfigModal(){
   document.getElementById('fpaCfgDailySnapshot').value = DAILY_SNAPSHOT_URL || '';
   document.getElementById('fpaCfgKworb').value         = KWORB_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgDeezer').value        = DEEZER_APPS_SCRIPT_PROXY_URL || '';
+  document.getElementById('fpaCfgDeezerArtist').value  = DEEZER_ARTIST_PROXY_URL || '';
   document.getElementById('fpaCfgAppleMusic').value    = APPLEMUSIC_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgShazam').value        = SHAZAM_APPS_SCRIPT_PROXY_URL || '';
   document.getElementById('fpaCfgMusicBrainz').value   = MUSICBRAINZ_APPS_SCRIPT_PROXY_URL || '';
@@ -37205,6 +37585,7 @@ function saveFpaConfigFromModal(){
     ['fpaCfgDailySnapshot', 'fpa_daily_snapshot_url',  v => { DAILY_SNAPSHOT_URL = v; dailySnapshotsLoaded = false; }],
     ['fpaCfgKworb',         'fpa_kworb_proxy_url',     v => { KWORB_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgDeezer',        'fpa_deezer_proxy_url',    v => { DEEZER_APPS_SCRIPT_PROXY_URL = v; }],
+    ['fpaCfgDeezerArtist',  'fpa_deezer_artist_proxy_url', v => { DEEZER_ARTIST_PROXY_URL = v; }],
     ['fpaCfgAppleMusic',    'fpa_applemusic_proxy_url',v => { APPLEMUSIC_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgShazam',        'fpa_shazam_proxy_url',    v => { SHAZAM_APPS_SCRIPT_PROXY_URL = v; }],
     ['fpaCfgMusicBrainz',   'fpa_musicbrainz_proxy_url', v => { MUSICBRAINZ_APPS_SCRIPT_PROXY_URL = v; }],
