@@ -13394,7 +13394,8 @@ const TARGET_SEED = {
     montage: { minScore: 7, songs: [
       "Michael Jackson - Beat It", "Ace of Base - All that she wants", "Alex Warren - Fever dream",
       "Katy Perry - I kissed a girl", "Talk Talk - Such a shame", "Christophe Willem - Double je"
-    ] },
+    ], validity: { from:'', to:'' } },
+    montageArchive: [],
     totemicArtists: [null, null, null, null, null]
   },
   EUROPE2: {
@@ -13404,7 +13405,8 @@ const TARGET_SEED = {
       { id:'geo',    title:'Géographie',  items: [] },
       { id:'ecoute', title:'Écoute radio', items: [] }
     ],
-    montage: { minScore: 7, songs: [] },
+    montage: { minScore: 7, songs: [], validity: { from:'', to:'' } },
+    montageArchive: [],
     totemicArtists: [null, null, null, null, null]
   }
 };
@@ -13412,12 +13414,16 @@ let searchTargetConfig = { EUROPE2: null, RFM: null };
 let searchTargetDriveLoaded = false;
 
 function targetGet(stKey){
-  if(!searchTargetConfig[stKey]) searchTargetConfig[stKey] = JSON.parse(JSON.stringify(TARGET_SEED[stKey] || { sections:[], montage:{ minScore:7, songs:[] }, totemicArtists:[null,null,null,null,null] }));
+  if(!searchTargetConfig[stKey]) searchTargetConfig[stKey] = JSON.parse(JSON.stringify(TARGET_SEED[stKey] || { sections:[], montage:{ minScore:7, songs:[], validity:{from:'',to:''} }, montageArchive:[], totemicArtists:[null,null,null,null,null] }));
+  const cfg = searchTargetConfig[stKey];
   // Rétrocompatibilité : une config sauvegardée avant l'ajout des Artistes
-  // totémiques n'a pas ce champ — on le crée à la volée plutôt que de planter.
-  if(!Array.isArray(searchTargetConfig[stKey].totemicArtists)) searchTargetConfig[stKey].totemicArtists = [null,null,null,null,null];
-  while(searchTargetConfig[stKey].totemicArtists.length < 5) searchTargetConfig[stKey].totemicArtists.push(null);
-  return searchTargetConfig[stKey];
+  // totémiques / de la validité et de l'archivage du montage n'a pas ces
+  // champs — on les crée à la volée plutôt que de planter.
+  if(!Array.isArray(cfg.totemicArtists)) cfg.totemicArtists = [null,null,null,null,null];
+  while(cfg.totemicArtists.length < 5) cfg.totemicArtists.push(null);
+  if(!cfg.montage.validity) cfg.montage.validity = { from:'', to:'' };
+  if(!Array.isArray(cfg.montageArchive)) cfg.montageArchive = [];
+  return cfg;
 }
 function searchTargetLoadLocal(){
   try{
@@ -13513,6 +13519,72 @@ function targetAddMontageSong(stKey){
 function targetRemoveMontageSong(stKey, idx){
   targetGet(stKey).montage.songs.splice(idx, 1);
   searchTargetPersist(); renderSearchTargetPage();
+}
+
+function targetUpdateMontageValidity(stKey, field, value){
+  const cfg = targetGet(stKey);
+  cfg.montage.validity[field] = value;
+  searchTargetPersist();
+}
+
+/** Archive le montage actuel (avec sa période de validité et ses résultats
+ *  tels qu'ils sont à cet instant) puis en repart d'un montage vierge — pour
+ *  quand les critères de test changent et qu'un nouveau montage doit être
+ *  utilisé, sans perdre la trace de l'ancien. Le seuil de note minimale est
+ *  conservé sur le nouveau montage (c'est une règle de méthode, pas une
+ *  caractéristique du montage lui-même) ; titres et période sont vidés. */
+function targetArchiveMontage(stKey){
+  const cfg = targetGet(stKey);
+  if(!cfg.montage.songs.some(s => (s||'').trim())){
+    showToast('Ce montage est déjà vide — rien à archiver', 'err');
+    return;
+  }
+  if(!confirm('Archiver le montage actuel et en créer un nouveau, vide ? L\'ancien montage restera consultable dans l\'historique.')) return;
+  cfg.montageArchive.unshift({
+    minScore: cfg.montage.minScore,
+    songs: [...cfg.montage.songs],
+    validity: { ...cfg.montage.validity },
+    archivedAt: new Date().toISOString()
+  });
+  cfg.montage.songs = [];
+  cfg.montage.validity = { from:'', to:'' };
+  searchTargetPersist();
+  renderSearchTargetPage();
+}
+
+function targetToggleMontageArchiveView(){
+  const el = document.getElementById('montageArchiveList');
+  if(!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+/** Restaure un montage archivé comme montage courant — l'entrée restaurée
+ *  est retirée de l'archive (elle réapparaît en courant, pas dupliquée à
+ *  deux endroits) ; le montage courant actuel (s'il a des titres) est
+ *  archivé au passage pour ne rien perdre. */
+function targetRestoreMontageFromArchive(stKey, archiveIdx){
+  const cfg = targetGet(stKey);
+  const entry = cfg.montageArchive[archiveIdx];
+  if(!entry) return;
+  if(!confirm('Restaurer ce montage archivé comme montage courant ?' + (cfg.montage.songs.some(s=>(s||'').trim()) ? ' Le montage actuel sera archivé à son tour.' : ''))) return;
+  if(cfg.montage.songs.some(s => (s||'').trim())){
+    cfg.montageArchive.unshift({
+      minScore: cfg.montage.minScore, songs: [...cfg.montage.songs],
+      validity: { ...cfg.montage.validity }, archivedAt: new Date().toISOString()
+    });
+    archiveIdx++; // l'entrée à restaurer a décalé d'un rang avec le unshift ci-dessus
+  }
+  cfg.montageArchive.splice(archiveIdx, 1);
+  cfg.montage = { minScore: entry.minScore, songs: [...entry.songs], validity: { ...entry.validity } };
+  searchTargetPersist();
+  renderSearchTargetPage();
+}
+
+function targetDeleteMontageArchiveEntry(stKey, archiveIdx){
+  if(!confirm('Supprimer définitivement ce montage archivé ?')) return;
+  targetGet(stKey).montageArchive.splice(archiveIdx, 1);
+  searchTargetPersist();
+  renderSearchTargetPage();
 }
 
 /** Découpe une entrée de montage "Artiste - Titre" (format libre saisi par
@@ -13711,7 +13783,19 @@ function renderSearchTargetPage(){
     : '';
   const montageHtml = `
     <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:16px 18px">
-      <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy);margin-bottom:10px">🎼 Montage musical</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy)">🎼 Montage musical</div>
+        <button onclick="targetArchiveMontage('${stKey}')" title="Archive le montage actuel et repart d'un montage vierge — utile quand les critères de test changent"
+          style="font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);cursor:pointer">📦 Archiver et créer un nouveau montage</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;color:var(--text2)">
+        Validité du montage : du
+        <input type="date" value="${escHtml(montage.validity.from || '')}" onchange="targetUpdateMontageValidity('${stKey}','from',this.value)"
+          style="font-size:11.5px;padding:5px 6px;border-radius:6px;border:1.5px solid var(--border)">
+        au
+        <input type="date" value="${escHtml(montage.validity.to || '')}" onchange="targetUpdateMontageValidity('${stKey}','to',this.value)"
+          style="font-size:11.5px;padding:5px 6px;border-radius:6px;border:1.5px solid var(--border)">
+      </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12.5px;color:var(--text2)">
         Tous les répondants doivent donner au minimum une note de
         <input type="number" min="0" max="10" step="0.5" value="${montage.minScore ?? ''}" onchange="targetUpdateMontageMinScore('${stKey}',this.value)"
@@ -13761,6 +13845,28 @@ function renderSearchTargetPage(){
         ${resultLine}`;
       }).join('')}
       <button onclick="targetAddMontageSong('${stKey}')" style="font-size:11px;font-weight:700;color:var(--cyan);background:none;border:none;cursor:pointer;padding:4px 4px 0 26px">+ Ajouter un titre au montage</button>
+      ${(cfg.montageArchive && cfg.montageArchive.length) ? `
+      <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+        <button onclick="targetToggleMontageArchiveView()" style="font-size:11px;font-weight:700;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px">🗄 Historique des montages (${cfg.montageArchive.length})</button>
+        <div id="montageArchiveList" style="display:none;margin-top:10px">
+          ${cfg.montageArchive.map((entry, aIdx) => {
+            const period = (entry.validity && (entry.validity.from || entry.validity.to))
+              ? `Du ${entry.validity.from ? new Date(entry.validity.from).toLocaleDateString('fr-FR') : '?'} au ${entry.validity.to ? new Date(entry.validity.to).toLocaleDateString('fr-FR') : '?'}`
+              : 'Période non renseignée';
+            return `<div style="padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;margin-bottom:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+                <div style="font-size:11.5px;font-weight:700;color:var(--navy)">${escHtml(period)}</div>
+                <div style="display:flex;gap:6px;flex-shrink:0">
+                  <button onclick="targetRestoreMontageFromArchive('${stKey}',${aIdx})" title="Restaurer comme montage courant" style="font-size:10px;font-weight:700;padding:4px 9px;border-radius:6px;background:var(--white);border:1.5px solid var(--cyan-mid);color:#007B87;cursor:pointer">↺ Restaurer</button>
+                  <button onclick="targetDeleteMontageArchiveEntry('${stKey}',${aIdx})" title="Supprimer définitivement" style="width:22px;height:22px;padding:0;border-radius:6px;background:var(--white);border:1.5px solid var(--border);color:#CC2222;cursor:pointer;font-size:11px">✕</button>
+                </div>
+              </div>
+              <div style="font-size:11px;color:var(--text2)">${entry.songs.filter(s=>(s||'').trim()).map(s => escHtml(s)).join(' · ') || '<span style="color:var(--muted)">Aucun titre</span>'}</div>
+              <div style="font-size:10px;color:var(--muted);margin-top:4px">Note min. ${entry.minScore ?? '–'}/10 — archivé le ${new Date(entry.archivedAt).toLocaleDateString('fr-FR')}</div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>` : ''}
     </div>`;
 
   const totemicHtml = `
@@ -29357,11 +29463,13 @@ const PRED_ENTRY_REASONS = {
     { key:'artiste_hors_format', label:'Artiste hors format',                  artistEffect:'penalty' },
     { key:'titre_sans_potentiel', label:'Titre sans potentiel' },
     { key:'artiste_ok_titre_sans_potentiel', label:'Artiste dans format mais titre sans potentiel' },
+    { key:'deja_joue_sans_resultats', label:'Déjà joué, sans résultats' },
     { key:'gold_non',            label:'Non mais titre gold',                  isGold:true },
   ],
   'peut-etre': [
     { key:'trop_tot',              label:'Trop tôt' },
     { key:'attente_environnement', label:"En attente d'environnement" },
+    { key:'attente_positive',      label:'En attente positive',               titleEffect:'boost' },
   ],
 };
 const PRED_ENTRY_DECISION_LABELS = { oui:'✅ Oui', non:'❌ Non', 'peut-etre':'🤔 Peut-être' };
@@ -30318,6 +30426,22 @@ function buildPredictionEntryRows(){
         if(isGold) feedbackNote = `🥇 Titre Gold (${PRED_ENTRY_DECISION_LABELS[fb.decision]}) le ${new Date(fb.date).toLocaleDateString('fr-FR')} — ne sera plus suggéré`;
       } else if(fb.decision === 'oui'){
         feedbackNote = `✅ Retour « Oui » enregistré le ${new Date(fb.date).toLocaleDateString('fr-FR')} — reste suivi jusqu'à son entrée effective en Playlist`;
+      }
+    }
+
+    // ── "En attente positive" (raison Peut-être avec titleEffect:'boost') :
+    // le titre lui-même (pas l'artiste, contrairement à artistEffect ci-
+    // dessus) doit remonter en tête des propositions — score porté au
+    // maximum, appliqué en tout dernier pour ne jamais être écrasé par un
+    // calcul ultérieur. Volontairement score=100 plutôt qu'un simple bonus :
+    // "en tête des propositions" est une garantie de position, pas juste une
+    // amélioration relative qui pourrait rester dépassée par un autre titre
+    // déjà très bien noté. ──
+    if(fb && fb.decision === 'peut-etre'){
+      const hasPositiveWait = (PRED_ENTRY_REASONS['peut-etre'] || []).some(r => r.titleEffect === 'boost' && fb.raisons.includes(r.key));
+      if(hasPositiveWait){
+        score = 100;
+        level = 'Entrée recommandée'; levelColor = 'var(--green-text)'; levelBg = 'var(--green-bg)'; levelBorder = 'var(--green-border)'; levelIcon = '🟢';
       }
     }
 
@@ -36235,14 +36359,30 @@ const _driveSaveInFlight = {}; // key → Promise en cours
  *  ordre de grandeur plus lourdes que les semaines de classements pour
  *  lesquelles ce mécanisme JSONP a été conçu à l'origine — un aléa réseau ou
  *  une lenteur ponctuelle d'Apps Script sur UN SEUL chunk parmi la centaine
- *  nécessaire ne doit pas faire échouer tout l'envoi. */
+ *  nécessaire ne doit pas faire échouer tout l'envoi.
+ *
+ *  Cas particulier auto-réparé : quota PropertiesService dépassé (500 Ko,
+ *  partagé par toutes les données FPA sur ce script — voir action
+ *  'cleanup_chunks' du script Drive Sync). Plutôt que de laisser cette
+ *  erreur remonter à chaque sauvegarde tant que personne n'a pensé à cliquer
+ *  "Nettoyer les chunks orphelins", on purge automatiquement UNE FOIS dès
+ *  qu'elle est détectée, puis on retente l'appel d'origine — invisible pour
+ *  l'appelant si la purge suffit à libérer la place. */
 async function driveCallJSONPWithRetry(params, timeoutMs, retries = 2) {
   let lastErr;
+  let cleanedUp = false;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await driveCallJSONP(params, timeoutMs);
     } catch (e) {
       lastErr = e;
+      const isQuotaErr = /quota.*propri|propert.*quota/i.test(e.message || '');
+      if (isQuotaErr && !cleanedUp && params.action !== 'cleanup_chunks') {
+        cleanedUp = true;
+        try { await driveCallJSONP({ action: 'cleanup_chunks' }, timeoutMs); }
+        catch (cleanupErr) { /* best-effort — si la purge échoue aussi, on retombe sur le retry normal ci-dessous */ }
+        continue; // retente immédiatement le même appel, sans consommer de délai de backoff
+      }
       if (attempt < retries) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
     }
   }
