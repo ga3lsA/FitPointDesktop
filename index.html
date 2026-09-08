@@ -12462,7 +12462,7 @@ async function analyseSaveHistoryToDrive(){
   analyseShowSaveProgress('☁️ Sauvegarde sur Drive…');
   try{
     const payload = JSON.stringify(analyseLoadHistory());
-    await driveCall('save', ANALYSE_DRIVE_KEY, payload, (done, total) => analyseUpdateSaveProgress(done, total));
+    await driveSaveBigFile(ANALYSE_DRIVE_KEY, payload, (done, total) => analyseUpdateSaveProgress(done, total));
     analyseUpdateSaveProgress(1, 1);
     analyseDriveLoaded = true; // ce qu'on vient d'envoyer est forcément à jour
     return { ok:true };
@@ -36359,30 +36359,14 @@ const _driveSaveInFlight = {}; // key → Promise en cours
  *  ordre de grandeur plus lourdes que les semaines de classements pour
  *  lesquelles ce mécanisme JSONP a été conçu à l'origine — un aléa réseau ou
  *  une lenteur ponctuelle d'Apps Script sur UN SEUL chunk parmi la centaine
- *  nécessaire ne doit pas faire échouer tout l'envoi.
- *
- *  Cas particulier auto-réparé : quota PropertiesService dépassé (500 Ko,
- *  partagé par toutes les données FPA sur ce script — voir action
- *  'cleanup_chunks' du script Drive Sync). Plutôt que de laisser cette
- *  erreur remonter à chaque sauvegarde tant que personne n'a pensé à cliquer
- *  "Nettoyer les chunks orphelins", on purge automatiquement UNE FOIS dès
- *  qu'elle est détectée, puis on retente l'appel d'origine — invisible pour
- *  l'appelant si la purge suffit à libérer la place. */
+ *  nécessaire ne doit pas faire échouer tout l'envoi. */
 async function driveCallJSONPWithRetry(params, timeoutMs, retries = 2) {
   let lastErr;
-  let cleanedUp = false;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       return await driveCallJSONP(params, timeoutMs);
     } catch (e) {
       lastErr = e;
-      const isQuotaErr = /quota.*propri|propert.*quota/i.test(e.message || '');
-      if (isQuotaErr && !cleanedUp && params.action !== 'cleanup_chunks') {
-        cleanedUp = true;
-        try { await driveCallJSONP({ action: 'cleanup_chunks' }, timeoutMs); }
-        catch (cleanupErr) { /* best-effort — si la purge échoue aussi, on retombe sur le retry normal ci-dessous */ }
-        continue; // retente immédiatement le même appel, sans consommer de délai de backoff
-      }
       if (attempt < retries) await new Promise(r => setTimeout(r, 800 * (attempt + 1)));
     }
   }
@@ -36429,6 +36413,49 @@ async function driveCall(action, key, payload, onProgress) {
 async function drivePing() {
   try { await driveCall('ping'); return true; }
   catch(e) { return false; }
+}
+
+/** Sauvegarde DÉDIÉE à l'historique Analyse (semaines de programmation
+ *  exhaustives — voir analyseSaveHistoryToDrive, seul appelant) — chemin
+ *  ENTIÈREMENT SÉPARÉ de driveCall/driveCallJSONPWithRetry ci-dessus,
+ *  volontairement, pour ne jamais modifier le comportement du reste de
+ *  Drive Sync (Playlist, Comité, diffusions, Cible de recherche...), qui
+ *  reste exactement tel qu'il était.
+ *
+ *  Pourquoi un chemin différent uniquement ici : l'historique Analyse cumule
+ *  toutes les semaines de programmation au fil des ans dans UN SEUL fichier
+ *  — bien plus gros que les autres données FPA, au point que le découpage
+ *  en chunks (voir driveCall) peut à lui seul représenter plusieurs milliers
+ *  de propriétés PropertiesService (quota fixe de 500 Ko, partagé par tout
+ *  le script) pendant la durée de l'envoi, même chunks orphelins nettoyés
+ *  au préalable — et l'envoi, strictly séquentiel, devient très lent.
+ *
+ *  Ce que ça change, ICI SEULEMENT : chaque chunk est écrit comme un petit
+ *  FICHIER DRIVE temporaire (action 'save_chunk_bigfile' du script .gs) au
+ *  lieu d'une propriété — Drive n'a pas de plafond comparable — et plusieurs
+ *  chunks sont envoyés en parallèle. Actions .gs strictement NOUVELLES
+ *  ('save_chunk_bigfile' / 'save_finalize_bigfile'), qui n'existent nulle
+ *  part ailleurs dans le code : aucun risque de collision avec
+ *  'save_chunk'/'save_finalize' utilisées par tout le reste. */
+async function driveSaveBigFile(key, payload, onProgress){
+  if(!DRIVE_SYNC_URL) throw new Error('URL Drive Sync non configurée');
+  const b64 = compress(payload);
+  const CHUNK = 1500;
+  const CONCURRENCY = 6;
+  const total = Math.ceil(b64.length / CHUNK);
+  let completed = 0;
+  const sendChunk = async (i) => {
+    const chunk = b64.slice(i * CHUNK, (i + 1) * CHUNK);
+    await driveCallJSONPWithRetry({ action: 'save_chunk_bigfile', key, chunk, idx: i, total });
+    completed++;
+    if(onProgress) onProgress(completed, total);
+  };
+  for (let start = 0; start < total; start += CONCURRENCY) {
+    const batch = [];
+    for (let i = start; i < Math.min(start + CONCURRENCY, total); i++) batch.push(sendChunk(i));
+    await Promise.all(batch);
+  }
+  return driveCallJSONPWithRetry({ action: 'save_finalize_bigfile', key, total });
 }
 
 // ── DIFFUSIONS CUMULÉES — synchronisation Drive (voir songDiffusions et
