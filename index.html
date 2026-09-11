@@ -3674,12 +3674,16 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   <div id="chartsBar" style="display:none;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;margin-bottom:10px;box-shadow:var(--shadow);overflow:hidden">
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:nowrap;min-width:0;width:100%">
 
-      <!-- Icône + label -->
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--cyan)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      <span style="font-size:10px;font-weight:800;color:var(--navy);white-space:nowrap;flex-shrink:0;letter-spacing:.06em">CHARTS</span>
+      <!-- Call Out/OMT chargé : nom du fichier + date/heure du calcul (voir
+           savedAnalysisState[...].savedAt, capturé par runAnalysis) — jamais
+           tronqué en priorité, comme l'Airplay juste après. "CHARTS" a été
+           retiré : cette barre ne sert plus qu'à rappeler les deux références
+           actives de l'analyse (Call Out/OMT + Airplay), plus d'étiquette de
+           section nécessaire. -->
+      <div id="calloutLoadedStatus" style="display:none;font-size:10px;color:var(--text2);white-space:nowrap;flex-shrink:0;max-width:340px;overflow:hidden;text-overflow:ellipsis;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:3px 8px"></div>
 
       <!-- Séparateur -->
-      <div style="width:1px;height:16px;background:var(--border);flex-shrink:0"></div>
+      <div id="calloutSep" style="display:none;width:1px;height:16px;background:var(--border);flex-shrink:0"></div>
 
       <!-- PRIORITÉ 1 : Airplay — période (semaine Muzicast complète ou LIVE) : jamais tronqué -->
       <div id="airplayPeriodStatus" style="display:none;font-size:10px;color:var(--blue-text);white-space:nowrap;flex-shrink:0;max-width:340px;overflow:hidden;text-overflow:ellipsis;background:var(--blue-bg);border:1px solid var(--blue-border);border-radius:6px;padding:3px 8px"></div>
@@ -7995,6 +7999,12 @@ async function loadChartsAndRefresh(){
   // Enrichir avec les meilleures données disponibles (live ou builtin)
   enrichResultsWithCharts();
   renderTable();
+  // Rafraîchir aussi la page Classements/Shazam elle-même (date affichée sous
+  // le titre) — sans cet appel, si l'utilisateur est déjà sur cet onglet au
+  // moment du chargement auto, la date restait figée sur l'ancienne valeur
+  // jusqu'à un changement d'onglet (updateChartStatusUI/renderTable ne
+  // touchent pas au subtitle de cette page).
+  if(typeof renderChartTable === 'function') renderChartTable();
 }
 
 // ── CHARGEMENT GLOBAL — un seul bouton/déclenchement pour toutes les sources
@@ -8102,6 +8112,9 @@ async function loadAllCharts(silent = false){
     updateChartStatusUI();
     const zone = document.getElementById('shazamImportZone');
     if(zone) zone.style.display = (chartsLoaded.fr || chartsLoaded.ww) ? 'none' : 'flex';
+    // Même correctif que loadChartsAndRefresh : réaffiche la page
+    // Classements/Shazam (date sous le titre) si l'utilisateur y est déjà.
+    if(typeof renderChartTable === 'function') renderChartTable();
   })());
 
   if(!deezerLoaded)             tasks.push(loadDeezerChart());
@@ -8208,6 +8221,7 @@ function showResults(){
   if(bar) bar.style.display = 'flex';
   // Initialiser le statut Spotify dans la barre
   updateSpotifyStatus();
+  updateCalloutLoadedStatus();
   // Si Drive Sync configuré et historique pas encore chargé → charger auto.
   // Cas particulier corrigé : chartsHistoryLoaded passe à true dès que
   // l'INDEX Drive est chargé (voir loadChartsIndex), pas une fois l'airplay
@@ -24565,6 +24579,31 @@ function handleSpotifyImport(input){
   reader.readAsText(file, 'utf-8');
 }
 
+/** Rappelle dans la barre du haut de la page Fit Score le Call Out/OMT
+ *  actuellement chargé — nom du fichier (sourceFileName) et date/heure du
+ *  calcul (savedAnalysisState[...].savedAt, capturé par saveCurrentAnalysisToStorage
+ *  juste après runAnalysis). Masqué tant qu'aucune analyse n'a encore été
+ *  calculée dans cette session. */
+function updateCalloutLoadedStatus(){
+  const el  = document.getElementById('calloutLoadedStatus');
+  const sep = document.getElementById('calloutSep');
+  if(!el) return;
+  if(analysisResult && analysisResult.length && sourceFileName){
+    const isOmt = currentAnalysisKind() === 'omt';
+    const saved = savedAnalysisState[currentAnalysisKind()];
+    const dateText = saved && saved.savedAt
+      ? new Date(saved.savedAt).toLocaleDateString('fr-FR', {day:'2-digit', month:'2-digit', year:'numeric'}) + ' à ' + new Date(saved.savedAt).toLocaleTimeString('fr-FR', {hour:'2-digit', minute:'2-digit'})
+      : '';
+    el.innerHTML = (isOmt ? '📋' : '🔍') + ' <strong style="color:var(--navy)">' + escHtml(sourceFileName) + '</strong>' + (dateText ? ' <span style="color:var(--muted)">· ' + dateText + '</span>' : '');
+    el.title = (isOmt ? 'OMT' : 'Call Out') + ' chargé : ' + sourceFileName + (dateText ? ' — calculé le ' + dateText : '');
+    el.style.display = 'block';
+    if(sep) sep.style.display = 'block';
+  } else {
+    el.style.display = 'none';
+    if(sep) sep.style.display = 'none';
+  }
+}
+
 function updateAirplayStatus(){
   const apPeriodEl = document.getElementById('airplayPeriodStatus');
   const sep        = document.getElementById('airplaySep');
@@ -36885,6 +36924,7 @@ async function restoreChartsWeek(date) {
     if (analysisResult && analysisResult.length) renderTable();
     updateAirplayStatus();
     updateSpotifyStatus();
+    updateCalloutLoadedStatus();
     renderChartTable();
     showToast('✓ Données du ' + (entry.label || date) + ' restaurées', 'success');
   } catch(e) {
@@ -37154,6 +37194,7 @@ async function loadChartsHistoryFromDrive() {
         if(analysisResult && analysisResult.length) renderTable();
         updateAirplayStatus();
         updateSpotifyStatus();
+        updateCalloutLoadedStatus();
 
         showToast('✓ Drive — ' + n + ' sem. · données du ' + latest.label + ' chargées'
           + (corrupted.length ? ' — ⚠ illisible(s) et à supprimer (Historique) : ' + corrupted.join(', ') : ''), 'success');
