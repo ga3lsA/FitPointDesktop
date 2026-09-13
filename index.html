@@ -26522,7 +26522,7 @@ function buildWatchlistCard(w){
     ${isNew ? `<div style="position:absolute;top:-9px;left:14px;background:#0DA76B;color:#fff;font-size:9.5px;font-weight:800;padding:3px 10px;border-radius:20px">🎯 Nouveau signal</div>` : ''}
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
       <div style="display:flex;align-items:center;gap:12px;min-width:0">
-        <div style="flex-shrink:0;width:64px;height:64px;border-radius:9px;overflow:hidden;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
+        <div id="watchlistCover-${w.key}" style="flex-shrink:0;width:64px;height:64px;border-radius:9px;overflow:hidden;background:var(--bg);border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center">
           ${cover ? `<img src="${cover}" style="width:100%;height:100%;object-fit:cover">` : '<span style="font-size:20px;color:var(--border)">🎵</span>'}
         </div>
         <div style="min-width:0">
@@ -26568,6 +26568,21 @@ async function renderWatchlistPage(){
     return (b.addedAt || '').localeCompare(a.addedAt || '');
   });
   listEl.innerHTML = sorted.map(w => buildWatchlistCard(w)).join('');
+
+  // Filet de sécurité pochette : si la vérification quotidienne en cache n'a
+  // pas de pochette (échec ponctuel, entrée ancienne, etc.), on la recherche
+  // en direct ici — même mécanisme que Comité/Playlist/Radar/Montage, qui ne
+  // dépendent eux jamais d'un cache quotidien pour l'affichage des pochettes.
+  sorted.forEach(w => {
+    const last = w.history.length ? w.history[w.history.length - 1] : null;
+    if(last?.itunes?.artworkUrl) return; // déjà en cache, pas besoin de refetch
+    fetchItunesArtwork(w.title, w.artist).then(url => {
+      if(!url) return;
+      const wrap = document.getElementById('watchlistCover-' + w.key);
+      if(!wrap) return;
+      wrap.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover">`;
+    });
+  });
 }
 
 /** Ajoute un titre de la Veille au Comité d'Écoute ou à la Playlist de la
