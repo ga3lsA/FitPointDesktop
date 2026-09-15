@@ -7741,7 +7741,13 @@ function similarity(a,b){
   if(!a||!b)return 0;
   const na=norm(a),nb=norm(b);
   if(na===nb)return 1;
-  if(na.includes(nb)||nb.includes(na))return 0.9;
+  // Un simple "l'un contient l'autre" n'est un signal fiable que si la plus
+  // courte des deux chaînes fait une taille minimale : sinon un mot court ou
+  // générique (un featuring, une particule, un seul mot commun...) se
+  // retrouve "inclus" dans n'importe quel titre plus long et produit un faux
+  // positif quasi-parfait (0.9) alors que les deux titres n'ont rien à voir.
+  const minLen = Math.min(na.length, nb.length);
+  if(minLen>=4 && (na.includes(nb)||nb.includes(na)))return 0.9;
   const wa=new Set(na.split(' ').filter(x=>x.length>1));
   const wb=new Set(nb.split(' ').filter(x=>x.length>1));
   const inter=[...wa].filter(x=>wb.has(x)).length;
@@ -7753,10 +7759,23 @@ function findInChart(chart,title,artist){
   const nt=norm(title),na=norm(artist);
   let best=null,bestScore=0;
   for(const [rank,entry] of Object.entries(chart)){
-    const ts=similarity(nt,entry.t||entry.title||'');
-    const as=na?similarity(na,entry.a||entry.artist||''):0.5;
+    const entryTitle=entry.t||entry.title||'';
+    const entryArtist=entry.a||entry.artist||'';
+    const ts=similarity(nt,entryTitle);
+    if(!na){
+      // Pas d'artiste connu pour comparer : on n'accorde plus aucun bonus par
+      // défaut (c'était le cas avant avec as=0.5, qui laissait un titre
+      // moyennement ressemblant suffire seul à valider un match). On exige
+      // ici une similarité de titre quasi parfaite.
+      if(ts>bestScore&&ts>=0.92){bestScore=ts;best=parseInt(rank);}
+      continue;
+    }
+    const as=similarity(na,entryArtist);
     const score=ts*0.6+as*0.4;
-    if(score>bestScore&&score>=0.55){bestScore=score;best=parseInt(rank);}
+    // Le score combiné ne suffit plus seul : on exige aussi un minimum sur
+    // CHAQUE composante, pour qu'un titre très proche mais un artiste sans
+    // rapport (ou l'inverse) ne valide jamais un match par simple moyenne.
+    if(score>bestScore&&score>=0.62&&ts>=0.5&&as>=0.35){bestScore=score;best=parseInt(rank);}
   }
   return best;
 }
