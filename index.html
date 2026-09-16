@@ -1986,7 +1986,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
     <!-- Note explicative (repliable) -->
     <div id="infoPlaylist" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-      Cochez des titres dans <strong>Classements</strong> (via le bouton "+" à côté de chaque titre, qui propose Comité d'Écoute et/ou Playlist) pour les ajouter ici, ou utilisez <strong>➕ Ajouter un titre manuellement</strong> ci-dessus si le titre ne figure encore dans aucun classement (il se connectera automatiquement aux classements/métriques dès qu'il y apparaîtra). Chaque titre est rattaché à la station active au moment de l'ajout (<span class="station-name">Europe 2</span> ou RFM — bascule avec le bouton 🔁 ci-dessus). Renseignez pour chaque titre sa <strong>Date d'Entrée</strong>, sa <strong>Catégorie</strong> (et au besoin son <strong>Ancienne Catégorie</strong>, modifiable manuellement même si elle se met à jour automatiquement) et son <strong>Label</strong> : la liste est ensuite triée par catégorie dans l'ordre de rotation habituel, avec le Fit Score, le quadrant Fit Point de la vague en cours et les <strong>Diffusions cumulées</strong> (colonne « Diffusion Europe 2 » / « Diff RFM » des fichiers Call Out/OMT, conservées et mises à jour à chaque import) quand le titre y figure. Les cases <strong>Power (N / I)</strong> marquent les titres Power New et Power Intro ; <strong>🔌 Power Tab</strong> exporte ces sélections en PDF en indiquant automatiquement les Nouveau/Out par rapport à la dernière semaine archivée. La case <strong>Call Out</strong> indique qu'un titre part en recherche (à tester) ; <strong>🎧 Call Out</strong> exporte la liste de tous les titres cochés, triée par artiste. <strong>Cliquez sur le badge d'une catégorie</strong> (en tête de chaque groupe) pour l'exclure — ou la réintégrer — du <strong>📄 PDF</strong> et de l'<strong>📊 Excel</strong> exportés, sans la retirer de la Playlist affichée ici : pratique pour les catégories de mouvement (ex. « R », « O ») qui n'ont pas besoin de figurer dans le compte-rendu envoyé en réunion. <strong>🔗 Créer un paquet</strong> lie 2 titres d'une même catégorie (ils tournent une fois sur deux). <strong>💾 Sauvegarder</strong> archive la Playlist de la semaine sur Drive, indépendamment des classements ; <strong>🗄️ Archives</strong> permet de retrouver une semaine passée ou de rechercher un titre dans l'historique.
+      Cochez des titres dans <strong>Classements</strong> (via le bouton "+" à côté de chaque titre, qui propose Comité d'Écoute et/ou Playlist) pour les ajouter ici, ou utilisez <strong>➕ Ajouter un titre manuellement</strong> ci-dessus si le titre ne figure encore dans aucun classement (il se connectera automatiquement aux classements/métriques dès qu'il y apparaîtra). Chaque titre est rattaché à la station active au moment de l'ajout (<span class="station-name">Europe 2</span> ou RFM — bascule avec le bouton 🔁 ci-dessus). Renseignez pour chaque titre sa <strong>Date d'Entrée</strong>, sa <strong>Catégorie</strong> (et au besoin son <strong>Ancienne Catégorie</strong>, modifiable manuellement même si elle se met à jour automatiquement) et son <strong>Label</strong> : la liste est ensuite triée par catégorie dans l'ordre de rotation habituel, avec le Fit Score, le quadrant Fit Point de la vague en cours et les <strong>Diffusions cumulées</strong> (colonne « Diffusion Europe 2 » / « Diff RFM » des fichiers Call Out/OMT, conservées et mises à jour à chaque import) quand le titre y figure. Les cases <strong>Power (N / S / I)</strong> marquent les titres Power New, Power New Stop et Power Intro (cocher <strong>Power New Stop</strong> décoche automatiquement Power New — le titre n'est plus une nouveauté) ; <strong>🔌 Power Tab</strong> exporte ces trois listes en PDF en indiquant automatiquement les Nouveau/Out par rapport à la dernière semaine archivée. La case <strong>Call Out</strong> indique qu'un titre part en recherche (à tester) ; <strong>🎧 Call Out</strong> exporte la liste de tous les titres cochés, triée par artiste. <strong>Cliquez sur le badge d'une catégorie</strong> (en tête de chaque groupe) pour l'exclure — ou la réintégrer — du <strong>📄 PDF</strong> et de l'<strong>📊 Excel</strong> exportés, sans la retirer de la Playlist affichée ici : pratique pour les catégories de mouvement (ex. « R », « O ») qui n'ont pas besoin de figurer dans le compte-rendu envoyé en réunion. <strong>🔗 Créer un paquet</strong> lie 2 titres d'une même catégorie (ils tournent une fois sur deux). <strong>💾 Sauvegarder</strong> archive la Playlist de la semaine sur Drive, indépendamment des classements ; <strong>🗄️ Archives</strong> permet de retrouver une semaine passée ou de rechercher un titre dans l'historique.
     </div>
 
     <!-- Bandeau vide -->
@@ -7698,7 +7698,7 @@ function quickAddFromChartSearch(target){
       return;
     }
     const fill = playlistAutoFillFields(title, artist, ACTIVE_STATION);
-    playlistTitles.push({ key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree: fill.dateEntree, categorie:'', label: fill.label, powerNew:false, powerIntro:false, callOut:false, manual: true });
+    playlistTitles.push({ key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, dateEntree: fill.dateEntree, categorie:'', label: fill.label, powerNew:false, powerNewStop:false, powerIntro:false, callOut:false, manual: true });
     playlistSaveToStorage();
     updatePlaylistBadge();
     showToast('✓ « ' + titleCaseDisplay(title) + ' » ajouté à la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success');
@@ -22357,7 +22357,7 @@ function dedupePlaylistTitles(){
     const dedupeKey = t.key + '|' + t.station;
     if(seen.has(dedupeKey)){
       const existing = seen.get(dedupeKey);
-      ['categorie','ancienneCategorie','dateEntree','label','powerNew','powerIntro','callOut','bundleId'].forEach(f => {
+      ['categorie','ancienneCategorie','dateEntree','label','powerNew','powerNewStop','powerIntro','callOut','bundleId'].forEach(f => {
         const existingEmpty = existing[f] === '' || existing[f] === null || existing[f] === undefined || existing[f] === false;
         const currentFilled = t[f] !== '' && t[f] !== null && t[f] !== undefined && t[f] !== false;
         if(existingEmpty && currentFilled) existing[f] = t[f];
@@ -22508,7 +22508,7 @@ function togglePlaylistTitle(title, artist){
     if(removed.bundleId) unlinkPlaylistBundle(removed.key, true);
     playlistTitles.splice(idx, 1);
   } else {
-    playlistTitles.push({key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, ...playlistAutoFillFields(title, artist, ACTIVE_STATION), categorie:'', powerNew:false, powerIntro:false, callOut:false});
+    playlistTitles.push({key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, ...playlistAutoFillFields(title, artist, ACTIVE_STATION), categorie:'', powerNew:false, powerNewStop:false, powerIntro:false, callOut:false});
   }
   playlistSaveToStorage();
   updatePlaylistBadge();
@@ -22538,7 +22538,7 @@ function addManualPlaylistTitle(){
   }
   playlistTitles.push({
     key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION,
-    ...playlistAutoFillFields(title, artist, ACTIVE_STATION), categorie:'', powerNew:false, powerIntro:false, callOut:false, manual:true
+    ...playlistAutoFillFields(title, artist, ACTIVE_STATION), categorie:'', powerNew:false, powerNewStop:false, powerIntro:false, callOut:false, manual:true
   });
   playlistSaveToStorage();
   updatePlaylistBadge();
@@ -23083,6 +23083,11 @@ function updatePlaylistField(key, field, value){
     t.ancienneCategorie = t.categorie;
   }
   t[field] = value;
+  // Power New Stop signifie que le titre n'est plus une nouveauté et n'est
+  // plus diffusé en version Power New — les deux statuts sont exclusifs.
+  if(field === 'powerNewStop' && value === true && t.powerNew){
+    t.powerNew = false;
+  }
   playlistSaveToStorage();
 
   // Un paquet ne peut exister qu'entre 2 titres de la MÊME catégorie — si la
@@ -23107,6 +23112,9 @@ function updatePlaylistField(key, field, value){
   // La catégorie détermine le regroupement/tri affiché : on ré-affiche pour
   // que le titre bascule immédiatement dans le bon groupe.
   if(field === 'categorie' && playlistPageOpen) renderPlaylistPage();
+  // Power New Stop décoche Power New automatiquement (voir ci-dessus) : on
+  // ré-affiche pour que la case Power New se décoche visuellement aussitôt.
+  if(field === 'powerNewStop' && value === true && playlistPageOpen) renderPlaylistPage();
 }
 
 let playlistExpandedKeys = new Set();
@@ -23154,7 +23162,7 @@ function togglePlaylistExpand(key){
  *  catégorie (éditable), ancienne catégorie (badge auto), les 6 métriques
  *  Call Out (Pot Score/Burn/Inconnu × Ensemble/P1), date d'entrée (éditable),
  *  label (éditable), retirer. */
-const PLAYLIST_ROW_GRID = '22px 170px 210px 52px 52px 42px 36px 46px 52px 52px 48px 48px 52px 52px 46px 34px 112px 130px 24px';
+const PLAYLIST_ROW_GRID = '22px 170px 210px 52px 52px 42px 36px 46px 52px 52px 48px 48px 52px 52px 68px 34px 112px 130px 24px';
 
 function playlistNumCell(val, decimals, suffix){
   if(val === null || val === undefined || val === '' || isNaN(parseFloat(val))) return '<span style="color:var(--muted)">–</span>';
@@ -23331,6 +23339,7 @@ function buildPlaylistRow(t, metrics, row360){
 
   const powerCell = `<div style="display:flex;gap:4px;justify-content:center;align-items:center" onclick="event.stopPropagation()">
       <input type="checkbox" name="pl-new-${safeId}" ${t.powerNew?'checked':''} onchange="updatePlaylistField('${t.key}','powerNew',this.checked)" title="Power New" style="width:13px;height:13px;cursor:pointer;accent-color:#0DA76B">
+      <input type="checkbox" name="pl-newstop-${safeId}" ${t.powerNewStop?'checked':''} onchange="updatePlaylistField('${t.key}','powerNewStop',this.checked)" title="Power New Stop — le titre n'est plus une nouveauté, il sort du Power New" style="width:13px;height:13px;cursor:pointer;accent-color:#CC2222">
       <input type="checkbox" name="pl-intro-${safeId}" ${t.powerIntro?'checked':''} onchange="updatePlaylistField('${t.key}','powerIntro',this.checked)" title="Power Intro" style="width:13px;height:13px;cursor:pointer;accent-color:#7C3AED">
     </div>`;
 
@@ -23409,7 +23418,7 @@ function playlistShowEmpty(msg){
 const PLAYLIST_HEADER_LABELS = [
   ['', ''], ['Artiste',''], ['Titre',''], ['Catégorie',''], ['Anc. Cat.',''], ['Fit',''], ['Quad.',''], ['Diff.','Cumul.'],
   ['Pot Score','Ensemble'], ['Pot Score','P1'], ['Burn','Ensemble'], ['Burn','P1'],
-  ['Inconnu','Ensemble'], ['Inconnu','P1'], ['Power','N / I'], ['Call','Out'], ["Date d'Entrée",''], ['Label',''], ['','']
+  ['Inconnu','Ensemble'], ['Inconnu','P1'], ['Power','N / S / I'], ['Call','Out'], ["Date d'Entrée",''], ['Label',''], ['','']
 ];
 
 function playlistTableHeader(){
@@ -24081,28 +24090,29 @@ async function exportPlaylistExcel(){
   showToast('✓ Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' exportée en Excel', 'success');
 }
 
-/** Export "POWER TAB" : liste les titres cochés Power New / Power Intro
- *  pour la station active, en indiquant automatiquement "NOUVEAU" pour un
- *  titre qui n'était pas coché la semaine précédente (dernière archive
- *  Drive disponible, hors semaine en cours), et "OUT" pour un titre qui
- *  l'était mais ne l'est plus cette semaine. */
+/** Export "POWER TAB" : liste les titres cochés Power New / Power New Stop /
+ *  Power Intro pour la station active, en indiquant automatiquement
+ *  "NOUVEAU" pour un titre qui n'était pas coché la semaine précédente
+ *  (dernière archive Drive disponible, hors semaine en cours), et "OUT"
+ *  pour un titre qui l'était mais ne l'est plus cette semaine. */
 async function exportPowerTabPDF(){
   if(typeof window.jspdf === 'undefined'){
     showToast('Bibliothèque PDF non chargée — vérifiez la connexion internet', 'err');
     return;
   }
   const stationTitles = playlistTitles.filter(t => t.station === ACTIVE_STATION);
-  const currentNew   = stationTitles.filter(t => t.powerNew);
-  const currentIntro = stationTitles.filter(t => t.powerIntro);
-  if(!currentNew.length && !currentIntro.length){
-    showToast('Aucun titre coché Power New ou Power Intro pour ' + STATION_LABELS[ACTIVE_STATION], 'err');
+  const currentNew     = stationTitles.filter(t => t.powerNew);
+  const currentNewStop = stationTitles.filter(t => t.powerNewStop);
+  const currentIntro   = stationTitles.filter(t => t.powerIntro);
+  if(!currentNew.length && !currentNewStop.length && !currentIntro.length){
+    showToast('Aucun titre coché Power New, Power New Stop ou Power Intro pour ' + STATION_LABELS[ACTIVE_STATION], 'err');
     return;
   }
 
   // Dernière semaine archivée sur Drive (hors semaine en cours), pour
   // déterminer les statuts NOUVEAU / OUT. Silencieux si aucune archive
   // précédente n'existe : on affiche alors la liste sans comparaison.
-  let prevNew = [], prevIntro = [];
+  let prevNew = [], prevNewStop = [], prevIntro = [];
   try{
     const todayKey = new Date().toISOString().slice(0, 10);
     const entries = await getPlaylistArchiveList();
@@ -24113,17 +24123,21 @@ async function exportPowerTabPDF(){
     if(prevEntry){
       const prevData = await loadPlaylistArchiveData(prevEntry);
       const prevStation = prevData[ACTIVE_STATION] || [];
-      prevNew   = prevStation.filter(t => t.powerNew);
-      prevIntro = prevStation.filter(t => t.powerIntro);
+      prevNew     = prevStation.filter(t => t.powerNew);
+      prevNewStop = prevStation.filter(t => t.powerNewStop);
+      prevIntro   = prevStation.filter(t => t.powerIntro);
     }
   }catch(e){ /* pas d'archive précédente disponible : pas de comparaison possible */ }
 
-  const currentNewKeys   = new Set(currentNew.map(t => t.key));
-  const currentIntroKeys = new Set(currentIntro.map(t => t.key));
-  const prevNewKeys      = new Set(prevNew.map(t => t.key));
-  const prevIntroKeys    = new Set(prevIntro.map(t => t.key));
-  const outNew   = prevNew.filter(t => !currentNewKeys.has(t.key));
-  const outIntro = prevIntro.filter(t => !currentIntroKeys.has(t.key));
+  const currentNewKeys     = new Set(currentNew.map(t => t.key));
+  const currentNewStopKeys = new Set(currentNewStop.map(t => t.key));
+  const currentIntroKeys   = new Set(currentIntro.map(t => t.key));
+  const prevNewKeys        = new Set(prevNew.map(t => t.key));
+  const prevNewStopKeys    = new Set(prevNewStop.map(t => t.key));
+  const prevIntroKeys      = new Set(prevIntro.map(t => t.key));
+  const outNew     = prevNew.filter(t => !currentNewKeys.has(t.key));
+  const outNewStop = prevNewStop.filter(t => !currentNewStopKeys.has(t.key));
+  const outIntro   = prevIntro.filter(t => !currentIntroKeys.has(t.key));
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -24215,6 +24229,13 @@ async function exportPowerTabPDF(){
     sectionTitle('POWER NEW', COL_GREEN, currentNew.length);
     currentNew.forEach(t => titleRow(t, prevNewKeys.has(t.key) ? null : 'NOUVEAU'));
     if(outNew.length){ y += 2; outLabel(); outNew.forEach(t => titleRow(t, 'OUT')); }
+    y += 6;
+  }
+
+  if(currentNewStop.length || outNewStop.length){
+    sectionTitle('POWER NEW STOP', COL_RED, currentNewStop.length);
+    currentNewStop.forEach(t => titleRow(t, prevNewStopKeys.has(t.key) ? null : 'NOUVEAU'));
+    if(outNewStop.length){ y += 2; outLabel(); outNewStop.forEach(t => titleRow(t, 'OUT')); }
     y += 6;
   }
 
@@ -26648,7 +26669,7 @@ function watchlistPromote(key, target){
       showToast('Déjà dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'err');
       return;
     }
-    playlistTitles.push({ key, title: w.title, artist: w.artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, ...playlistAutoFillFields(w.title, w.artist, ACTIVE_STATION), categorie:'', powerNew:false, powerIntro:false, callOut:false, manual: true });
+    playlistTitles.push({ key, title: w.title, artist: w.artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION, ...playlistAutoFillFields(w.title, w.artist, ACTIVE_STATION), categorie:'', powerNew:false, powerNewStop:false, powerIntro:false, callOut:false, manual: true });
     playlistSaveToStorage();
     updatePlaylistBadge();
     showToast('✓ « ' + titleCaseDisplay(w.title) + ' » ajouté à la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success');
