@@ -2212,6 +2212,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <!-- Sélecteur de semaine -->
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
           <select id="digitalAudienceWeekSelect" style="font-size:12px;padding:8px 12px;border-radius:8px" onchange="digitalAudienceUI.week=this.value;renderDigitalAudienceDetail()"></select>
+          <span style="font-size:11px;color:var(--muted);font-weight:700">Comparer à :</span>
+          <select id="digitalAudienceCompareSelect" style="font-size:12px;padding:8px 12px;border-radius:8px" onchange="digitalAudienceUI.compareWeek=this.value;renderDigitalAudienceDetail()" title="Choisir une semaine de comparaison précise, en plus des évolutions S-1 / 1 an déjà fournies par le PDF"></select>
           <span id="digitalAudienceWeekCount" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
         </div>
 
@@ -13040,8 +13042,23 @@ function digitalAudienceEvolChip(labelSuffix, x){
 /** État de la vue détail (station + semaine sélectionnées) — indépendant de
  *  la sélection de station "programmation" (ACTIVE_STATION), car on veut
  *  pouvoir consulter l'audience digitale d'une station sans changer la
- *  station de référence de tout le reste de FPA. */
-let digitalAudienceUI = { station: 'EUROPE2', week: null };
+ *  station de référence de tout le reste de FPA. compareWeek : 'auto'
+ *  (défaut, garde les évolutions S-1 / 1 an telles qu'imprimées dans le PDF)
+ *  ou la clé ISO d'une semaine archivée précise, choisie librement par
+ *  l'utilisateur (ex. comparer la semaine actuelle à la dernière semaine de
+ *  juin, ou toute autre semaine passée), pour un delta calculé côté client
+ *  à partir de l'historique plutôt que dépendre de ce que le PDF imprime. */
+let digitalAudienceUI = { station: 'EUROPE2', week: null, compareWeek: 'auto' };
+
+/** Delta fractionnaire (même convention que les valeurs issues du PDF,
+ *  ex. 0.053 pour +5.3%) entre la valeur de la semaine affichée et celle
+ *  d'une semaine de comparaison choisie librement — null si l'une des deux
+ *  valeurs est absente ou si la référence vaut 0 (division impossible). */
+function digitalAudienceCustomDelta(current, prev){
+  if(current===null||current===undefined||isNaN(current)) return null;
+  if(prev===null||prev===undefined||isNaN(prev)||prev===0) return null;
+  return (current - prev) / prev;
+}
 
 function digitalAudienceWeekKeys(stKey){ return Object.keys(digitalAudienceHistory[stKey]||{}).sort(); }
 
@@ -13078,6 +13095,19 @@ function renderDigitalAudienceDetail(){
   weekSelect.innerHTML = weeks.slice().reverse().map(w => `<option value="${w}" ${w===digitalAudienceUI.week?'selected':''}>Semaine du ${digitalAudienceFmtDate(w)}</option>`).join('');
   document.getElementById('digitalAudienceWeekCount').textContent = weeks.length + ' semaine(s) archivée(s) pour ' + STATION_LABELS[stKey];
 
+  // Sélecteur de semaine de comparaison libre — toutes les semaines
+  // archivées pour cette station SAUF celle actuellement affichée. Si la
+  // semaine de comparaison précédemment choisie n'existe plus pour cette
+  // station (changement de station, ou semaine supprimée), on retombe sur
+  // "Automatique" plutôt que de garder une référence invalide silencieuse.
+  if(digitalAudienceUI.compareWeek !== 'auto' && !weeks.includes(digitalAudienceUI.compareWeek)){
+    digitalAudienceUI.compareWeek = 'auto';
+  }
+  const compareSelect = document.getElementById('digitalAudienceCompareSelect');
+  const compareOptions = weeks.slice().reverse().filter(w => w !== digitalAudienceUI.week)
+    .map(w => `<option value="${w}" ${w===digitalAudienceUI.compareWeek?'selected':''}>Semaine du ${digitalAudienceFmtDate(w)}</option>`).join('');
+  compareSelect.innerHTML = `<option value="auto" ${digitalAudienceUI.compareWeek==='auto'?'selected':''}>Automatique (S-1 / 1 an du PDF)</option>` + compareOptions;
+
   document.getElementById('digitalAudienceStationHeader').innerHTML = `
     <span style="font-size:22px">${STATION_ICONS[stKey]||'📻'}</span>
     <div>
@@ -13096,6 +13126,16 @@ function renderDigitalAudienceDetail(){
   }
   const rec = digitalAudienceHistory[stKey][digitalAudienceUI.week];
 
+  // Semaine de comparaison libre (choisie par l'utilisateur), si activée —
+  // ses deltas sont calculés côté client à partir de l'historique archivé,
+  // contrairement aux évolutions S-1 / 1 an qui viennent telles quelles du
+  // texte du PDF importé.
+  const compareKey  = digitalAudienceUI.compareWeek !== 'auto' ? digitalAudienceUI.compareWeek : null;
+  const compareRec  = compareKey ? digitalAudienceHistory[stKey][compareKey] : null;
+  const compareChip = (current, prevVal) => compareKey
+    ? digitalAudienceEvolChip('vs ' + digitalAudienceFmtDate(compareKey), digitalAudienceCustomDelta(current, prevVal))
+    : '';
+
   // ── Cartes KPI (mêmes 4 cartes que Digital Monitoring) ──
   const kpiCard = (label, value, sub, evols) => `
     <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;position:relative;overflow:hidden">
@@ -13103,16 +13143,17 @@ function renderDigitalAudienceDetail(){
       <div style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">${escHtml(label)}</div>
       <div style="font-size:22px;font-weight:800;color:var(--navy);margin-bottom:${evols?'8px':'2px'}">${value}</div>
       ${sub ? `<div style="font-size:10.5px;color:var(--muted)">${sub}</div>` : ''}
-      ${evols ? `<div style="display:flex;gap:6px;margin-top:4px">${evols}</div>` : ''}
+      ${evols ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">${evols}</div>` : ''}
     </div>`;
   kpiArea.innerHTML =
     kpiCard('Sessions &gt; 30s', digitalAudienceFmtInt(rec.sessions), '',
-      digitalAudienceEvolChip('vs S-1', rec.evolS1Sessions) + digitalAudienceEvolChip('vs 1 an', rec.evol1anSessions)) +
+      digitalAudienceEvolChip('vs S-1', rec.evolS1Sessions) + digitalAudienceEvolChip('vs 1 an', rec.evol1anSessions) + compareChip(rec.sessions, compareRec && compareRec.sessions)) +
     kpiCard('Visiteurs uniques', digitalAudienceFmtInt(rec.uniques), '',
-      digitalAudienceEvolChip('vs S-1', rec.evolS1Uniques) + digitalAudienceEvolChip('vs 1 an', rec.evol1anUniques)) +
-    kpiCard('Durée d\'écoute moyenne', digitalAudienceFmtDuration(rec.dureeSec), 'par session', '') +
+      digitalAudienceEvolChip('vs S-1', rec.evolS1Uniques) + digitalAudienceEvolChip('vs 1 an', rec.evol1anUniques) + compareChip(rec.uniques, compareRec && compareRec.uniques)) +
+    kpiCard('Durée d\'écoute moyenne', digitalAudienceFmtDuration(rec.dureeSec), 'par session',
+      compareKey ? compareChip(rec.dureeSec, compareRec && compareRec.dureeSec) : '') +
     kpiCard('Audience moyenne 5h-24h', digitalAudienceFmtInt(rec.audienceMoyenne), '',
-      digitalAudienceEvolChip('vs S-1', rec.evolS1Audience) + digitalAudienceEvolChip('vs 1 an', rec.evol1anAudience));
+      digitalAudienceEvolChip('vs S-1', rec.evolS1Audience) + digitalAudienceEvolChip('vs 1 an', rec.evol1anAudience) + compareChip(rec.audienceMoyenne, compareRec && compareRec.audienceMoyenne));
 
   // ── Contexte de la semaine ──
   const contexte = rec.contexte || [];
@@ -13135,13 +13176,22 @@ function renderDigitalAudienceDetail(){
     tranchesArea.innerHTML = '<div style="font-size:12px;color:var(--muted);padding:8px">Aucune donnée de tranche pour cette semaine.</div>';
   } else {
     const heatBg = x => (x>0.02 ? 'var(--green-bg)' : (x<-0.02 ? '#FDEBEB' : 'transparent'));
-    const rows = tranches.map(t => `<tr onclick="openDigitalAudienceTrancheHistory('${jsAttrEscape(t.tranche)}')" title="Voir l'historique de cette tranche"
+    // Tranche correspondante dans la semaine de comparaison libre (par
+    // libellé de tranche) — absente si la semaine choisie n'a pas archivé
+    // cette tranche précise (grille horaire différente, par exemple).
+    const findCompareTranche = label => compareRec && compareRec.tranches ? compareRec.tranches.find(x => x.tranche === label) : null;
+    const rows = tranches.map(t => {
+      const compT = compareKey ? findCompareTranche(t.tranche) : null;
+      const compDelta = compareKey ? digitalAudienceCustomDelta(t.audience, compT && compT.audience) : null;
+      return `<tr onclick="openDigitalAudienceTrancheHistory('${jsAttrEscape(t.tranche)}')" title="Voir l'historique de cette tranche"
       style="cursor:pointer" onmouseenter="this.style.background='var(--bg)'" onmouseleave="this.style.background=''">
       <td style="padding:8px 12px;font-size:12px;font-weight:700;color:var(--navy)">${escHtml(t.tranche)}${t.programme ? ` <span style="color:var(--muted);font-weight:500">· ${escHtml(t.programme)}</span>` : ''}</td>
       <td style="padding:8px 12px;font-size:12px;text-align:right">${digitalAudienceFmtInt(t.audience)}</td>
       <td style="padding:8px 12px;text-align:right;background:${heatBg(t.evolS1)}">${digitalAudienceEvolBadge(t.evolS1)}</td>
       <td style="padding:8px 12px;text-align:right;background:${heatBg(t.evol1an)}">${digitalAudienceEvolBadge(t.evol1an)}</td>
-    </tr>`).join('');
+      ${compareKey ? `<td style="padding:8px 12px;text-align:right;background:${heatBg(compDelta)}">${digitalAudienceEvolBadge(compDelta)}</td>` : ''}
+    </tr>`;
+    }).join('');
     tranchesArea.innerHTML = `
       <table style="width:100%;border-collapse:collapse">
         <thead><tr style="border-bottom:1.5px solid var(--border)">
@@ -13149,6 +13199,7 @@ function renderDigitalAudienceDetail(){
           <th style="padding:8px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Audience</th>
           <th style="padding:8px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Évol. S-1</th>
           <th style="padding:8px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Évol. 1 an</th>
+          ${compareKey ? `<th style="padding:8px 12px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Évol. ${digitalAudienceFmtDate(compareKey)}</th>` : ''}
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
@@ -21954,12 +22005,15 @@ function evoAttr(title, artist){
 
 function comiteKey(title, artist){ return norm(artist||'') + '|||' + norm(title||''); }
 
-/** Retrouve, dans la Playlist (toutes stations confondues), l'entrée
- *  correspondant à un titre/artiste donné, et renvoie sa Catégorie — chaîne
- *  vide si le titre n'est dans aucune Playlist ou sans catégorie renseignée. */
+/** Retrouve, dans la Playlist de la station de référence actuellement
+ *  active (ACTIVE_STATION — bouton 🔁 de l'en-tête), l'entrée correspondant
+ *  à un titre/artiste donné, et renvoie sa Catégorie — chaîne vide si le
+ *  titre n'est pas dans la Playlist de CETTE station ou sans catégorie
+ *  renseignée. Scopé à la station active pour ne jamais afficher, par
+ *  exemple, la catégorie RFM d'un titre alors qu'on regarde Europe 2. */
 function playlistCategoryFor(title, artist){
   const key = comiteKey(title, artist);
-  const entry = playlistTitles.find(t => t.key === key && (t.categorie||'').trim());
+  const entry = playlistTitles.find(t => t.key === key && t.station === ACTIVE_STATION && (t.categorie||'').trim());
   return entry ? entry.categorie.trim() : '';
 }
 
