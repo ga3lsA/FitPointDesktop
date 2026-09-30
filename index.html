@@ -2046,6 +2046,15 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <!-- Cartes stations -->
     <div id="quotasCards" style="display:grid;grid-template-columns:1fr 1fr;gap:16px"></div>
 
+    <!-- Historique des quotas (par radio, par mois, par trimestre) -->
+    <div style="margin-top:28px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <h3 style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">Historique des quotas</h3>
+        <div id="quotasHistoriqueStationTabs" style="display:flex;gap:6px"></div>
+      </div>
+      <div id="quotasHistoriqueArea"></div>
+    </div>
+
   </div>
 </div>
 
@@ -13163,8 +13172,13 @@ function renderDigitalAudienceDetail(){
       ${contexte.map(c => `<div style="font-size:12px;color:var(--text2);margin-bottom:2px">${escHtml(c)}</div>`).join('')}
     </div>` : '';
 
-  // ── Courbe quotidienne (Chart.js) ──
-  digitalAudienceRenderDailyChart(rec.daily || []);
+  // ── Courbe quotidienne (Chart.js) — barres de la semaine affichée, plus
+  // celles de la semaine de comparaison choisie (si activée), superposées
+  // côte à côte sur le même graphique dans une couleur différente. Alignées
+  // par position (Lundi/Mardi/... — jour 1 à 7 de chaque semaine), pas par
+  // date calendaire réelle, puisque les deux semaines comparées tombent
+  // rarement sur les mêmes dates.
+  digitalAudienceRenderDailyChart(rec.daily || [], compareKey ? (compareRec && compareRec.daily || []) : null, compareKey ? digitalAudienceFmtDate(compareKey) : null);
 
   // ── Historique hebdomadaire (Chart.js) — audience moyenne, toutes semaines archivées ──
   const weeklySeries = digitalAudienceWeekKeys(stKey).map(w => ({ label: digitalAudienceFmtDate(w), value: digitalAudienceHistory[stKey][w].audienceMoyenne }));
@@ -13294,18 +13308,47 @@ function digitalAudienceDestroyCharts(){
 
 /** Courbe quotidienne — barres, même config visuelle que Digital Monitoring
  *  (renderLive → liveDailyChart) : couleur station, coins arrondis. */
-function digitalAudienceRenderDailyChart(daily){
+/** Jours de la semaine en abrégé (Lun-Dim), utilisés pour aligner par
+ *  POSITION (jour 1 à 7 de chaque semaine) plutôt que par date calendaire
+ *  réelle quand on superpose une semaine de comparaison — deux semaines
+ *  différentes tombent rarement sur les mêmes dates. */
+const DIGITAL_AUDIENCE_WEEKDAY_ABBR = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+function digitalAudienceRenderDailyChart(daily, compareDaily, compareLabel){
   const pts = daily || [];
   const stColor = 'rgba(0,184,200,1)';
+  const compColor = 'rgba(124,58,237,0.75)'; // violet, bien distinct du cyan de la semaine affichée
+  const hasCompare = !!(compareDaily && compareDaily.length);
+
+  // Labels : jour de la semaine (Lun-Dim) déduit de la semaine affichée si
+  // on compare deux semaines (l'alignement se fait par position, pas par
+  // date), sinon la date complète comme avant.
+  const labels = hasCompare
+    ? pts.map((d,i) => DIGITAL_AUDIENCE_WEEKDAY_ABBR[i] || digitalAudienceFmtDate(d.date).slice(0,5))
+    : pts.map(d => digitalAudienceFmtDate(d.date).slice(0,5));
+
+  const datasets = [{
+    label: 'Semaine affichée',
+    data: pts.map(d => d.value),
+    backgroundColor: stColor, borderRadius: 6, maxBarThickness: 46
+  }];
+  if(hasCompare){
+    datasets.push({
+      label: 'Semaine du ' + compareLabel,
+      data: compareDaily.map(d => d.value),
+      backgroundColor: compColor, borderRadius: 6, maxBarThickness: 46
+    });
+  }
+
   digitalAudienceSafeNewChart('digitalAudienceDailyChart', {
     type: 'bar',
-    data: {
-      labels: pts.map(d => digitalAudienceFmtDate(d.date).slice(0,5)),
-      datasets: [{ data: pts.map(d => d.value), backgroundColor: stColor, borderRadius: 6, maxBarThickness: 46 }]
-    },
+    data: { labels, datasets },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display:false }, tooltip: { callbacks: { label: c => digitalAudienceFmtInt(c.parsed.y) } } },
+      plugins: {
+        legend: { display: hasCompare, labels: { color:'#4A5E78', font:{size:11} } },
+        tooltip: { callbacks: { label: c => (c.dataset.label ? c.dataset.label + ' : ' : '') + digitalAudienceFmtInt(c.parsed.y) } }
+      },
       scales: {
         x: { ticks: { color:'#4A5E78' }, grid: { display:false } },
         y: { ticks: { color:'#4A5E78', callback: v => digitalAudienceFmtInt(v) }, grid: { color:'#DDE3EE' } }
@@ -31684,6 +31727,7 @@ let quotasPageOpen = false;
 let analysePageOpen = false;
 let quotasData = null;
 let quotasFetching = false;
+let quotasHistoriqueStation = 'Europe 2_FM';
 
 const QUOTAS_THRESHOLDS = {
   'Europe 2_FM': { label: 'Europe 2', logoAlt: 'Europe 2', quotaFR: 35, ntLabel: 'NT', ntTarget: 25 },
@@ -31765,6 +31809,34 @@ function quotasLoadSample(){
       mois:      { txQuotaFR: 42.8, txNT: 22.3, statut: 'OK' },
       trimestre: { txQuotaFR: 42.8, txNT: 22.3, statut: 'OK' },
       dernierImport: { date: '09/07/2026 08:14', dernierPassage: '08/07/2026 23:47', periodeDebut: '01/07/2026', periodeFin: '08/07/2026' }
+    },
+    // Exemple d'historique — aperçu du rendu de la section "Historique des
+    // quotas" avant même d'avoir redéployé le script avec l'export complet.
+    historique: {
+      'Europe 2_FM': {
+        mois: [
+          { periode: '2026-04', txQuotaFR: 36.1, seuilQuotaFR: 35, ecartQuotaFR: 1.1, txNT: 27.9, seuilNT: 25, ecartNT: 2.9, statut: 'OK' },
+          { periode: '2026-05', txQuotaFR: 34.2, seuilQuotaFR: 35, ecartQuotaFR: -0.8, txNT: 24.1, seuilNT: 25, ecartNT: -0.9, statut: 'ALERTE' },
+          { periode: '2026-06', txQuotaFR: 35.8, seuilQuotaFR: 35, ecartQuotaFR: 0.8, txNT: 26.4, seuilNT: 25, ecartNT: 1.4, statut: 'OK' },
+          { periode: '2026-07', txQuotaFR: 35.3, seuilQuotaFR: 35, ecartQuotaFR: 0.3, txNT: 28.5, seuilNT: 25, ecartNT: 3.5, statut: 'OK' }
+        ],
+        trimestre: [
+          { periode: '2026-T1', txQuotaFR: 34.9, seuilQuotaFR: 35, ecartQuotaFR: -0.1, txNT: 26.8, seuilNT: 25, ecartNT: 1.8, statut: 'ALERTE' },
+          { periode: '2026-T2', txQuotaFR: 35.4, seuilQuotaFR: 35, ecartQuotaFR: 0.4, txNT: 26.1, seuilNT: 25, ecartNT: 1.1, statut: 'OK' }
+        ]
+      },
+      'RFM_FM': {
+        mois: [
+          { periode: '2026-04', txQuotaFR: 41.5, seuilQuotaFR: 40, ecartQuotaFR: 1.5, txNT: 21.2, seuilNT: 20, ecartNT: 1.2, statut: 'OK' },
+          { periode: '2026-05', txQuotaFR: 39.6, seuilQuotaFR: 40, ecartQuotaFR: -0.4, txNT: 19.8, seuilNT: 20, ecartNT: -0.2, statut: 'ALERTE' },
+          { periode: '2026-06', txQuotaFR: 43.0, seuilQuotaFR: 40, ecartQuotaFR: 3.0, txNT: 23.1, seuilNT: 20, ecartNT: 3.1, statut: 'OK' },
+          { periode: '2026-07', txQuotaFR: 42.8, seuilQuotaFR: 40, ecartQuotaFR: 2.8, txNT: 22.3, seuilNT: 20, ecartNT: 2.3, statut: 'OK' }
+        ],
+        trimestre: [
+          { periode: '2026-T1', txQuotaFR: 40.2, seuilQuotaFR: 40, ecartQuotaFR: 0.2, txNT: 20.5, seuilNT: 20, ecartNT: 0.5, statut: 'OK' },
+          { periode: '2026-T2', txQuotaFR: 41.4, seuilQuotaFR: 40, ecartQuotaFR: 1.4, txNT: 21.4, seuilNT: 20, ecartNT: 1.4, statut: 'OK' }
+        ]
+      }
     }
   };
   document.getElementById('quotasEmptyBar').style.display = 'none';
@@ -31773,6 +31845,7 @@ function quotasLoadSample(){
   const upd = document.getElementById('quotasLastUpdate');
   if(upd) upd.textContent = 'Exemple — mail du 09/07/2026';
   quotasRenderCards();
+  quotasRenderHistorique();
 }/* ── Suivi jour-le-jour des quotas (comparaison à la veille) ──
    L'endpoint Yacast ne renvoie que l'état courant (mois/trimestre en cours).
    On conserve donc côté client un instantané quotidien (IndexedDB) pour
@@ -31858,6 +31931,7 @@ async function quotasRefresh(){
     await quotasLoadHistory();
     quotasSaveTodaySnapshot(quotasData);
     quotasRenderCards();
+    quotasRenderHistorique();
     const upd = document.getElementById('quotasLastUpdate');
     if(upd) upd.textContent = 'Mis à jour à ' + new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
   } catch(err){
@@ -31940,6 +32014,72 @@ function quotasRenderCards(){
     </div>`;
   });
   cardsEl.innerHTML = html;
+}
+
+/** Historique des quotas par radio, par mois et par trimestre — alimenté
+ *  par quotasData.historique (voir yacast_getAllRows_ dans yacast_quotas.gs).
+ *  Contrairement aux cartes ci-dessus (mois/trimestre en cours uniquement),
+ *  cette section liste TOUTES les périodes déjà archivées côté Sheet. */
+function quotasRenderHistorique(){
+  const area = document.getElementById('quotasHistoriqueArea');
+  const tabsEl = document.getElementById('quotasHistoriqueStationTabs');
+  if(!area || !tabsEl) return;
+
+  tabsEl.innerHTML = Object.keys(QUOTAS_THRESHOLDS).map(mediaKey => {
+    const th = QUOTAS_THRESHOLDS[mediaKey];
+    const active = mediaKey === quotasHistoriqueStation;
+    return `<button onclick="quotasHistoriqueStation='${mediaKey}';quotasRenderHistorique()" style="font-size:11px;padding:6px 12px;border-radius:7px;cursor:pointer;font-weight:700;border:1.5px solid ${active?'var(--cyan)':'var(--border)'};background:${active?'var(--cyan-light)':'var(--white)'};color:${active?'var(--navy)':'var(--muted)'}">${th.label}</button>`;
+  }).join('');
+
+  const hist = quotasData && quotasData.historique;
+  if(!hist || !hist[quotasHistoriqueStation]){
+    area.innerHTML = `<div style="padding:16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted)">
+      Historique non disponible pour l'instant. Mettez à jour votre script Apps Script (yacast_quotas.gs) avec la version qui expose l'historique (clé "historique" dans doGet), puis republiez le déploiement (Déployer → Gérer les déploiements → Nouvelle version).
+    </div>`;
+    return;
+  }
+
+  const th = QUOTAS_THRESHOLDS[quotasHistoriqueStation];
+  const statusChip = statut => {
+    const bg = statut === 'OK' ? 'var(--green-bg)' : (statut === 'ALERTE' ? 'var(--orange-bg)' : 'var(--gray-bg)');
+    const border = statut === 'OK' ? 'var(--green-border)' : (statut === 'ALERTE' ? 'var(--orange-border)' : 'var(--gray-border)');
+    const text = statut === 'OK' ? 'var(--green-text)' : (statut === 'ALERTE' ? 'var(--orange-text)' : 'var(--gray-text)');
+    return `<span class="tag" style="background:${bg};border:1.5px solid ${border};color:${text};font-size:10px">${statut||'n/d'}</span>`;
+  };
+  const MOIS_NOMS = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const fmtPeriodeMois = p => { const [y,m] = p.split('-'); return (MOIS_NOMS[parseInt(m,10)-1]||m) + ' ' + y; };
+  const TRIM_NOMS = {1:'T1 (janv-mars)', 2:'T2 (avr-juin)', 3:'T3 (juil-sept)', 4:'T4 (oct-déc)'};
+  const fmtPeriodeTrim = p => { const [y,t] = p.split('-T'); return (TRIM_NOMS[parseInt(t,10)]||('T'+t)) + ' ' + y; };
+
+  const buildTable = (rows, fmtPeriode) => {
+    if(!rows || !rows.length) return '<div style="padding:10px;font-size:12px;color:var(--muted)">Aucune donnée archivée pour le moment.</div>';
+    const trs = rows.slice().reverse().map(r => `<tr style="border-bottom:1px solid var(--border)">
+      <td style="padding:7px 10px;font-size:12px;font-weight:700;color:var(--navy)">${escHtml(fmtPeriode(r.periode))}</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:right">${r.txQuotaFR}%<span style="color:var(--muted);font-size:10px"> / ${r.seuilQuotaFR}%</span></td>
+      <td style="padding:7px 10px;font-size:12px;text-align:right">${r.txNT}%<span style="color:var(--muted);font-size:10px"> / ${r.seuilNT}%</span></td>
+      <td style="padding:7px 10px;text-align:center">${statusChip(r.statut)}</td>
+    </tr>`).join('');
+    return `<table style="width:100%;border-collapse:collapse">
+      <thead><tr style="border-bottom:1.5px solid var(--border)">
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:left">Période</th>
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">Quota FR</th>
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:right">${escHtml(th.ntLabel)}</th>
+        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);text-align:center">Statut</th>
+      </tr></thead>
+      <tbody>${trs}</tbody>
+    </table>`;
+  };
+
+  const data = hist[quotasHistoriqueStation];
+  area.innerHTML = `
+    <div class="card" style="margin-bottom:14px">
+      <div class="section-label" style="margin-bottom:8px">Par mois</div>
+      ${buildTable(data.mois, fmtPeriodeMois)}
+    </div>
+    <div class="card">
+      <div class="section-label" style="margin-bottom:8px">Par trimestre</div>
+      ${buildTable(data.trimestre, fmtPeriodeTrim)}
+    </div>`;
 }
 
 // Rafraîchissement discret du badge au chargement, sans ouvrir la page
