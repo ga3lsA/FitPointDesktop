@@ -1671,7 +1671,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="width:4px;height:24px;background:linear-gradient(180deg,#7C3AED 0%,rgba(124,58,237,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <h3 style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">⏳ Décalage en semaines — quand la radio rattrape le digital</h3>
         </div>
-        <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:12px">Pour chaque titre ayant franchi le percentile ${IEDR_LAG_THRESHOLD} en digital à un moment de l'historique disponible, nombre de semaines jusqu'à ce qu'il franchisse le même seuil en radio (ou "en attente" s'il ne l'a pas encore fait). Approche inspirée des analyses Chartmetric sur le décalage streaming→radio.</div>
+        <div style="font-size:11.5px;color:var(--text2);line-height:1.6;margin-bottom:12px">Pour chaque titre qui, à un moment de l'historique disponible, s'est classé parmi les ${100 - IEDR_LAG_THRESHOLD}% de titres les mieux placés en digital, nombre de semaines jusqu'à ce qu'il atteigne ce même niveau en radio (ou "en attente" s'il ne l'a pas encore atteint). Approche inspirée des analyses Chartmetric sur le décalage streaming→radio.</div>
         <div id="iedrLagList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px"></div>
       </div>
 
@@ -1723,7 +1723,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div id="shazlagHistoryBadge" style="font-size:11px;font-weight:700;color:var(--muted);padding:6px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;white-space:nowrap"></div>
       </div>
       <div style="padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-        Shazam capte la curiosité/découverte, souvent en amont de la consommation en streaming — un signal potentiellement plus précoce que l'IEDR classique. Pour chaque titre ayant franchi le percentile 70 en Shazam France à un moment de l'historique, nombre de semaines jusqu'à ce qu'il franchisse le même seuil en radio.
+        Shazam capte la curiosité/découverte, souvent en amont de la consommation en streaming — un signal potentiellement plus précoce que l'IEDR classique. Pour chaque titre qui, à un moment de l'historique, s'est classé parmi les 30% de titres les mieux placés en Shazam France, nombre de semaines jusqu'à ce qu'il atteigne ce même niveau en radio.
       </div>
       <div id="shazlagEmptyBar" style="display:none;padding:18px 22px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;margin-bottom:18px;font-size:13px;color:var(--text2);text-align:center"></div>
       <div id="shazlagBody" style="display:none">
@@ -14465,8 +14465,8 @@ function mediaWaveDetailTableHtml(stKey, period, cibles, collapsed){
     });
     return `<tr>
       <td style="padding:7px 10px;font-size:12px;font-weight:700">${escHtml(wave.label)}</td>
-      <td style="padding:5px"><input type="date" value="${wave.dateStart||''}" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','start',this.value)"></td>
-      <td style="padding:5px"><input type="date" value="${wave.dateEnd||''}" style="font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','end',this.value)"></td>
+      <td style="padding:5px"><input type="date" value="${wave.dateStart||''}" style="font-size:12px;padding:5px 7px;width:132px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','start',this.value)"></td>
+      <td style="padding:5px"><input type="date" value="${wave.dateEnd||''}" style="font-size:12px;padding:5px 7px;width:132px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','end',this.value)"></td>
       ${cibleCells}
       <td style="padding:7px 10px">${mediaLiveCellHtml(stKey, wave)}</td>
       <td style="padding:7px 10px;text-align:center"><button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaRemoveWave('${stKey}','${period.id}','${wave.id}')" title="Supprimer cette quinzaine">🗑</button></td>
@@ -36574,7 +36574,7 @@ function iedrLagCardHtml(def, stat, windowWeeks, sourceLabel){
   if(!stat){
     return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:16px 18px">
       <div style="font-size:11px;font-weight:800;color:var(--navy);margin-bottom:8px">${def.icon} ${escHtml(def.label)}</div>
-      <div style="font-size:12px;color:var(--muted)">Pas de titre ayant perçé en ${sourceLabel} (percentile ≥ ${IEDR_LAG_THRESHOLD}) dans l'historique disponible</div>
+      <div style="font-size:12px;color:var(--muted)">Pas de titre classé parmi les ${100 - IEDR_LAG_THRESHOLD}% les mieux placés en ${sourceLabel} dans l'historique disponible</div>
     </div>`;
   }
   const hasLag = stat.avgLag !== null;
