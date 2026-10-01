@@ -1392,8 +1392,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
       <!-- Note explicative -->
       <div id="infoCycles" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Principe</strong> — à partir de l'historique des vagues Call Out/OMT <span class="station-name">Europe 2</span> (cible Ensemble uniquement), chaque titre ayant au moins 4 vagues enregistrées se voit résumé par la forme de sa trajectoire Pot Score : niveau de départ, pic atteint, moment du pic, vitesse de montée, vitesse de descente. Ce profil est classé directement dans l'une des 8 familles fixes ci-dessous (Croissance Continue, Pic Précoce/Tardif/Médian × Déclin Rapide/Progressif/Stabilisé) — pas de clustering statistique, une règle de classification déterministe.</div>
-        <div style="margin-bottom:6px"><strong style="color:var(--navy)">À quoi ça sert ?</strong> Les 8 familles restent toujours affichées, même vides, comme référentiel de lecture. Un titre récent (même avec seulement 1 ou 2 vagues) peut être comparé à ces profils pour anticiper sa trajectoire probable — utile en amont du Comité d'Écoute.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">Principe</strong> — à partir de l'historique des vagues Call Out/OMT <span class="station-name">Europe 2</span> (cible Ensemble uniquement), chaque titre ayant au moins 4 vagues enregistrées se voit résumé par la forme complète de sa trajectoire Pot Score sur toute la période suivie, pas par son seul état le plus récent. Ce profil est classé directement dans l'une des familles fixes ci-dessous — dérivées d'un clustering sur la forme complète de la trajectoire, puis traduites en règle déterministe calibrée sur l'historique réel. <strong>Les familles sont propres à chaque station</strong> (nombre et nature différents) : la cadence de vagues Call Out n'est pas la même d'une radio à l'autre, et les trajectoires réelles observées non plus.</div>
+        <div style="margin-bottom:6px"><strong style="color:var(--navy)">À quoi ça sert ?</strong> Les familles de la station active restent toujours affichées, même vides, comme référentiel de lecture — <span class="station-name">Europe 2</span> n'a pas de famille "déclin" (un titre qui décline vraiment sort de la playlist avant qu'un tel profil ait le temps de s'écrire dans son Call Out, à cadence quasi hebdomadaire), tandis que RFM en a une (cadence de vagues bien plus espacée, laissant le temps à un cycle complet d'apparaître). Un titre récent (même avec seulement 1 ou 2 vagues) peut être comparé à ces profils pour anticiper sa trajectoire probable — utile en amont du Comité d'Écoute. Dès qu'un titre atteint 4 vagues, sa famille est aussi attribuée automatiquement sur sa fiche Song Full Metrics.</div>
         <div><strong style="color:var(--navy)">Limite à garder en tête</strong> — plus l'historique s'enrichit, plus la classification de chaque titre reflète une trajectoire complète plutôt que partielle. Cliquez sur « Recalculer les clusters » après avoir enregistré de nouvelles vagues pour rafraîchir le classement.</div>
       </div>
 
@@ -2666,6 +2666,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="display:flex;align-items:center;gap:8px">
             <span id="tevMomentumDot" style="display:none;width:9px;height:9px;border-radius:50%;flex-shrink:0"></span>
             <div id="tevTitle" style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy);line-height:1.2"></div>
+            <span id="tevEditTitleBtn" style="display:none;cursor:pointer;color:var(--muted);font-size:12px" title="Corriger l'orthographe du titre dans la Playlist" onclick="tevEditNameField('title')">✏️</span>
             <a id="tevPlayBadge" href="#" target="_blank" rel="noopener" title="Écouter sur Spotify" onclick="return openSpotifyPopup(this.href)"
               style="display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--cyan);border-radius:4px;width:19px;height:17px;text-decoration:none;transition:filter .15s"
               onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
@@ -2674,7 +2675,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           </div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:3px">
             <div id="tevArtist" style="font-size:13px;color:var(--text2)"></div>
+            <span id="tevEditArtistBtn" style="display:none;cursor:pointer;color:var(--muted);font-size:11px" title="Corriger l'orthographe de l'artiste dans la Playlist" onclick="tevEditNameField('artist')">✏️</span>
             <span id="tevCategoryBadge"></span>
+            <span id="tevLifecycleBadge"></span>
           </div>
           <div id="tevExportDate" style="display:none;font-size:11px;color:var(--muted);margin-top:4px"></div>
         </div>
@@ -2831,14 +2834,14 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
     <div style="width:1px;height:18px;background:var(--border);margin-right:4px;flex-shrink:0"></div>
     <div class="dec-group" id="chartIntlGroup" style="margin-right:4px;display:flex;align-items:stretch;height:28px;border-radius:7px;background:var(--blue-bg);box-shadow:0 0 0 1px var(--blue-border);opacity:.7;flex-shrink:0;white-space:nowrap">
-      <button id="chartGroupBtnIntl" onclick="switchChartTab('kwfr')" style="height:28px;padding:0 8px 0 10px;border:none;background:transparent;color:var(--navy);cursor:pointer;font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:4px;border-radius:7px 0 0 7px;white-space:nowrap;flex-shrink:0">
-        🎵 Spotify Inter
+      <button id="chartGroupBtnIntl" onclick="switchChartTab('spyfr')" style="height:28px;padding:0 8px 0 10px;border:none;background:transparent;color:var(--navy);cursor:pointer;font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:4px;border-radius:7px 0 0 7px;white-space:nowrap;flex-shrink:0">
+        🎵 Spotify Charts
       </button>
       <button id="chartGroupChevronBtnIntl" onclick="toggleChartIntlGroup(event)" title="Classements internationaux (source kworb.net) et Playlists clés" style="height:28px;width:20px;border:none;border-left:1px solid rgba(11,29,58,.12);background:transparent;color:var(--navy);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:0 7px 7px 0;flex-shrink:0">
         <svg class="dec-group-chevron" width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
       </button>
       <div id="chartIntlGroupMenu" class="dec-group-menu" style="display:none;left:0">
-        <button id="chartTabIntl_spyfr" onclick="switchChartTab('spyfr')" class="dec-subtab-item"><span class="dec-subtab-ic">🟢</span>Spotify France Weekly</button>
+        <button id="chartTabIntl_spyfr" onclick="switchChartTab('spyfr')" class="dec-subtab-item">🟢 Spotify France Weekly</button>
         <button id="chartTabIntl_kwfr" onclick="switchChartTab('kwfr')" class="dec-subtab-item"><span class="dec-subtab-ic">🇫🇷</span>Spotify Fr Daily</button>
         <button id="chartTabIntl_kwus" onclick="switchChartTab('kwus')" class="dec-subtab-item"><span class="dec-subtab-ic">🇺🇸</span>Spotify US</button>
         <button id="chartTabIntl_kwgb" onclick="switchChartTab('kwgb')" class="dec-subtab-item"><span class="dec-subtab-ic">🇬🇧</span>Spotify UK</button>
@@ -2849,6 +2852,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button id="chartTabIntl_kwse" onclick="switchChartTab('kwse')" class="dec-subtab-item"><span class="dec-subtab-ic">🇸🇪</span>Spotify Suède</button>
         <button id="chartTabIntl_kwnl" onclick="switchChartTab('kwnl')" class="dec-subtab-item"><span class="dec-subtab-ic">🇳🇱</span>Spotify Pays-Bas</button>
         <button id="chartTabIntl_kwtop" onclick="switchChartTab('kwtop')" class="dec-subtab-item"><span class="dec-subtab-ic">🌍</span>Top Artistes (Monde)</button>
+        <div id="chartIntlGroupMenuExtra"></div>
       </div>
     </div>
     <div style="width:1px;height:18px;background:var(--border);margin-right:4px;flex-shrink:0"></div>
@@ -3095,14 +3099,14 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </div>
     </div>
 
-    <!-- Panneau Playlists clés (sous-onglet du groupe Spotify Inter) -->
+    <!-- Panneau Playlists clés (sous-onglet du groupe Playlists Spotify) -->
     <div id="keyplaylistsChartsPanel" style="display:none">
       <!-- En-tête -->
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap">
         <div style="display:flex;align-items:flex-start;gap:14px">
           <div style="width:4px;height:40px;background:linear-gradient(180deg,#0DA76B 0%,rgba(13,167,107,.25) 100%);border-radius:4px;flex-shrink:0"></div>
           <div>
-            <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Spotify Inter</div>
+            <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Playlists Spotify</div>
             <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--navy);line-height:1.15">🎧 Playlists Spotify clés</h2>
             <button id="infoKeyplaylistsBtn" onclick="toggleInfoNote('infoKeyplaylists')" style="display:flex;align-items:center;gap:4px;background:none;border:none;padding:2px 0;margin-top:3px;font-size:11px;color:var(--muted);cursor:pointer;font-weight:600">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
@@ -4042,7 +4046,8 @@ function initPlatformLogosInTabs(){
     ['chartTabBB_bbus',        LOGO_BILLBOARD, 'Billboard', 13, 'Billboard US (Hot 100)'],
     ['chartTabBB_kwradio',     LOGO_BILLBOARD, 'Billboard', 13, 'Billboard Radio (Airplay US)'],
     ['chartTabBB_bbg200',      LOGO_BILLBOARD, 'Billboard', 13, 'Billboard Global 200'],
-    ['chartGroupBtnIntl',      LOGO_SPOTIFY,   'Spotify',   14, 'Spotify Inter'],
+    ['chartGroupBtnIntl',      LOGO_SPOTIFY,   'Spotify',   14, 'Spotify Charts'],
+    ['chartTabIntl_spyfr',     LOGO_SPOTIFY,   'Spotify',   13, 'Spotify France Weekly'],
     ['chartGroupBtnSpotifyPlaylists', LOGO_SPOTIFY, 'Spotify', 14, 'Playlists Spotify'],
   ];
   tabs.forEach(([id, src, alt, h, suffix]) => {
@@ -18767,41 +18772,81 @@ function summarizeClusterMembers(members){
   };
 }
 
-/** Taxonomie fixe des 8 archétypes de trajectoire possibles. Contrairement à un
- *  clustering k-means (qui ne fait émerger que les 2-3 familles les mieux représentées
- *  dans les données disponibles et masque les autres), chaque titre éligible est classé
- *  directement dans l'un de ces 8 archétypes via des règles de forme déterministes sur
- *  sa PROPRE trajectoire — ce qui garantit que les 8 cartes restent toujours visibles,
- *  même vides, comme référentiel descriptif complet. */
-const SHAPE_ARCHETYPES = [
-  { icon:'📈',  name:'Croissance Continue' },
-  { icon:'⚡',  name:'Pic Précoce, Déclin Rapide' },
-  { icon:'🏔️', name:'Pic Précoce, Stabilisé' },
-  { icon:'🌤️', name:'Pic Précoce, Déclin Progressif' },
-  { icon:'🎢',  name:'Pic Tardif, Déclin Rapide' },
-  { icon:'🐢',  name:'Pic Tardif, Stabilisé' },
-  { icon:'🌊',  name:'Pic Médian, Déclin Rapide' },
-  { icon:'⛰️', name:'Pic Médian, Stabilisé' },
+/** Taxonomie fixe des familles de DÉVELOPPEMENT (pas d'état ponctuel) —
+ *  calibrée courant octobre 2026 à partir de l'historique réel, SÉPARÉMENT
+ *  par station (ACTIVE_STATION) puisque les deux radios n'ont pas la même
+ *  cadence de vagues Call Out : Europe 2 (quasi hebdomadaire) ne laisse
+ *  jamais le temps à un déclin complet de s'écrire dans les données avant
+ *  qu'un titre en recul ne sorte de playlist — 3 familles s'y distinguent,
+ *  aucune de déclin. RFM (vagues espacées de semaines à mois) laisse au
+ *  contraire le temps à un vrai cycle complet d'apparaître — seulement 2
+ *  familles s'y distinguent, dont une de déclin confirmé. */
+const SHAPE_ARCHETYPES_EUROPE2 = [
+  { icon:'📈', name:'Montée Progressive' },        // Hausse régulière sur toute la période suivie
+  { icon:'🚀', name:'Montée Rapide puis Plateau' }, // L'essentiel de la hausse se joue tôt, puis stabilisation
+  { icon:'🔝', name:'Entrée Haute, Stable' },       // Déjà haut par rapport à lui-même dès le début, oscille sans tendance nette
 ];
+const SHAPE_ARCHETYPES_RFM = [
+  { icon:'📈', name:'Montée Progressive' }, // Construction régulière, se maintient haut (ou continue de monter) jusqu'à la dernière vague
+  { icon:'🎢', name:'Pic puis Déclin' },     // A atteint son maximum puis décline nettement d'ici la dernière vague
+];
+function getShapeArchetypes(){
+  return ACTIVE_STATION === 'RFM' ? SHAPE_ARCHETYPES_RFM : SHAPE_ARCHETYPES_EUROPE2;
+}
 
-/** Détermine l'archétype de forme (index dans SHAPE_ARCHETYPES) à partir des
- *  features de forme de la trajectoire Pot Score d'un titre. Seuils calibrés
- *  empiriquement — à ajuster si besoin une fois les vrais cas observés. */
-function classifyShapeArchetype(pot){
-  const earlyPeak   = pot.peakPosNorm < 0.34;
-  const latePeak    = pot.peakPosNorm > 0.66;
-  const stillRising = pot.peakPosNorm >= 0.85 && pot.slopeFall === 0;
-  const steepFall   = pot.slopeFall < -3;
-  const flatFall    = Math.abs(pot.slopeFall) <= 1.5;
+/** Détermine le profil de développement (index dans getShapeArchetypes())
+ *  d'un titre Europe 2 à partir des valeurs brutes (chronologiques) de sa
+ *  trajectoire Pot Score Tous — voir buildFeatureVectorFromSeries (champ
+ *  potVals). Règle interprétable calibrée pour reproduire fidèlement (80%
+ *  d'accord) un clustering k-means sur la forme complète de la courbe
+ *  (z-scorée, ré-échantillonnée) : le signal déterminant est la position du
+ *  point de départ par rapport à la propre moyenne/variance du titre (est-il
+ *  entré déjà haut ?), puis, pour les autres, la part de la hausse totale
+ *  déjà acquise au premier quart de la période suivie (montée précoce et
+ *  rapide, ou montée étalée sur toute la durée). */
+function classifyShapeArchetypeEurope2(potVals){
+  const vals = potVals || [];
+  const n = vals.length;
+  const mean = vals.reduce((a,b) => a+b, 0) / n;
+  const variance = vals.reduce((a,b) => a + (b-mean)*(b-mean), 0) / n;
+  const sd = Math.sqrt(variance) || 1;
+  const entryZ = (vals[0] - mean) / sd;
+  if(entryZ > 0) return 2; // Entrée Haute, Stable — part déjà au-dessus de sa propre moyenne
 
-  if(stillRising)              return 0; // Croissance Continue
-  if(earlyPeak && steepFall)   return 1; // Pic Précoce, Déclin Rapide
-  if(earlyPeak && flatFall)    return 2; // Pic Précoce, Stabilisé
-  if(earlyPeak)                return 3; // Pic Précoce, Déclin Progressif
-  if(latePeak && steepFall)    return 4; // Pic Tardif, Déclin Rapide
-  if(latePeak)                 return 5; // Pic Tardif, Stabilisé
-  if(steepFall)                return 6; // Pic Médian, Déclin Rapide
-  return 7;                              // Pic Médian, Stabilisé
+  const peak = Math.max(...vals);
+  const entry = vals[0];
+  const totalRise = peak - entry;
+  if(totalRise <= 0) return 2; // sécurité : pas de vraie montée observée, traité comme Entrée Haute
+
+  const qIdx = Math.max(1, Math.round((n-1) * 0.25));
+  const earlyGain = vals[qIdx] - entry;
+  const frac = earlyGain / totalRise;
+  return frac >= 0.5 ? 1 : 0; // 1 = Montée Rapide puis Plateau, 0 = Montée Progressive
+}
+
+/** Détermine le profil de développement (index dans getShapeArchetypes())
+ *  d'un titre RFM — règle à seuil unique (81% d'accord avec un clustering
+ *  k-means à 2 familles sur la forme complète de la courbe) : un titre est
+ *  classé "Pic puis Déclin" si son pic n'est pas sa toute dernière mesure
+ *  ET si sa dernière mesure est en retrait d'au moins 5% par rapport à ce
+ *  pic — seuil calibré sur l'historique réel RFM (59 titres éligibles),
+ *  préservant presque exactement la proportion réelle (46/13 observée par
+ *  le clustering, 47/12 reproduits par cette règle). */
+function classifyShapeArchetypeRFM(potVals){
+  const vals = potVals || [];
+  const n = vals.length;
+  let peakIdx = 0, peak = vals[0];
+  vals.forEach((v,i) => { if(v > peak){ peak = v; peakIdx = i; } });
+  if(peakIdx >= n-1) return 0; // le pic EST la dernière mesure : toujours en hausse / vient d'arriver à son maximum
+
+  const final = vals[n-1];
+  const relFromPeak = peak ? (final - peak) / Math.abs(peak) : 0;
+  return relFromPeak <= -0.05 ? 1 : 0; // 1 = Pic puis Déclin, 0 = Montée Progressive
+}
+
+/** Dispatcheur station — voir classifyShapeArchetypeEurope2/RFM ci-dessus. */
+function classifyShapeArchetype(potVals){
+  return ACTIVE_STATION === 'RFM' ? classifyShapeArchetypeRFM(potVals) : classifyShapeArchetypeEurope2(potVals);
 }
 
 /** Qualificatifs additionnels (Burn/Love/Inconnu) pour un groupe de titres déjà
@@ -18815,31 +18860,77 @@ function clusterQualifiers(summary){
   return qualifiers;
 }
 
-function saveLifeCycleClusters(data){
-  try{ localStorage.setItem(LIFECYCLE_STORAGE_KEY, JSON.stringify(data)); }catch(e){ /* quota, ignoré */ }
-}
-function loadLifeCycleClusters(){
-  try{ return JSON.parse(localStorage.getItem(LIFECYCLE_STORAGE_KEY) || 'null'); }catch(e){ return null; }
+/** Attribue automatiquement, pour tout titre ayant au moins LIFECYCLE_MIN_WAVES
+ *  vagues de Call Out de la station active (cible Ensemble), sa famille de
+ *  cycle de vie (voir getShapeArchetypes) — calcul direct à partir de sa
+ *  propre trajectoire Pot Score, indépendant du cache de la page Cycles de
+ *  vie (qui ne sert plus qu'à l'affichage détaillé/courbes moyennes/
+ *  exemples par famille). Utilisé pour l'attribution automatique affichée
+ *  sur la fiche Song Full Metrics. Renvoie null si le titre n'a pas encore
+ *  assez de vagues pour être classé. */
+function getTitleLifecycleFamily(title, artist){
+  const rec = buildFeatureRecordRaw(title, artist);
+  if(!rec || rec.nWaves < LIFECYCLE_MIN_WAVES) return null;
+  const idx = classifyShapeArchetype(rec.potVals);
+  const arche = getShapeArchetypes()[idx];
+  return arche ? { idx, icon: arche.icon, name: arche.name, nWaves: rec.nWaves } : null;
 }
 
-/** Recalcule les 8 familles de trajectoire à partir de l'historique Europe 2 /
- *  Ensemble actuel, et persiste le résultat (localStorage). Les 8 cartes sont
- *  toujours générées, y compris vides (size:0) si aucun titre éligible ne
- *  correspond encore à un archétype donné — il ne s'agit plus d'un clustering
- *  statistique nécessitant un nombre minimum de titres par famille. */
+/** Petit badge discret de profil de développement, coloré selon la
+ *  famille — affiché sur la fiche Song Full Metrics à côté du nom
+ *  d'artiste, dès que le titre a assez de vagues Call Out pour être
+ *  classé (station active). */
+const LIFECYCLE_FAMILY_COLORS_EUROPE2 = [
+  { bg:'#EAF2FF', border:'#AACCF8', text:'#1E6FD9' }, // Montée Progressive — bleu
+  { bg:'#E3F6EC', border:'#A8E0C0', text:'#0A8056' }, // Montée Rapide puis Plateau — vert
+  { bg:'#F1EEFB', border:'#D3C5F5', text:'#6B3FA0' }, // Entrée Haute, Stable — violet
+];
+const LIFECYCLE_FAMILY_COLORS_RFM = [
+  { bg:'#EAF2FF', border:'#AACCF8', text:'#1E6FD9' }, // Montée Progressive — bleu
+  { bg:'#FFF4E0', border:'#FFD085', text:'#B05E00' }, // Pic puis Déclin — orange
+];
+function getLifecycleFamilyColors(){
+  return ACTIVE_STATION === 'RFM' ? LIFECYCLE_FAMILY_COLORS_RFM : LIFECYCLE_FAMILY_COLORS_EUROPE2;
+}
+function lifecycleFamilyBadgeHtml(title, artist){
+  const fam = getTitleLifecycleFamily(title, artist);
+  if(!fam) return '';
+  const colors = getLifecycleFamilyColors();
+  const c = colors[fam.idx] || colors[0];
+  return ` <span style="background:${c.bg};border:1px solid ${c.border};border-radius:4px;font-size:9px;font-weight:700;color:${c.text};padding:1px 5px" title="Profil de développement, calculé sur ${fam.nWaves} vagues Call Out ${STATION_LABELS[ACTIVE_STATION]}">${fam.icon} ${escHtml(fam.name)}</span>`;
+}
+
+/** Clé de stockage des clusters — distincte par station, pour ne jamais
+ *  afficher les familles Europe 2 en cache quand on bascule sur RFM (ou
+ *  inversement) avant d'avoir recalculé pour la station active. */
+function lifecycleStorageKey(){
+  return LIFECYCLE_STORAGE_KEY + '_' + ACTIVE_STATION;
+}
+function saveLifeCycleClusters(data){
+  try{ localStorage.setItem(lifecycleStorageKey(), JSON.stringify(data)); }catch(e){ /* quota, ignoré */ }
+}
+function loadLifeCycleClusters(){
+  try{ return JSON.parse(localStorage.getItem(lifecycleStorageKey()) || 'null'); }catch(e){ return null; }
+}
+
+/** Recalcule les familles de développement à partir de l'historique de la
+ *  station active, et persiste le résultat (localStorage, par station).
+ *  Les cartes sont toujours générées, y compris vides (size:0) si aucun
+ *  titre éligible ne correspond encore à une famille donnée. */
 function recomputeLifeCycleClusters(){
   const btn = document.getElementById('cyclesRecomputeBtn');
   if(btn){ btn.disabled = true; btn.textContent = '⏳ Calcul en cours…'; }
 
   setTimeout(() => {
+    const archetypes = getShapeArchetypes();
     const titles = collectAllHistoryTitles();
     const allRecords = titles.map(t => buildFeatureRecordRaw(t.title, t.artist)).filter(Boolean);
     const records = allRecords.filter(r => r.nWaves >= LIFECYCLE_MIN_WAVES);
 
-    const groups = SHAPE_ARCHETYPES.map(() => []);
-    records.forEach(r => { groups[classifyShapeArchetype(r.potF)].push(r); });
+    const groups = archetypes.map(() => []);
+    records.forEach(r => { groups[classifyShapeArchetype(r.potVals)].push(r); });
 
-    const clusters = SHAPE_ARCHETYPES.map((arche, idx) => {
+    const clusters = archetypes.map((arche, idx) => {
       const members = groups[idx];
       let qualifiers = [], avgCurve = null, exampleTitles = [];
       if(members.length){
@@ -18854,7 +18945,7 @@ function recomputeLifeCycleClusters(){
       computedAt: new Date().toISOString(),
       totalEligible: records.length,
       clusters,
-      assignments: Object.fromEntries(records.map(r => [r.key, classifyShapeArchetype(r.potF)])),
+      assignments: Object.fromEntries(records.map(r => [r.key, classifyShapeArchetype(r.potVals)])),
     };
 
     saveLifeCycleClusters(data);
@@ -18892,10 +18983,10 @@ function collectRecentTitles(clusterData){
 }
 
 /** Classe un enregistrement de titre récent (buildFeatureRecordRaw) dans l'une
- *  des 8 cartes d'archétype déjà générées. */
+ *  des 3 cartes de famille déjà générées. */
 function classifyRecentTitle(rec, clusterData){
-  if(!clusterData || !clusterData.clusters.length || !rec || !rec.potF) return null;
-  const idx = classifyShapeArchetype(rec.potF);
+  if(!clusterData || !clusterData.clusters.length || !rec || !rec.potVals) return null;
+  const idx = classifyShapeArchetype(rec.potVals);
   return clusterData.clusters[idx] || null;
 }
 
@@ -19097,11 +19188,12 @@ function renderLifeCyclesPage(){
   const data = loadLifeCycleClusters();
 
   if(!data){
+    const nFam = getShapeArchetypes().length;
     const totalEligible = collectAllHistoryTitles()
       .map(t => buildFeatureRecordRaw(t.title, t.artist))
       .filter(r => r && r.nWaves >= LIFECYCLE_MIN_WAVES).length;
     emptyEl.style.display = 'block';
-    emptyEl.innerHTML = `🧬 Cliquez sur « Recalculer les clusters » pour afficher les 8 familles de trajectoires possibles${totalEligible?` — <strong>${totalEligible}</strong> titre${totalEligible>1?'s':''} éligible${totalEligible>1?'s':''} actuellement (≥${LIFECYCLE_MIN_WAVES} vagues Europe 2 / Ensemble)`:' (aucun titre éligible pour le moment — les 8 cartes s\'afficheront quand même, vides, en attendant)'}.`;
+    emptyEl.innerHTML = `🧬 Cliquez sur « Recalculer les clusters » pour afficher les ${nFam} famille${nFam>1?'s':''} de développement possibles${totalEligible?` — <strong>${totalEligible}</strong> titre${totalEligible>1?'s':''} éligible${totalEligible>1?'s':''} actuellement (≥${LIFECYCLE_MIN_WAVES} vagues ${STATION_LABELS[ACTIVE_STATION]} / Ensemble)`:` (aucun titre éligible pour le moment — les ${nFam} carte${nFam>1?'s':''} s\'afficheront quand même, vides, en attendant)`}.`;
     if(summaryEl) summaryEl.innerHTML = '';
     if(gridEl) gridEl.innerHTML = '';
     if(recentWrap) recentWrap.style.display = 'none';
@@ -19532,14 +19624,89 @@ function updateTevNavUI(){
   document.getElementById('tevNavCounter').textContent = (tevNavIndex + 1) + ' / ' + tevNavList.length;
 }
 
+/** Affiche/masque les crayons d'édition du titre/artiste dans l'en-tête de
+ *  la fiche Song Full Metrics — visibles uniquement si ce titre existe dans
+ *  la Playlist de la station de référence active (ACTIVE_STATION), seul
+ *  endroit où une correction d'orthographe a un sens à persister depuis
+ *  cette fiche. */
+function tevUpdateEditButtonsVisibility(title, artist){
+  const exists = playlistTitles.some(t => t.key === comiteKey(title, artist) && t.station === ACTIVE_STATION);
+  const titleBtn = document.getElementById('tevEditTitleBtn');
+  const artistBtn = document.getElementById('tevEditArtistBtn');
+  if(titleBtn) titleBtn.style.display = exists ? 'inline' : 'none';
+  if(artistBtn) artistBtn.style.display = exists ? 'inline' : 'none';
+}
+
+/** Corrige l'orthographe du titre/artiste depuis la fiche Song Full Metrics
+ *  (crayon ✏️ visible uniquement si le titre est dans la Playlist active) —
+ *  répercute la correction sur l'entrée Playlist correspondante (même
+ *  logique de migration de clé que playlistCommitNameEdit côté Playlist),
+ *  puis rouvre la fiche sous la nouvelle orthographe pour que le reste
+ *  (pochette, courbes, correspondances classements) se recalcule. */
+function tevEditNameField(field){
+  const title  = (document.getElementById('tevTitle')?.textContent  || '').trim();
+  const artist = (document.getElementById('tevArtist')?.textContent || '').trim();
+  const t = playlistTitles.find(x => x.key === comiteKey(title, artist) && x.station === ACTIVE_STATION);
+  if(!t) return;
+  const current = t[field] || '';
+  const labelEl = field === 'title' ? document.getElementById('tevTitle') : document.getElementById('tevArtist');
+  if(!labelEl) return;
+  const inputStyle = field === 'title'
+    ? 'font:inherit;font-weight:800;color:var(--navy);border:1.5px solid var(--cyan);border-radius:5px;padding:2px 6px;background:var(--white);min-width:180px'
+    : 'font:inherit;color:var(--text2);border:1.5px solid var(--cyan);border-radius:5px;padding:1px 5px;background:var(--white);min-width:140px';
+  labelEl.innerHTML = `<input type="text" value="${escHtml(current)}" style="${inputStyle}"
+    onkeydown="if(event.key==='Enter'){this.blur();}else if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}"
+    onblur="tevCommitNameEdit('${t.key}','${field}',this)">`;
+  const input = labelEl.querySelector('input');
+  input.focus();
+  input.select();
+}
+
+function tevCommitNameEdit(key, field, inputEl){
+  const t = playlistTitles.find(x => x.key === key);
+  if(!t) return;
+  if(inputEl.dataset.cancel === '1'){ openTevByInfo({ title: t.title, artist: t.artist }); return; }
+
+  const newValue = inputEl.value.trim();
+  if(!newValue){
+    showToast((field==='artist' ? "Le nom d'artiste" : 'Le titre') + ' ne peut pas être vide', 'err');
+    openTevByInfo({ title: t.title, artist: t.artist });
+    return;
+  }
+  if(newValue === (t[field] || '')){ openTevByInfo({ title: t.title, artist: t.artist }); return; }
+
+  const oldKey = t.key;
+  const newArtist = field === 'artist' ? newValue : t.artist;
+  const newTitle  = field === 'title'  ? newValue : t.title;
+  const newKey = comiteKey(newArtist, newTitle);
+
+  if(newKey !== oldKey && playlistTitles.some(x => x !== t && x.key === newKey && x.station === t.station)){
+    showToast('Un autre titre existe déjà dans cette Playlist avec cette orthographe exacte — fusionnez-les plutôt via le Comité, ou supprimez le doublon', 'err');
+    openTevByInfo({ title: t.title, artist: t.artist });
+    return;
+  }
+
+  t[field] = newValue;
+  if(newKey !== oldKey){
+    t.key = newKey;
+    playlistMigrateKeyedStores(oldKey, newKey);
+  }
+  playlistSaveToStorage();
+  showToast('✓ ' + (field==='artist' ? 'Artiste' : 'Titre') + ' corrigé', 'success');
+  openTevByInfo({ title: newTitle, artist: newArtist });
+}
+
 async function openTevByInfo(info){
   const { artist, title } = info;
 
   const modal = document.getElementById('modalTitleEvolution');
   document.getElementById('tevTitle').textContent  = titleCaseDisplay(title) || '';
   document.getElementById('tevArtist').textContent = titleCaseDisplay(artist) || '';
+  tevUpdateEditButtonsVisibility(title, artist);
   const tevCatBadgeEl = document.getElementById('tevCategoryBadge');
   if(tevCatBadgeEl) tevCatBadgeEl.innerHTML = playlistCategoryBadgeHtml(title, artist);
+  const tevLifecycleBadgeEl = document.getElementById('tevLifecycleBadge');
+  if(tevLifecycleBadgeEl) tevLifecycleBadgeEl.innerHTML = lifecycleFamilyBadgeHtml(title, artist);
   document.getElementById('tevBody').innerHTML = '<div style="text-align:center;padding:50px;color:var(--muted);font-size:13px">⏳ Chargement de l\'historique complet…</div>';
   populateTevLogosRow();
   const playBadge = document.getElementById('tevPlayBadge');
@@ -23369,6 +23536,92 @@ function titleCaseDisplay(str){
   return str.toLowerCase().replace(/(^|[\s\-'])([a-zàâäéèêëïîôöùûüçñ])/gi, (m, sep, c) => sep + c.toUpperCase());
 }
 
+/** Corrige l'orthographe d'un artiste/titre directement dans la Playlist
+ *  (double-clic sur la cellule Artiste ou Titre) — utile quand la saisie
+ *  d'origine comporte une coquille qui nuit à la reconnaissance du titre
+ *  par les plateformes (Shazam, Spotify, Deezer...). Remplace la cellule
+ *  par un champ texte pré-rempli ; Entrée ou perte de focus valide, Échap
+ *  annule. */
+function playlistEditNameField(key, field){
+  const t = playlistTitles.find(x => x.key === key);
+  if(!t) return;
+  const safeId = key.replace(/[^a-z0-9]/gi, '-');
+  const cell = document.getElementById(field === 'artist' ? 'pl-artist-' + safeId : 'pl-title-' + safeId);
+  if(!cell) return;
+  const current = t[field] || '';
+  cell.innerHTML = `<input type="text" value="${escHtml(current)}" style="width:100%;font:inherit;font-weight:700;color:var(--navy);border:1.5px solid var(--cyan);border-radius:5px;padding:2px 5px;background:var(--white)"
+    onclick="event.stopPropagation()"
+    onkeydown="if(event.key==='Enter'){this.blur();}else if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}"
+    onblur="playlistCommitNameEdit('${key}','${field}',this)">`;
+  const input = cell.querySelector('input');
+  input.focus();
+  input.select();
+}
+
+/** Valide (ou annule) l'édition commencée par playlistEditNameField. En cas
+ *  de changement, la clé de correspondance (comiteKey, qui dépend du couple
+ *  artiste/titre) change aussi : on vérifie qu'elle n'entre pas en collision
+ *  avec un autre titre déjà présent dans la Playlist, puis on migre les
+ *  stores annexes qui en dépendaient (voir playlistMigrateKeyedStores) pour
+ *  ne pas perdre les informations déjà saisies sous l'ancienne orthographe. */
+function playlistCommitNameEdit(key, field, inputEl){
+  if(inputEl.dataset.cancel === '1'){ renderPlaylistPage(); return; }
+  const t = playlistTitles.find(x => x.key === key);
+  if(!t){ renderPlaylistPage(); return; }
+  const newValue = inputEl.value.trim();
+  if(!newValue){
+    showToast((field==='artist' ? "Le nom d'artiste" : 'Le titre') + ' ne peut pas être vide', 'err');
+    renderPlaylistPage();
+    return;
+  }
+  if(newValue === (t[field] || '')){ renderPlaylistPage(); return; }
+
+  const oldKey = t.key;
+  const newArtist = field === 'artist' ? newValue : t.artist;
+  const newTitle  = field === 'title'  ? newValue : t.title;
+  const newKey = comiteKey(newArtist, newTitle);
+
+  if(newKey !== oldKey && playlistTitles.some(x => x !== t && x.key === newKey && x.station === t.station)){
+    showToast('Un autre titre existe déjà dans cette Playlist avec cette orthographe exacte — fusionnez-les plutôt via le Comité, ou supprimez le doublon', 'err');
+    renderPlaylistPage();
+    return;
+  }
+
+  t[field] = newValue;
+  if(newKey !== oldKey){
+    t.key = newKey;
+    playlistMigrateKeyedStores(oldKey, newKey);
+  }
+  playlistSaveToStorage();
+  showToast('✓ ' + (field==='artist' ? 'Artiste' : 'Titre') + ' corrigé', 'success');
+  renderPlaylistPage();
+}
+
+/** Quand une correction d'orthographe change la clé de correspondance
+ *  (comiteKey) d'un titre, migre vers la nouvelle clé les stores annexes
+ *  qui en dépendent, pour ne pas perdre ce qui était déjà renseigné sous
+ *  l'ancienne orthographe : Attributs du titre (Date d'Entrée, Label,
+ *  ISRC...), Diffusions cumulées, et l'état "déplié" de la ligne Playlist.
+ *  Les caches liés aux classements externes ne sont volontairement PAS
+ *  migrés : laisser le titre se re-matcher sous la nouvelle orthographe est
+ *  précisément le but de la correction. */
+function playlistMigrateKeyedStores(oldKey, newKey){
+  if(songAttributes[oldKey] && !songAttributes[newKey]){
+    songAttributes[newKey] = songAttributes[oldKey];
+    delete songAttributes[oldKey];
+    songAttributesSaveToStorage();
+  }
+  if(songDiffusions[oldKey] !== undefined && songDiffusions[newKey] === undefined){
+    songDiffusions[newKey] = songDiffusions[oldKey];
+    delete songDiffusions[oldKey];
+    songDiffusionsSaveToStorage();
+  }
+  if(playlistExpandedKeys.has(oldKey)){
+    playlistExpandedKeys.delete(oldKey);
+    playlistExpandedKeys.add(newKey);
+  }
+}
+
 function buildPlaylistRow(t, metrics, row360){
   const expanded = playlistExpandedKeys.has(t.key);
   const safeId = t.key.replace(/[^a-z0-9]/gi, '-');
@@ -23446,9 +23699,9 @@ function buildPlaylistRow(t, metrics, row360){
 
   const rowHtml = `<div draggable="true" ondragstart="playlistDragStart(event,'${t.key}')" ondragend="playlistDragEnd(event)" style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border);cursor:grab;border-left:3px solid ${partner?'var(--cyan)':'transparent'};${selected?';background:var(--cyan-light)':(expanded?';background:var(--bg)':'')}">
     ${firstCell}
-    <div style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(titleCaseDisplay(t.artist))}">${escHtml(titleCaseDisplay(t.artist))}</div>
+    <div id="pl-artist-${safeId}" style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text" title="${escHtml(titleCaseDisplay(t.artist))} (double-clic pour corriger l'orthographe)" ondblclick="event.stopPropagation();playlistEditNameField('${t.key}','artist')">${escHtml(titleCaseDisplay(t.artist))}</div>
     <div style="padding:7px 6px;cursor:pointer;display:flex;align-items:center;gap:5px;min-width:0" onclick="${playlistLinkMode ? `togglePlaylistLinkSelect('${t.key}','${catNorm}')` : `togglePlaylistExpand('${t.key}')`}">
-      <div style="font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0" title="${escHtml(titleCaseDisplay(t.title))}">${escHtml(titleCaseDisplay(t.title))}</div>
+      <div id="pl-title-${safeId}" style="font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;cursor:text" title="${escHtml(titleCaseDisplay(t.title))} (double-clic pour corriger l'orthographe)" ondblclick="event.stopPropagation();playlistEditNameField('${t.key}','title')">${escHtml(titleCaseDisplay(t.title))}</div>
       ${bundleBadge}
     </div>
     <div style="padding:4px">
@@ -26476,32 +26729,44 @@ async function watchlistCheckOne(w){
   if(w.history.length > 60) w.history = w.history.slice(-60); // 60 derniers jours suffisent largement
 }
 
+/** Charge les Playlists Spotify clés et les marchés Spotify (kworb) pas
+ *  encore récupérés AUJOURD'HUI — indépendamment de la Veille. Auparavant
+ *  ce chargement n'avait lieu qu'à l'intérieur de watchlistDailyCheck(),
+ *  APRÈS son retour anticipé si la Veille était vide (`if(!watchlistTitles.
+ *  length) return;`) : tant qu'aucun titre n'était suivi en Veille, les
+ *  Playlists Spotify clés (et les marchés kworb) n'étaient donc JAMAIS
+ *  rafraîchies automatiquement, obligeant à cliquer "Charger" à la main sur
+ *  chaque page. Extrait ici en fonction indépendante, appelée au démarrage
+ *  qu'il y ait des titres en Veille ou non. Repli silencieux par source :
+ *  si l'extraction échoue pour l'une, on continue avec les autres déjà
+ *  disponibles. Idempotent (filtré par date/état de chargement), peut être
+ *  rappelée sans risque (bouton "🔄 Vérifier maintenant" par exemple). */
+async function refreshDailySourcesIfNeeded(){
+  await Promise.all(Object.keys(KWORB_COUNTRIES)
+    .filter(cc => kworbSpotifyState[cc] && !kworbSpotifyState[cc].loaded && !kworbSpotifyState[cc].loading)
+    .map(cc => loadKworbSpotify(cc).catch(() => {})));
+
+  await Promise.all(keyPlaylists
+    .filter(p => !isFetchedToday(p))
+    .map(p => refreshKeyPlaylist(p.id).catch(() => {})));
+}
+
 /** Vérifie tous les titres en Veille. Sans "force", ne revérifie que ceux
  *  pas encore vérifiés aujourd'hui (appelé automatiquement au démarrage,
  *  après le chargement des classements). Avec "force" (bouton "🔄 Vérifier
  *  maintenant"), revérifie tout le monde même déjà fait aujourd'hui. */
 async function watchlistDailyCheck(force){
+  // Sources partagées (Playlists Spotify clés, marchés kworb) — voir
+  // refreshDailySourcesIfNeeded ci-dessus. Appelé AVANT le retour anticipé
+  // qui suit, pour qu'il ait lieu même si la Veille est vide.
+  await refreshDailySourcesIfNeeded();
+
   if(!watchlistTitles.length) return;
   const today = new Date().toISOString().slice(0, 10);
   const toCheck = watchlistTitles.filter(w => force || !w.history.length || w.history[w.history.length-1].date !== today);
   if(!toCheck.length) return;
 
   if(force) showToast('⏳ Vérification de ' + toCheck.length + ' titre(s) en Veille…', 'success');
-
-  // Charger les marchés Spotify (kworb) pas encore chargés, en parallèle,
-  // pour scruter tous les pays disponibles et pas seulement la France.
-  // Silencieux en cas d'échec (proxy indisponible etc.) : la vérification
-  // se poursuit simplement avec les marchés qui ont pu être chargés.
-  await Promise.all(Object.keys(KWORB_COUNTRIES)
-    .filter(cc => kworbSpotifyState[cc] && !kworbSpotifyState[cc].loaded && !kworbSpotifyState[cc].loading)
-    .map(cc => loadKworbSpotify(cc).catch(() => {})));
-
-  // Charger les Playlists Spotify clés pas encore récupérées (même logique
-  // de repli silencieux — si l'extraction échoue pour l'une, la vérification
-  // se poursuit avec les autres sources déjà disponibles).
-  await Promise.all(keyPlaylists
-    .filter(p => !isFetchedToday(p))
-    .map(p => refreshKeyPlaylist(p.id).catch(() => {})));
 
   for(const w of toCheck){
     try{ await watchlistCheckOne(w); }catch(e){ console.error('Erreur de vérification Veille pour', w.title, w.artist, e); }
@@ -26814,6 +27079,29 @@ function seedDefaultKeyPlaylists(){
       }
     });
     localStorage.setItem('fpa_key_playlists_seeded_v1', '1');
+    if(changed) keyPlaylistsSaveToStorage();
+  }catch(e){ /* localStorage indisponible, ignoré */ }
+}
+
+/** Migration ponctuelle : la playlist "Top50 Monde" (ou variantes
+ *  d'orthographe/espacement — "Top 50 Monde", "Top-50 monde"...), ajoutée
+ *  par l'utilisateur via le menu "🎧 Playlists Spotify", est déplacée une
+ *  fois pour toutes vers le menu "🎵 Spotify Charts" (menuGroup:
+ *  'spotifyInter') — regroupée avec les classements internationaux plutôt
+ *  qu'avec les playlists éditoriales. keyPlaylists.menuGroup est un champ
+ *  générique : toute entrée peut y être basculée (voir le bouton ⇄ sur sa
+ *  carte dans Playlists Spotify clés), ce n'est pas spécifique à ce titre. */
+function migrateTop50MondeToSpotifyInter(){
+  try{
+    if(localStorage.getItem('fpa_top50monde_migrated_v1')) return;
+    localStorage.setItem('fpa_top50monde_migrated_v1', '1');
+    let changed = false;
+    keyPlaylists.forEach(p => {
+      if(!p.menuGroup && /top[\s-]*50[\s-]*monde/i.test(p.label || '')){
+        p.menuGroup = 'spotifyInter';
+        changed = true;
+      }
+    });
     if(changed) keyPlaylistsSaveToStorage();
   }catch(e){ /* localStorage indisponible, ignoré */ }
 }
@@ -27695,19 +27983,35 @@ function buildKeyPlaylistCard(p){
     body = `<div style="margin-top:10px;font-size:11.5px;color:var(--muted)">⏳ Pas encore chargée — cliquez sur « 🔄 Charger »</div>`;
   }
 
+  const inInter = p.menuGroup === 'spotifyInter';
   return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px;box-shadow:var(--shadow)">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
       <div style="min-width:0">
         <div style="font-size:14px;font-weight:800;color:var(--navy)">${escHtml(p.label)}</div>
-        <div id="kpStatus-${p.id}" style="font-size:10.5px;color:var(--muted)">Dernière tentative : ${fetchedLabel}${p.tracks ? ' — ' + p.tracks.length + ' titres' : ''}</div>
+        <div id="kpStatus-${p.id}" style="font-size:10.5px;color:var(--muted)">Dernière tentative : ${fetchedLabel}${p.tracks ? ' — ' + p.tracks.length + ' titres' : ''} · Menu : ${inInter ? '🎵 Spotify Charts' : '🎧 Playlists Spotify'}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <button onclick="toggleKeyPlaylistMenuGroup('${p.id}')" title="${inInter ? 'Déplacer vers le menu Playlists Spotify' : 'Déplacer vers le menu Spotify Charts'}" style="font-size:10.5px;padding:6px 10px;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700;white-space:nowrap">⇄ ${inInter ? 'Playlists Spotify' : 'Spotify Charts'}</button>
         <button onclick="refreshKeyPlaylist('${p.id}')" style="font-size:10.5px;padding:6px 12px;border-radius:6px;background:#0DA76B;color:#fff;border:none;cursor:pointer;font-weight:700;white-space:nowrap">🔄 Charger</button>
         <button onclick="removeKeyPlaylist('${p.id}')" title="Retirer" style="width:26px;height:26px;border-radius:6px;background:#FFEAEA;border:1px solid #F5B8B8;color:#CC2222;cursor:pointer;font-size:12px">✕</button>
       </div>
     </div>
     ${body}
   </div>`;
+}
+
+/** Bascule une Playlist clé entre le menu "🎧 Playlists Spotify" (défaut)
+ *  et le menu "🎵 Spotify Charts" (menuGroup:'spotifyInter') — self-service
+ *  équivalent à la migration ponctuelle faite pour "Top50 Monde", pour que
+ *  l'utilisateur puisse réorganiser lui-même ses Playlists clés sans avoir
+ *  à le redemander à chaque fois. */
+function toggleKeyPlaylistMenuGroup(id){
+  const p = keyPlaylists.find(x => x.id === id);
+  if(!p) return;
+  p.menuGroup = (p.menuGroup === 'spotifyInter') ? undefined : 'spotifyInter';
+  keyPlaylistsSaveToStorage();
+  renderKeyPlaylistsPage();
+  renderSpotifyPlaylistsGroupMenu();
 }
 
 function renderKeyPlaylistsPage(){
@@ -27732,13 +28036,30 @@ function renderKeyPlaylistsPage(){
 function renderSpotifyPlaylistsGroupMenu(){
   const menuEl = document.getElementById('chartSpotifyPlaylistsGroupMenu');
   if(!menuEl) return;
-  const items = keyPlaylists.map(p => {
+  const items = keyPlaylists.filter(p => p.menuGroup !== 'spotifyInter').map(p => {
     const tabId = 'kp_' + p.id;
     return `<button id="chartTabKP_${p.id}" onclick="switchChartTab('${tabId}')" class="dec-subtab-item"><span class="dec-subtab-ic">🎧</span>${escHtml(p.label)}</button>`;
   }).join('');
   menuEl.innerHTML = items
     + (items ? '<div style="height:1px;background:var(--border);margin:4px 8px"></div>' : '')
     + `<button id="chartTabIntl_keyplaylists" onclick="switchChartTab('keyplaylists')" class="dec-subtab-item"><span class="dec-subtab-ic">➕</span>Ajouter / gérer les playlists</button>`;
+  renderSpotifyInterKeyPlaylistsExtra();
+}
+
+/** Playlists clés basculées vers le menu "🎵 Spotify Charts" (menuGroup:
+ *  'spotifyInter', ex. "Top50 Monde") — injectées dans le sous-menu
+ *  déroulant à la suite des classements kworb fixes, dans un conteneur
+ *  dédié pour ne pas toucher au HTML statique de ces derniers. Appelée à
+ *  chaque fois que le menu Playlists Spotify est reconstruit (liste
+ *  commune, un seul endroit à tenir à jour). */
+function renderSpotifyInterKeyPlaylistsExtra(){
+  const el = document.getElementById('chartIntlGroupMenuExtra');
+  if(!el) return;
+  const extra = keyPlaylists.filter(p => p.menuGroup === 'spotifyInter');
+  el.innerHTML = extra.length
+    ? '<div style="height:1px;background:var(--border);margin:4px 8px"></div>'
+      + extra.map(p => `<button id="chartTabKP_${p.id}" onclick="switchChartTab('${'kp_'+p.id}')" class="dec-subtab-item"><span class="dec-subtab-ic">🎧</span>${escHtml(p.label)}</button>`).join('')
+    : '';
 }
 
 /** Pastille colorée générique — réutilisée par Vue 360° et la fiche titre. */
@@ -29085,34 +29406,40 @@ function predExitLifecycleSubscore(lifecyclePhase){
   if(lifecyclePhase === 'mature')  return p.lifecycleMatureSub;
   return 0;
 }
-// Archétypes de trajectoire (voir SHAPE_ARCHETYPES) dont le nom contient
-// "Déclin" — Pic Précoce/Tardif/Médian, Déclin Rapide ou Progressif. Les
-// archétypes "Stabilisé" ou "Croissance Continue" ne comptent PAS comme
-// déclin (un plateau n'est pas une chute, une croissance continue encore
-// moins).
-const LIFECYCLE_DECLINE_ARCHETYPE_IDX = [1, 3, 4, 6];
-/** Interroge le système de modèles de cycle de vie (8 archétypes de
- *  trajectoire, voir classifyShapeArchetype/recomputeLifeCycleClusters) —
+// Indices d'archétype considérés comme un déclin, par station (voir
+// getShapeArchetypes) : aucun pour Europe 2 (un titre en déclin confirmé en
+// sort de playlist avant qu'un tel profil ait le temps de s'écrire dans le
+// Call Out — structurel, pas un manque de recul) ; "Pic puis Déclin" (index
+// 1) pour RFM, dont la cadence de vagues bien plus espacée laisse au
+// contraire le temps à un cycle complet d'apparaître dans les données.
+const LIFECYCLE_DECLINE_ARCHETYPE_IDX_EUROPE2 = [];
+const LIFECYCLE_DECLINE_ARCHETYPE_IDX_RFM = [1];
+function getLifecycleDeclineArchetypeIdx(){
+  return ACTIVE_STATION === 'RFM' ? LIFECYCLE_DECLINE_ARCHETYPE_IDX_RFM : LIFECYCLE_DECLINE_ARCHETYPE_IDX_EUROPE2;
+}
+/** Interroge le système de modèles de cycle de vie (familles de
+ *  développement propres à la station active, voir getShapeArchetypes/
+ *  classifyShapeArchetype/recomputeLifeCycleClusters) —
  *  bien plus précis que le simple seuil sur passages cumulés (lifecyclePhase
  *  ci-dessus) puisqu'il s'appuie sur la FORME RÉELLE de la trajectoire Pot
- *  Score du titre (position du pic, pente de la chute), propre à ce titre.
- *  Renvoie null si les clusters n'ont jamais été calculés (page Cycles de
- *  vie jamais ouverte) ou si ce titre n'a pas encore assez de vagues
- *  (LIFECYCLE_MIN_WAVES) pour être classé — dans ces deux cas, le garde-fou
- *  ci-dessous ne s'applique simplement pas, sans pénaliser ni avantager le
- *  titre. */
+ *  Score du titre, propre à ce titre. Renvoie null si les clusters n'ont
+ *  jamais été calculés pour cette station (page Cycles de vie jamais
+ *  ouverte/recalculée pour elle) ou si ce titre n'a pas encore assez de
+ *  vagues (LIFECYCLE_MIN_WAVES) pour être classé — dans ces deux cas, le
+ *  garde-fou ci-dessous ne s'applique simplement pas, sans pénaliser ni
+ *  avantager le titre. */
 function predExitShapeDeclineInfo(title, artist){
   const clusterData = loadLifeCycleClusters();
   if(!clusterData || !clusterData.assignments) return null;
   const key = histKey(artist, title);
   const idx = clusterData.assignments[key];
   if(idx === undefined) return null;
-  const arche = SHAPE_ARCHETYPES[idx];
+  const arche = getShapeArchetypes()[idx];
   return {
     idx,
     name: arche ? arche.name : null,
     icon: arche ? arche.icon : null,
-    isDecline: LIFECYCLE_DECLINE_ARCHETYPE_IDX.includes(idx)
+    isDecline: getLifecycleDeclineArchetypeIdx().includes(idx)
   };
 }
 
@@ -37996,6 +38323,7 @@ initPlatformLogosInTabs();
 // Playlists Spotify clés : amorce les playlists par défaut (une seule fois
 // dans la vie du navigateur) puis construit le menu déroulant du header.
 seedDefaultKeyPlaylists();
+migrateTop50MondeToSpotifyInter();
 renderSpotifyPlaylistsGroupMenu();
 // Radios clés (Top Songs) — expérimental : construit le menu déroulant du header.
 renderRadioGroupMenu();
