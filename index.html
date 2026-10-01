@@ -2242,9 +2242,53 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         </div>
 
         <!-- Historique hebdomadaire -->
-        <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;margin-bottom:18px">
-          <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:12px">Historique — audience moyenne hebdomadaire</div>
-          <div style="position:relative;height:260px"><canvas id="digitalAudienceWeeklyChart"></canvas></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+          <div onclick="openDigitalAudienceChartModal('audienceMoyenne','Audience moyenne hebdomadaire','int')" title="Cliquer pour agrandir et choisir la période" style="cursor:pointer;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;transition:border-color .12s" onmouseenter="this.style.borderColor='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)'">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:13px;font-weight:800;color:var(--navy)">Historique — audience moyenne hebdomadaire</div>
+              <span style="font-size:11px;color:var(--muted)">⤢ Agrandir</span>
+            </div>
+            <div style="position:relative;height:220px"><canvas id="digitalAudienceWeeklyChart"></canvas></div>
+          </div>
+          <div onclick="openDigitalAudienceChartModal('sessions','Sessions &gt; 30s hebdomadaires','int')" title="Cliquer pour agrandir et choisir la période" style="cursor:pointer;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;transition:border-color .12s" onmouseenter="this.style.borderColor='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)'">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:13px;font-weight:800;color:var(--navy)">Historique — sessions &gt; 30s hebdomadaires</div>
+              <span style="font-size:11px;color:var(--muted)">⤢ Agrandir</span>
+            </div>
+            <div style="position:relative;height:220px"><canvas id="digitalAudienceWeeklySessionsChart"></canvas></div>
+          </div>
+          <div onclick="openDigitalAudienceChartModal('uniques','Visiteurs uniques hebdomadaires','int')" title="Cliquer pour agrandir et choisir la période" style="cursor:pointer;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;transition:border-color .12s" onmouseenter="this.style.borderColor='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)'">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:13px;font-weight:800;color:var(--navy)">Historique — visiteurs uniques hebdomadaires</div>
+              <span style="font-size:11px;color:var(--muted)">⤢ Agrandir</span>
+            </div>
+            <div style="position:relative;height:220px"><canvas id="digitalAudienceWeeklyUniquesChart"></canvas></div>
+          </div>
+          <div onclick="openDigitalAudienceChartModal('dureeSec','Durée d\'écoute moyenne hebdomadaire','duration')" title="Cliquer pour agrandir et choisir la période" style="cursor:pointer;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:18px;transition:border-color .12s" onmouseenter="this.style.borderColor='var(--cyan)'" onmouseleave="this.style.borderColor='var(--border)'">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:13px;font-weight:800;color:var(--navy)">Historique — durée d'écoute moyenne hebdomadaire</div>
+              <span style="font-size:11px;color:var(--muted)">⤢ Agrandir</span>
+            </div>
+            <div style="position:relative;height:220px"><canvas id="digitalAudienceWeeklyDureeChart"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Modale : version agrandie d'une courbe hebdomadaire, avec choix de période -->
+        <div id="digitalAudienceChartModal" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:3000;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this) closeDigitalAudienceChartModal()">
+          <div style="background:var(--white);border-radius:14px;padding:24px;max-width:920px;width:100%;max-height:90vh;overflow:auto">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px">
+              <div id="digitalAudienceChartModalTitle" style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy)"></div>
+              <button onclick="closeDigitalAudienceChartModal()" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;color:var(--text2);flex-shrink:0">✕</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+              <span style="font-size:11px;color:var(--muted);font-weight:700">Période :</span>
+              <select id="digitalAudienceChartModalFrom" style="font-size:12px;padding:7px 11px;border-radius:7px" onchange="digitalAudienceChartModalRefresh()"></select>
+              <span style="font-size:11px;color:var(--muted)">→</span>
+              <select id="digitalAudienceChartModalTo" style="font-size:12px;padding:7px 11px;border-radius:7px" onchange="digitalAudienceChartModalRefresh()"></select>
+              <button onclick="digitalAudienceChartModalResetRange()" style="font-size:11px;padding:7px 11px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700">Tout afficher</button>
+            </div>
+            <div style="position:relative;height:440px"><canvas id="digitalAudienceChartModalCanvas"></canvas></div>
+          </div>
         </div>
 
         <!-- Tranches programme -->
@@ -13185,9 +13229,15 @@ function renderDigitalAudienceDetail(){
   // rarement sur les mêmes dates.
   digitalAudienceRenderDailyChart(rec.daily || [], compareKey ? (compareRec && compareRec.daily || []) : null, compareKey ? digitalAudienceFmtDate(compareKey) : null);
 
-  // ── Historique hebdomadaire (Chart.js) — audience moyenne, toutes semaines archivées ──
-  const weeklySeries = digitalAudienceWeekKeys(stKey).map(w => ({ label: digitalAudienceFmtDate(w), value: digitalAudienceHistory[stKey][w].audienceMoyenne }));
-  digitalAudienceRenderWeeklyChart(weeklySeries);
+  // ── Historique hebdomadaire (Chart.js) — audience moyenne, sessions,
+  // visiteurs uniques et durée d'écoute, toutes semaines archivées ──
+  const weekKeysForCharts = digitalAudienceWeekKeys(stKey);
+  const weeklyLabels = weekKeysForCharts.map(w => digitalAudienceFmtDate(w));
+  const weeklySeriesFor = field => weekKeysForCharts.map((w,i) => ({ label: weeklyLabels[i], value: digitalAudienceHistory[stKey][w][field] }));
+  digitalAudienceRenderWeeklyChart('digitalAudienceWeeklyChart', weeklySeriesFor('audienceMoyenne'), digitalAudienceFmtInt);
+  digitalAudienceRenderWeeklyChart('digitalAudienceWeeklySessionsChart', weeklySeriesFor('sessions'), digitalAudienceFmtInt);
+  digitalAudienceRenderWeeklyChart('digitalAudienceWeeklyUniquesChart', weeklySeriesFor('uniques'), digitalAudienceFmtInt);
+  digitalAudienceRenderWeeklyChart('digitalAudienceWeeklyDureeChart', weeklySeriesFor('dureeSec'), digitalAudienceFmtDuration);
 
   // ── Tranches (tableau avec heatmap, comme Digital Monitoring) ──
   const tranches = rec.tranches || [];
@@ -13364,9 +13414,14 @@ function digitalAudienceRenderDailyChart(daily, compareDaily, compareLabel){
 
 /** Historique hebdomadaire — courbe, même config que Digital Monitoring
  *  (renderLive → liveWeeklyChart) : aire remplie, points, tension 0.3. */
-function digitalAudienceRenderWeeklyChart(series){
+/** Courbe hebdomadaire générique — réutilisée pour les 4 historiques
+ *  (audience moyenne, sessions, visiteurs uniques, durée d'écoute) avec
+ *  leur propre canvas et leur propre fonction de formatage (digitalAudience
+ *  FmtInt pour les 3 premiers, digitalAudienceFmtDuration pour la durée, qui
+ *  s'affiche en mm:ss plutôt qu'en nombre brut de secondes). */
+function digitalAudienceRenderWeeklyChart(canvasId, series, fmtFn){
   const stColor = 'rgba(0,184,200,1)';
-  digitalAudienceSafeNewChart('digitalAudienceWeeklyChart', {
+  digitalAudienceSafeNewChart(canvasId, {
     type: 'line',
     data: {
       labels: series.map(s => s.label),
@@ -13374,13 +13429,71 @@ function digitalAudienceRenderWeeklyChart(series){
     },
     options: {
       responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { display:false }, tooltip: { callbacks: { label: c => digitalAudienceFmtInt(c.parsed.y) } } },
+      plugins: { legend: { display:false }, tooltip: { callbacks: { label: c => fmtFn(c.parsed.y) } } },
       scales: {
         x: { ticks: { color:'#4A5E78' }, grid: { color:'#DDE3EE' } },
-        y: { ticks: { color:'#4A5E78', callback: v => digitalAudienceFmtInt(v) }, grid: { color:'#DDE3EE' } }
+        y: { ticks: { color:'#4A5E78', callback: v => fmtFn(v) }, grid: { color:'#DDE3EE' } }
       }
     }
   });
+}
+
+/** Modale "courbe hebdomadaire en plein écran" — ouverte en cliquant sur
+ *  n'importe laquelle des 4 cartes Historique. Garde en mémoire le champ
+ *  affiché (audienceMoyenne/sessions/uniques/dureeSec), la station et la
+ *  liste des semaines disponibles, pour que les deux sélecteurs de période
+ *  puissent re-filtrer et redessiner la même courbe sans tout reconstruire. */
+let digitalAudienceChartModalState = null;
+function openDigitalAudienceChartModal(field, title, fmtKind){
+  const stKey = digitalAudienceUI.station;
+  const weekKeys = digitalAudienceWeekKeys(stKey);
+  if(!weekKeys.length) return;
+  const fmtFn = fmtKind === 'duration' ? digitalAudienceFmtDuration : digitalAudienceFmtInt;
+  digitalAudienceChartModalState = { field, fmtFn, weekKeys, stKey };
+
+  document.getElementById('digitalAudienceChartModalTitle').textContent = title;
+  const options = weekKeys.map(w => `<option value="${w}">${digitalAudienceFmtDate(w)}</option>`).join('');
+  const fromSel = document.getElementById('digitalAudienceChartModalFrom');
+  const toSel = document.getElementById('digitalAudienceChartModalTo');
+  fromSel.innerHTML = options;
+  toSel.innerHTML = options;
+  fromSel.value = weekKeys[0];
+  toSel.value = weekKeys[weekKeys.length-1];
+
+  document.getElementById('digitalAudienceChartModal').style.display = 'flex';
+  digitalAudienceChartModalRefresh();
+}
+
+/** Redessine la courbe de la modale selon les deux bornes choisies — si
+ *  l'utilisateur inverse "de" et "à", on les échange plutôt que d'afficher
+ *  une plage vide ou inversée. */
+function digitalAudienceChartModalRefresh(){
+  const state = digitalAudienceChartModalState;
+  if(!state) return;
+  const fromSel = document.getElementById('digitalAudienceChartModalFrom');
+  const toSel = document.getElementById('digitalAudienceChartModalTo');
+  let fromIdx = state.weekKeys.indexOf(fromSel.value);
+  let toIdx = state.weekKeys.indexOf(toSel.value);
+  if(fromIdx < 0) fromIdx = 0;
+  if(toIdx < 0) toIdx = state.weekKeys.length - 1;
+  if(fromIdx > toIdx){ const tmp = fromIdx; fromIdx = toIdx; toIdx = tmp; }
+  const slice = state.weekKeys.slice(fromIdx, toIdx + 1);
+  const series = slice.map(w => ({ label: digitalAudienceFmtDate(w), value: digitalAudienceHistory[state.stKey][w][state.field] }));
+  digitalAudienceRenderWeeklyChart('digitalAudienceChartModalCanvas', series, state.fmtFn);
+}
+
+function digitalAudienceChartModalResetRange(){
+  const state = digitalAudienceChartModalState;
+  if(!state) return;
+  document.getElementById('digitalAudienceChartModalFrom').value = state.weekKeys[0];
+  document.getElementById('digitalAudienceChartModalTo').value = state.weekKeys[state.weekKeys.length - 1];
+  digitalAudienceChartModalRefresh();
+}
+
+function closeDigitalAudienceChartModal(){
+  const modal = document.getElementById('digitalAudienceChartModal');
+  if(modal) modal.style.display = 'none';
+  digitalAudienceChartModalState = null;
 }
 
 function renderDigitalAudienceHistoryTable(){
@@ -32313,6 +32426,20 @@ function quotasUpdateBadge(data){
   }
 }
 
+/** Formate une clé de période "AAAA-MM" / "AAAA-Tn" en libellé lisible,
+ *  pour le repli "dernier mois/trimestre clôturé" (voir ci-dessous). */
+function quotasFmtPeriodeMois(p){
+  if(!p) return '';
+  const [y,m] = p.split('-');
+  const noms = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  return (noms[parseInt(m,10)-1] || m) + ' ' + y;
+}
+function quotasFmtPeriodeTrim(p){
+  if(!p) return '';
+  const [y,t] = p.split('-T');
+  return 'T' + t + ' ' + y;
+}
+
 function quotasRenderCards(){
   const cardsEl = document.getElementById('quotasCards');
   if(!cardsEl || !quotasData) return;
@@ -32351,15 +32478,29 @@ function quotasRenderCards(){
     const chipLabel = statut === 'OK' ? 'Conforme (trimestre)' : (statut === 'ALERTE' ? 'Sous le seuil (trimestre)' : 'Données indisponibles');
     const prevMois = quotasGetPreviousSnapshot(mediaKey, 'mois');
     const prevTrim = quotasGetPreviousSnapshot(mediaKey, 'trimestre');
+
+    // Repli automatique : en tout début de mois/trimestre, avant que la
+    // première donnée de la nouvelle période soit arrivée (mail du
+    // lendemain), isCurrent vaut false et periode pointe vers la dernière
+    // période déjà clôturée — on l'affiche clairement plutôt que de
+    // montrer un vide qui ressemble à une panne (voir yacast_findBestRow_
+    // côté yacast_quotas.gs).
+    const moisLabel = (d && d.mois && d.mois.isCurrent === false)
+      ? `Dernier mois clôturé (${quotasFmtPeriodeMois(d.mois.periode)})`
+      : 'Mois en cours';
+    const trimLabel = (d && d.trimestre && d.trimestre.isCurrent === false)
+      ? `Dernier trimestre clôturé (${quotasFmtPeriodeTrim(d.trimestre.periode)})`
+      : 'Trimestre en cours';
+
     html += `<div class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         ${quotasLogoImg(th.logoAlt, 34)}
         <span class="tag" style="background:${chipBg};border:1.5px solid ${chipBorder};color:${chipText}">${chipLabel}</span>
       </div>
-      <div class="section-label" style="margin-bottom:4px">Mois en cours</div>
+      <div class="section-label" style="margin-bottom:4px">${moisLabel}</div>
       ${row('Quota Français', d && d.mois ? d.mois.txQuotaFR : null, th.quotaFR, prevMois ? prevMois.txQuotaFR : null)}
       ${row(th.ntLabel, d && d.mois ? d.mois.txNT : null, th.ntTarget, prevMois ? prevMois.txNT : null)}
-      <div class="section-label" style="margin-top:14px;margin-bottom:4px">Trimestre en cours</div>
+      <div class="section-label" style="margin-top:14px;margin-bottom:4px">${trimLabel}</div>
       ${row('Quota Français', d && d.trimestre ? d.trimestre.txQuotaFR : null, th.quotaFR, prevTrim ? prevTrim.txQuotaFR : null)}
       ${row(th.ntLabel, d && d.trimestre ? d.trimestre.txNT : null, th.ntTarget, prevTrim ? prevTrim.txNT : null)}
       ${importBlock(d ? d.dernierImport : null)}
