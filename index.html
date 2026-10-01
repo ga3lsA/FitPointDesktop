@@ -19630,7 +19630,7 @@ function updateTevNavUI(){
  *  endroit où une correction d'orthographe a un sens à persister depuis
  *  cette fiche. */
 function tevUpdateEditButtonsVisibility(title, artist){
-  const exists = playlistTitles.some(t => t.key === comiteKey(title, artist) && t.station === ACTIVE_STATION);
+  const exists = !!findPlaylistEntryFuzzy(title, artist, ACTIVE_STATION);
   const titleBtn = document.getElementById('tevEditTitleBtn');
   const artistBtn = document.getElementById('tevEditArtistBtn');
   if(titleBtn) titleBtn.style.display = exists ? 'inline' : 'none';
@@ -19646,7 +19646,7 @@ function tevUpdateEditButtonsVisibility(title, artist){
 function tevEditNameField(field){
   const title  = (document.getElementById('tevTitle')?.textContent  || '').trim();
   const artist = (document.getElementById('tevArtist')?.textContent || '').trim();
-  const t = playlistTitles.find(x => x.key === comiteKey(title, artist) && x.station === ACTIVE_STATION);
+  const t = findPlaylistEntryFuzzy(title, artist, ACTIVE_STATION);
   if(!t) return;
   const current = t[field] || '';
   const labelEl = field === 'title' ? document.getElementById('tevTitle') : document.getElementById('tevArtist');
@@ -22215,6 +22215,32 @@ function evoAttr(title, artist){
 
 function comiteKey(title, artist){ return norm(artist||'') + '|||' + norm(title||''); }
 
+/** Retrouve l'entrée Playlist correspondant à un titre/artiste sur une
+ *  station donnée — correspondance EXACTE (clé identique) en priorité,
+ *  puis repli sur une correspondance TOLÉRANTE (même logique que
+ *  fuzzyMembershipMatch/isInComite : similarité ≥0.6 sur le titre,
+ *  combinée 60/40 titre/artiste ≥0.6) si l'exacte échoue. Nécessaire car un
+ *  classement externe (Shazam, Spotify, Airplay...) n'utilise pas toujours
+ *  exactement les mêmes crédits d'artiste (featuring inclus/omis, ordre
+ *  différent...) que ceux saisis dans la Playlist, même quand l'orthographe
+ *  du titre et de l'artiste principal est par ailleurs identique/corrigée. */
+function findPlaylistEntryFuzzy(title, artist, station){
+  const key = comiteKey(title, artist);
+  const exact = playlistTitles.find(t => t.key === key && t.station === station);
+  if(exact) return exact;
+  const nt = norm(title || ''), na = norm(artist || '');
+  let best = null, bestScore = 0;
+  playlistTitles.forEach(t => {
+    if(t.station !== station) return;
+    const ts = similarity(nt, norm(t.title || ''));
+    if(ts < 0.6) return;
+    const as = similarity(na, norm(t.artist || ''));
+    const score = ts*0.6 + as*0.4;
+    if(score >= 0.6 && score > bestScore){ bestScore = score; best = t; }
+  });
+  return best;
+}
+
 /** Retrouve, dans la Playlist de la station de référence actuellement
  *  active (ACTIVE_STATION — bouton 🔁 de l'en-tête), l'entrée correspondant
  *  à un titre/artiste donné, et renvoie sa Catégorie — chaîne vide si le
@@ -22222,9 +22248,8 @@ function comiteKey(title, artist){ return norm(artist||'') + '|||' + norm(title|
  *  renseignée. Scopé à la station active pour ne jamais afficher, par
  *  exemple, la catégorie RFM d'un titre alors qu'on regarde Europe 2. */
 function playlistCategoryFor(title, artist){
-  const key = comiteKey(title, artist);
-  const entry = playlistTitles.find(t => t.key === key && t.station === ACTIVE_STATION && (t.categorie||'').trim());
-  return entry ? entry.categorie.trim() : '';
+  const entry = findPlaylistEntryFuzzy(title, artist, ACTIVE_STATION);
+  return (entry && (entry.categorie||'').trim()) || '';
 }
 
 /** Petit badge discret de Catégorie Playlist, identique visuellement à
