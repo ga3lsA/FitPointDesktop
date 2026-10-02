@@ -13484,6 +13484,7 @@ function digitalAudienceChartModalRefresh(){
   if(fromIdx > toIdx){ const tmp = fromIdx; fromIdx = toIdx; toIdx = tmp; }
   const slice = state.weekKeys.slice(fromIdx, toIdx + 1);
   const series = slice.map(w => ({ label: digitalAudienceFmtDate(w), value: digitalAudienceHistory[state.stKey][w][state.field] }));
+
   digitalAudienceRenderWeeklyChart('digitalAudienceChartModalCanvas', series, state.fmtFn);
 }
 
@@ -14214,11 +14215,58 @@ function mediaSeasonLabel(period){
 }
 
 /* ---- Moyenne Live (Audience digitale FPA) sur une plage de dates ---- */
+/** Trouve la dernière quinzaine saisie (dates de début/fin valides) de la
+ *  vague la plus récente, en repartant de la plus récente vers la plus
+ *  ancienne (mediaSortedPeriods est trié chronologiquement croissant).
+ *  Générique — réutilisée à la fois par le calcul Live (audience digitale,
+ *  mediaComputeLiveAvgForRange) et par la superposition sur les courbes
+ *  Historique Marché (voir mediaFindLastQuinzaineEnsembleValue). */
+function mediaFindLastWaveWithDates(stKey){
+  const periods = mediaSortedPeriods(stKey);
+  for(let i = periods.length - 1; i >= 0; i--){
+    const period = periods[i];
+    if(!period.waves || !period.waves.length) continue;
+    const withDates = period.waves.filter(w => w.dateStart && w.dateEnd);
+    if(!withDates.length) continue;
+    withDates.sort((a,b) => a.dateEnd < b.dateEnd ? -1 : (a.dateEnd > b.dateEnd ? 1 : 0));
+    return { period, wave: withDates[withDates.length - 1] };
+  }
+  return null;
+}
+
+/** Clé de la cible "Ensemble" dans mediaHistory[stKey].cibles — recherchée
+ *  par libellé (pas par une clé supposée fixe, qui peut varier selon la
+ *  façon dont les cibles ont été configurées). null si elle n'existe pas
+ *  encore pour cette station. */
+function mediaFindEnsembleCibleKey(stKey){
+  const cibles = (mediaHistory[stKey] && mediaHistory[stKey].cibles) || [];
+  const found = cibles.find(c => /ensemble/i.test(c.label || ''));
+  return found ? found.key : null;
+}
+
+/** Valeur AC/PDA/DEA (cible Ensemble, metric en majuscules : 'AC'/'PDA'/
+ *  'DEA') de la dernière quinzaine saisie de la vague la plus récente —
+ *  utilisée pour superposer un point distinct sur les courbes Historique
+ *  Marché (fiche radio Europe 2/RFM), en plus des vagues officielles déjà
+ *  publiées. Renvoie null si la cible "Ensemble" n'existe pas encore pour
+ *  cette station, ou si cette valeur n'a pas été saisie pour la dernière
+ *  quinzaine. */
+function mediaFindLastQuinzaineEnsembleValue(stKey, metric){
+  const last = mediaFindLastWaveWithDates(stKey);
+  if(!last) return null;
+  const ensembleKey = mediaFindEnsembleCibleKey(stKey);
+  if(!ensembleKey) return null;
+  const vals = last.wave.cibles && last.wave.cibles[ensembleKey];
+  if(!vals || vals[metric] == null) return null;
+  return { value: vals[metric], wave: last.wave, period: last.period };
+}
+
 function mediaComputeLiveAvgForRange(stKey, start, end){
   if(!start || !end) return null;
   const weeks = Object.keys(digitalAudienceHistory[stKey] || {}).filter(w => {
     const rec = digitalAudienceHistory[stKey][w];
     return w >= start && (rec.weekEnd || w) <= end && rec.audienceMoyenne != null;
+
   });
   if(!weeks.length) return null;
   const vals = weeks.map(w => digitalAudienceHistory[stKey][w].audienceMoyenne);
@@ -14395,6 +14443,54 @@ function mediaUpdateWaveMetric(periodId, waveId, cibleKey, metric, value){
   mediaSaveLocal();
   if(DRIVE_SYNC_URL) mediaSaveToDrive();
 }
+/** Convertit une date ISO (yyyy-mm-dd) en affichage français jj/mm/aaaa —
+ *  pour le champ texte masqué des dates de quinzaine Médiamétrie, qui
+ *  remplace le <input type="date"> natif (voir mediaMaskDateInput/
+ *  mediaCommitWaveDate ci-dessous). Motif : le widget natif du navigateur
+ *  rendait la saisie du segment "année" peu fiable dans ce tableau très
+ *  dense (chiffres qui ne s'enregistrent pas) — un champ texte avec un
+ *  masque simple jj/mm/aaaa contourne entièrement le problème : on tape 8
+ *  chiffres à la suite, les "/" s'insèrent automatiquement. */
+function mediaDateToFr(iso){
+  if(!iso) return '';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+}
+
+/** Insère automatiquement les "/" au fil de la frappe (jj/mm/aaaa) — ne
+ *  garde que les chiffres tapés (colle, corrections au milieu, etc. tous
+ *  gérés pareil), limités à 8 (jjmmaaaa). */
+function mediaMaskDateInput(el){
+  const digits = el.value.replace(/\D/g, '').slice(0, 8);
+  let out = digits;
+  if(digits.length > 4) out = digits.slice(0,2) + '/' + digits.slice(2,4) + '/' + digits.slice(4);
+  else if(digits.length > 2) out = digits.slice(0,2) + '/' + digits.slice(2);
+  el.value = out;
+}
+
+/** Valide puis convertit jj/mm/aaaa en ISO (yyyy-mm-dd) à la validation du
+ *  champ (perte de focus), avant de rappeler mediaUpdateWaveDate comme
+ *  avant — rien ne change côté stockage, seule la saisie change. Champ
+ *  vidé → date retirée silencieusement. Date incomplète ou invalide (ex.
+ *  31/02/2026) → message d'erreur, valeur non enregistrée. */
+function mediaCommitWaveDate(el, periodId, waveId, bound){
+  const raw = el.value.trim();
+  if(!raw){ mediaUpdateWaveDate(periodId, waveId, bound, ''); return; }
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(raw);
+  if(!m){
+    showToast('Date incomplète — format attendu jj/mm/aaaa', 'err');
+    return;
+  }
+  const [, dd, mm, yyyy] = m;
+  const iso = `${yyyy}-${mm}-${dd}`;
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d.getTime()) || d.getDate() !== parseInt(dd,10) || d.getMonth()+1 !== parseInt(mm,10) || d.getFullYear() !== parseInt(yyyy,10)){
+    showToast('Date invalide — vérifiez le jour/mois saisi', 'err');
+    return;
+  }
+  mediaUpdateWaveDate(periodId, waveId, bound, iso);
+}
+
 function mediaUpdateWaveDate(periodId, waveId, bound, value){
   const stKey = mediaUI.station;
   const period = mediaHistory[stKey].periods.find(p=>p.id===periodId);
@@ -14465,8 +14561,8 @@ function mediaWaveDetailTableHtml(stKey, period, cibles, collapsed){
     });
     return `<tr>
       <td style="padding:7px 10px;font-size:12px;font-weight:700">${escHtml(wave.label)}</td>
-      <td style="padding:5px"><input type="date" value="${wave.dateStart||''}" style="font-size:12px;padding:5px 7px;width:132px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','start',this.value)"></td>
-      <td style="padding:5px"><input type="date" value="${wave.dateEnd||''}" style="font-size:12px;padding:5px 7px;width:132px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveDate('${period.id}','${wave.id}','end',this.value)"></td>
+      <td style="padding:5px"><input type="text" inputmode="numeric" placeholder="jj/mm/aaaa" maxlength="10" value="${mediaDateToFr(wave.dateStart)}" style="font-size:12px;padding:5px 7px;width:88px;border-radius:6px;border:1.5px solid var(--border)" oninput="mediaMaskDateInput(this)" onchange="mediaCommitWaveDate(this,'${period.id}','${wave.id}','start')"></td>
+      <td style="padding:5px"><input type="text" inputmode="numeric" placeholder="jj/mm/aaaa" maxlength="10" value="${mediaDateToFr(wave.dateEnd)}" style="font-size:12px;padding:5px 7px;width:88px;border-radius:6px;border:1.5px solid var(--border)" oninput="mediaMaskDateInput(this)" onchange="mediaCommitWaveDate(this,'${period.id}','${wave.id}','end')"></td>
       ${cibleCells}
       <td style="padding:7px 10px">${mediaLiveCellHtml(stKey, wave)}</td>
       <td style="padding:7px 10px;text-align:center"><button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaRemoveWave('${stKey}','${period.id}','${wave.id}')" title="Supprimer cette quinzaine">🗑</button></td>
@@ -15783,16 +15879,7 @@ function openMarcheEntityModal(slug){
         <div style="position:relative;height:130px;pointer-events:none"><canvas id="marcheEntityChart_${field}"></canvas></div>
       </div>`).join('');
     ['ac','pda','dea'].forEach(field => {
-      const data = histWaves.map(wv => { const v = (wv.entities[slug][period]||{})[field]; return typeof v==='number' ? v : null; });
-      marcheEntitySafeNewChart('marcheEntityChart_'+field, {
-        type: 'line',
-        data: { labels: waveLabels, datasets: [{ data, borderColor: '#1E6FD9', backgroundColor: 'rgba(30,111,217,.10)', borderWidth: 2, pointRadius: 1.5, pointBackgroundColor:'#1E6FD9', tension: .25, fill: true, spanGaps: true }] },
-        options: {
-          responsive: true, maintainAspectRatio: false,
-          plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y) } } },
-          scales: { y: { ticks: { font:{ size:9 } } }, x: { ticks: { font:{ size:9 } } } }
-        }
-      });
+      marcheEntitySafeNewChart('marcheEntityChart_'+field, mediaBuildMarcheChartConfig(slug, period, histWaves, waveLabels, field, 9));
     });
   } else {
     chartsArea.style.display = 'none';
@@ -15827,6 +15914,69 @@ function closeMarcheEntityModal(){
   marcheEntityChartCache = null;
 }
 
+/** Construit la config Chart.js d'une courbe Historique Marché (AC/PDA/DEA),
+ *  en ajoutant — UNIQUEMENT pour Europe 2/RFM (nos propres stations, jamais
+ *  pour une radio concurrente) — un point supplémentaire représentant la
+ *  dernière quinzaine Médiamétrie saisie (cible Ensemble) de la vague en
+ *  cours, dans une couleur distincte (orange, en pointillés), relié au
+ *  dernier point officiel pour suggérer la tendance. N'affecte rien pour
+ *  les radios concurrentes (slug sans station correspondante) ni si aucune
+ *  quinzaine avec dates+valeur Ensemble n'est encore saisie : dans ces cas,
+ *  la courbe reste strictement identique à avant. */
+function mediaBuildMarcheChartConfig(slug, period, histWaves, waveLabels, field, fontSize){
+  const officialData = histWaves.map(wv => { const v = (wv.entities[slug][period]||{})[field]; return typeof v==='number' ? v : null; });
+  const tooltipLabel = ctx => (ctx.dataset.label ? ctx.dataset.label + ' : ' : '') + (field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y));
+  const baseOptions = {
+    responsive: true, maintainAspectRatio: false,
+    scales: { y: { ticks: { font:{ size:fontSize } } }, x: { ticks: { font:{ size:fontSize } } } }
+  };
+
+  const stKey = graphMediametrieStationKeyFromSlug(slug);
+  let overlayInfo = stKey ? mediaFindLastQuinzaineEnsembleValue(stKey, field.toUpperCase()) : null;
+
+  // Priorité au résultat officiel : si la vague de cette quinzaine (même
+  // type SO/ND/JM/AJ + même année) a ENTRETEMPS un résultat officiel publié
+  // dans Historique Marché (donc déjà présent dans histWaves), on ignore la
+  // superposition — la vague n'est plus "en cours", elle est officielle, et
+  // sa vraie valeur est déjà le dernier point de la courbe bleue.
+  if(overlayInfo){
+    const alreadyOfficial = histWaves.some(wv => wv.waveType === overlayInfo.period.waveType && wv.year === overlayInfo.period.year);
+    if(alreadyOfficial) overlayInfo = null;
+  }
+
+  if(!overlayInfo){
+    return {
+      type: 'line',
+      data: { labels: waveLabels, datasets: [{ data: officialData, borderColor:'#1E6FD9', backgroundColor:'rgba(30,111,217,.10)', borderWidth:2, pointRadius:1.5, pointBackgroundColor:'#1E6FD9', tension:.25, fill:true, spanGaps:true }] },
+      options: { ...baseOptions, plugins: { legend: { display:false }, tooltip: { callbacks: { label: tooltipLabel } } } }
+    };
+  }
+
+  // Point de jonction : répète la dernière valeur officielle connue, pour
+  // que le segment pointillé "parte" visuellement du dernier point de la
+  // courbe officielle plutôt que d'apparaître isolé.
+  let lastOfficial = null;
+  for(let i = officialData.length - 1; i >= 0; i--){ if(officialData[i] != null){ lastOfficial = officialData[i]; break; } }
+  const labels = waveLabels.concat([(overlayInfo.wave.label || 'Quinzaine') + ' (en cours)']);
+  const mainData = officialData.concat([null]);
+  const overlayData = officialData.map(() => null);
+  overlayData[overlayData.length - 1] = lastOfficial;
+  overlayData.push(overlayInfo.value);
+  const overlayPointRadius = overlayData.map((v,i) => i === overlayData.length - 1 ? 5 : 0);
+
+  return {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label:'Vagues officielles', data: mainData, borderColor:'#1E6FD9', backgroundColor:'rgba(30,111,217,.10)', borderWidth:2, pointRadius:1.5, pointBackgroundColor:'#1E6FD9', tension:.25, fill:true, spanGaps:true },
+        { label:'Quinzaine en cours (non officielle)', data: overlayData, borderColor:'#F08C1B', backgroundColor:'transparent', borderWidth:2.5, borderDash:[6,4], pointRadius:overlayPointRadius, pointBackgroundColor:'#F08C1B', tension:0, fill:false, spanGaps:false }
+      ]
+    },
+    options: { ...baseOptions, plugins: { legend: { display:true, labels:{ font:{size:fontSize}, boxWidth:10 } }, tooltip: { callbacks: { label: tooltipLabel } } } }
+  };
+}
+
 /** Agrandit l'une des 3 courbes de la fiche radio (AC/PDA/DEA) dans une
  *  modale dédiée, par-dessus la fiche déjà ouverte. */
 function marcheOpenChartZoom(field){
@@ -15836,19 +15986,10 @@ function marcheOpenChartZoom(field){
   document.getElementById('marcheChartZoomTitle').textContent = label + ' — ' + fieldLabel;
   document.getElementById('marcheChartZoomSub').textContent = (period==='LV'?'Lundi-Vendredi':'Samedi-Dimanche') + ' — ' + histWaves.length + ' vague(s)';
   document.getElementById('modalMarcheChartZoom').style.display = 'flex';
-  const data = histWaves.map(wv => { const v = (wv.entities[slug][period]||{})[field]; return typeof v==='number' ? v : null; });
   try{ if(marcheZoomChart) marcheZoomChart.destroy(); }catch(e){ /* ignoré */ }
   const el = document.getElementById('marcheChartZoomCanvas');
   if(el && typeof Chart !== 'undefined'){
-    marcheZoomChart = new Chart(el, {
-      type: 'line',
-      data: { labels: waveLabels, datasets: [{ data, borderColor: '#1E6FD9', backgroundColor: 'rgba(30,111,217,.10)', borderWidth: 2.5, pointRadius: 2.5, pointHoverRadius: 5, pointBackgroundColor:'#1E6FD9', tension: .25, fill: true, spanGaps: true }] },
-      options: {
-        responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display:false }, tooltip: { callbacks: { label: ctx => field==='dea' ? marcheFmtMinToHM(ctx.parsed.y) : marcheFmtPct(ctx.parsed.y) } } },
-        scales: { y: { ticks: { font:{ size:12 } } }, x: { ticks: { font:{ size:12 } } } }
-      }
-    });
+    marcheZoomChart = new Chart(el, mediaBuildMarcheChartConfig(slug, period, histWaves, waveLabels, field, 12));
   }
 }
 function closeMarcheChartZoom(){
@@ -16338,6 +16479,18 @@ function graphMediametrieStationSlug(stKey){
   const slug = found ? found.slug : null;
   graphMediametrieSlugCache[stKey] = slug;
   return slug;
+}
+/** Sens inverse de graphMediametrieStationSlug : retrouve ACTIVE_STATION
+ *  (EUROPE2/RFM) à partir d'un slug Historique Marché — null si ce slug ne
+ *  correspond à aucune de nos deux stations (radio concurrente). Utilisé
+ *  pour savoir si une fiche radio Historique Marché concerne l'une de nos
+ *  stations (et peut donc recevoir la superposition "quinzaine en cours")
+ *  ou une radio concurrente (jamais de superposition dans ce cas). */
+function graphMediametrieStationKeyFromSlug(slug){
+  if(!slug) return null;
+  if(graphMediametrieStationSlug('EUROPE2') === slug) return 'EUROPE2';
+  if(graphMediametrieStationSlug('RFM') === slug) return 'RFM';
+  return null;
 }
 /** Valeur Médiamétrie (AC%/PDA%/DEA min) de la station pour la vague dont la
  *  période d'enquête couvre la semaine de programmation donnée — même
