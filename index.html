@@ -14550,13 +14550,24 @@ function mediaTogglePeriodExpand(stKey, periodId){
  *  bloc "vague détaillée" pour être réutilisable dans la ligne dépliée
  *  d'une vague, qu'elle vienne juste d'être créée ou soit déjà ancienne. */
 function mediaWaveDetailTableHtml(stKey, period, cibles, collapsed){
+  // Comparaisons d'évolution — mêmes bases que pour un résultat définitif
+  // (vague précédente chronologique, même type de vague l'année précédente)
+  // : une seule fois par vague, réutilisées pour toutes les quinzaines/
+  // cibles/métriques ci-dessous (voir mediaFinalResultBlockHtml pour
+  // l'équivalent sur le résultat définitif publié).
+  const prevChrono = mediaFindPrevChrono(stKey, period);
+  const prevYear = mediaFindSameTypePrevYear(stKey, period);
+
   const rows = period.waves.map(wave => {
     let cibleCells = '';
     cibles.forEach(c => {
       if(collapsed.has(c.key)){ cibleCells += `<td style="padding:7px;text-align:center;color:var(--muted)">⋯</td>`; return; }
       const v = wave.cibles[c.key] || {AC:null,PDA:null,DEA:null};
       ['AC','PDA','DEA'].forEach(metric => {
-        cibleCells += `<td style="padding:5px"><input type="text" inputmode="decimal" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:48px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveMetric('${period.id}','${wave.id}','${c.key}','${metric}',this.value)"></td>`;
+        cibleCells += `<td style="padding:5px;vertical-align:top">
+          <input type="text" inputmode="decimal" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:58px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border)" onchange="mediaUpdateWaveMetric('${period.id}','${wave.id}','${c.key}','${metric}',this.value)">
+          <div style="display:flex;flex-direction:column;gap:1px;margin-top:3px">${mediaEvolutionBadge(v[metric], prevChrono, metric, 'V-1')}${mediaEvolutionBadge(v[metric], prevYear, metric, 'N-1')}</div>
+        </td>`;
       });
     });
     return `<tr>
