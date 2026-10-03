@@ -1936,6 +1936,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           📥 Importer Excel
           <input type="file" accept=".xlsx,.xls" style="display:none" onchange="handlePlaylistAttributesImport(this)">
         </label>
+        <button id="playlistAlignAllBtn" onclick="alignAllPlaylistTitles()" title="Remplace l'artiste et le titre de chaque ligne marquée ⇄ par l'orthographe exacte trouvée dans FPA (Programmation, Airplay, Call Out, classements)" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#FFF4E0;border:1.5px solid #F2C77B;color:#B05E00;cursor:pointer;font-weight:700;white-space:nowrap">🔗 Tout aligner</button>
         <button onclick="clearPlaylist()" title="Vider la Playlist de la station en cours" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#FFEAEA;border:1.5px solid #F5B8B8;color:#CC2222;cursor:pointer;font-weight:700;white-space:nowrap">Tout retirer</button>
       </div>
     </div>
@@ -1985,8 +1986,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
 
     <!-- Note explicative (repliable) -->
+    <datalist id="plArtistSuggestions"></datalist>
+    <datalist id="plTitleSuggestions"></datalist>
     <div id="infoPlaylist" style="display:none;padding:14px 18px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;margin-bottom:18px;font-size:12px;color:var(--text2);line-height:1.7">
       Cochez des titres dans <strong>Classements</strong> (via le bouton "+" à côté de chaque titre, qui propose Comité d'Écoute et/ou Playlist) pour les ajouter ici, ou utilisez <strong>➕ Ajouter un titre manuellement</strong> ci-dessus si le titre ne figure encore dans aucun classement (il se connectera automatiquement aux classements/métriques dès qu'il y apparaîtra). Chaque titre est rattaché à la station active au moment de l'ajout (<span class="station-name">Europe 2</span> ou RFM — bascule avec le bouton 🔁 ci-dessus). Renseignez pour chaque titre sa <strong>Date d'Entrée</strong>, sa <strong>Catégorie</strong> (et au besoin son <strong>Ancienne Catégorie</strong>, modifiable manuellement même si elle se met à jour automatiquement) et son <strong>Label</strong> : la liste est ensuite triée par catégorie dans l'ordre de rotation habituel, avec le Fit Score, le quadrant Fit Point de la vague en cours et les <strong>Diffusions cumulées</strong> (colonne « Diffusion Europe 2 » / « Diff RFM » des fichiers Call Out/OMT, conservées et mises à jour à chaque import) quand le titre y figure. Les cases <strong>Power (N / S / I)</strong> marquent les titres Power New, Power New Stop et Power Intro (cocher <strong>Power New Stop</strong> décoche automatiquement Power New — le titre n'est plus une nouveauté) ; <strong>🔌 Power Tab</strong> exporte ces trois listes en PDF en indiquant automatiquement les Nouveau/Out par rapport à la dernière semaine archivée. La case <strong>Call Out</strong> indique qu'un titre part en recherche (à tester) ; <strong>🎧 Call Out</strong> exporte la liste de tous les titres cochés, triée par artiste. <strong>Cliquez sur le badge d'une catégorie</strong> (en tête de chaque groupe) pour l'exclure — ou la réintégrer — du <strong>📄 PDF</strong> et de l'<strong>📊 Excel</strong> exportés, sans la retirer de la Playlist affichée ici : pratique pour les catégories de mouvement (ex. « R », « O ») qui n'ont pas besoin de figurer dans le compte-rendu envoyé en réunion. <strong>🔗 Créer un paquet</strong> lie 2 titres d'une même catégorie (ils tournent une fois sur deux). <strong>💾 Sauvegarder</strong> archive la Playlist de la semaine sur Drive, indépendamment des classements ; <strong>🗄️ Archives</strong> permet de retrouver une semaine passée ou de rechercher un titre dans l'historique.
+      <br>🔎 <strong>Correspondance avec FPA</strong> — la pastille à droite de chaque titre compare l'artiste et le titre de la Playlist aux données chargées dans FPA (Programmation de la station, Airplay Muzicast, vague Call Out en cours et historique, classements Shazam/Spotify/Deezer) : <span style="color:#1E7A3C;font-weight:700">✓</span> correspondance exacte, <span style="color:#B05E00;font-weight:700">⇄</span> titre retrouvé mais écrit autrement — cliquer pour l'aligner (ou « 🔗 Tout aligner »), <span style="color:var(--muted);font-weight:700">?</span> introuvable. Double-cliquez sur l'artiste ou le titre pour le corriger à la main (avec suggestions).
     </div>
 
     <!-- Bandeau vide -->
@@ -20409,7 +20413,7 @@ function tevEditNameField(field){
 }
 
 function tevCommitNameEdit(key, field, inputEl){
-  const t = playlistTitles.find(x => x.key === key);
+  const t = playlistTitles.find(x => x.key === key && x.station === ACTIVE_STATION) || playlistTitles.find(x => x.key === key);
   if(!t) return;
   if(inputEl.dataset.cancel === '1'){ openTevByInfo({ title: t.title, artist: t.artist }); return; }
 
@@ -20421,24 +20425,14 @@ function tevCommitNameEdit(key, field, inputEl){
   }
   if(newValue === (t[field] || '')){ openTevByInfo({ title: t.title, artist: t.artist }); return; }
 
-  const oldKey = t.key;
   const newArtist = field === 'artist' ? newValue : t.artist;
   const newTitle  = field === 'title'  ? newValue : t.title;
-  const newKey = comiteKey(newArtist, newTitle);
-
-  if(newKey !== oldKey && playlistTitles.some(x => x !== t && x.key === newKey && x.station === t.station)){
-    showToast('Un autre titre existe déjà dans cette Playlist avec cette orthographe exacte — fusionnez-les plutôt via le Comité, ou supprimez le doublon', 'err');
+  if(!applyPlaylistRename(t, newArtist, newTitle)){
     openTevByInfo({ title: t.title, artist: t.artist });
     return;
   }
-
-  t[field] = newValue;
-  if(newKey !== oldKey){
-    t.key = newKey;
-    playlistMigrateKeyedStores(oldKey, newKey);
-  }
-  playlistSaveToStorage();
   showToast('✓ ' + (field==='artist' ? 'Artiste' : 'Titre') + ' corrigé', 'success');
+  if(playlistPageOpen) renderPlaylistPage();
   openTevByInfo({ title: newTitle, artist: newArtist });
 }
 
@@ -23346,6 +23340,7 @@ function migrateSongAttributesFromPlaylist(){
 }
 
 let playlistTitles = playlistLoadFromStorage();
+repairPlaylistKeys();
 dedupePlaylistTitles();
 migrateSongAttributesFromPlaylist();
 /** Migration ponctuelle : la fiche titre lisait/écrivait un store de Genre
@@ -24314,13 +24309,14 @@ function titleCaseDisplay(str){
  *  par un champ texte pré-rempli ; Entrée ou perte de focus valide, Échap
  *  annule. */
 function playlistEditNameField(key, field){
-  const t = playlistTitles.find(x => x.key === key);
+  const t = playlistTitles.find(x => x.key === key && x.station === ACTIVE_STATION);
   if(!t) return;
   const safeId = key.replace(/[^a-z0-9]/gi, '-');
   const cell = document.getElementById(field === 'artist' ? 'pl-artist-' + safeId : 'pl-title-' + safeId);
   if(!cell) return;
   const current = t[field] || '';
-  cell.innerHTML = `<input type="text" value="${escHtml(current)}" style="width:100%;font:inherit;font-weight:700;color:var(--navy);border:1.5px solid var(--cyan);border-radius:5px;padding:2px 5px;background:var(--white)"
+  refreshPlaylistSuggestions();
+  cell.innerHTML = `<input type="text" list="${field === 'artist' ? 'plArtistSuggestions' : 'plTitleSuggestions'}" value="${escHtml(current)}" style="width:100%;font:inherit;font-weight:700;color:var(--navy);border:1.5px solid var(--cyan);border-radius:5px;padding:2px 5px;background:var(--white)"
     onclick="event.stopPropagation()"
     onkeydown="if(event.key==='Enter'){this.blur();}else if(event.key==='Escape'){this.dataset.cancel='1';this.blur();}"
     onblur="playlistCommitNameEdit('${key}','${field}',this)">`;
@@ -24337,7 +24333,7 @@ function playlistEditNameField(key, field){
  *  ne pas perdre les informations déjà saisies sous l'ancienne orthographe. */
 function playlistCommitNameEdit(key, field, inputEl){
   if(inputEl.dataset.cancel === '1'){ renderPlaylistPage(); return; }
-  const t = playlistTitles.find(x => x.key === key);
+  const t = playlistTitles.find(x => x.key === key && x.station === ACTIVE_STATION);
   if(!t){ renderPlaylistPage(); return; }
   const newValue = inputEl.value.trim();
   if(!newValue){
@@ -24347,24 +24343,11 @@ function playlistCommitNameEdit(key, field, inputEl){
   }
   if(newValue === (t[field] || '')){ renderPlaylistPage(); return; }
 
-  const oldKey = t.key;
   const newArtist = field === 'artist' ? newValue : t.artist;
   const newTitle  = field === 'title'  ? newValue : t.title;
-  const newKey = comiteKey(newArtist, newTitle);
-
-  if(newKey !== oldKey && playlistTitles.some(x => x !== t && x.key === newKey && x.station === t.station)){
-    showToast('Un autre titre existe déjà dans cette Playlist avec cette orthographe exacte — fusionnez-les plutôt via le Comité, ou supprimez le doublon', 'err');
-    renderPlaylistPage();
-    return;
+  if(applyPlaylistRename(t, newArtist, newTitle)){
+    showToast('✓ ' + (field==='artist' ? 'Artiste' : 'Titre') + ' corrigé', 'success');
   }
-
-  t[field] = newValue;
-  if(newKey !== oldKey){
-    t.key = newKey;
-    playlistMigrateKeyedStores(oldKey, newKey);
-  }
-  playlistSaveToStorage();
-  showToast('✓ ' + (field==='artist' ? 'Artiste' : 'Titre') + ' corrigé', 'success');
   renderPlaylistPage();
 }
 
@@ -24377,20 +24360,272 @@ function playlistCommitNameEdit(key, field, inputEl){
  *  migrés : laisser le titre se re-matcher sous la nouvelle orthographe est
  *  précisément le but de la correction. */
 function playlistMigrateKeyedStores(oldKey, newKey){
+  // Si l'ancienne orthographe reste utilisée par un autre titre de la
+  // Playlist (même titre dans l'autre station, pas encore corrigé), on
+  // COPIE plutôt que de déplacer, pour ne pas lui retirer ses infos.
+  const stillUsed = playlistTitles.some(x => x.key === oldKey);
   if(songAttributes[oldKey] && !songAttributes[newKey]){
-    songAttributes[newKey] = songAttributes[oldKey];
-    delete songAttributes[oldKey];
+    songAttributes[newKey] = stillUsed ? JSON.parse(JSON.stringify(songAttributes[oldKey])) : songAttributes[oldKey];
+    if(!stillUsed) delete songAttributes[oldKey];
     songAttributesSaveToStorage();
   }
   if(songDiffusions[oldKey] !== undefined && songDiffusions[newKey] === undefined){
-    songDiffusions[newKey] = songDiffusions[oldKey];
-    delete songDiffusions[oldKey];
+    songDiffusions[newKey] = stillUsed ? JSON.parse(JSON.stringify(songDiffusions[oldKey])) : songDiffusions[oldKey];
+    if(!stillUsed) delete songDiffusions[oldKey];
     songDiffusionsSaveToStorage();
   }
   if(playlistExpandedKeys.has(oldKey)){
     playlistExpandedKeys.delete(oldKey);
     playlistExpandedKeys.add(newKey);
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CORRESPONDANCE PLAYLIST ↔ RESTE DE FPA — pastille ✓ / ⇄ / ? sur chaque
+// titre + alignement automatique sur l'orthographe trouvée dans les données
+// chargées. Le reste de l'appli matche le plus souvent par similarité
+// (findInChart, findRow360Match, getTitleVagueSeries...), mais une écriture
+// identique garantit le match partout — y compris pour les stores à clé
+// exacte (Song Attributs, Diffusions cumulées, Airplay k1, appartenance
+// Playlist depuis les classements) — et évite qu'un écart d'orthographe
+// fasse tomber un titre sous les seuils de similarité.
+// ══════════════════════════════════════════════════════════════════════════
+
+/** Applique un nouveau couple artiste/titre à une entrée Playlist : recalcule
+ *  la clé (comiteKey(titre, artiste) — même ordre d'arguments que partout
+ *  ailleurs), refuse un doublon dans la même station, migre les stores
+ *  annexes. Renvoie true si appliqué. */
+function applyPlaylistRename(t, artist, title, opts = {}){
+  const newKey = comiteKey(title, artist);
+  if(newKey !== t.key && playlistTitles.some(x => x !== t && x.key === newKey && x.station === t.station)){
+    if(!opts.silent) showToast('Un autre titre existe déjà dans cette Playlist avec cette orthographe — supprimez le doublon', 'err');
+    return false;
+  }
+  const oldKey = t.key;
+  t.artist = artist;
+  t.title  = title;
+  if(newKey !== oldKey){
+    t.key = newKey;
+    playlistMigrateKeyedStores(oldKey, newKey);
+  }
+  playlistSaveToStorage();
+  return true;
+}
+
+/** Réparation : une version précédente de la correction d'orthographe
+ *  calculait la clé avec les arguments inversés (titre|||artiste au lieu
+ *  d'artiste|||titre) — le titre corrigé ne retrouvait alors plus ses Song
+ *  Attributs / Diffusions ni son état \"dans la Playlist\" depuis les
+ *  classements. On recalcule les clés au chargement (idempotent). */
+function repairPlaylistKeys(){
+  let changed = false;
+  playlistTitles.forEach(t => {
+    if(!t || !t.title || !t.artist) return;
+    const good = comiteKey(t.title, t.artist);
+    if(t.key !== good){
+      if(t.key === comiteKey(t.artist, t.title)) t._wrongKey = t.key; // clé inversée : stores à rapatrier plus tard
+      t.key = good;
+      changed = true;
+    }
+  });
+  if(changed) playlistSaveToStorage();
+}
+/** Rapatrie les Song Attributs / Diffusions enregistrés sous une clé
+ *  inversée — fait au rendu (et pas au chargement) car ces stores sont
+ *  chargés de façon asynchrone depuis IndexedDB. */
+function repairPlaylistKeyedStores(){
+  let changed = false;
+  playlistTitles.forEach(t => {
+    if(!t._wrongKey) return;
+    const wrong = t._wrongKey, good = t.key;
+    if(typeof songAttributes !== 'undefined' && songAttributes[wrong]){
+      if(!songAttributes[good]) songAttributes[good] = songAttributes[wrong];
+      else Object.keys(songAttributes[wrong]).forEach(f => { if(!songAttributes[good][f] && songAttributes[wrong][f]) songAttributes[good][f] = songAttributes[wrong][f]; });
+      delete songAttributes[wrong];
+      songAttributesSaveToStorage();
+    }
+    if(typeof songDiffusions !== 'undefined' && songDiffusions[wrong] !== undefined){
+      if(songDiffusions[good] === undefined) songDiffusions[good] = songDiffusions[wrong];
+      delete songDiffusions[wrong];
+      songDiffusionsSaveToStorage();
+    }
+    delete t._wrongKey;
+    changed = true;
+  });
+  if(changed) playlistSaveToStorage();
+}
+
+/** Similarité tolérante aux fautes de frappe : max entre la similarité
+ *  par mots de l'appli (similarity) et un coefficient de Dice sur les
+ *  bigrammes de caractères — \"Nakamra\" vs \"Nakamura\" n'a aucun mot en
+ *  commun mais presque tous ses bigrammes. */
+function plTypoSimilarity(a, b){
+  const base = similarity(a, b);
+  const na = norm(a).replace(/ /g, ''), nb = norm(b).replace(/ /g, '');
+  if(na.length < 2 || nb.length < 2) return base;
+  const grams = str => { const m = new Map(); for(let i=0;i<str.length-1;i++){ const g = str.slice(i,i+2); m.set(g, (m.get(g)||0)+1); } return m; };
+  const ga = grams(na), gb = grams(nb);
+  let inter = 0;
+  ga.forEach((n, g) => { if(gb.has(g)) inter += Math.min(n, gb.get(g)); });
+  const dice = (2 * inter) / ((na.length - 1) + (nb.length - 1));
+  return Math.max(base, dice);
+}
+
+/** Index des titres connus de FPA (dédoublonné par clé, la 1re source dans
+ *  l'ordre de priorité gagne), reconstruit seulement quand les sources
+ *  changent. */
+var __plRefIndex = null, __plRefSig = '';
+function playlistReferenceSources(){
+  const sources = [];
+  const push = (label, list) => { if(list && list.length) sources.push({label, list}); };
+  // 1. Programmation exhaustive de la station active (Yacast/Muzicast)
+  if(typeof analyseRows !== 'undefined' && analyseRows && analyseRows.length
+     && (!analyseWeekMeta || !analyseWeekMeta.station || analyseWeekMeta.station === analyseStationKey())){
+    push('Programmation ' + STATION_LABELS[ACTIVE_STATION], analyseRows.map(r => ({artist:r.artist, title:r.title})));
+  }
+  // 2. Airplay Muzicast (toutes radios)
+  if(typeof airplayData !== 'undefined' && airplayData){
+    const seen = new Set(), list = [];
+    Object.values(airplayData).forEach(e => { if(e && e.title && e.artist && !seen.has(e)){ seen.add(e); list.push({artist:String(e.artist), title:String(e.title)}); } });
+    push('Airplay Muzicast', list);
+  }
+  // 3. Vague Call Out / OMT en cours
+  if(typeof analysisResult !== 'undefined' && analysisResult && analysisResult.length){
+    push('Call Out (vague en cours)', analysisResult.filter(r => r.title && r.artist).map(r => ({artist:String(r.artist), title:String(r.title)})));
+  }
+  // 4. Historique Call Out / OMT
+  try{
+    const list = [];
+    (histLoad() || []).forEach(v => (v.sheets || []).forEach(sh => (sh.rows || []).forEach(r => { if(r.t && r.a) list.push({artist:String(r.a), title:String(r.t)}); })));
+    push('Historique Call Out', list);
+  }catch(e){ /* historique indisponible */ }
+  // 5. Classements digitaux
+  const chartList = obj => Object.values(obj || {}).filter(e => e && (e.t||e.title) && (e.a||e.artist)).map(e => ({artist:String(e.a||e.artist), title:String(e.t||e.title)}));
+  if(typeof chartsData !== 'undefined' && chartsData){ push('Shazam FR', chartList(chartsData.fr)); push('Shazam Monde', chartList(chartsData.ww)); }
+  if(typeof spotifyData !== 'undefined') push('Spotify', chartList(spotifyData));
+  if(typeof deezerData  !== 'undefined') push('Deezer', chartList(deezerData));
+  return sources;
+}
+function plIsAllCaps(str){ return /[A-Za-zÀ-ÿ]/.test(str) && str === str.toUpperCase(); }
+/** Texte à adopter lors d'un alignement : l'écriture trouvée dans FPA, sauf
+ *  si elle est TOUT EN MAJUSCULES (export Yacast/Muzicast) — on la remet
+ *  alors en casse de titre, comme l'affichage, pour ne pas faire apparaître
+ *  des majuscules dans les exports qui reprennent le texte brut. */
+function plAlignText(str){ return plIsAllCaps(str) ? titleCaseDisplay(str) : str; }
+function playlistReferenceIndex(refresh){
+  if(__plRefIndex && !refresh) return __plRefIndex;
+  const sources = playlistReferenceSources();
+  const sig = sources.map(s => s.label + ':' + s.list.length + ':' + (s.list[0] ? s.list[0].title : '')).join('|');
+  if(__plRefIndex && sig === __plRefSig) return __plRefIndex;
+  const byKey = new Map();
+  sources.forEach(s => s.list.forEach(r => {
+    const artist = r.artist.trim(), title = r.title.trim();
+    if(!artist || !title) return;
+    const key = comiteKey(title, artist);
+    if(!key || key === '|||') return;
+    if(byKey.has(key)){
+      const e = byKey.get(key);
+      if(!e.sources.includes(s.label)) e.sources.push(s.label);
+      // Préfère une écriture en casse normale à une écriture TOUT EN MAJUSCULES (exports Yacast/Muzicast)
+      if(plIsAllCaps(e.artist) && !plIsAllCaps(artist)) e.artist = artist;
+      if(plIsAllCaps(e.title)  && !plIsAllCaps(title))  e.title  = title;
+      return;
+    }
+    byKey.set(key, {key, artist, title, nA: norm(artist), nT: norm(title), sources:[s.label]});
+  }));
+  __plRefIndex = {byKey, list:[...byKey.values()], hasData: sources.length > 0};
+  __plRefSig = sig;
+  __plMatchCache = new Map();
+  __plSuggestSig = '';
+  return __plRefIndex;
+}
+
+/** status : 'ok' (même clé qu'un titre connu de FPA), 'fix' (retrouvé par
+ *  similarité, écrit autrement — sure=false si la correspondance est
+ *  seulement probable), 'none' (introuvable), 'nodata' (rien de chargé). */
+var __plMatchCache = new Map();
+function playlistPlatformMatch(t){
+  const idx = playlistReferenceIndex();
+  if(!idx.hasData) return {status:'nodata'};
+  const cacheKey = t.key + '#' + t.artist + '#' + t.title;
+  if(__plMatchCache.has(cacheKey)) return __plMatchCache.get(cacheKey);
+  let res;
+  const exact = idx.byKey.get(t.key);
+  if(exact) res = {status:'ok', ref:exact};
+  else {
+    const nT = norm(t.title || ''), nA = norm(t.artist || '');
+    let best = null, bestScore = 0, bestTs = 0, bestAs = 0;
+    idx.list.forEach(r => {
+      const ts = plTypoSimilarity(nT, r.nT);
+      if(ts < 0.6) return;
+      const as = plTypoSimilarity(nA, r.nA);
+      if(as < 0.4) return;
+      const score = ts * 0.6 + as * 0.4;
+      if(score > bestScore){ bestScore = score; best = r; bestTs = ts; bestAs = as; }
+    });
+    if(best && bestScore >= 0.65) res = {status:'fix', ref:best, sure: bestScore >= 0.85 && bestTs >= 0.8, score:bestScore};
+    else res = {status:'none'};
+  }
+  __plMatchCache.set(cacheKey, res);
+  return res;
+}
+function playlistMatchBadge(t){
+  const m = playlistPlatformMatch(t);
+  const base = 'flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;font-size:9.5px;font-weight:800;line-height:1;padding:0;font-family:inherit;border:1.5px solid;';
+  if(m.status === 'nodata') return '';
+  if(m.status === 'ok') return `<span onclick="event.stopPropagation()" title="Correspondance exacte — ${escHtml(m.ref.sources.join(', '))}" style="${base}background:#E6F6EC;border-color:#A8DDB9;color:#1E7A3C;cursor:default">✓</span>`;
+  if(m.status === 'none') return `<span onclick="event.stopPropagation()" title="Introuvable dans les données chargées de FPA (Programmation, Airplay, Call Out, classements)" style="${base}background:var(--bg);border-color:var(--border);color:var(--muted);cursor:default">?</span>`;
+  const tip = (m.sure ? 'Écrit autrement dans FPA' : 'Correspondance probable (à vérifier)')
+    + ' — ' + titleCaseDisplay(m.ref.artist) + ' – ' + titleCaseDisplay(m.ref.title)
+    + ' (' + m.ref.sources.join(', ') + ')\nCliquer pour aligner';
+  return `<button onclick="event.stopPropagation();alignPlaylistTitle('${t.key}')" title="${escHtml(tip)}" style="${base}background:${m.sure?'#FFF4E0':'#FFF9EE'};border-color:${m.sure?'#F2C77B':'#F5DDB0'};color:#B05E00;cursor:pointer">⇄</button>`;
+}
+function alignPlaylistTitle(key){
+  const t = playlistTitles.find(x => x.key === key && x.station === ACTIVE_STATION);
+  if(!t) return;
+  const m = playlistPlatformMatch(t);
+  if(m.status !== 'fix') return;
+  if(applyPlaylistRename(t, plAlignText(m.ref.artist), plAlignText(m.ref.title))){
+    showToast('✓ Aligné : ' + titleCaseDisplay(m.ref.artist) + ' – ' + titleCaseDisplay(m.ref.title), 'success');
+  }
+  renderPlaylistPage();
+}
+function alignAllPlaylistTitles(){
+  const idx = playlistReferenceIndex(true);
+  if(!idx.hasData){ showToast('Aucune donnée chargée dans FPA pour comparer (Programmation, Airplay, Call Out, classements)', 'err'); return; }
+  const todo = playlistTitles.filter(t => t.station === ACTIVE_STATION)
+    .map(t => ({t, m: playlistPlatformMatch(t)})).filter(x => x.m.status === 'fix');
+  if(!todo.length){ showToast('✓ Aucun titre à aligner dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'success'); return; }
+  const fmt = (a, ti) => titleCaseDisplay(a) + ' – ' + titleCaseDisplay(ti);
+  const preview = todo.slice(0, 15).map(x => '• ' + fmt(x.t.artist, x.t.title) + '\n   → ' + fmt(x.m.ref.artist, x.m.ref.title) + (x.m.sure ? '' : '   (probable, à vérifier)')).join('\n');
+  if(!confirm('Aligner ' + todo.length + ' titre(s) de la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' sur l\'orthographe de FPA ?\n\n' + preview + (todo.length > 15 ? '\n… et ' + (todo.length - 15) + ' autre(s)' : ''))) return;
+  let done = 0, skipped = 0;
+  todo.forEach(x => { if(applyPlaylistRename(x.t, plAlignText(x.m.ref.artist), plAlignText(x.m.ref.title), {silent:true})) done++; else skipped++; });
+  renderPlaylistPage();
+  showToast('✓ ' + done + ' titre(s) aligné(s)' + (skipped ? ' — ' + skipped + ' ignoré(s) (doublon dans la Playlist)' : ''), skipped ? 'err' : 'success');
+}
+function updatePlaylistAlignAllBtn(stationTitles){
+  const btn = document.getElementById('playlistAlignAllBtn');
+  if(!btn) return;
+  const n = stationTitles.filter(t => playlistPlatformMatch(t).status === 'fix').length;
+  btn.textContent = '🔗 Tout aligner' + (n ? ' (' + n + ')' : '');
+  btn.disabled = !n;
+  btn.style.opacity = n ? '1' : '.5';
+  btn.style.cursor = n ? 'pointer' : 'default';
+}
+/** Suggestions (autocomplétion) pour la correction manuelle Artiste/Titre. */
+var __plSuggestSig = '';
+function refreshPlaylistSuggestions(){
+  const idx = playlistReferenceIndex();
+  const sig = __plRefSig;
+  if(sig === __plSuggestSig) return;
+  __plSuggestSig = sig;
+  const aEl = document.getElementById('plArtistSuggestions');
+  const tEl = document.getElementById('plTitleSuggestions');
+  const artists = [...new Set(idx.list.map(r => r.artist))].sort((a, b) => a.localeCompare(b));
+  const titles = idx.list.slice().sort((a, b) => a.title.localeCompare(b.title));
+  if(aEl) aEl.innerHTML = artists.map(a => `<option value="${escHtml(a)}">`).join('');
+  if(tEl) tEl.innerHTML = titles.map(r => `<option value="${escHtml(r.title)}" label="${escHtml(titleCaseDisplay(r.artist))}">`).join('');
 }
 
 function buildPlaylistRow(t, metrics, row360){
@@ -24473,6 +24708,7 @@ function buildPlaylistRow(t, metrics, row360){
     <div id="pl-artist-${safeId}" style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text" title="${escHtml(titleCaseDisplay(t.artist))} (double-clic pour corriger l'orthographe)" ondblclick="event.stopPropagation();playlistEditNameField('${t.key}','artist')">${escHtml(titleCaseDisplay(t.artist))}</div>
     <div style="padding:7px 6px;cursor:pointer;display:flex;align-items:center;gap:5px;min-width:0" onclick="${playlistLinkMode ? `togglePlaylistLinkSelect('${t.key}','${catNorm}')` : `togglePlaylistExpand('${t.key}')`}">
       <div id="pl-title-${safeId}" style="font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;cursor:text" title="${escHtml(titleCaseDisplay(t.title))} (double-clic pour corriger l'orthographe)" ondblclick="event.stopPropagation();playlistEditNameField('${t.key}','title')">${escHtml(titleCaseDisplay(t.title))}</div>
+      ${playlistMatchBadge(t)}
       ${bundleBadge}
     </div>
     <div style="padding:4px">
@@ -24559,7 +24795,10 @@ async function renderPlaylistPage(){
   updateStationToggleUI();
   updatePlaylistValidityUI();
 
+  repairPlaylistKeyedStores();
+  playlistReferenceIndex(true);
   const stationTitles = playlistTitles.filter(t => t.station === ACTIVE_STATION);
+  updatePlaylistAlignAllBtn(stationTitles);
 
   if(!stationTitles.length){
     playlistShowEmpty('🎵 Aucun titre dans la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' pour l\'instant. Dans <strong>Classements</strong>, utilisez le bouton « + » à côté d\'un titre puis cochez « Playlist » pour l\'ajouter ici.');
