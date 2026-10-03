@@ -2223,7 +2223,32 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <select id="digitalAudienceWeekSelect" style="font-size:12px;padding:8px 12px;border-radius:8px" onchange="digitalAudienceUI.week=this.value;renderDigitalAudienceDetail()"></select>
           <span style="font-size:11px;color:var(--muted);font-weight:700">Comparer à :</span>
           <select id="digitalAudienceCompareSelect" style="font-size:12px;padding:8px 12px;border-radius:8px" onchange="digitalAudienceUI.compareWeek=this.value;renderDigitalAudienceDetail()" title="Choisir une semaine de comparaison précise, en plus des évolutions S-1 / 1 an déjà fournies par le PDF"></select>
+          <button class="btn-ghost" style="font-size:11px;padding:8px 12px" onclick="openDigitalAudienceEditWeekModal()" title="Compléter ou corriger à la main les données de cette semaine, quand l'import PDF n'a pas tout détecté">✏️ Corriger cette semaine</button>
           <span id="digitalAudienceWeekCount" style="font-size:11px;color:var(--muted);margin-left:auto"></span>
+        </div>
+
+        <!-- Modale : correction manuelle d'une semaine déjà archivée (import PDF incomplet) -->
+        <div id="digitalAudienceEditWeekModal" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:3000;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this) closeDigitalAudienceEditWeekModal()">
+          <div style="background:var(--white);border-radius:14px;padding:24px;max-width:560px;width:100%;max-height:90vh;overflow:auto">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy)">✏️ Corriger cette semaine</div>
+              <button onclick="closeDigitalAudienceEditWeekModal()" style="background:var(--bg);border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:15px;color:var(--text2);flex-shrink:0">✕</button>
+            </div>
+            <div style="font-size:11.5px;color:var(--muted);margin-bottom:16px">Utile quand l'import du PDF n'a pas détecté certaines valeurs — laissez un champ vide pour l'effacer (affiché "n/d" ensuite).</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+              <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Début de semaine</label><input type="date" id="daudEditWeekStart" style="font-size:12px;padding:8px 10px;border-radius:8px;width:100%"></div>
+              <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Fin de semaine</label><input type="date" id="daudEditWeekEnd" style="font-size:12px;padding:8px 10px;border-radius:8px;width:100%"></div>
+              <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Sessions &gt;30s</label><input type="number" id="daudEditSessions" style="font-size:12px;padding:8px 10px;border-radius:8px;width:100%"></div>
+              <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Visiteurs uniques</label><input type="number" id="daudEditUniques" style="font-size:12px;padding:8px 10px;border-radius:8px;width:100%"></div>
+              <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Audience moy. (5h-24h)</label><input type="number" id="daudEditAudience" style="font-size:12px;padding:8px 10px;border-radius:8px;width:100%"></div>
+              <div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:3px">Durée moy. (secondes)</label><input type="number" id="daudEditDuree" style="font-size:12px;padding:8px 10px;border-radius:8px;width:100%"></div>
+            </div>
+            <div style="font-size:10.5px;color:var(--muted);margin-bottom:16px">Le détail quotidien, les tranches horaires et le contexte de la semaine ne sont pas modifiables ici — dites-le-moi si vous en avez besoin aussi.</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="saveDigitalAudienceEditedWeek()">Enregistrer</button>
+              <button class="btn-ghost" style="font-size:11px;padding:9px 14px" onclick="closeDigitalAudienceEditWeekModal()">Annuler</button>
+            </div>
+          </div>
         </div>
 
         <!-- En-tête station -->
@@ -2363,10 +2388,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <!-- Sous-page Médiamétrie (vagues, quinzaines/intermédiaires, historique) -->
     <div id="analyseMediaContainer" style="display:none">
 
-      <!-- Onglets internes : résultats live de la station de référence vs historique de marché toutes radios -->
+      <!-- Onglets internes : résultats live de la station de référence vs historique de marché toutes radios vs intermédiaires concurrence -->
       <div style="display:flex;gap:4px;margin-bottom:16px">
         <button id="mediaInnerTabLiveBtn" class="btn-ghost" style="font-size:11.5px;font-weight:800;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border)" onclick="mediaSetInnerTab('live')">📻 Résultats par cible</button>
         <button id="mediaInnerTabMarcheBtn" class="btn-ghost" style="font-size:11.5px;font-weight:800;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border)" onclick="mediaSetInnerTab('marche')">📊 Historique Marché</button>
+        <button id="mediaInnerTabInterimBtn" class="btn-ghost" style="font-size:11.5px;font-weight:800;padding:7px 14px;border-radius:8px;border:1.5px solid var(--border)" onclick="mediaSetInnerTab('interim')">🆚 Intermédiaires concurrence</button>
       </div>
 
       <div id="mediaInnerLive">
@@ -2379,6 +2405,13 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div id="mediaInnerMarche" style="display:none">
         <div id="marcheEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
         <div id="marcheArea"></div>
+      </div>
+
+      <!-- Intermédiaires concurrence : vagues/quinzaines saisies à la main, AC/PDA
+           pour toutes les radios, comparées automatiquement à Historique Marché. -->
+      <div id="mediaInnerInterim" style="display:none">
+        <div id="interimEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
+        <div id="interimArea"></div>
       </div>
 
     </div>
@@ -13143,6 +13176,63 @@ function renderDigitalAudiencePage(){
   renderDigitalAudienceHistoryTable();
 }
 
+/** Correction manuelle d'une semaine DÉJÀ ARCHIVÉE — contrairement au
+ *  formulaire de relecture affiché juste après l'import d'un PDF (qui ne
+ *  permet de corriger qu'au moment même de l'import), ce bouton permet de
+ *  revenir compléter ou corriger une semaine plus tard, quand un trou est
+ *  remarqué après coup. Ne couvre que les 4 indicateurs principaux (comme
+ *  le formulaire d'import) — pas le détail quotidien, les tranches horaires
+ *  ni le contexte, plus complexes à éditer un par un. */
+function openDigitalAudienceEditWeekModal(){
+  const stKey = digitalAudienceUI.station;
+  const weekKey = digitalAudienceUI.week;
+  const rec = weekKey && digitalAudienceHistory[stKey] ? digitalAudienceHistory[stKey][weekKey] : null;
+  if(!rec){ showToast('Choisissez d\'abord une semaine à corriger', 'err'); return; }
+  document.getElementById('daudEditWeekStart').value = rec.weekStart || weekKey || '';
+  document.getElementById('daudEditWeekEnd').value = rec.weekEnd || '';
+  document.getElementById('daudEditSessions').value = rec.sessions ?? '';
+  document.getElementById('daudEditUniques').value = rec.uniques ?? '';
+  document.getElementById('daudEditAudience').value = rec.audienceMoyenne ?? '';
+  document.getElementById('daudEditDuree').value = rec.dureeSec ?? '';
+  document.getElementById('digitalAudienceEditWeekModal').style.display = 'flex';
+}
+function closeDigitalAudienceEditWeekModal(){
+  const modal = document.getElementById('digitalAudienceEditWeekModal');
+  if(modal) modal.style.display = 'none';
+}
+function saveDigitalAudienceEditedWeek(){
+  const stKey = digitalAudienceUI.station;
+  const oldKey = digitalAudienceUI.week;
+  const rec = oldKey && digitalAudienceHistory[stKey] ? digitalAudienceHistory[stKey][oldKey] : null;
+  if(!rec) return;
+
+  const newWeekStart = document.getElementById('daudEditWeekStart').value;
+  if(!newWeekStart){ showToast('La date de début de semaine est obligatoire', 'err'); return; }
+  rec.weekStart = newWeekStart;
+  rec.weekEnd = document.getElementById('daudEditWeekEnd').value || null;
+  const num = id => { const v = document.getElementById(id).value; return v==='' ? null : parseFloat(v); };
+  rec.sessions = num('daudEditSessions');
+  rec.uniques = num('daudEditUniques');
+  rec.audienceMoyenne = num('daudEditAudience');
+  rec.dureeSec = num('daudEditDuree');
+  rec.correctedAt = new Date().toISOString();
+
+  // Si la date de début a changé, la semaine doit être rangée sous sa
+  // nouvelle clé (digitalAudienceHistory est indexé par weekStart) — on
+  // déplace l'enregistrement plutôt que de le dupliquer.
+  if(newWeekStart !== oldKey){
+    delete digitalAudienceHistory[stKey][oldKey];
+    digitalAudienceHistory[stKey][newWeekStart] = rec;
+    digitalAudienceUI.week = newWeekStart;
+  }
+
+  digitalAudienceSaveLocal();
+  if(DRIVE_SYNC_URL) digitalAudienceSaveToDrive();
+  closeDigitalAudienceEditWeekModal();
+  showToast('✓ Semaine corrigée', 'success');
+  renderDigitalAudienceDetail();
+}
+
 function renderDigitalAudienceDetail(){
   const stKey = digitalAudienceUI.station;
   const weeks = digitalAudienceWeekKeys(stKey);
@@ -14271,7 +14361,15 @@ function mediaComputeLiveAvgForRange(stKey, start, end){
   if(!weeks.length) return null;
   const vals = weeks.map(w => digitalAudienceHistory[stKey][w].audienceMoyenne);
   const avg = vals.reduce((s,v) => s+v, 0) / vals.length;
-  return { avg, count: weeks.length };
+  // Sessions et visiteurs uniques : cumulés (pas moyennés) sur les semaines
+  // de la période — une quinzaine/vague couvre plusieurs semaines de
+  // fréquentation réelle, le total cumulé est la lecture la plus utile
+  // (contrairement à l'audience moyenne, qui est un niveau et se moyenne).
+  const sumField = field => weeks.reduce((s,w) => {
+    const v = digitalAudienceHistory[stKey][w][field];
+    return s + (typeof v === 'number' ? v : 0);
+  }, 0);
+  return { avg, count: weeks.length, sessions: sumField('sessions'), uniques: sumField('uniques') };
 }
 function mediaComputePeriodLiveAvg(stKey, period){
   if(!period.waves || !period.waves.length) return null;
@@ -14287,13 +14385,13 @@ function mediaComputePeriodLiveAvg(stKey, period){
 function mediaPeriodLiveInnerHtml(stKey, period){
   const liveAvg = mediaComputePeriodLiveAvg(stKey, period);
   return liveAvg
-    ? `<div style="font-size:16px;font-weight:800;color:var(--navy)">${digitalAudienceFmtInt(liveAvg.avg)}</div><div style="font-size:9.5px;color:var(--muted)">${liveAvg.count} semaine(s) · ${digitalAudienceFmtDate(liveAvg.rangeStart)} → ${digitalAudienceFmtDate(liveAvg.rangeEnd)}</div>`
+    ? `<div style="font-size:16px;font-weight:800;color:var(--navy)">${digitalAudienceFmtInt(liveAvg.avg)}</div><div style="font-size:9.5px;color:var(--muted)">${liveAvg.count} semaine(s) · ${digitalAudienceFmtDate(liveAvg.rangeStart)} → ${digitalAudienceFmtDate(liveAvg.rangeEnd)}</div><div style="font-size:10.5px;color:var(--text2);margin-top:4px">${digitalAudienceFmtInt(liveAvg.sessions)} sessions · ${digitalAudienceFmtInt(liveAvg.uniques)} visiteurs uniques</div>`
     : `<div style="font-size:11px;color:var(--muted)">dates de quinzaines incomplètes</div>`;
 }
 function mediaLiveCellHtml(stKey, wave){
   const calc = mediaComputeLiveAvgForRange(stKey, wave.dateStart, wave.dateEnd);
   return calc
-    ? `<div style="font-size:12px;font-weight:700;color:var(--navy)">${digitalAudienceFmtInt(calc.avg)}</div><div style="font-size:9px;color:var(--muted)">${calc.count} sem.</div>`
+    ? `<div style="font-size:12px;font-weight:700;color:var(--navy)">${digitalAudienceFmtInt(calc.avg)}</div><div style="font-size:9px;color:var(--muted)">${calc.count} sem.</div><div style="font-size:9px;color:var(--text2);margin-top:3px;white-space:nowrap">${digitalAudienceFmtInt(calc.sessions)} sessions</div><div style="font-size:9px;color:var(--text2);white-space:nowrap">${digitalAudienceFmtInt(calc.uniques)} uniques</div>`
     : `<div style="font-size:10.5px;color:var(--muted)">${(wave.dateStart&&wave.dateEnd) ? 'aucune semaine live' : 'dates non saisies'}</div>`;
 }
 
@@ -14451,6 +14549,25 @@ function mediaUpdateWaveMetric(periodId, waveId, cibleKey, metric, value){
  *  dense (chiffres qui ne s'enregistrent pas) — un champ texte avec un
  *  masque simple jj/mm/aaaa contourne entièrement le problème : on tape 8
  *  chiffres à la suite, les "/" s'insèrent automatiquement. */
+/** Retrouve la dernière vague officielle Historique Marché AVANT une vague
+ *  donnée (waveType+year), même si cette vague elle-même n'existe pas
+ *  encore dans marcheHistory (c'est précisément le cas d'une vague en cours
+ *  d'Intermédiaires concurrence, pas encore publiée officiellement) —
+ *  contrairement à marcheFindPrevChrono, qui exige que la vague demandée
+ *  existe déjà. */
+function interimFindPrevChronoWave(waveType, year){
+  const key = year*12 + MARCHE_WAVE_MONTH[waveType];
+  let best = null, bestKey = -1;
+  Object.values(marcheHistory.waves || {}).forEach(w => {
+    const k = marcheWaveSortKey(w);
+    if(k !== null && k < key && k > bestKey){ bestKey = k; best = w; }
+  });
+  return best;
+}
+function interimFindSameTypePrevYearWave(waveType, year){
+  return marcheHistory.waves[marcheWaveId(waveType, year-1)] || null;
+}
+
 function mediaDateToFr(iso){
   if(!iso) return '';
   const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
@@ -14629,7 +14746,7 @@ function mediaRenderHistoryTable(stKey){
 
     let seasonRow = '';
     const season = mediaSeasonLabel(period);
-    if(season && season !== lastSeason){ seasonRow = `<tr><td colspan="6" style="padding:10px;font-size:11px;font-weight:800;color:var(--navy);background:var(--bg)">${escHtml(season)}</td></tr>`; lastSeason = season; }
+    if(season && season !== lastSeason){ seasonRow = `<tr><td colspan="6" style="padding:13px 14px;font-size:17px;font-weight:800;color:#fff;background:var(--navy);font-family:var(--font-display);letter-spacing:.01em">${escHtml(season)}</td></tr>`; lastSeason = season; }
 
     const detailToggle = hasWaves
       ? `<button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaTogglePeriodExpand('${stKey}','${period.id}')" title="${isExpanded?'Replier':'Déplier'} le détail par quinzaine">${isExpanded?'▾':'▸'} ${period.waves.length} quinz.</button>`
@@ -14666,6 +14783,123 @@ function mediaRenderHistoryTable(stKey){
         <th style="padding:7px 10px"></th>
       </tr></thead>
       <tbody>${rows || '<tr><td colspan="6" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune vague</td></tr>'}</tbody>
+    </table>
+  </div>`;
+}
+
+/** Page "Intermédiaires concurrence" — une seule série de vagues/quinzaines
+ *  partagée entre toutes les radios (contrairement à "Résultats par cible",
+ *  propre à chaque station) : AC/PDA par radio, par quinzaine, avec
+ *  comparaison automatique à Historique Marché (vague précédente, même
+ *  vague l'an dernier) dès qu'un chiffre est saisi. */
+function renderInterimPage(){
+  const emptyBar = document.getElementById('interimEmptyBar');
+  const area = document.getElementById('interimArea');
+  if(!emptyBar || !area) return;
+
+  const radios = interimGetAllRadios();
+  if(!radios.length){
+    emptyBar.style.display = 'block';
+    emptyBar.textContent = "Aucune radio connue — importez d'abord au moins une vague dans Historique Marché pour que la liste des radios soit disponible ici.";
+    area.innerHTML = '';
+    return;
+  }
+  emptyBar.style.display = 'none';
+
+  const sorted = interimSortedPeriods().reverse();
+  let lastSeason = null;
+  const periodsHtml = sorted.length ? sorted.map(period => {
+    const isExpanded = interimUI.expandedPeriods.has(period.id);
+    const hasWaves = period.waves && period.waves.length > 0;
+
+    let seasonRow = '';
+    const season = interimSeasonLabel(period);
+    if(season && season !== lastSeason){ seasonRow = `<div style="padding:13px 14px;font-size:17px;font-weight:800;color:#fff;background:var(--navy);font-family:var(--font-display);letter-spacing:.01em;border-radius:8px;margin-bottom:10px">${escHtml(season)}</div>`; lastSeason = season; }
+
+    const detailToggle = hasWaves
+      ? `<button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="interimTogglePeriodExpand('${period.id}')" title="${isExpanded?'Replier':'Déplier'} le détail par quinzaine">${isExpanded?'▾':'▸'} ${period.waves.length} quinz.</button>`
+      : `<button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="interimAddWave('${period.id}');interimUI.expandedPeriods.add('${period.id}');renderInterimPage()">+ Quinzaines</button>`;
+
+    const headerRow = `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--white);border:1.5px solid var(--border);border-radius:${isExpanded?'10px 10px 0 0':'10px'}">
+      <span style="font-size:12px;font-weight:700;white-space:nowrap">${mediaWaveTypePill(period)}${escHtml(period.label)}</span>
+      <span style="margin-left:auto"></span>
+      ${detailToggle}
+      <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="interimRemovePeriod('${period.id}')" title="Supprimer cette vague">🗑</button>
+    </div>`;
+
+    const detailBlock = (hasWaves && isExpanded) ? `<div style="border:1.5px solid var(--border);border-top:none;border-radius:0 0 10px 10px;padding:14px;background:var(--bg)">
+      ${interimWaveDetailTableHtml(period, radios)}
+      <div style="margin-top:10px"><button class="btn-ghost" style="font-size:10.5px;padding:6px 12px" onclick="interimAddWave('${period.id}')">+ Ajouter une quinzaine</button></div>
+    </div>` : '';
+
+    return seasonRow + `<div style="margin-bottom:12px">${headerRow}${detailBlock}</div>`;
+  }).join('') : '<div style="padding:16px;color:var(--muted);font-size:12.5px">Aucune vague créée pour l\'instant.</div>';
+
+  area.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+      <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="interimAddPeriod()">+ Ajouter une vague</button>
+      <span style="font-size:11.5px;color:var(--muted)">${radios.length} radio(s) disponible(s) à la saisie</span>
+    </div>
+    ${periodsHtml}
+  `;
+}
+function interimTogglePeriodExpand(periodId){
+  if(interimUI.expandedPeriods.has(periodId)) interimUI.expandedPeriods.delete(periodId);
+  else interimUI.expandedPeriods.add(periodId);
+  renderInterimPage();
+}
+
+/** Tableau d'une vague Intermédiaires concurrence : une ligne par radio, un
+ *  groupe de 2 colonnes (AC/PDA) par quinzaine. Chaque valeur saisie compare
+ *  automatiquement cette radio à la dernière vague officielle connue
+ *  d'Historique Marché (V-1) et à la même vague l'an dernier (N-1) — jamais
+ *  à une autre quinzaine intermédiaire. */
+function interimWaveDetailTableHtml(period, radios){
+  const waves = period.waves || [];
+  if(!waves.length) return '<div style="font-size:12px;color:var(--muted);padding:8px">Aucune quinzaine pour cette vague — cliquez sur "+ Ajouter une quinzaine".</div>';
+
+  const prevChronoWave = interimFindPrevChronoWave(period.waveType, period.year);
+  const prevYearWave = interimFindSameTypePrevYearWave(period.waveType, period.year);
+
+  const waveHeaders = waves.map(w => `<th colspan="2" style="padding:7px 10px;font-size:10.5px;color:var(--navy);text-align:center;border-left:1.5px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px">
+        <span>${escHtml(w.label)}</span>
+        <button class="btn-ghost" style="font-size:9px;padding:2px 5px" onclick="interimRemoveWave('${period.id}','${w.id}')" title="Supprimer cette quinzaine">🗑</button>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:center;gap:4px;margin-top:4px;font-weight:400">
+        <input type="text" inputmode="numeric" placeholder="jj/mm/aaaa" maxlength="10" value="${mediaDateToFr(w.dateStart)}" style="font-size:10.5px;padding:3px 5px;width:74px;border-radius:5px;border:1.5px solid var(--border)" oninput="mediaMaskDateInput(this)" onchange="interimCommitWaveDate(this,'${period.id}','${w.id}','start')">
+        <span style="color:var(--muted)">→</span>
+        <input type="text" inputmode="numeric" placeholder="jj/mm/aaaa" maxlength="10" value="${mediaDateToFr(w.dateEnd)}" style="font-size:10.5px;padding:3px 5px;width:74px;border-radius:5px;border:1.5px solid var(--border)" oninput="mediaMaskDateInput(this)" onchange="interimCommitWaveDate(this,'${period.id}','${w.id}','end')">
+      </div>
+    </th>`).join('');
+  const subHeaders = waves.map(() => `<th style="padding:5px 8px;font-size:9.5px;color:var(--muted);text-align:center;border-left:1.5px solid var(--border)">AC %</th><th style="padding:5px 8px;font-size:9.5px;color:var(--muted);text-align:center">PDA %</th>`).join('');
+
+  // Europe 2 / RFM / Europe 1 (voir INTERIM_RADIO_WHITELIST, priority:true)
+  // groupées en haut avec un fond distinct, séparées du reste par un trait.
+  const rows = radios.map((r, idx) => {
+    const cells = waves.map(w => {
+      const v = (w.radios && w.radios[r.key]) || { AC:null, PDA:null };
+      return ['AC','PDA'].map(metric => {
+        const prevVal = interimResolveMetric(prevChronoWave, r.matchSlugs, metric);
+        const yearVal = interimResolveMetric(prevYearWave, r.matchSlugs, metric);
+        return `<td style="padding:5px 8px;text-align:center;border-left:${metric==='AC'?'1.5px solid var(--border)':'none'}">
+        <input type="text" inputmode="decimal" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:48px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border);text-align:center" onchange="interimUpdateRadioMetric('${period.id}','${w.id}','${r.key}','${metric}',this.value)">
+        <div style="display:flex;flex-direction:column;gap:1px;margin-top:3px;align-items:center">${interimEvolutionBadge(v[metric], prevVal, prevChronoWave?prevChronoWave.label:'', 'V-1')}${interimEvolutionBadge(v[metric], yearVal, prevYearWave?prevYearWave.label:'', 'N-1')}</div>
+      </td>`;
+      }).join('');
+    }).join('');
+    const isLastPriority = r.priority && !(radios[idx+1] && radios[idx+1].priority);
+    const rowStyle = (r.priority ? 'background:var(--cyan-light);' : '') + (isLastPriority ? 'border-bottom:2.5px solid var(--cyan-mid);' : '');
+    return `<tr style="${rowStyle}"><td style="padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap">${escHtml(r.label)}</td>${cells}</tr>`;
+  }).join('');
+
+  return `<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;min-width:600px">
+      <thead>
+        <tr><th style="padding:7px 10px;text-align:left"></th>${waveHeaders}</tr>
+        <tr style="border-bottom:1.5px solid var(--border)"><th></th>${subHeaders}</tr>
+      </thead>
+      <tbody>${rows}</tbody>
     </table>
   </div>`;
 }
@@ -14712,11 +14946,14 @@ function mediaSetInnerTab(tab){
   mediaInnerTab = tab;
   const liveBtn = document.getElementById('mediaInnerTabLiveBtn');
   const marcheBtn = document.getElementById('mediaInnerTabMarcheBtn');
+  const interimBtn = document.getElementById('mediaInnerTabInterimBtn');
   const liveC = document.getElementById('mediaInnerLive');
   const marcheC = document.getElementById('mediaInnerMarche');
+  const interimC = document.getElementById('mediaInnerInterim');
   const mediaAct = document.getElementById('mediaActions');
   const marcheAct = document.getElementById('marcheActions');
-  [[liveBtn,'live'],[marcheBtn,'marche']].forEach(([btn,v]) => {
+  [[liveBtn,'live'],[marcheBtn,'marche'],[interimBtn,'interim']].forEach(([btn,v]) => {
+    if(!btn) return;
     const active = v === tab;
     btn.style.borderColor = active ? 'var(--navy)' : 'var(--border)';
     btn.style.background = active ? 'var(--bg)' : 'transparent';
@@ -14724,6 +14961,7 @@ function mediaSetInnerTab(tab){
   });
   if(liveC) liveC.style.display = tab==='live' ? 'block' : 'none';
   if(marcheC) marcheC.style.display = tab==='marche' ? 'block' : 'none';
+  if(interimC) interimC.style.display = tab==='interim' ? 'block' : 'none';
   if(mediaAct) mediaAct.style.display = tab==='live' ? 'flex' : 'none';
   if(marcheAct) marcheAct.style.display = tab==='marche' ? 'flex' : 'none';
   if(tab==='marche'){
@@ -14732,6 +14970,21 @@ function mediaSetInnerTab(tab){
       if(DRIVE_SYNC_URL) marcheLoadFromDrive(false);
     }
     renderMarchePage();
+  }
+  if(tab==='interim'){
+    // Historique Marché doit être chargé pour fournir à la fois la liste des
+    // radios et les données de comparaison (V-1/N-1) — on s'assure qu'il est
+    // disponible même si l'utilisateur ouvre directement cet onglet sans
+    // être passé par "Historique Marché" auparavant.
+    if(!marcheDriveLoaded){
+      marcheLoadLocal();
+      if(DRIVE_SYNC_URL) marcheLoadFromDrive(false);
+    }
+    if(!interimDriveLoaded){
+      interimLoadLocal();
+      if(DRIVE_SYNC_URL) interimLoadFromDrive(false);
+    }
+    renderInterimPage();
   }
 }
 
@@ -14934,6 +15187,211 @@ function marcheFindPrevChrono(waveId){
 function marcheFindSameTypePrevYear(waveId){
   const w = marcheHistory.waves[waveId]; if(!w) return null;
   return marcheHistory.waves[marcheWaveId(w.waveType, w.year-1)] || null;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// INTERMÉDIAIRES CONCURRENCE — vagues/quinzaines saisies manuellement, AC/PDA
+// pour toutes les radios connues (mêmes radios que l'Historique Marché), pour
+// suivre une tendance avant la publication du résultat officiel. UN SEUL jeu
+// de vagues/quinzaines partagé entre toutes les radios (contrairement au
+// module « Résultats par cible », qui est propre à chaque station) : chaque
+// quinzaine porte un AC/PDA par radio. Comparaisons (vs vague précédente, vs
+// même vague l'an dernier) calculées contre les VRAIES données officielles
+// d'Historique Marché (marcheHistory) pour cette radio — jamais contre une
+// autre quinzaine intermédiaire. Portée LV (Lundi-Vendredi) uniquement pour
+// l'instant, comme le chiffre mis en avant ailleurs dans l'app.
+//   interimHistory.periods[] = { id, waveType, year, label,
+//     waves: [ { id, label, dateStart, dateEnd, radios: { <slug>: {AC,PDA} } } ] }
+// ══════════════════════════════════════════════════════════════════════════
+const INTERIM_LOCAL_KEY = 'fpa_interim_concurrence_v1';
+const INTERIM_DRIVE_KEY = 'interim_concurrence';
+let interimHistory = { periods: [] };
+let interimDriveLoaded = false;
+let interimUI = { expandedPeriods: new Set() };
+
+function interimLoadLocal(){
+  try{
+    const raw = localStorage.getItem(INTERIM_LOCAL_KEY);
+    if(raw){ const parsed = JSON.parse(raw); if(parsed && parsed.periods) interimHistory = parsed; }
+  }catch(e){ /* ignoré */ }
+}
+function interimSaveLocal(){
+  try{ localStorage.setItem(INTERIM_LOCAL_KEY, JSON.stringify(interimHistory)); }
+  catch(e){ showToast('Erreur de sauvegarde locale (Intermédiaires concurrence) : quota dépassé ?', 'err'); }
+}
+async function interimSaveToDrive(){
+  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  try{ await driveCall('save', INTERIM_DRIVE_KEY, JSON.stringify(interimHistory)); return { ok:true }; }
+  catch(e){ showToast('Erreur de sauvegarde Drive (Intermédiaires concurrence) : ' + e.message, 'err'); return { ok:false, reason:e.message }; }
+}
+async function interimLoadFromDrive(manual){
+  if(!DRIVE_SYNC_URL){ if(manual) showToast('URL Drive Sync non configurée', 'err'); return { ok:false, reason:'no_url' }; }
+  try{
+    const r = await driveCall('load', INTERIM_DRIVE_KEY);
+    interimDriveLoaded = true;
+    if(!r || !r.data){ if(manual) renderInterimPage(); return { ok:true, empty:true }; }
+    const remote = JSON.parse(r.data);
+    if(remote && remote.periods && (!interimHistory.periods || !interimHistory.periods.length)) interimHistory = remote;
+    interimSaveLocal();
+    if(manual) showToast('Intermédiaires concurrence synchronisés depuis Drive', 'success');
+    renderInterimPage();
+    return { ok:true };
+  }catch(e){
+    interimDriveLoaded = true;
+    if(manual) showToast('Erreur de synchronisation Drive : ' + e.message, 'err');
+    return { ok:false, reason:e.message };
+  }
+}
+
+function interimWaveSortKey(p){ return (p && p.year && p.waveType) ? p.year*12 + MARCHE_WAVE_MONTH[p.waveType] : null; }
+function interimSortedPeriods(){
+  return (interimHistory.periods || []).slice().sort((a,b) => (interimWaveSortKey(a)||0) - (interimWaveSortKey(b)||0));
+}
+function interimSeasonLabel(p){
+  if(!p.waveType || !p.year) return null;
+  const y = (p.waveType==='SO' || p.waveType==='ND') ? p.year : p.year-1;
+  return y + '-' + (y+1);
+}
+
+/** Liste fixe et volontairement restreinte des radios suivies dans
+ *  Intermédiaires concurrence — Historique Marché contient aussi de
+ *  nombreux agrégats (format/statut/couplages publicitaires) et d'autres
+ *  radios dont on n'a pas besoin ici. Chaque entrée garde deux clés
+ *  distinctes : "key" (clé de STOCKAGE des valeurs saisies, stable même si
+ *  Historique Marché change de nommage) et "matchSlugs" (le ou les slugs
+ *  Historique Marché à essayer pour aller chercher les comparaisons
+ *  V-1/N-1 — plusieurs valeurs pour "France Bleu/ici", qui a changé de nom
+ *  en janvier 2025 : les deux anciens/nouveaux slugs sont essayés). Liste
+ *  apparaît toujours entière et dans cet ordre, même pour une radio pas
+ *  encore présente dans Historique Marché (comparaisons alors "non
+ *  disponible" jusqu'à ce qu'elle y soit importée). */
+const INTERIM_RADIO_WHITELIST = [
+  { key:'europe-2',         label:'Europe 2',         matchSlugs:['europe-2'], priority:true },
+  { key:'rfm',               label:'RFM',               matchSlugs:['rfm'], priority:true },
+  { key:'europe-1',          label:'Europe 1',          matchSlugs:['europe-1'], priority:true },
+  { key:'rtl',                label:'RTL',                matchSlugs:['rtl'] },
+  { key:'rtl2',               label:'RTL2',               matchSlugs:['rtl2'] },
+  { key:'fun-radio',          label:'Fun Radio',          matchSlugs:['fun-radio'] },
+  { key:'nrj',                label:'NRJ',                matchSlugs:['nrj'] },
+  { key:'cherie-fm',          label:'Chérie FM',          matchSlugs:['cherie-fm'] },
+  { key:'nostalgie',          label:'Nostalgie',          matchSlugs:['nostalgie'] },
+  { key:'rire-et-chansons',   label:'Rire et Chansons',   matchSlugs:['rire-et-chansons'] },
+  { key:'skyrock',            label:'Skyrock',            matchSlugs:['skyrock'] },
+  { key:'france-inter',       label:'France Inter',       matchSlugs:['france-inter'] },
+  { key:'france-info',        label:'France Info',        matchSlugs:['france-info'] },
+  { key:'france-bleu-ici',    label:'France Bleu/ici',    matchSlugs:['france-bleu','ici'] },
+  { key:'rmc',                label:'RMC',                matchSlugs:['rmc'] },
+];
+function interimGetAllRadios(){
+  return INTERIM_RADIO_WHITELIST;
+}
+/** Valeur AC/PDA (LV) d'une radio dans une vague Historique Marché donnée —
+ *  essaie chaque slug de matchSlugs jusqu'à en trouver un présent (gère le
+ *  cas "France Bleu/ici"). null si la vague n'existe pas encore, ou si
+ *  aucun des slugs ne s'y trouve. */
+function interimResolveMetric(wave, matchSlugs, metric){
+  if(!wave) return null;
+  for(const slug of matchSlugs){
+    const ent = wave.entities && wave.entities[slug];
+    if(ent && ent.LV && typeof ent.LV[metric] === 'number') return ent.LV[metric];
+  }
+  return null;
+}
+
+function interimAddPeriod(){
+  if(!requireAdmin()) return;
+  const waveType = (prompt('Type de vague : SO (Septembre-Octobre), ND (Novembre-Décembre), JM (Janvier-Mars) ou AJ (Avril-Juin) ?', 'SO') || '').trim().toUpperCase();
+  if(!MARCHE_WAVE_LABELS[waveType]){ showToast('Type de vague invalide — attendu SO, ND, JM ou AJ', 'err'); return; }
+  const yearStr = prompt('Année de la vague (ex : 2026) :', new Date().getFullYear());
+  const year = parseInt(yearStr, 10);
+  if(isNaN(year)){ showToast('Année invalide', 'err'); return; }
+  if((interimHistory.periods||[]).some(p => p.waveType===waveType && p.year===year)){ showToast('Cette vague existe déjà', 'err'); return; }
+  const label = MARCHE_WAVE_LABELS[waveType] + ' ' + year;
+  const id = mediaUniqueId((interimHistory.periods||[]).map(p=>p.id), mediaSlugify(label));
+  if(!interimHistory.periods) interimHistory.periods = [];
+  interimHistory.periods.push({ id, waveType, year, label, waves: [] });
+  interimUI.expandedPeriods.add(id);
+  interimSaveLocal();
+  if(DRIVE_SYNC_URL) interimSaveToDrive();
+  renderInterimPage();
+}
+function interimRemovePeriod(periodId){
+  const period = (interimHistory.periods||[]).find(p=>p.id===periodId);
+  if(!period) return;
+  if(!confirm(`Supprimer la vague "${period.label}" et toutes ses quinzaines ?`)) return;
+  interimHistory.periods = interimHistory.periods.filter(p=>p.id!==periodId);
+  interimSaveLocal();
+  if(DRIVE_SYNC_URL) interimSaveToDrive();
+  renderInterimPage();
+}
+function interimAddWave(periodId){
+  const period = (interimHistory.periods||[]).find(p=>p.id===periodId);
+  if(!period) return;
+  const label = prompt('Nom de la quinzaine (ex : "Q6") :', 'Q' + ((period.waves||[]).length + 1));
+  if(!label) return;
+  const id = mediaUniqueId((period.waves||[]).map(w=>w.id), mediaSlugify(label));
+  if(!period.waves) period.waves = [];
+  period.waves.push({ id, label, dateStart:null, dateEnd:null, radios:{} });
+  interimSaveLocal();
+  if(DRIVE_SYNC_URL) interimSaveToDrive();
+  renderInterimPage();
+}
+function interimRemoveWave(periodId, waveId){
+  const period = (interimHistory.periods||[]).find(p=>p.id===periodId);
+  if(!period) return;
+  const wave = (period.waves||[]).find(w=>w.id===waveId);
+  if(!wave) return;
+  if(!confirm(`Supprimer la quinzaine "${wave.label}" ?`)) return;
+  period.waves = period.waves.filter(w=>w.id!==waveId);
+  interimSaveLocal();
+  if(DRIVE_SYNC_URL) interimSaveToDrive();
+  renderInterimPage();
+}
+function interimCommitWaveDate(el, periodId, waveId, bound){
+  const period = (interimHistory.periods||[]).find(p=>p.id===periodId);
+  if(!period) return;
+  const wave = (period.waves||[]).find(w=>w.id===waveId);
+  if(!wave) return;
+  const raw = el.value.trim();
+  if(!raw){ if(bound==='start') wave.dateStart=null; else wave.dateEnd=null; interimSaveLocal(); if(DRIVE_SYNC_URL) interimSaveToDrive(); return; }
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(raw);
+  if(!m){ showToast('Date incomplète — format attendu jj/mm/aaaa', 'err'); return; }
+  const [, dd, mm, yyyy] = m;
+  const iso = `${yyyy}-${mm}-${dd}`;
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d.getTime()) || d.getDate() !== parseInt(dd,10) || d.getMonth()+1 !== parseInt(mm,10) || d.getFullYear() !== parseInt(yyyy,10)){
+    showToast('Date invalide — vérifiez le jour/mois saisi', 'err');
+    return;
+  }
+  if(bound==='start') wave.dateStart = iso; else wave.dateEnd = iso;
+  interimSaveLocal();
+  if(DRIVE_SYNC_URL) interimSaveToDrive();
+}
+function interimUpdateRadioMetric(periodId, waveId, slug, metric, value){
+  const period = (interimHistory.periods||[]).find(p=>p.id===periodId);
+  if(!period) return;
+  const wave = (period.waves||[]).find(w=>w.id===waveId);
+  if(!wave) return;
+  if(!wave.radios) wave.radios = {};
+  if(!wave.radios[slug]) wave.radios[slug] = { AC:null, PDA:null };
+  const n = value.trim()==='' ? null : parseFloat(value.replace(',','.'));
+  wave.radios[slug][metric] = (n==null || isNaN(n)) ? null : n;
+  interimSaveLocal();
+  if(DRIVE_SYNC_URL) interimSaveToDrive();
+}
+
+/** Même logique/habillage visuel que mediaEvolutionBadge, mais comparant une
+ *  valeur intermédiaire saisie ici à une valeur déjà résolue (voir
+ *  interimResolveMetric) venant d'une vague OFFICIELLE d'Historique Marché. */
+function interimEvolutionBadge(currentVal, otherVal, compareLabel, tag){
+  if(typeof currentVal !== 'number' || typeof otherVal !== 'number'){
+    return `<span style="display:inline-flex;gap:3px;align-items:center;font-size:9.5px;color:var(--muted)" title="Non disponible"><b>${tag}</b>–</span>`;
+  }
+  const delta = Math.round((currentVal-otherVal)*10)/10;
+  let color = 'var(--muted)', arrow = '＝';
+  if(delta>0){ color='var(--green-text)'; arrow='▲'; } else if(delta<0){ color='#CC2222'; arrow='▼'; }
+  const deltaStr = (delta>0?'+':'') + delta.toFixed(1).replace('.',',');
+  return `<span style="display:inline-flex;gap:3px;align-items:center;font-size:9.5px;color:${color};font-weight:700" title="vs ${escHtml(compareLabel||'')} (${String(otherVal).replace('.',',')})"><b style="color:var(--muted);font-weight:800">${tag}</b>${arrow} ${deltaStr}</span>`;
 }
 
 /* ---- Entités (radios / agrégats / couplages) : slug canonique + alias ---- */
