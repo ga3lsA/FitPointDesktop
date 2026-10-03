@@ -2191,9 +2191,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             const r = await analyseSaveHistoryToDrive();
             if(r.ok) showToast('Statistiques Analyse (toutes semaines) envoyées sur Drive', 'success');
             btn.disabled=false; btn.textContent=orig;
-          })()" title="Renvoie les statistiques agrégées de toutes les semaines archivées vers Drive, même si rien n'a changé depuis — utile après un échec de synchro (le détail par titre, lui, reste toujours local, voir note ci-dessous)">☁️⬆️ Forcer l'envoi vers Drive</button>
+          })()" title="Renvoie les statistiques agrégées de toutes les semaines archivées vers Drive, même si rien n'a changé depuis — utile après un échec de synchro (sans risque : Drive fusionne, ne remplace jamais ; le détail titre par titre est copié séparément, semaine par semaine)">☁️⬆️ Forcer l'envoi vers Drive</button>
         </div>
       </div>
+      <div id="analyseDetailSyncStatus" style="font-size:11px;color:var(--muted);margin:-4px 0 10px"></div>
       <div id="analyseRecalcProgressWrap" style="display:none;margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
           <span id="analyseRecalcProgressLabel" style="font-size:11px;color:var(--text2);font-weight:700">⏳ Préparation…</span>
@@ -4056,8 +4057,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.222';
-const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
+const FPA_VERSION   = 'v30.226';
+const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -7858,6 +7859,32 @@ function similarity(a,b){
   return union>0?inter/union:0;
 }
 
+/** Variante RAPIDE de similarity(), au résultat strictement identique, pour
+ *  les boucles massives (titre de programmation × toutes les lignes de
+ *  l'historique Call Out/OMT) : chaque chaîne n'est normalisée qu'une fois
+ *  (cache) au lieu de l'être à chaque comparaison. */
+const __simPrepCache = new Map();
+function simPrep(s){
+  const key = s == null ? '' : String(s);
+  let p = __simPrepCache.get(key);
+  if(p) return p;
+  const n = norm(key);
+  p = { raw0: !s, n, w: new Set(n.split(' ').filter(x => x.length > 1)) };
+  if(__simPrepCache.size > 300000) __simPrepCache.clear();
+  __simPrepCache.set(key, p);
+  return p;
+}
+function similarityPrep(pa, pb){
+  if(pa.raw0 || pb.raw0) return 0;
+  if(pa.n === pb.n) return 1;
+  const minLen = Math.min(pa.n.length, pb.n.length);
+  if(minLen >= 4 && (pa.n.includes(pb.n) || pb.n.includes(pa.n))) return 0.9;
+  let inter = 0;
+  pa.w.forEach(x => { if(pb.w.has(x)) inter++; });
+  const union = pa.w.size + pb.w.size - inter;
+  return union > 0 ? inter / union : 0;
+}
+
 function findInChart(chart,title,artist){
   const nt=norm(title),na=norm(artist);
   let best=null,bestScore=0;
@@ -10291,6 +10318,7 @@ function histLoad(){
 }
 function histSave(data){
   historyCache = data;
+  if(typeof analyseSeriesCacheClear === 'function') analyseSeriesCacheClear();
   idbSet(IDB_HISTORY_KEY, data).catch(e => {
     // Repli si IndexedDB échoue pour une raison quelconque
     try{ localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(data)); }
@@ -12091,14 +12119,16 @@ function getTitleVagueSeries(title, artist){
   // strictement identique (souvent orthographié différemment entre le
   // fichier Muzicast/Airplay et le Call Out : ordre des featurings, etc.).
   const nT = norm(title||''), nA = norm(artist||'');
+  const qT = simPrep(nT), qA = simPrep(nA);
 
   hist.forEach(v => {
     v.sheets.forEach(sh => {
       if(!isHistFixedSheet(sh.sheetName)) return;
       const isP1 = isP1Sheet(sh);
       sh.rows.forEach(r => {
-        const ts = similarity(nT, r.t||'');
-        const as = nA ? similarity(nA, r.a||'') : 0.5;
+        const ts = similarityPrep(qT, simPrep(r.t||''));
+        if(ts*0.6 + 0.4 < 0.55) return; // même un artiste identique ne suffirait pas
+        const as = nA ? similarityPrep(qA, simPrep(r.a||'')) : 0.5;
         const score = ts*0.6 + as*0.4;
         if(score < 0.55) return;
         const point = { num: v.num || null, date: v.date || '', name: v.name, vagueName: v.name };
@@ -12147,13 +12177,15 @@ function getTitleFamScoreSeries(title, artist){
   const hist = histLoad().filter(v => isHistFixedRadio(v) && /\bOMT\b/i.test(v.type || ''));
   const raw = { famTous:[], famP1:[], burnTous:[], burnP1:[] };
   const nT = norm(title||''), nA = norm(artist||'');
+  const qT = simPrep(nT), qA = simPrep(nA);
   hist.forEach(v => {
     const matchingSheets = v.sheets.filter(sh => isHistFixedSheet(sh.sheetName));
     const targetSheets = matchingSheets.length ? matchingSheets : (v.sheets[0] ? [v.sheets[0]] : []);
     targetSheets.forEach(sh => {
       sh.rows.forEach(r => {
-        const ts = similarity(nT, r.t||'');
-        const as = nA ? similarity(nA, r.a||'') : 0.5;
+        const ts = similarityPrep(qT, simPrep(r.t||''));
+        if(ts*0.6 + 0.4 < 0.55) return; // même un artiste identique ne suffirait pas
+        const as = nA ? similarityPrep(qA, simPrep(r.a||'')) : 0.5;
         const score = ts*0.6 + as*0.4;
         if(score < 0.55) return;
         const point = { num: v.num || null, date: v.date || '', name: v.name, vagueName: v.name };
@@ -12233,9 +12265,33 @@ function analyseNearestPriorEntry(series, referenceDate){
   return prior; // null si la programmation est antérieure à toute recherche connue
 }
 
+/** Cache des séries Call Out/OMT par titre pour la page Analyse (un même
+ *  titre revient dans chaque semaine d'un import en masse) — invalidé dès
+ *  que l'historique Call Out/OMT change. */
+let __analyseSeriesCache = new Map(), __analyseSeriesSig = null, __analyseSeriesRef = null;
+function analyseSeriesCacheClear(){ __analyseSeriesCache = new Map(); __analyseSeriesSig = null; __analyseSeriesRef = null; }
+function analyseSeriesCached(title, artist){
+  const h = histLoad() || [];
+  let sig = h.length + '|';
+  for(const v of h){
+    let n = 0;
+    (v.sheets || []).forEach(sh => { n += (sh.rows || []).length; });
+    sig += (v.name || '') + ':' + n + ';';
+  }
+  if(__analyseSeriesRef !== h || __analyseSeriesSig !== sig){
+    __analyseSeriesCache = new Map(); __analyseSeriesSig = sig; __analyseSeriesRef = h;
+  }
+  const key = norm(title||'') + '|||' + norm(artist||'');
+  let e = __analyseSeriesCache.get(key);
+  if(!e){
+    e = { co: getTitleVagueSeries(title, artist), omt: getTitleFamScoreSeries(title, artist) };
+    __analyseSeriesCache.set(key, e);
+  }
+  return e;
+}
+
 function analyseGetSearchScores(title, artist, referenceDate){
-  const co  = getTitleVagueSeries(title, artist);
-  const omt = getTitleFamScoreSeries(title, artist);
+  const { co, omt } = analyseSeriesCached(title, artist);
   const pick = arr => { const e = analyseNearestPriorEntry(arr, referenceDate); return e ? e.val : null; };
   return {
     potTous:  pick(co.potTous),
@@ -12327,7 +12383,28 @@ function analyseLoadHistory(){
   try{ return JSON.parse(localStorage.getItem(ANALYSE_HISTORY_KEY) || '{}'); }
   catch(e){ return {}; }
 }
+/** Union de deux historiques (par station et semaine ; la version
+ *  enregistrée le plus récemment l'emporte). */
+function analyseMergeHistoryObjects(a, b){
+  const out = {};
+  ['EUROPE2','RFM'].forEach(st => {
+    const byLabel = {};
+    [a, b].forEach(h => ((h && Array.isArray(h[st])) ? h[st] : []).forEach(e => {
+      if(!e || !e.weekLabel) return;
+      const cur = byLabel[e.weekLabel];
+      if(!cur || new Date(e.savedAt || 0) >= new Date(cur.savedAt || 0)) byLabel[e.weekLabel] = e;
+    }));
+    out[st] = Object.values(byLabel).sort((x, y) => x.weekLabel.localeCompare(y.weekLabel, undefined, {numeric:true}));
+  });
+  return out;
+}
 function analyseSaveHistory(h){
+  if(analyseHistoryCache === null){
+    // L'historique réel du poste (IndexedDB) n'est pas encore relu : on ne
+    // l'écrase jamais avec une copie partielle — on fusionne après relecture.
+    analyseHistoryCacheLoad().then(() => analyseSaveHistory(analyseMergeHistoryObjects(analyseHistoryCache, h)));
+    return;
+  }
   analyseHistoryCache = h; // source de vérité immédiate pour tous les lecteurs synchrones
   idbSet(ANALYSE_HISTORY_KEY, h).catch(e => console.error('Échec de sauvegarde IndexedDB (historique Analyse) :', e));
   // Best-effort sur localStorage également (compat descendante) — son échec
@@ -12357,9 +12434,11 @@ function analyseWeekLocalKey(stKey, weekLabel){ return 'fpa_analyse_week_' + stK
  *  Toutes les fonctions sont désormais asynchrones — voir les appelants
  *  (analyseBulkArchive, analyseSaveWeekToHistory, analyseRecalculateAllArchives,
  *  analyseViewArchivedWeek) qui utilisent await. */
-async function analyseSaveWeekDetailLocal(stKey, weekLabel, detail){
+async function analyseSaveWeekDetailLocal(stKey, weekLabel, detail, opts){
   try{
     await idbSet(analyseWeekLocalKey(stKey, weekLabel), detail);
+    // Copie sur Drive en arrière-plan (sauf si le détail vient de Drive)
+    if(!(opts && opts.noUpload) && typeof analyseDetailEnqueue === 'function') analyseDetailEnqueue(stKey, weekLabel);
     return true;
   }catch(e){
     return false; // quota disque réellement épuisé (rare avec IndexedDB), ou navigateur sans IndexedDB
@@ -12385,6 +12464,156 @@ async function analyseDeleteWeekDetailLocal(stKey, weekLabel){
   const key = analyseWeekLocalKey(stKey, weekLabel);
   try{ await idbDelete(key); }catch(e){}
   try{ localStorage.removeItem(key); }catch(e){} // purge l'éventuel reliquat pré-migration
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DÉTAIL PAR TITRE DES SEMAINES — copie sur Drive (v30.226, script v6 requis)
+// ══════════════════════════════════════════════════════════════════════════
+// Un fichier Drive par semaine (clé analyse_detail_<STATION>_<S..>), même
+// format JSON qu'en local. Le stockage local reste la source principale ;
+// Drive sert de copie partagée, relue seulement quand le détail manque sur
+// ce poste. File d'envoi persistante, une semaine à la fois, en arrière-plan.
+const ANALYSE_DETAIL_DRIVE_PREFIX = 'analyse_detail_';
+const ANALYSE_DETAIL_QUEUE_KEY    = 'fpa_analyse_detail_queue_v1';
+const ANALYSE_DETAIL_SYNCED_KEY   = 'fpa_analyse_detail_synced_v1';
+let analyseDetailRunning = false;
+let analyseDetailRetryTimer = null;
+let analyseDetailFailures = 0;
+let analyseDetailBackfillDone = false;
+let analyseDetailLastDriveError = null;
+const __analyseDetailDriveMiss = new Set();
+
+function analyseDetailDriveKey(stKey, weekLabel){ return ANALYSE_DETAIL_DRIVE_PREFIX + stKey + '_' + analyseSlugifyWeekLabel(weekLabel); }
+function analyseDetailQueueLoad(){
+  try{ const q = JSON.parse(localStorage.getItem(ANALYSE_DETAIL_QUEUE_KEY) || '[]'); return Array.isArray(q) ? q : []; }catch(e){ return []; }
+}
+function analyseDetailQueueSave(q){ try{ localStorage.setItem(ANALYSE_DETAIL_QUEUE_KEY, JSON.stringify(q)); }catch(e){} }
+function analyseDetailSyncedLoad(){
+  try{ const o = JSON.parse(localStorage.getItem(ANALYSE_DETAIL_SYNCED_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; }catch(e){ return {}; }
+}
+function analyseDetailSyncedSave(o){ try{ localStorage.setItem(ANALYSE_DETAIL_SYNCED_KEY, JSON.stringify(o)); }catch(e){} }
+
+function analyseDetailEnqueue(stKey, weekLabel){
+  if(!DRIVE_SYNC_URL) return;
+  const q = analyseDetailQueueLoad();
+  const v = Date.now();
+  const it = q.find(x => x.stKey === stKey && x.label === weekLabel);
+  if(it) it.v = v; else q.push({ stKey, label: weekLabel, v });
+  analyseDetailQueueSave(q);
+  __analyseDetailDriveMiss.delete(analyseDetailDriveKey(stKey, weekLabel));
+  analyseDetailUpdateStatus();
+  analyseDetailProcessQueue();
+}
+function analyseDetailDequeue(stKey, weekLabel){
+  analyseDetailQueueSave(analyseDetailQueueLoad().filter(x => !(x.stKey === stKey && x.label === weekLabel)));
+  const o = analyseDetailSyncedLoad(); delete o[analyseDetailDriveKey(stKey, weekLabel)]; analyseDetailSyncedSave(o);
+  analyseDetailUpdateStatus();
+}
+function analyseDetailUpdateStatus(failed){
+  const el = document.getElementById('analyseDetailSyncStatus');
+  if(!el) return;
+  const n = analyseDetailQueueLoad().length;
+  if(!n || !DRIVE_SYNC_URL){ el.textContent = ''; return; }
+  el.textContent = '☁️ Détail par titre : ' + n + ' semaine' + (n > 1 ? 's' : '') + ' à copier sur Drive' + (failed ? ' (nouvel essai automatique dans 2 min)' : '…');
+}
+
+async function analyseDetailProcessQueue(){
+  if(analyseDetailRunning || !DRIVE_SYNC_URL) return;
+  analyseDetailRunning = true;
+  let failed = false;
+  try{
+    for(;;){
+      const q = analyseDetailQueueLoad();
+      if(!q.length) break;
+      const item = q[0];
+      analyseDetailUpdateStatus();
+      if(analyseDriveRun){ try{ await analyseDriveRun; }catch(e){} }
+      const key = analyseDetailDriveKey(item.stKey, item.label);
+      const detail = await analyseLoadWeekDetailLocal(item.stKey, item.label);
+      if(detail && detail.rows && detail.rows.length){
+        try{
+          await analyseDrivePost(key, JSON.stringify(detail));
+          const o = analyseDetailSyncedLoad(); o[key] = Date.now(); analyseDetailSyncedSave(o);
+          __analyseDetailDriveMiss.delete(key);
+        }catch(e){
+          console.warn('Analyse : copie du détail ' + item.stKey + ' ' + item.label + ' sur Drive impossible —', e.message);
+          failed = true;
+          break;
+        }
+      }
+      const q2 = analyseDetailQueueLoad();
+      const idx = q2.findIndex(x => x.stKey === item.stKey && x.label === item.label);
+      if(idx >= 0 && q2[idx].v === item.v) q2.splice(idx, 1);
+      else if(idx >= 0) q2.push(q2.splice(idx, 1)[0]); // ré-enregistrée entre-temps : repasse en fin de file
+      analyseDetailQueueSave(q2);
+    }
+  }finally{
+    analyseDetailRunning = false;
+    const left = analyseDetailQueueLoad().length;
+    analyseDetailUpdateStatus(failed && left > 0);
+    clearTimeout(analyseDetailRetryTimer);
+    if(failed && left){
+      analyseDetailFailures++;
+      if(analyseDetailFailures <= 5) analyseDetailRetryTimer = setTimeout(analyseDetailProcessQueue, 120000);
+    } else if(!failed) analyseDetailFailures = 0;
+  }
+}
+
+/** Une fois par session (ouverture de la page Analyse) : met en file les
+ *  semaines dont le détail est sur ce poste mais pas encore sur Drive. */
+async function analyseDetailBackfill(){
+  if(analyseDetailBackfillDone || !DRIVE_SYNC_URL) return;
+  analyseDetailBackfillDone = true;
+  try{
+    await analyseHistoryCacheLoad();
+    const synced = analyseDetailSyncedLoad();
+    let remote = null;
+    try{ const r = await driveCall('list'); if(r && Array.isArray(r.keys)) remote = new Set(r.keys); }catch(e){}
+    const history = analyseLoadHistory();
+    const toAdd = [];
+    let syncedChanged = false;
+    for(const stKey of ['EUROPE2','RFM']){
+      for(const e of (history[stKey] || [])){
+        const key = analyseDetailDriveKey(stKey, e.weekLabel);
+        if(synced[key]) continue;
+        if(remote && remote.has(key)){ synced[key] = Date.now(); syncedChanged = true; continue; }
+        const d = await analyseLoadWeekDetailLocal(stKey, e.weekLabel);
+        if(d && d.rows && d.rows.length) toAdd.push({ stKey, label: e.weekLabel });
+      }
+    }
+    if(syncedChanged){ const o = analyseDetailSyncedLoad(); Object.assign(o, synced); analyseDetailSyncedSave(o); }
+    if(toAdd.length){
+      const q = analyseDetailQueueLoad();
+      const v = Date.now();
+      toAdd.forEach(a => { if(!q.some(x => x.stKey === a.stKey && x.label === a.label)) q.push({ ...a, v }); });
+      analyseDetailQueueSave(q);
+    }
+  }catch(e){ console.warn('Analyse : rattrapage de la copie des détails impossible —', e.message); }
+  analyseDetailUpdateStatus();
+  analyseDetailProcessQueue();
+}
+
+/** Détail d'une semaine : local d'abord, sinon copie Drive (gardée ensuite
+ *  en local, sans la renvoyer). */
+async function analyseLoadWeekDetail(stKey, weekLabel){
+  analyseDetailLastDriveError = null;
+  const local = await analyseLoadWeekDetailLocal(stKey, weekLabel);
+  if(local) return local;
+  if(!DRIVE_SYNC_URL) return null;
+  const key = analyseDetailDriveKey(stKey, weekLabel);
+  if(__analyseDetailDriveMiss.has(key)) return null;
+  try{
+    const r = await driveCall('load', key);
+    const detail = r && r.data ? JSON.parse(r.data) : null;
+    if(!detail || !Array.isArray(detail.rows) || !detail.rows.length){ __analyseDetailDriveMiss.add(key); return null; }
+    await analyseSaveWeekDetailLocal(stKey, weekLabel, detail, { noUpload: true });
+    const o = analyseDetailSyncedLoad(); o[key] = Date.now(); analyseDetailSyncedSave(o);
+    return detail;
+  }catch(e){
+    if(/ntrouvable/i.test(e.message || '')) __analyseDetailDriveMiss.add(key);
+    else analyseDetailLastDriveError = e.message || 'erreur inconnue';
+    return null;
+  }
 }
 
 /** Arrondit les décimales avant envoi Drive (discipline payload déjà en
@@ -12465,7 +12694,7 @@ async function analyseRecalculateAllArchives(onProgress){
         report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: null, status: 'no-date', titresModifies: 0 });
         continue;
       }
-      const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
+      const detail = await analyseLoadWeekDetail(stKey, entry.weekLabel); // local, sinon copie Drive
       if(!detail || !detail.rows || !detail.rows.length){
         skippedNoDetail++;
         report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: entry.weekStart, status: 'no-detail', titresModifies: 0 });
@@ -12516,7 +12745,7 @@ function analyseRenderRecalcReport(result){
   const statusMeta = {
     'recalculated':  { label:'✓ Recalculée', color:'#0DA76B' },
     'no-date':       { label:'⚠ Pas de date connue — réimport nécessaire', color:'#CC2222' },
-    'no-detail':     { label:'⚠ Détail introuvable en local (autre appareil ?)', color:'#B85C00' }
+    'no-detail':     { label:'⚠ Détail introuvable (ni sur ce poste, ni encore sur Drive)', color:'#B85C00' }
   };
   const sorted = result.report.slice().sort((a,b) => {
     if(a.station !== b.station) return a.station.localeCompare(b.station);
@@ -12591,23 +12820,184 @@ async function analyseRecalculateAllArchivesUI(){
  *  les stats agrégées) sur Drive Sync, dans son propre fichier — distinct de
  *  celui des Classements/Playlist. La progression (chunk par chunk) alimente
  *  la barre affichée dans la page. */
-async function analyseSaveHistoryToDrive(){
-  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
-  if(analyseDriveSaving) return { ok:false, reason:'in_progress' };
-  analyseDriveSaving = true;
-  analyseShowSaveProgress('☁️ Sauvegarde sur Drive…');
+// ══════════════════════════════════════════════════════════════════════════
+// SYNCHRO DRIVE DE L'ANALYSE — v30.226 (nécessite le script Drive Sync v6)
+// ══════════════════════════════════════════════════════════════════════════
+// - Envoi en UNE requête (action 'save_post' du script v6) au lieu de
+//   milliers de petits morceaux : quelques secondes au lieu de ~10 minutes.
+//   Le script vérifie la taille et l'empreinte du contenu reçu avant
+//   d'écrire ; FPA attend sa confirmation ('upload_status').
+// - Côté script : l'historique reçu est FUSIONNÉ avec celui de Drive (jamais
+//   remplacé) et l'ancienne version est copiée dans FPA_Data/_backups.
+// - Côté FPA : une demande d'envoi arrivée pendant un envoi est mise en file
+//   (plus jamais ignorée) ; un marqueur « à synchroniser » persiste jusqu'au
+//   succès (reprise automatique) ; la fusion Drive → poste n'a lieu
+//   qu'après relecture de l'historique réel du poste (IndexedDB).
+// - Format des données inchangé : lisible par toutes les versions de FPA.
+const ANALYSE_DRIVE_DIRTY_KEY   = 'fpa_analyse_drive_dirty_v1';
+const ANALYSE_DELETED_PENDING_KEY = 'fpa_analyse_deleted_pending_v1';
+let analyseDriveRun = null;
+let analyseDrivePending = false;
+let analyseDriveDebounceTimer = null;
+let analyseDriveRetryTimer = null;
+let analyseDriveAutoRetries = 0;
+let analyseDriveCorruptNotified = false;
+
+function analyseFnv1a(str){
+  let h = 0x811c9dc5;
+  for(let i = 0; i < str.length; i++){ h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  return ('0000000' + h.toString(16)).slice(-8);
+}
+function analyseCountWeeks(h){ return h ? ((h.EUROPE2 || []).length + (h.RFM || []).length) : 0; }
+
+function analyseDriveMarkDirty(){ try{ localStorage.setItem(ANALYSE_DRIVE_DIRTY_KEY, String(Date.now())); }catch(e){} }
+function analyseDriveIsDirty(){ try{ return !!localStorage.getItem(ANALYSE_DRIVE_DIRTY_KEY); }catch(e){ return false; } }
+function analyseDriveClearDirty(startedAt){
   try{
-    const payload = JSON.stringify(analyseLoadHistory());
-    await driveSaveBigFile(ANALYSE_DRIVE_KEY, payload, (done, total) => analyseUpdateSaveProgress(done, total));
-    analyseUpdateSaveProgress(1, 1);
-    analyseDriveLoaded = true; // ce qu'on vient d'envoyer est forcément à jour
-    return { ok:true };
+    const v = parseInt(localStorage.getItem(ANALYSE_DRIVE_DIRTY_KEY) || '0', 10);
+    if(v && v <= startedAt) localStorage.removeItem(ANALYSE_DRIVE_DIRTY_KEY);
+  }catch(e){}
+}
+function analyseDeletedPendingLoad(){
+  try{ const a = JSON.parse(localStorage.getItem(ANALYSE_DELETED_PENDING_KEY) || '[]'); return Array.isArray(a) ? a : []; }catch(e){ return []; }
+}
+function analyseDeletedPendingSave(a){ try{ localStorage.setItem(ANALYSE_DELETED_PENDING_KEY, JSON.stringify(a)); }catch(e){} }
+
+// ── Progression affichée en temps réel (étape + secondes écoulées) ──
+let __analyseProgTimer = null, __analyseProgStart = 0, __analyseProgLabel = '', __analyseProgDepth = 0;
+function analyseProgressBegin(label){
+  __analyseProgDepth++;
+  if(__analyseProgDepth > 1){ analyseProgressStage(label); return; }
+  analyseShowSaveProgress(label);
+  __analyseProgStart = Date.now();
+  __analyseProgLabel = label;
+  clearInterval(__analyseProgTimer);
+  __analyseProgTimer = setInterval(analyseProgressTick, 250);
+  analyseProgressTick();
+}
+function analyseProgressStage(label, pct){
+  if(label) __analyseProgLabel = label;
+  if(pct != null) analyseUpdateSaveProgress(Math.max(0, Math.min(100, Math.round(pct))), 100);
+  analyseProgressTick();
+}
+function analyseProgressTick(){
+  const lbl = document.getElementById('analyseSaveProgressLabel');
+  if(lbl) lbl.textContent = __analyseProgLabel + ' — ' + Math.round((Date.now() - __analyseProgStart) / 1000) + ' s';
+}
+function analyseProgressEnd(){
+  __analyseProgDepth = Math.max(0, __analyseProgDepth - 1);
+  if(__analyseProgDepth > 0) return;
+  clearInterval(__analyseProgTimer); __analyseProgTimer = null;
+  analyseHideSaveProgress(600);
+}
+function analyseYield(){ return new Promise(r => setTimeout(r, 0)); }
+
+/** Envoie le JSON d'une clé analyse_* au script v6 en une requête POST, puis
+ *  attend la confirmation du script. Rejette avec un message clair en cas
+ *  d'échec — dans ce cas, rien n'a été écrit sur Drive. */
+async function analyseDrivePost(key, json, extra, onStage){
+  if(!/^https:\/\//i.test(DRIVE_SYNC_URL || '')) throw new Error('URL Drive Sync invalide ou vide');
+  const b64 = compress(json);
+  const uploadId = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  let url = DRIVE_SYNC_URL.trim() + '?action=save_post&key=' + encodeURIComponent(key)
+    + '&uploadId=' + uploadId + '&len=' + b64.length + '&hash=' + analyseFnv1a(b64);
+  if(extra && extra.deleted && extra.deleted.length) url += '&deleted=' + encodeURIComponent(JSON.stringify(extra.deleted));
+  if(onStage) onStage('send');
+  let postErr = null;
+  try{
+    await fetch(url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: b64 });
+  }catch(e){ postErr = e; }
+  if(onStage) onStage('verify');
+  const deadline = Date.now() + (postErr ? 20000 : 150000);
+  while(Date.now() < deadline){
+    try{
+      const r = await driveCallJSONP({ action: 'upload_status', uploadId }, 20000);
+      const st = r && r.status;
+      if(st && st.result){
+        if(st.result.ok) return st.result;
+        throw Object.assign(new Error(st.result.error || 'échec côté Drive'), { fromServer: true });
+      }
+    }catch(e){
+      if(e.fromServer) throw e;
+      if(/Action inconnue/i.test(e.message || '')) throw new Error('le script Google Drive Sync n\'est pas encore à jour (v6 requise) — rien n\'a été écrit');
+    }
+    await new Promise(r => setTimeout(r, 1500));
+  }
+  throw new Error(postErr ? ('envoi impossible : ' + postErr.message) : 'pas de confirmation de Drive après 2 min 30');
+}
+
+/** Demande un envoi de l'historique vers Drive (mis en file si un envoi est
+ *  en cours ; la promesse se résout à la fin de la file). */
+function analyseSaveHistoryToDrive(opts){
+  if(!DRIVE_SYNC_URL) return Promise.resolve({ ok:false, reason:'no_url' });
+  analyseDriveMarkDirty();
+  clearTimeout(analyseDriveDebounceTimer);
+  if(analyseDriveRun){ analyseDrivePending = true; return analyseDriveRun; }
+  analyseDriveRun = (async () => {
+    let result;
+    do{
+      analyseDrivePending = false;
+      result = await analyseSaveHistoryToDriveOnce(opts || {});
+    }while(analyseDrivePending && result.ok);
+    analyseDriveRun = null;
+    if(result.ok){ analyseDriveAutoRetries = 0; }
+    else if(analyseDriveIsDirty() && analyseDriveAutoRetries < 3){
+      analyseDriveAutoRetries++;
+      clearTimeout(analyseDriveRetryTimer);
+      analyseDriveRetryTimer = setTimeout(() => analyseSaveHistoryToDrive(), 90000);
+    }
+    return result;
+  })();
+  return analyseDriveRun;
+}
+function analyseScheduleDriveSync(delayMs){
+  if(!DRIVE_SYNC_URL) return;
+  analyseDriveMarkDirty();
+  clearTimeout(analyseDriveDebounceTimer);
+  analyseDriveDebounceTimer = setTimeout(() => analyseSaveHistoryToDrive(), delayMs || 4000);
+}
+
+async function analyseSaveHistoryToDriveOnce(opts){
+  const startedAt = Date.now();
+  analyseDriveSaving = true;
+  analyseProgressBegin('☁️ Préparation de l\'envoi Drive');
+  try{
+    await analyseHistoryCacheLoad();
+    if(!analyseDriveLoaded){
+      analyseProgressStage('☁️ Lecture de l\'historique Drive (semaines des autres postes)', 60);
+      await analyseLoadHistoryFromDrive();
+    }
+    const toSend = analyseLoadHistory();
+    const deleted = analyseDeletedPendingLoad();
+    if(!analyseCountWeeks(toSend) && !deleted.length){
+      analyseDriveClearDirty(startedAt);
+      return { ok:true, skipped:true }; // rien à envoyer depuis ce poste
+    }
+    analyseProgressStage('☁️ Préparation des données', 65);
+    await analyseYield();
+    const res = await analyseDrivePost(ANALYSE_DRIVE_KEY, JSON.stringify(toSend), { deleted }, step => {
+      if(step === 'send')   analyseProgressStage('☁️ Envoi vers Drive', 75);
+      if(step === 'verify') analyseProgressStage('☁️ Vérification et fusion par Drive', 88);
+    });
+    // Suppressions transmises : on retire uniquement celles envoyées
+    const sent = new Set(deleted);
+    analyseDeletedPendingSave(analyseDeletedPendingLoad().filter(x => !sent.has(x)));
+    analyseDriveClearDirty(startedAt);
+    analyseDriveLoaded = true;
+    // Drive contient des semaines venues d'autres postes : on les récupère ici
+    if(res && typeof res.weeks === 'number' && res.weeks > analyseCountWeeks(analyseLoadHistory())){
+      analyseProgressStage('☁️ Récupération des semaines des autres postes', 95);
+      await analyseLoadHistoryFromDrive();
+      if(typeof renderAnalyseHistoryPanel === 'function') renderAnalyseHistoryPanel();
+    }
+    analyseProgressStage('✓ Historique synchronisé sur Drive', 100);
+    return { ok:true, weeks: res ? res.weeks : undefined };
   }catch(e){
-    showToast('Erreur de sauvegarde Drive (Analyse) : ' + e.message, 'err');
+    showToast('Synchro Drive (Analyse) non faite : ' + e.message + ' — rien n\'a été perdu, nouvel essai automatique', 'err');
     return { ok:false, reason:e.message };
   }finally{
     analyseDriveSaving = false;
-    analyseHideSaveProgress();
+    analyseProgressEnd();
   }
 }
 
@@ -12617,16 +13007,21 @@ async function analyseSaveHistoryToDrive(){
  *  on ne perd jamais une sauvegarde locale plus fraîche pas encore synchée). */
 async function analyseLoadHistoryFromDrive(){
   if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  // Toujours fusionner avec l'historique RÉEL du poste (IndexedDB), jamais
+  // avec le repli localStorage transitoire.
+  try{ await analyseHistoryCacheLoad(); }catch(e){}
   try{
     const r = await driveCall('load', ANALYSE_DRIVE_KEY);
     if(!r || !r.data) { analyseDriveLoaded = true; return { ok:true, empty:true }; }
     const remote = JSON.parse(r.data);
     const local  = analyseLoadHistory();
     const merged = {};
+    const deletedHere = new Set(analyseDeletedPendingLoad()); // supprimées ici, pas encore transmises à Drive
     ['EUROPE2','RFM'].forEach(stKey => {
       const byLabel = {};
       (local[stKey]  || []).forEach(e => { byLabel[e.weekLabel] = e; });
       (remote[stKey] || []).forEach(e => {
+        if(!e || !e.weekLabel || deletedHere.has(stKey + '|' + e.weekLabel)) return;
         const cur = byLabel[e.weekLabel];
         if(!cur || new Date(e.savedAt) > new Date(cur.savedAt)) byLabel[e.weekLabel] = e;
       });
@@ -12637,7 +13032,13 @@ async function analyseLoadHistoryFromDrive(){
     return { ok:true };
   }catch(e){
     // "Introuvable" = pas encore de fichier sur Drive pour cette clé — normal au premier usage
-    if(!/ntrouvable/i.test(e.message||'')) console.warn('Analyse : échec chargement Drive —', e.message);
+    if(!/ntrouvable/i.test(e.message||'')){
+      console.warn('Analyse : échec chargement Drive —', e.message);
+      if(!analyseDriveCorruptNotified && /JSON/i.test(e.message || '')){
+        analyseDriveCorruptNotified = true;
+        showToast('Le fichier d\'historique Analyse sur Drive est abîmé. Les semaines de ce poste ne sont pas touchées ; il sera réparé automatiquement (fusion + copie de sécurité par le script Drive) au prochain envoi depuis un poste qui a des semaines.', 'err');
+      }
+    }
     analyseDriveLoaded = true;
     return { ok:false, reason:e.message };
   }
@@ -18520,6 +18921,7 @@ function analyseApplyDatedFit(row){
 
 function analyseEnrichRowsForBulk(rows, stKey, importedDateStr, refDate){
   const stationField = stKey === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+  let attrsDirty = false; // une seule écriture du store en fin de boucle
   rows.forEach(row => {
     row.search = analyseGetSearchScores(row.title, row.artist, refDate !== undefined ? refDate : importedDateStr);
     row.fpa = analyseGetFpaScores(row.title, row.artist);
@@ -18529,12 +18931,13 @@ function analyseEnrichRowsForBulk(rows, stKey, importedDateStr, refDate){
     if(!attrs.label && row.label){ attrs.label = row.label; changed = true; }
     if(!attrs.genre && row.genre){ attrs.genre = row.genre; changed = true; }
     if(!attrs[stationField] && row.rangPrec === 'E'){ attrs[stationField] = importedDateStr || ''; changed = true; }
-    if(changed) songAttributesSaveToStorage();
+    if(changed) attrsDirty = true;
     row.label = attrs.label || row.label || '';
     row.genre = attrs.genre || row.genre || '';
     row.dateEntree = attrs[stationField] || '';
     row.decade = attrs.decade || null;
   });
+  if(attrsDirty) songAttributesSaveToStorage();
   if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(rows);
   if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(rows);
   return rows;
@@ -18588,6 +18991,7 @@ async function analyseBulkArchive(preview, silent){
   const refDate = preview.weekEnd || preview.weekStart || null;
   analyseEnrichRowsForBulk(preview.rows, preview.stKey, preview.weekStart, refDate);
   preview.stats = analyseComputeStats(preview.rows);
+  await analyseHistoryCacheLoad(); // travaille toujours sur l'historique réel du poste
 
   const history = analyseLoadHistory();
   if(!history[preview.stKey]) history[preview.stKey] = [];
@@ -18599,6 +19003,7 @@ async function analyseBulkArchive(preview, silent){
   if(idx >= 0) history[preview.stKey][idx] = entry; else history[preview.stKey].push(entry);
   history[preview.stKey].sort((a,b) => a.weekLabel.localeCompare(b.weekLabel, undefined, {numeric:true}));
   analyseSaveHistory(history);
+  analyseScheduleDriveSync(); // part même si l'import en masse est abandonné en cours de route
 
   const detail = { meta: { station:preview.stKey, weekLabel:preview.label, weekStart:preview.weekStart, weekEnd:preview.weekEnd, fileName:preview.file.name, importedAt:new Date().toISOString(), sheetName:preview.sheetName }, rows: preview.rows.map(analyseCleanRowForSave) };
   const detailSaved = await analyseSaveWeekDetailLocal(preview.stKey, preview.label, detail);
@@ -18779,10 +19184,11 @@ function analyseGetFpaScores(title, artist){
   try{ rows = build360Rows(); }catch(e){ return null; }
   if(!rows || !rows.length) return null;
   const nT = norm(title||''), nA = norm(artist||'');
+  const qT = simPrep(nT), qA = simPrep(nA);
   let best = null, bestScore = 0;
   rows.forEach(r => {
-    const ts = similarity(nT, norm(r.title||''));
-    const as = nA ? similarity(nA, norm(r.artist||'')) : 0.5;
+    const ts = similarityPrep(qT, simPrep(r.title||''));
+    const as = nA ? similarityPrep(qA, simPrep(r.artist||'')) : 0.5;
     const score = ts*0.6 + as*0.4;
     if(score > bestScore && score >= 0.55){ bestScore = score; best = r; }
   });
@@ -18810,7 +19216,35 @@ function analyseEnrichRows(){
   // sinon début de semaine ; à défaut (semaine non datée), null — dans ce
   // cas analyseGetSearchScores retombe sur le dernier chiffre connu.
   const refDate = (analyseWeekMeta && (analyseWeekMeta.weekEnd || analyseWeekMeta.weekStart)) || null;
-  analyseRows.forEach(row => {
+  let attrsDirty = false; // une seule écriture du store en fin de boucle
+  analyseRows.forEach(row => analyseEnrichOneRow(row, stationField, refDate, () => { attrsDirty = true; }));
+  if(attrsDirty) songAttributesSaveToStorage();
+  if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(analyseRows);
+  if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(analyseRows);
+}
+
+/** Variante asynchrone (même traitement, ligne par ligne) qui rend la main
+ *  au navigateur régulièrement pour afficher la progression en temps réel. */
+async function analyseEnrichRowsAsync(onProgress){
+  const stationField = analyseStationKey() === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+  const refDate = (analyseWeekMeta && (analyseWeekMeta.weekEnd || analyseWeekMeta.weekStart)) || null;
+  let attrsDirty = false;
+  const total = analyseRows.length;
+  for(let i = 0; i < total; i++){
+    analyseEnrichOneRow(analyseRows[i], stationField, refDate, () => { attrsDirty = true; });
+    if(i % 20 === 19 || i === total - 1){
+      if(onProgress) onProgress(i + 1, total);
+      await analyseYield();
+    }
+  }
+  if(attrsDirty) songAttributesSaveToStorage();
+  if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(analyseRows);
+  if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(analyseRows);
+}
+
+/** Enrichissement d'une ligne — partagé par les deux variantes ci-dessus. */
+function analyseEnrichOneRow(row, stationField, refDate, markDirty){
+  {
     row.search = analyseGetSearchScores(row.title, row.artist, refDate);
     row.fpa = analyseGetFpaScores(row.title, row.artist);
     analyseApplyDatedFit(row);
@@ -18822,14 +19256,12 @@ function analyseEnrichRows(){
       attrs[stationField] = (analyseWeekMeta && analyseWeekMeta.importedAt) ? analyseWeekMeta.importedAt.slice(0,10) : '';
       changed = true;
     }
-    if(changed) songAttributesSaveToStorage();
+    if(changed) markDirty();
     row.label = attrs.label || row.label || '';
     row.genre = attrs.genre || row.genre || '';
     row.dateEntree = attrs[stationField] || '';
     row.decade = attrs.decade || null;
-  });
-  if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(analyseRows);
-  if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(analyseRows);
+  }
 }
 
 /** Édition inline Genre/Label/Date d'Entrée directement depuis le tableau
@@ -18946,7 +19378,14 @@ async function analyseSaveWeekToHistory(){
   // vient d'être mis à jour ci-dessus, donc ce second passage relit la bonne
   // date de référence. Sinon une correction manuelle de date n'aurait aucun
   // effet sur les scores Call Out/OMT contemporains réellement archivés.
-  analyseEnrichRows();
+  const saveBtn = document.getElementById('analyseSaveBtn');
+  if(saveBtn){ saveBtn.disabled = true; saveBtn.style.opacity = '.6'; saveBtn.style.cursor = 'default'; }
+  analyseProgressBegin('⏳ Calcul des scores de la semaine');
+  try{
+    await analyseHistoryCacheLoad(); // travaille toujours sur l'historique réel du poste
+    await analyseEnrichRowsAsync((done, total) => analyseProgressStage('⏳ Calcul des scores : ' + done + ' / ' + total + ' titres', 50 * done / total));
+    analyseProgressStage('💾 Enregistrement sur ce poste', 52);
+    await analyseYield();
 
   // 1) Index (statistiques agrégées) — utilisé par le tableau comparatif ET
   //    synchronisé sur Drive (petit payload, fiable).
@@ -18971,6 +19410,7 @@ async function analyseSaveWeekToHistory(){
   const detailSaved = await analyseSaveWeekDetailLocal(stKey, label, detail);
 
   renderAnalyseHistoryPanel();
+  analyseProgressStage('✓ Semaine enregistrée sur ce poste', 55);
 
   if(!detailSaved){
     showToast('⚠ Semaine ' + label + ' enregistrée (statistiques agrégées OK), mais le DÉTAIL par titre n\'a pas pu être sauvegardé localement — quota de stockage du navigateur probablement atteint. Le détail de cette semaine ne sera pas disponible pour le recalcul ou l\'affichage détaillé.', 'err');
@@ -18981,18 +19421,17 @@ async function analyseSaveWeekToHistory(){
     showToast('✓ Semaine ' + label + ' enregistrée localement (' + STATION_LABELS[stKey] + '). Configurez Drive Sync (Classements → Historique Drive) pour synchroniser les statistiques entre postes.', 'success');
     return;
   }
-  if(analyseDriveSaving) return;
-
-  const btn = document.getElementById('analyseSaveBtn');
-  if(btn){ btn.disabled = true; btn.style.opacity = '.6'; btn.style.cursor = 'default'; }
   const result = await analyseSaveHistoryToDrive();
-  if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
   if(result.ok){
-    showToast('✓ Semaine ' + label + ' enregistrée — statistiques synchronisées sur ☁️ Drive, détail complet local à cet appareil (' + STATION_LABELS[stKey] + ')', 'success');
+    showToast('✓ Semaine ' + label + ' enregistrée (' + STATION_LABELS[stKey] + ') et synchronisée sur ☁️ Drive — le détail par titre y est copié en arrière-plan', 'success');
   } else {
-    showToast('✓ Semaine ' + label + ' enregistrée localement, mais la synchro Drive des statistiques a échoué (' + (result.reason||'erreur inconnue') + ')', 'err');
+    showToast('✓ Semaine ' + label + ' enregistrée sur ce poste. La synchro Drive n\'a pas abouti (' + (result.reason||'erreur inconnue') + ') — elle sera retentée automatiquement.', 'err');
   }
   renderAnalyseHistoryPanel();
+  }finally{
+    analyseProgressEnd();
+    if(saveBtn){ saveBtn.disabled = false; saveBtn.style.opacity = ''; saveBtn.style.cursor = ''; }
+  }
 }
 
 /** Réaffiche une semaine archivée dans le tableau principal. Le détail
@@ -19002,9 +19441,17 @@ async function analyseSaveWeekToHistory(){
  *  local. Si absent (autre poste, ou cache navigateur vidé), on l'explique
  *  clairement plutôt que de laisser croire à un bug. */
 async function analyseViewArchivedWeek(stKey, weekLabel){
-  const detail = await analyseLoadWeekDetailLocal(stKey, weekLabel);
+  let detail = await analyseLoadWeekDetailLocal(stKey, weekLabel);
+  if(!detail && DRIVE_SYNC_URL){
+    showToast('⏳ Récupération du détail de « ' + weekLabel + ' » depuis ☁️ Drive…', 'success');
+    detail = await analyseLoadWeekDetail(stKey, weekLabel);
+  }
   if(!detail || !detail.rows || !detail.rows.length){
-    showToast('Détail indisponible pour « ' + weekLabel + ' » sur cet appareil — le détail complet des titres reste local à l\'appareil qui a fait l\'enregistrement (non synchronisé sur Drive, pour fiabilité). Seules les statistiques agrégées sont partagées entre postes. Réimportez le fichier de cette semaine ici si besoin du détail.', 'err');
+    let msg;
+    if(!DRIVE_SYNC_URL) msg = 'Détail de « ' + weekLabel + ' » introuvable sur ce poste (Drive Sync non configuré). Réimportez le fichier de cette semaine ici si besoin du détail.';
+    else if(analyseDetailLastDriveError) msg = 'Impossible de récupérer le détail de « ' + weekLabel + ' » depuis Drive (' + analyseDetailLastDriveError + '). Réessayez dans un moment.';
+    else msg = 'Le détail de « ' + weekLabel + ' » n\'est pas encore sur Drive : il est sur le poste qui a enregistré cette semaine. Il y sera copié automatiquement dès que FPA v30.226 sera ouvert sur ce poste-là (page Analyse) — ou réimportez ici le fichier de cette semaine.';
+    showToast(msg, 'err');
     return;
   }
   analyseWeekMeta = detail.meta;
@@ -19018,11 +19465,19 @@ async function analyseViewArchivedWeek(stKey, weekLabel){
 
 async function analyseDeleteWeekFromHistory(stKey, weekLabel){
   if(!confirm('Supprimer la semaine ' + weekLabel + ' de l\'historique Analyse ' + STATION_LABELS[stKey] + ' ?')) return;
+  await analyseHistoryCacheLoad();
   const history = analyseLoadHistory();
   if(!history[stKey]) return;
   history[stKey] = history[stKey].filter(e => e.weekLabel !== weekLabel);
   analyseSaveHistory(history);
+  // Suppression volontaire : transmise explicitement au script Drive (seul
+  // moyen de retirer une semaine de Drive, qui ne fait sinon que fusionner)
+  const delPending = analyseDeletedPendingLoad();
+  if(!delPending.includes(stKey + '|' + weekLabel)) delPending.push(stKey + '|' + weekLabel);
+  analyseDeletedPendingSave(delPending);
   await analyseDeleteWeekDetailLocal(stKey, weekLabel);
+  analyseDetailDequeue(stKey, weekLabel);
+  if(DRIVE_SYNC_URL) driveCall('delete', analyseDetailDriveKey(stKey, weekLabel)).catch(() => {});
   renderAnalyseHistoryPanel();
   if(DRIVE_SYNC_URL){
     const result = await analyseSaveHistoryToDrive();
@@ -19402,6 +19857,8 @@ function toggleAnalysePage(){
         analyseUpdateSaveProgress(2, 2);
         analyseHideSaveProgress();
         renderAnalyseHistoryPanel();
+        if(analyseDriveIsDirty()) analyseSaveHistoryToDrive(); // envoi resté en attente
+        analyseDetailBackfill(); // copie sur Drive du détail des semaines de ce poste
       });
     }
     saveLastOpenPage('analyse');
