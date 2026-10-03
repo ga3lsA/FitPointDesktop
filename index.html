@@ -15291,9 +15291,15 @@ function interimGetAllRadios(){
  *  aucun des slugs ne s'y trouve. */
 function interimResolveMetric(wave, matchSlugs, metric){
   if(!wave) return null;
+  // Historique Marché stocke ses métriques en minuscules (ac/pda/dea),
+  // alors que les quinzaines (ici comme dans "Résultats par cible")
+  // utilisent AC/PDA en majuscules — sans cette conversion, aucune valeur
+  // n'est jamais trouvée et les badges restent systématiquement "non
+  // disponible", même quand la donnée officielle existe bien.
+  const key = metric.toLowerCase();
   for(const slug of matchSlugs){
     const ent = wave.entities && wave.entities[slug];
-    if(ent && ent.LV && typeof ent.LV[metric] === 'number') return ent.LV[metric];
+    if(ent && ent.LV && typeof ent.LV[key] === 'number') return ent.LV[key];
   }
   return null;
 }
