@@ -4057,7 +4057,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.226';
+const FPA_VERSION   = 'v30.227';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -12725,6 +12725,10 @@ async function analyseRecalculateAllArchives(onProgress){
       if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(detail.rows);
       const newStats = analyseComputeStats(detail.rows);
       entry.stats = newStats;
+      // Version recalculée = la plus récente : c'est elle que la fusion Drive
+      // retiendra sur tous les postes (corrige notamment une semaine
+      // enregistrée ailleurs sans historique de vagues).
+      entry.savedAt = new Date().toISOString();
       detail.rows = detail.rows.map(analyseCleanRowForSave);
       await analyseSaveWeekDetailLocal(stKey, entry.weekLabel, detail);
       recalculated++;
@@ -12779,6 +12783,10 @@ function analyseRenderRecalcReport(result){
 
 async function analyseRecalculateAllArchivesUI(){
   if(!requireAdmin()) return;
+  if(!analyseHasSearchHistory()){
+    showToast('Recalcul impossible sur ce poste : aucun historique de vagues Call Out/OMT ici (onglet Historique vide) — les scores de recherche seraient vidés. Lancez le recalcul depuis le poste qui a l\'historique des vagues.', 'err');
+    return;
+  }
   if(!confirm('Recalculer les scores Call Out/OMT/Fit Score de toutes les semaines archivées, à partir de leur date réelle ?\n\n⚠️ Les semaines antérieures à la toute première recherche Call Out/OMT datée connue verront leurs scores Recherche (Pot Score, Fam Score...) VIDÉS — le recalcul ne remonte jamais une recherche future sur une semaine passée, il n\'a donc rien à leur associer. Les semaines sans date connue seront ignorées (elles nécessitent un réimport).')) return;
 
   const btn = document.getElementById('analyseRecalcBtn');
@@ -18983,6 +18991,7 @@ function analyseBulkShowReview(preview, total){
 }
 
 async function analyseBulkArchive(preview, silent){
+  if(!analyseConfirmWithoutSearchHistory()){ analyseBulkAutoMode = false; analyseBulkResults.skipped++; analyseBulkProcessNext(); return; }
   // Ré-enrichit avec la date éventuellement corrigée par l'utilisateur dans
   // l'écran de revue (l'enrichissement initial dans analyseBulkProcessNext
   // ne sert qu'à l'aperçu et se basait sur la date auto-détectée) — sans ce
@@ -19360,6 +19369,20 @@ function analyseComputeStats(rows){
   };
 }
 
+/** Les scores de recherche (Pot Score, Burn, Fam Score...) viennent de
+ *  l'historique des vagues Call Out/OMT stocké dans CE navigateur (non
+ *  synchronisé entre postes). Sans lui, une semaine enregistrée ici aurait
+ *  des scores de recherche vides — et, étant la plus récente, remplacerait
+ *  sur Drive la bonne version enregistrée depuis un autre poste. */
+function analyseHasSearchHistory(){ const h = histLoad(); return Array.isArray(h) && h.length > 0; }
+let __analyseNoHistoryConfirmed = false;
+function analyseConfirmWithoutSearchHistory(){
+  if(analyseHasSearchHistory() || __analyseNoHistoryConfirmed) return true;
+  const ok = confirm('⚠️ Ce poste n\'a aucun historique de vagues Call Out/OMT (onglet Historique vide).\n\nLes scores de recherche (Pot Score, Burn, Fam Score…) de la semaine seront VIDES, et cette version vide remplacerait sur Drive celle enregistrée depuis un poste qui a l\'historique.\n\nConseil : enregistrez plutôt cette semaine depuis le poste qui a l\'historique des vagues.\n\nEnregistrer quand même ?');
+  if(ok) __analyseNoHistoryConfirmed = true;
+  return ok;
+}
+
 async function analyseSaveWeekToHistory(){
   if(!analyseRows.length){ showToast('Aucune donnée à sauvegarder — importez d\'abord un fichier.', 'err'); return; }
   const labelInput = document.getElementById('analyseWeekLabelInput');
@@ -19367,6 +19390,7 @@ async function analyseSaveWeekToHistory(){
   const endInput = document.getElementById('analyseWeekEndInput');
   const label = ((labelInput ? labelInput.value : '') || (analyseWeekMeta && analyseWeekMeta.weekLabel) || '').trim();
   if(!label){ showToast('Renseignez un libellé de semaine avant de sauvegarder.', 'err'); return; }
+  if(!analyseConfirmWithoutSearchHistory()) return;
   const weekStart = (startInput ? startInput.value : '') || (analyseWeekMeta && analyseWeekMeta.weekStart) || '';
   const weekEnd = (endInput ? endInput.value : '') || (analyseWeekMeta && analyseWeekMeta.weekEnd) || '';
   if(analyseWeekMeta){ analyseWeekMeta.weekLabel = label; analyseWeekMeta.weekStart = weekStart; analyseWeekMeta.weekEnd = weekEnd; }
