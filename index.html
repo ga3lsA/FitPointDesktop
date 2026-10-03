@@ -3343,7 +3343,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
           <input id="liveSearchInput" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="liveSetSearchDebounced(this.value)">
           <span id="liveResultCount" style="font-size:11.5px;color:var(--muted);white-space:nowrap"></span>
-          <button class="btn-ghost" onclick="openLiveNewOutModal()" title="Choisir une radio et voir instantanément ses entrées (New) et sorties (Out) du top 50 (Live comparé à la dernière semaine complète)" style="font-size:11.5px;padding:8px 14px;white-space:nowrap">🆕 New / Out par radio</button>
+          <button class="btn-ghost" onclick="openLiveNewOutModal()" title="Choisir une radio et voir instantanément ses nouvelles entrées dans le top 50 (New) et les titres de son top 50 sortis de son classement (Out) — Live comparé à la dernière semaine complète" style="font-size:11.5px;padding:8px 14px;white-space:nowrap">🆕 New / Out par radio</button>
         </div>
 
         <!-- Tableau comparatif radio par radio -->
@@ -4115,7 +4115,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.231';
+const FPA_VERSION   = 'v30.232';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -9089,24 +9089,25 @@ const LIVE_TOP_N = 50;
 function liveInTop(v){ return v !== null && v !== undefined && v <= LIVE_TOP_N; }
 
 /** Cellule de comparaison de rang : valeur Live + variation par rapport à
- *  la dernière semaine complète. topN (radios) : NEW = entrée dans le top N,
- *  OUT = sortie du top N ; sans topN (Shazam/Spotify) : NEW = absent avant,
- *  OUT = absent maintenant. */
+ *  la dernière semaine complète.
+ *  - NEW : absent du classement de la radio la semaine dernière, présent
+ *          dans le Live (dans le top topN si topN est fourni) ;
+ *  - OUT : présent la semaine dernière (dans le top topN si fourni), absent
+ *          du classement de la radio dans le Live.
+ *  Un titre classé aux deux périodes affiche toujours sa variation, même
+ *  s'il passe au-delà du top topN. */
 function liveDeltaCell(liveVal, lastVal, topN){
-  const inTop = v => v !== null && v !== undefined && (!topN || v <= topN);
-  const nowIn = inTop(liveVal), wasIn = inTop(lastVal);
+  const inScope = v => !topN || v <= topN;
   if(liveVal === null && lastVal === null) return '<span style="color:var(--muted)">–</span>';
-  if(nowIn && !wasIn){
-    const tip = lastVal !== null ? ` title="Était #${lastVal} la dernière semaine complète"` : '';
-    return `<span style="font-weight:800;color:var(--navy)">${liveVal}</span><br><span${tip} style="font-size:9px;font-weight:800;color:var(--cyan)">NEW</span>`;
+  if(lastVal === null){
+    return inScope(liveVal)
+      ? `<span style="font-weight:800;color:var(--navy)">${liveVal}</span><br><span style="font-size:9px;font-weight:800;color:var(--cyan)">NEW</span>`
+      : `<span style="font-weight:800;color:var(--navy)">${liveVal}</span>`;
   }
-  if(wasIn && !nowIn){
-    const now = liveVal !== null ? `<span style="color:var(--muted)">${liveVal}</span>` : `<span style="color:var(--muted);text-decoration:line-through">${lastVal}</span>`;
-    return `${now}<br><span title="Était #${lastVal} la dernière semaine complète" style="font-size:9px;font-weight:800;color:#B05E00">OUT</span>`;
-  }
-  if(!nowIn && !wasIn){
-    // Hors top N aux deux périodes : valeur Live seule, sans mention
-    return liveVal !== null ? `<span style="color:var(--muted)">${liveVal}</span>` : '<span style="color:var(--muted)">–</span>';
+  if(liveVal === null){
+    return inScope(lastVal)
+      ? `<span style="color:var(--muted);text-decoration:line-through">${lastVal}</span><br><span title="Était #${lastVal} la dernière semaine complète" style="font-size:9px;font-weight:800;color:#B05E00">OUT</span>`
+      : '<span style="color:var(--muted)">–</span>';
   }
   const diff = lastVal - liveVal; // > 0 = amélioration (rang plus petit = mieux classé)
   if(diff === 0) return `<span style="font-weight:800;color:var(--navy)">${liveVal}</span> <span style="font-size:10px;color:var(--muted)">≈</span>`;
@@ -9120,11 +9121,12 @@ function liveDeltaCell(liveVal, lastVal, topN){
 // ══════════════════════════════════════════════════════════════════════════
 // Analyse limitée au TOP 50 de chaque radio (LIVE_TOP_N), même définition
 // que les mentions NEW / OUT du tableau Live :
-//  - NEW : dans le top 50 de la radio dans le Live, hors du top 50 (ou
-//          absent) de cette radio la dernière semaine complète ;
-//  - OUT : dans le top 50 de la radio la dernière semaine complète, hors du
-//          top 50 (ou absent) de cette radio dans le Live — y compris les
-//          titres qui ont disparu du Live sur toutes les radios.
+//  - NEW : absent du classement de la radio la dernière semaine complète,
+//          entré directement dans son top 50 dans le Live ;
+//  - OUT : dans le top 50 de la radio la dernière semaine complète, absent
+//          de son classement dans le Live — y compris les titres qui ont
+//          disparu du Live sur toutes les radios.
+// Un titre encore classé (même au-delà du 50e rang) n'est jamais OUT.
 // Rangs recalculés exactement comme dans le tableau (liveComputeRadioRanks).
 const LIVE_NEWOUT_RADIO_KEY = 'fpa_live_newsorti_radio'; // clé conservée : garde la radio déjà choisie
 let liveNewOutRadio = null;
@@ -9140,14 +9142,14 @@ function liveNewOutCompute(radioKey){
     if(lastWeek) matchedLast.add(lastWeek);
     const liveVal = liveGetRankValue(radioKey, e, liveRanks);
     const lastVal = lastWeek ? liveGetRankValue(radioKey, lastWeek, lastWeekRanks) : null;
-    if(liveInTop(liveVal) && !liveInTop(lastVal)) news.push({ e, rank: liveVal, other: lastVal });
-    else if(liveInTop(lastVal) && !liveInTop(liveVal)) outs.push({ e: lastWeek, rank: lastVal, other: liveVal, goneFromLive: false });
+    if(lastVal === null && liveInTop(liveVal)) news.push({ e, rank: liveVal });
+    else if(liveVal === null && liveInTop(lastVal)) outs.push({ e: lastWeek, rank: lastVal, goneFromLive: false });
   });
   if(airplayLoaded){
     uniq(airplayData).forEach(e => {
       if(matchedLast.has(e)) return;
       const lastVal = liveGetRankValue(radioKey, e, lastWeekRanks);
-      if(liveInTop(lastVal)) outs.push({ e, rank: lastVal, other: null, goneFromLive: true });
+      if(liveInTop(lastVal)) outs.push({ e, rank: lastVal, goneFromLive: true });
     });
   }
   news.sort((a, b) => a.rank - b.rank);
@@ -9211,10 +9213,7 @@ function liveNewOutRender(){
     const badge = kind === 'new'
       ? '<span style="font-size:9px;font-weight:800;color:var(--cyan);border:1.5px solid var(--cyan);border-radius:5px;padding:1px 5px">NEW</span>'
       : '<span style="font-size:9px;font-weight:800;color:#B05E00;border:1.5px solid #F2C77B;border-radius:5px;padding:1px 5px">OUT</span>';
-    // Rang de l'autre période, quand le titre y était classé hors top 50
-    const otherTxt = x.other != null
-      ? (kind === 'new' ? ' · était #' + x.other : ' · désormais #' + x.other)
-      : (x.goneFromLive ? ' · absent du Live sur toutes les radios' : '');
+    const otherTxt = x.goneFromLive ? ' · absent du Live sur toutes les radios' : '';
     return `<div style="display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--border)">
       <div title="Rang ${kind === 'new' ? 'dans le Live' : 'la dernière semaine complète'}" style="font-size:13px;font-weight:800;color:${kind === 'new' ? 'var(--navy)' : 'var(--muted)'};${kind === 'out' ? 'text-decoration:line-through;' : ''}font-variant-numeric:tabular-nums">#${x.rank}</div>
       <div style="min-width:0">
@@ -9231,8 +9230,8 @@ function liveNewOutRender(){
     </div>`;
   const name = escHtml(radio.col || radio.label);
   body.innerHTML =
-    section('Out du top ' + LIVE_TOP_N + ' · ' + name, outs, 'out', 'Aucun titre sorti du top ' + LIVE_TOP_N + ' sur cette radio.') +
-    section('New dans le top ' + LIVE_TOP_N + ' · ' + name, news, 'new', 'Aucune entrée dans le top ' + LIVE_TOP_N + ' sur cette radio.');
+    section('Out · ' + name, outs, 'out', 'Aucun titre du top ' + LIVE_TOP_N + ' sorti du classement de cette radio.') +
+    section('New · ' + name, news, 'new', 'Aucune nouvelle entrée dans le top ' + LIVE_TOP_N + ' de cette radio.');
 }
 
 function renderLivePage(){
