@@ -24708,8 +24708,10 @@ function buildPlaylistRow(t, metrics, row360){
     <div id="pl-artist-${safeId}" style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text" title="${escHtml(titleCaseDisplay(t.artist))} (double-clic pour corriger l'orthographe)" ondblclick="event.stopPropagation();playlistEditNameField('${t.key}','artist')">${escHtml(titleCaseDisplay(t.artist))}</div>
     <div style="padding:7px 6px;cursor:pointer;display:flex;align-items:center;gap:5px;min-width:0" onclick="${playlistLinkMode ? `togglePlaylistLinkSelect('${t.key}','${catNorm}')` : `togglePlaylistExpand('${t.key}')`}">
       <div id="pl-title-${safeId}" style="font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;cursor:text" title="${escHtml(titleCaseDisplay(t.title))} (double-clic pour corriger l'orthographe)" ondblclick="event.stopPropagation();playlistEditNameField('${t.key}','title')">${escHtml(titleCaseDisplay(t.title))}</div>
-      ${playlistMatchBadge(t)}
-      ${bundleBadge}
+      <div style="margin-left:auto;flex-shrink:0;display:flex;align-items:center;gap:5px">
+        ${bundleBadge}
+        ${playlistMatchBadge(t)}
+      </div>
     </div>
     <div style="padding:4px">
       <input type="text" name="pl-cat-${safeId}" maxlength="3" placeholder="—" value="${escHtml(t.categorie || '')}"
