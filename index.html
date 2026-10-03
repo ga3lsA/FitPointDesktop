@@ -2188,13 +2188,12 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <button class="btn-ghost" id="analyseRecalcBtn" style="font-size:11px;padding:8px 14px" onclick="analyseRecalculateAllArchivesUI()" title="Recalcule les scores Call Out/OMT/Fit Score des semaines déjà archivées, à partir de leur date réelle — sans réimporter les fichiers Excel">🔄 Recalculer les scores (semaines archivées)</button>
           <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="(async()=>{
             const btn=this; const orig=btn.textContent; btn.disabled=true; btn.textContent='⏳ Envoi…';
-            const r = await analyseSaveHistoryToDrive({force:true});
+            const r = await analyseSaveHistoryToDrive();
             if(r.ok) showToast('Statistiques Analyse (toutes semaines) envoyées sur Drive', 'success');
             btn.disabled=false; btn.textContent=orig;
-          })()" title="Renvoie les statistiques agrégées de toutes les semaines archivées vers Drive, même si rien n'a changé depuis — utile après un échec de synchro (le détail titre par titre, lui, est copié sur Drive séparément, semaine par semaine, en arrière-plan)">☁️⬆️ Forcer l'envoi vers Drive</button>
+          })()" title="Renvoie les statistiques agrégées de toutes les semaines archivées vers Drive, même si rien n'a changé depuis — utile après un échec de synchro (le détail par titre, lui, reste toujours local, voir note ci-dessous)">☁️⬆️ Forcer l'envoi vers Drive</button>
         </div>
       </div>
-      <div id="analyseDetailSyncStatus" style="font-size:11px;color:var(--muted);margin:-4px 0 10px"></div>
       <div id="analyseRecalcProgressWrap" style="display:none;margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
           <span id="analyseRecalcProgressLabel" style="font-size:11px;color:var(--text2);font-weight:700">⏳ Préparation…</span>
@@ -4046,11 +4045,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
-// lz-string 1.5.0 (MIT, pieroxy) — embarqué en local (pas de dépendance CDN) :
-// compression du payload Drive de l'historique Analyse (voir analyseDriveEncode).
-var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",n="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+-$",e={};function t(r,o){if(!e[r]){e[r]={};for(var n=0;n<r.length;n++)e[r][r.charAt(n)]=n}return e[r][o]}var i={compressToBase64:function(r){if(null==r)return"";var n=i._compress(r,6,function(r){return o.charAt(r)});switch(n.length%4){default:case 0:return n;case 1:return n+"===";case 2:return n+"==";case 3:return n+"="}},decompressFromBase64:function(r){return null==r?"":""==r?null:i._decompress(r.length,32,function(n){return t(o,r.charAt(n))})},compressToUTF16:function(o){return null==o?"":i._compress(o,15,function(o){return r(o+32)})+" "},decompressFromUTF16:function(r){return null==r?"":""==r?null:i._decompress(r.length,16384,function(o){return r.charCodeAt(o)-32})},compressToUint8Array:function(r){for(var o=i.compress(r),n=new Uint8Array(2*o.length),e=0,t=o.length;e<t;e++){var s=o.charCodeAt(e);n[2*e]=s>>>8,n[2*e+1]=s%256}return n},decompressFromUint8Array:function(o){if(null==o)return i.decompress(o);for(var n=new Array(o.length/2),e=0,t=n.length;e<t;e++)n[e]=256*o[2*e]+o[2*e+1];var s=[];return n.forEach(function(o){s.push(r(o))}),i.decompress(s.join(""))},compressToEncodedURIComponent:function(r){return null==r?"":i._compress(r,6,function(r){return n.charAt(r)})},decompressFromEncodedURIComponent:function(r){return null==r?"":""==r?null:(r=r.replace(/ /g,"+"),i._decompress(r.length,32,function(o){return t(n,r.charAt(o))}))},compress:function(o){return i._compress(o,16,function(o){return r(o)})},_compress:function(r,o,n){if(null==r)return"";var e,t,i,s={},u={},a="",p="",c="",l=2,f=3,h=2,d=[],m=0,v=0;for(i=0;i<r.length;i+=1)if(a=r.charAt(i),Object.prototype.hasOwnProperty.call(s,a)||(s[a]=f++,u[a]=!0),p=c+a,Object.prototype.hasOwnProperty.call(s,p))c=p;else{if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++),s[p]=f++,c=String(a)}if(""!==c){if(Object.prototype.hasOwnProperty.call(u,c)){if(c.charCodeAt(0)<256){for(e=0;e<h;e++)m<<=1,v==o-1?(v=0,d.push(n(m)),m=0):v++;for(t=c.charCodeAt(0),e=0;e<8;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}else{for(t=1,e=0;e<h;e++)m=m<<1|t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t=0;for(t=c.charCodeAt(0),e=0;e<16;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1}0==--l&&(l=Math.pow(2,h),h++),delete u[c]}else for(t=s[c],e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;0==--l&&(l=Math.pow(2,h),h++)}for(t=2,e=0;e<h;e++)m=m<<1|1&t,v==o-1?(v=0,d.push(n(m)),m=0):v++,t>>=1;for(;;){if(m<<=1,v==o-1){d.push(n(m));break}v++}return d.join("")},decompress:function(r){return null==r?"":""==r?null:i._decompress(r.length,32768,function(o){return r.charCodeAt(o)})},_decompress:function(o,n,e){var t,i,s,u,a,p,c,l=[],f=4,h=4,d=3,m="",v=[],g={val:e(0),position:n,index:1};for(t=0;t<3;t+=1)l[t]=t;for(s=0,a=Math.pow(2,2),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;c=r(s);break;case 2:return""}for(l[3]=c,i=c,v.push(c);;){if(g.index>o)return"";for(s=0,a=Math.pow(2,d),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;switch(c=s){case 0:for(s=0,a=Math.pow(2,8),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 1:for(s=0,a=Math.pow(2,16),p=1;p!=a;)u=g.val&g.position,g.position>>=1,0==g.position&&(g.position=n,g.val=e(g.index++)),s|=(u>0?1:0)*p,p<<=1;l[h++]=r(s),c=h-1,f--;break;case 2:return v.join("")}if(0==f&&(f=Math.pow(2,d),d++),l[c])m=l[c];else{if(c!==h)return null;m=i+i.charAt(0)}v.push(m),l[h++]=i+m.charAt(0),i=m,0==--f&&(f=Math.pow(2,d),d++)}}};return i}();
-</script>
-<script>
   // Radio 538 (Top 50) publie sa liste en PDF hebdomadaire plutôt qu'en HTML —
   // pdf.js permet d'en extraire le texte brut côté navigateur.
   if(window['pdfjsLib']) {
@@ -4062,8 +4056,8 @@ var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZa
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.224';
-const FPA_BUILD_ISO = '2026-10-03T12:00:00+02:00';
+const FPA_VERSION   = 'v30.222';
+const FPA_BUILD_ISO = '2026-08-08T19:45:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -7864,35 +7858,6 @@ function similarity(a,b){
   return union>0?inter/union:0;
 }
 
-/** Variante RAPIDE de similarity(), au résultat strictement identique, pour
- *  les boucles massives (titre de programmation × toutes les lignes de
- *  l'historique Call Out/OMT). similarity() renormalise ses deux arguments
- *  à CHAQUE appel (NFD + 3 regex) : sur un import de 500 titres face à des
- *  dizaines de milliers de lignes d'historique, c'était l'essentiel des
- *  minutes d'attente à la sauvegarde d'une semaine Analyse. Ici chaque
- *  chaîne n'est normalisée/découpée qu'une fois (cache), puis comparée. */
-const __simPrepCache = new Map();
-function simPrep(s){
-  const key = s == null ? '' : String(s);
-  let p = __simPrepCache.get(key);
-  if(p) return p;
-  const n = norm(key);
-  p = { raw0: !s, n, w: new Set(n.split(' ').filter(x => x.length > 1)) };
-  if(__simPrepCache.size > 300000) __simPrepCache.clear();
-  __simPrepCache.set(key, p);
-  return p;
-}
-function similarityPrep(pa, pb){
-  if(pa.raw0 || pb.raw0) return 0;
-  if(pa.n === pb.n) return 1;
-  const minLen = Math.min(pa.n.length, pb.n.length);
-  if(minLen >= 4 && (pa.n.includes(pb.n) || pb.n.includes(pa.n))) return 0.9;
-  let inter = 0;
-  pa.w.forEach(x => { if(pb.w.has(x)) inter++; });
-  const union = pa.w.size + pb.w.size - inter;
-  return union > 0 ? inter / union : 0;
-}
-
 function findInChart(chart,title,artist){
   const nt=norm(title),na=norm(artist);
   let best=null,bestScore=0;
@@ -10326,7 +10291,6 @@ function histLoad(){
 }
 function histSave(data){
   historyCache = data;
-  if(typeof analyseSeriesCacheClear === 'function') analyseSeriesCacheClear();
   idbSet(IDB_HISTORY_KEY, data).catch(e => {
     // Repli si IndexedDB échoue pour une raison quelconque
     try{ localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(data)); }
@@ -12127,16 +12091,14 @@ function getTitleVagueSeries(title, artist){
   // strictement identique (souvent orthographié différemment entre le
   // fichier Muzicast/Airplay et le Call Out : ordre des featurings, etc.).
   const nT = norm(title||''), nA = norm(artist||'');
-  const qT = simPrep(nT), qA = simPrep(nA);
 
   hist.forEach(v => {
     v.sheets.forEach(sh => {
       if(!isHistFixedSheet(sh.sheetName)) return;
       const isP1 = isP1Sheet(sh);
       sh.rows.forEach(r => {
-        const ts = similarityPrep(qT, simPrep(r.t||''));
-        if(ts*0.6 + 0.4 < 0.55) return; // même un artiste identique ne suffirait pas : inutile de comparer l'artiste
-        const as = nA ? similarityPrep(qA, simPrep(r.a||'')) : 0.5;
+        const ts = similarity(nT, r.t||'');
+        const as = nA ? similarity(nA, r.a||'') : 0.5;
         const score = ts*0.6 + as*0.4;
         if(score < 0.55) return;
         const point = { num: v.num || null, date: v.date || '', name: v.name, vagueName: v.name };
@@ -12185,15 +12147,13 @@ function getTitleFamScoreSeries(title, artist){
   const hist = histLoad().filter(v => isHistFixedRadio(v) && /\bOMT\b/i.test(v.type || ''));
   const raw = { famTous:[], famP1:[], burnTous:[], burnP1:[] };
   const nT = norm(title||''), nA = norm(artist||'');
-  const qT = simPrep(nT), qA = simPrep(nA);
   hist.forEach(v => {
     const matchingSheets = v.sheets.filter(sh => isHistFixedSheet(sh.sheetName));
     const targetSheets = matchingSheets.length ? matchingSheets : (v.sheets[0] ? [v.sheets[0]] : []);
     targetSheets.forEach(sh => {
       sh.rows.forEach(r => {
-        const ts = similarityPrep(qT, simPrep(r.t||''));
-        if(ts*0.6 + 0.4 < 0.55) return; // même un artiste identique ne suffirait pas : inutile de comparer l'artiste
-        const as = nA ? similarityPrep(qA, simPrep(r.a||'')) : 0.5;
+        const ts = similarity(nT, r.t||'');
+        const as = nA ? similarity(nA, r.a||'') : 0.5;
         const score = ts*0.6 + as*0.4;
         if(score < 0.55) return;
         const point = { num: v.num || null, date: v.date || '', name: v.name, vagueName: v.name };
@@ -12273,35 +12233,9 @@ function analyseNearestPriorEntry(series, referenceDate){
   return prior; // null si la programmation est antérieure à toute recherche connue
 }
 
-/** Cache des séries Call Out/OMT par titre, réservé à la page Analyse : un
- *  même titre revient dans toutes les semaines d'un import en masse et dans
- *  les deux passes d'enrichissement (aperçu puis archivage) — inutile de
- *  rebalayer tout l'historique à chaque fois. Invalidé dès que l'historique
- *  Call Out/OMT change (nouvelle référence, nouvelle vague, histSave). */
-let __analyseSeriesCache = new Map(), __analyseSeriesSig = null, __analyseSeriesRef = null;
-function analyseSeriesCacheClear(){ __analyseSeriesCache = new Map(); __analyseSeriesSig = null; __analyseSeriesRef = null; }
-function analyseSeriesCached(title, artist){
-  const h = histLoad() || [];
-  let sig = h.length + '|';
-  for(const v of h){
-    let n = 0;
-    (v.sheets || []).forEach(sh => { n += (sh.rows || []).length; });
-    sig += (v.name || '') + ':' + n + ';';
-  }
-  if(__analyseSeriesRef !== h || __analyseSeriesSig !== sig){
-    __analyseSeriesCache = new Map(); __analyseSeriesSig = sig; __analyseSeriesRef = h;
-  }
-  const key = norm(title||'') + '|||' + norm(artist||'');
-  let e = __analyseSeriesCache.get(key);
-  if(!e){
-    e = { co: getTitleVagueSeries(title, artist), omt: getTitleFamScoreSeries(title, artist) };
-    __analyseSeriesCache.set(key, e);
-  }
-  return e;
-}
-
 function analyseGetSearchScores(title, artist, referenceDate){
-  const { co, omt } = analyseSeriesCached(title, artist);
+  const co  = getTitleVagueSeries(title, artist);
+  const omt = getTitleFamScoreSeries(title, artist);
   const pick = arr => { const e = analyseNearestPriorEntry(arr, referenceDate); return e ? e.val : null; };
   return {
     potTous:  pick(co.potTous),
@@ -12423,13 +12357,9 @@ function analyseWeekLocalKey(stKey, weekLabel){ return 'fpa_analyse_week_' + stK
  *  Toutes les fonctions sont désormais asynchrones — voir les appelants
  *  (analyseBulkArchive, analyseSaveWeekToHistory, analyseRecalculateAllArchives,
  *  analyseViewArchivedWeek) qui utilisent await. */
-async function analyseSaveWeekDetailLocal(stKey, weekLabel, detail, opts){
+async function analyseSaveWeekDetailLocal(stKey, weekLabel, detail){
   try{
     await idbSet(analyseWeekLocalKey(stKey, weekLabel), detail);
-    // Copie sur Drive en arrière-plan (file persistante, une semaine = un
-    // fichier Drive) — sauf quand le détail vient justement d'être récupéré
-    // depuis Drive (opts.noUpload).
-    if(!(opts && opts.noUpload) && typeof analyseDetailEnqueue === 'function') analyseDetailEnqueue(stKey, weekLabel);
     return true;
   }catch(e){
     return false; // quota disque réellement épuisé (rare avec IndexedDB), ou navigateur sans IndexedDB
@@ -12455,189 +12385,6 @@ async function analyseDeleteWeekDetailLocal(stKey, weekLabel){
   const key = analyseWeekLocalKey(stKey, weekLabel);
   try{ await idbDelete(key); }catch(e){}
   try{ localStorage.removeItem(key); }catch(e){} // purge l'éventuel reliquat pré-migration
-}
-
-// ══════════════════════════════════════════════════════════════════════════
-// DÉTAIL PAR TITRE DES SEMAINES ANALYSE — copie sur Drive (v30.224)
-// ══════════════════════════════════════════════════════════════════════════
-// Auparavant, le détail (≈500 titres/semaine) restait uniquement dans le
-// navigateur du poste qui avait fait l'enregistrement. Il est désormais
-// copié sur Drive, UN FICHIER PAR SEMAINE (clé analyse_detail_<STATION>_<S..>)
-// pour qu'une semaine abîmée n'affecte jamais les autres, compressé
-// (analyseDriveEncode) et envoyé par le canal « gros fichiers »
-// (driveSaveBigFile). Le stockage local reste la source principale : Drive
-// sert de copie partagée, relue seulement quand le détail manque sur ce poste.
-//  - Envoi : file persistante (localStorage), traitée une semaine à la fois,
-//    en arrière-plan ; reprise automatique après un échec ou une fermeture.
-//  - Rattrapage : à l'ouverture de la page Analyse, les semaines dont le
-//    détail est sur ce poste mais pas encore sur Drive sont ajoutées à la file.
-//  - Lecture : analyseLoadWeekDetail() = local, sinon Drive (puis mis en
-//    cache local).
-const ANALYSE_DETAIL_DRIVE_PREFIX = 'analyse_detail_';
-const ANALYSE_DETAIL_QUEUE_KEY    = 'fpa_analyse_detail_queue_v1';
-const ANALYSE_DETAIL_SYNCED_KEY   = 'fpa_analyse_detail_synced_v1';
-let analyseDetailRunning = false;
-let analyseDetailRetryTimer = null;
-let analyseDetailFailures = 0;
-let analyseDetailBackfillDone = false;
-let analyseDetailLastDriveError = null;
-const __analyseDetailDriveMiss = new Set(); // semaines absentes de Drive (évite de redemander dans la session)
-
-function analyseDetailDriveKey(stKey, weekLabel){ return ANALYSE_DETAIL_DRIVE_PREFIX + stKey + '_' + analyseSlugifyWeekLabel(weekLabel); }
-function analyseDetailQueueLoad(){
-  try{ const q = JSON.parse(localStorage.getItem(ANALYSE_DETAIL_QUEUE_KEY) || '[]'); return Array.isArray(q) ? q : []; }
-  catch(e){ return []; }
-}
-function analyseDetailQueueSave(q){ try{ localStorage.setItem(ANALYSE_DETAIL_QUEUE_KEY, JSON.stringify(q)); }catch(e){} }
-function analyseDetailSyncedLoad(){
-  try{ const o = JSON.parse(localStorage.getItem(ANALYSE_DETAIL_SYNCED_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; }
-  catch(e){ return {}; }
-}
-function analyseDetailSyncedSet(key, val){
-  const o = analyseDetailSyncedLoad();
-  if(val) o[key] = val; else delete o[key];
-  try{ localStorage.setItem(ANALYSE_DETAIL_SYNCED_KEY, JSON.stringify(o)); }catch(e){}
-}
-
-/** Ajoute (ou rafraîchit) une semaine dans la file d'envoi. Le champ v
- *  identifie la version : si la semaine est ré-enregistrée pendant son
- *  envoi, l'élément n'est pas retiré de la file à la fin de cet envoi et la
- *  nouvelle version repart ensuite. */
-function analyseDetailEnqueue(stKey, weekLabel){
-  if(!DRIVE_SYNC_URL) return;
-  const q = analyseDetailQueueLoad();
-  const v = Date.now();
-  const it = q.find(x => x.stKey === stKey && x.label === weekLabel);
-  if(it) it.v = v; else q.push({ stKey, label: weekLabel, v });
-  analyseDetailQueueSave(q);
-  __analyseDetailDriveMiss.delete(analyseDetailDriveKey(stKey, weekLabel));
-  analyseDetailUpdateStatus();
-  analyseDetailProcessQueue();
-}
-function analyseDetailDequeue(stKey, weekLabel){
-  analyseDetailQueueSave(analyseDetailQueueLoad().filter(x => !(x.stKey === stKey && x.label === weekLabel)));
-  analyseDetailUpdateStatus();
-}
-
-function analyseDetailUpdateStatus(failed){
-  const el = document.getElementById('analyseDetailSyncStatus');
-  if(!el) return;
-  const n = analyseDetailQueueLoad().length;
-  if(!n || !DRIVE_SYNC_URL){ el.textContent = ''; el.title = ''; return; }
-  el.textContent = '☁️ Détail par titre : ' + n + ' semaine' + (n > 1 ? 's' : '') + ' à envoyer sur Drive' + (failed ? ' (nouvel essai automatique)' : (analyseDetailRunning ? '…' : ''));
-  el.title = 'Copie du détail titre par titre sur Drive, en arrière-plan, pour qu\'il soit consultable depuis les autres postes. L\'envoi reprend automatiquement si la page est fermée.';
-}
-
-/** Traite la file, une semaine à la fois. Laisse passer en priorité un
- *  envoi des statistiques (analyseDriveRun) en cours. */
-async function analyseDetailProcessQueue(){
-  if(analyseDetailRunning || !DRIVE_SYNC_URL) return;
-  analyseDetailRunning = true;
-  let failed = false;
-  try{
-    for(;;){
-      const q = analyseDetailQueueLoad();
-      if(!q.length) break;
-      const item = q[0];
-      analyseDetailUpdateStatus();
-      if(analyseDriveRun){ try{ await analyseDriveRun; }catch(e){} }
-      const key = analyseDetailDriveKey(item.stKey, item.label);
-      const detail = await analyseLoadWeekDetailLocal(item.stKey, item.label);
-      if(detail && detail.rows && detail.rows.length){
-        try{
-          await driveSaveBigFile(key, analyseDriveEncode(detail));
-          analyseDetailSyncedSet(key, Date.now());
-          __analyseDetailDriveMiss.delete(key);
-        }catch(e){
-          console.warn('Analyse : échec d\'envoi du détail ' + item.stKey + ' ' + item.label + ' sur Drive —', e.message);
-          failed = true;
-          break;
-        }
-      }
-      // Retire l'élément envoyé (ou dont le détail local n'existe plus) — sauf
-      // s'il a été ré-enregistré entre-temps (version plus récente à envoyer).
-      const q2 = analyseDetailQueueLoad();
-      const idx = q2.findIndex(x => x.stKey === item.stKey && x.label === item.label);
-      if(idx >= 0 && q2[idx].v === item.v) q2.splice(idx, 1);
-      else if(idx >= 0 && idx !== q2.length - 1){ q2.push(q2.splice(idx, 1)[0]); } // version plus récente : repasse en fin de file
-      analyseDetailQueueSave(q2);
-    }
-  }finally{
-    analyseDetailRunning = false;
-    const left = analyseDetailQueueLoad().length;
-    analyseDetailUpdateStatus(failed && left > 0);
-    clearTimeout(analyseDetailRetryTimer);
-    if(failed && left){
-      analyseDetailFailures++;
-      if(analyseDetailFailures <= 5) analyseDetailRetryTimer = setTimeout(analyseDetailProcessQueue, 120000);
-    } else if(!failed){
-      analyseDetailFailures = 0;
-    }
-  }
-}
-
-/** Rattrapage (une fois par session, à l'ouverture de la page Analyse) :
- *  met en file les semaines dont le détail est sur ce poste mais pas encore
- *  sur Drive — y compris toutes celles enregistrées avant cette version. */
-async function analyseDetailBackfill(){
-  if(analyseDetailBackfillDone || !DRIVE_SYNC_URL) return;
-  analyseDetailBackfillDone = true;
-  try{
-    await analyseHistoryCacheLoad();
-    const synced = analyseDetailSyncedLoad();
-    let remote = null;
-    try{ const r = await driveCall('list'); if(r && Array.isArray(r.keys)) remote = new Set(r.keys); }catch(e){ /* liste indisponible : on se fie au suivi local */ }
-    const history = analyseLoadHistory();
-    const toAdd = [];
-    const nowSynced = {};
-    for(const stKey of ['EUROPE2','RFM']){
-      for(const e of (history[stKey] || [])){
-        const key = analyseDetailDriveKey(stKey, e.weekLabel);
-        if(synced[key]) continue;
-        if(remote && remote.has(key)){ nowSynced[key] = Date.now(); continue; }
-        const d = await analyseLoadWeekDetailLocal(stKey, e.weekLabel);
-        if(d && d.rows && d.rows.length) toAdd.push({ stKey, label: e.weekLabel });
-      }
-    }
-    if(Object.keys(nowSynced).length){
-      const o = analyseDetailSyncedLoad(); Object.assign(o, nowSynced);
-      try{ localStorage.setItem(ANALYSE_DETAIL_SYNCED_KEY, JSON.stringify(o)); }catch(e){}
-    }
-    if(toAdd.length){
-      const q = analyseDetailQueueLoad(); // relue juste avant l'écriture : la file a pu bouger entre-temps
-      const v = Date.now();
-      toAdd.forEach(a => { if(!q.some(x => x.stKey === a.stKey && x.label === a.label)) q.push({ ...a, v }); });
-      analyseDetailQueueSave(q);
-    }
-  }catch(e){ console.warn('Analyse : rattrapage de l\'envoi des détails impossible —', e.message); }
-  analyseDetailUpdateStatus();
-  analyseDetailProcessQueue();
-}
-
-/** Détail d'une semaine : local d'abord, sinon copie Drive (mise ensuite en
- *  cache local, sans la renvoyer). Retourne null si introuvable ;
- *  analyseDetailLastDriveError indique alors si Drive était injoignable
- *  (plutôt que simplement sans copie de cette semaine). */
-async function analyseLoadWeekDetail(stKey, weekLabel){
-  analyseDetailLastDriveError = null;
-  const local = await analyseLoadWeekDetailLocal(stKey, weekLabel);
-  if(local) return local;
-  if(!DRIVE_SYNC_URL) return null;
-  const key = analyseDetailDriveKey(stKey, weekLabel);
-  if(__analyseDetailDriveMiss.has(key)) return null;
-  try{
-    const r = await driveCall('load', key);
-    if(!r || !r.data){ __analyseDetailDriveMiss.add(key); return null; }
-    const detail = analyseDriveDecode(r.data);
-    if(!detail || !Array.isArray(detail.rows) || !detail.rows.length){ __analyseDetailDriveMiss.add(key); return null; }
-    await analyseSaveWeekDetailLocal(stKey, weekLabel, detail, { noUpload: true });
-    analyseDetailSyncedSet(key, Date.now());
-    return detail;
-  }catch(e){
-    if(/ntrouvable/i.test(e.message || '')) __analyseDetailDriveMiss.add(key);
-    else analyseDetailLastDriveError = e.message || 'erreur inconnue';
-    return null;
-  }
 }
 
 /** Arrondit les décimales avant envoi Drive (discipline payload déjà en
@@ -12718,7 +12465,7 @@ async function analyseRecalculateAllArchives(onProgress){
         report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: null, status: 'no-date', titresModifies: 0 });
         continue;
       }
-      const detail = await analyseLoadWeekDetail(stKey, entry.weekLabel); // local, sinon copie Drive
+      const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
       if(!detail || !detail.rows || !detail.rows.length){
         skippedNoDetail++;
         report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: entry.weekStart, status: 'no-detail', titresModifies: 0 });
@@ -12769,7 +12516,7 @@ function analyseRenderRecalcReport(result){
   const statusMeta = {
     'recalculated':  { label:'✓ Recalculée', color:'#0DA76B' },
     'no-date':       { label:'⚠ Pas de date connue — réimport nécessaire', color:'#CC2222' },
-    'no-detail':     { label:'⚠ Détail introuvable (ni sur ce poste, ni sur Drive)', color:'#B85C00' }
+    'no-detail':     { label:'⚠ Détail introuvable en local (autre appareil ?)', color:'#B85C00' }
   };
   const sorted = result.report.slice().sort((a,b) => {
     if(a.station !== b.station) return a.station.localeCompare(b.station);
@@ -12844,138 +12591,25 @@ async function analyseRecalculateAllArchivesUI(){
  *  les stats agrégées) sur Drive Sync, dans son propre fichier — distinct de
  *  celui des Classements/Playlist. La progression (chunk par chunk) alimente
  *  la barre affichée dans la page. */
-// ── Synchro Drive de l'historique Analyse ────────────────────────────────
-// 1) File d'attente : une demande d'envoi arrivée PENDANT un envoi en cours
-//    n'est plus ignorée (ancien `return {reason:'in_progress'}`, qui laissait
-//    la dernière semaine enregistrée en local seulement) — elle relance un
-//    envoi complet dès la fin du précédent, avec l'historique à jour.
-// 2) Marqueur « à synchroniser » persistant (localStorage) : posé à chaque
-//    demande d'envoi, retiré seulement après un envoi réussi. Si la page est
-//    fermée en cours d'envoi ou si Drive échoue, l'envoi est retenté
-//    automatiquement (dans la session, puis à la prochaine ouverture de la
-//    page Analyse).
-// 3) Fusion préalable obligatoire : on ne pousse jamais vers Drive avant
-//    d'avoir fusionné ce qui s'y trouve (sinon les semaines enregistrées
-//    depuis un autre poste seraient écrasées).
-// 4) Payload compressé (lz-string) + décimales arrondies : ~5 à 10× moins de
-//    morceaux à envoyer, d'où un envoi bien plus rapide.
-const ANALYSE_DRIVE_DIRTY_KEY = 'fpa_analyse_drive_dirty_v1';
-const ANALYSE_DRIVE_LZ_PREFIX = 'LZB64:';
-let analyseDriveRun = null;        // promesse de l'envoi en cours (null si aucun)
-let analyseDrivePending = false;   // une nouvelle demande est arrivée pendant l'envoi
-let analyseDriveLoadOk = false;    // fusion Drive → local réussie au moins une fois dans la session
-let analyseDriveDebounceTimer = null;
-let analyseDriveRetryTimer = null;
-let analyseDriveAutoRetries = 0;
-
-function analyseDriveMarkDirty(){ try{ localStorage.setItem(ANALYSE_DRIVE_DIRTY_KEY, String(Date.now())); }catch(e){} }
-function analyseDriveIsDirty(){ try{ return !!localStorage.getItem(ANALYSE_DRIVE_DIRTY_KEY); }catch(e){ return false; } }
-function analyseDriveClearDirty(startedAt){
-  // Ne retire le marqueur que si aucune nouvelle demande n'est arrivée depuis
-  // le début de CET envoi (sinon l'envoi suivant de la file s'en charge).
-  try{
-    const v = parseInt(localStorage.getItem(ANALYSE_DRIVE_DIRTY_KEY) || '0', 10);
-    if(v && v <= startedAt) localStorage.removeItem(ANALYSE_DRIVE_DIRTY_KEY);
-  }catch(e){}
-}
-
-/** Encodage du payload Drive : décimales limitées à 3 chiffres (moyennes et
- *  pourcentages n'ont pas besoin de 15 décimales) puis compression lz-string.
- *  Repli sans compression si la bibliothèque n'est pas disponible. */
-function analyseDriveEncode(history){
-  const json = JSON.stringify(history, (k, v) => (typeof v === 'number' && isFinite(v) && !Number.isInteger(v)) ? Math.round(v * 1000) / 1000 : v);
-  if(typeof LZString !== 'undefined' && LZString.compressToBase64){
-    try{ return ANALYSE_DRIVE_LZ_PREFIX + LZString.compressToBase64(json); }catch(e){ /* repli JSON brut */ }
-  }
-  return json;
-}
-/** Décodage symétrique — accepte aussi l'ancien format (JSON brut). */
-function analyseDriveDecode(data){
-  if(typeof data === 'string' && data.startsWith(ANALYSE_DRIVE_LZ_PREFIX)){
-    if(typeof LZString === 'undefined') throw new Error('Bibliothèque de décompression indisponible');
-    const json = LZString.decompressFromBase64(data.slice(ANALYSE_DRIVE_LZ_PREFIX.length));
-    if(!json) throw new Error('Historique Drive illisible (décompression)');
-    return JSON.parse(json);
-  }
-  return JSON.parse(data);
-}
-
-/** Demande un envoi Drive. Si un envoi est déjà en cours, la demande est
- *  mise en file (un nouvel envoi complet repartira juste après) et la
- *  promesse retournée se résout à la fin de la file. opts.force : envoie
- *  même si la fusion préalable avec Drive a échoué (bouton « Forcer »). */
-function analyseSaveHistoryToDrive(opts){
-  if(!DRIVE_SYNC_URL) return Promise.resolve({ ok:false, reason:'no_url' });
-  analyseDriveMarkDirty();
-  clearTimeout(analyseDriveDebounceTimer);
-  if(analyseDriveRun){ analyseDrivePending = true; return analyseDriveRun; }
-  analyseDriveRun = (async () => {
-    let result;
-    do{
-      analyseDrivePending = false;
-      result = await analyseSaveHistoryToDriveOnce(opts || {});
-    }while(analyseDrivePending && result.ok);
-    analyseDriveRun = null; // libéré ici, de façon synchrone, pour ne perdre aucune demande arrivée à la toute fin
-    if(result.ok){
-      analyseDriveAutoRetries = 0;
-    } else if(analyseDriveIsDirty() && analyseDriveAutoRetries < 3){
-      // Nouvel essai automatique (au plus 3 par session) — le marqueur reste
-      // posé de toute façon pour la prochaine ouverture de la page.
-      analyseDriveAutoRetries++;
-      clearTimeout(analyseDriveRetryTimer);
-      analyseDriveRetryTimer = setTimeout(() => analyseSaveHistoryToDrive(), 90000);
-    }
-    return result;
-  })();
-  return analyseDriveRun;
-}
-
-/** Envoi différé (regroupe les archivages rapprochés d'un import en masse
- *  en un seul envoi, tout en garantissant qu'il parte même si l'import est
- *  abandonné en cours de route). */
-function analyseScheduleDriveSync(delayMs){
-  if(!DRIVE_SYNC_URL) return;
-  analyseDriveMarkDirty();
-  clearTimeout(analyseDriveDebounceTimer);
-  analyseDriveDebounceTimer = setTimeout(() => analyseSaveHistoryToDrive(), delayMs || 4000);
-}
-
-async function analyseSaveHistoryToDriveOnce(opts){
-  const startedAt = Date.now();
+async function analyseSaveHistoryToDrive(){
+  if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
+  if(analyseDriveSaving) return { ok:false, reason:'in_progress' };
   analyseDriveSaving = true;
   analyseShowSaveProgress('☁️ Sauvegarde sur Drive…');
   try{
-    if(!analyseDriveLoadOk && !opts.force){
-      analyseShowSaveProgress('☁️ Fusion avec l\'historique Drive…');
-      const lr = await analyseLoadHistoryFromDrive();
-      if(!analyseDriveLoadOk){
-        const reason = 'impossible de relire Drive avant l\'envoi (' + ((lr && lr.reason) || 'erreur inconnue') + ') — rien n\'a été écrasé, nouvel essai automatique';
-        showToast('Synchro Drive (Analyse) reportée : ' + reason, 'err');
-        return { ok:false, reason };
-      }
-      analyseShowSaveProgress('☁️ Sauvegarde sur Drive…');
-    }
-    const payload = analyseDriveEncode(analyseLoadHistory());
+    const payload = JSON.stringify(analyseLoadHistory());
     await driveSaveBigFile(ANALYSE_DRIVE_KEY, payload, (done, total) => analyseUpdateSaveProgress(done, total));
     analyseUpdateSaveProgress(1, 1);
     analyseDriveLoaded = true; // ce qu'on vient d'envoyer est forcément à jour
-    analyseDriveLoadOk = true;
-    analyseDriveClearDirty(startedAt);
     return { ok:true };
   }catch(e){
-    showToast('Erreur de sauvegarde Drive (Analyse) : ' + e.message + ' — nouvel essai automatique', 'err');
+    showToast('Erreur de sauvegarde Drive (Analyse) : ' + e.message, 'err');
     return { ok:false, reason:e.message };
   }finally{
     analyseDriveSaving = false;
     analyseHideSaveProgress();
   }
 }
-
-// Avertit avant de fermer la page pendant un envoi Drive Analyse en cours
-// (le marqueur persistant permettrait de reprendre, mais autant l'éviter).
-window.addEventListener('beforeunload', e => {
-  if(analyseDriveRun){ e.preventDefault(); e.returnValue = ''; }
-});
 
 /** Charge l'historique Analyse depuis Drive et le fusionne avec la version
  *  locale (fusion par semaine : on garde l'entrée la plus récemment
@@ -12985,8 +12619,8 @@ async function analyseLoadHistoryFromDrive(){
   if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
   try{
     const r = await driveCall('load', ANALYSE_DRIVE_KEY);
-    if(!r || !r.data) { analyseDriveLoaded = true; analyseDriveLoadOk = true; return { ok:true, empty:true }; }
-    const remote = analyseDriveDecode(r.data);
+    if(!r || !r.data) { analyseDriveLoaded = true; return { ok:true, empty:true }; }
+    const remote = JSON.parse(r.data);
     const local  = analyseLoadHistory();
     const merged = {};
     ['EUROPE2','RFM'].forEach(stKey => {
@@ -13000,12 +12634,10 @@ async function analyseLoadHistoryFromDrive(){
     });
     analyseSaveHistory(merged);
     analyseDriveLoaded = true;
-    analyseDriveLoadOk = true;
     return { ok:true };
   }catch(e){
     // "Introuvable" = pas encore de fichier sur Drive pour cette clé — normal au premier usage
-    if(/ntrouvable/i.test(e.message||'')) analyseDriveLoadOk = true;
-    else console.warn('Analyse : échec chargement Drive —', e.message);
+    if(!/ntrouvable/i.test(e.message||'')) console.warn('Analyse : échec chargement Drive —', e.message);
     analyseDriveLoaded = true;
     return { ok:false, reason:e.message };
   }
@@ -18888,7 +18520,6 @@ function analyseApplyDatedFit(row){
 
 function analyseEnrichRowsForBulk(rows, stKey, importedDateStr, refDate){
   const stationField = stKey === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
-  let attrsDirty = false; // une seule écriture du store Song Attributs en fin de boucle (et non une par titre)
   rows.forEach(row => {
     row.search = analyseGetSearchScores(row.title, row.artist, refDate !== undefined ? refDate : importedDateStr);
     row.fpa = analyseGetFpaScores(row.title, row.artist);
@@ -18898,13 +18529,12 @@ function analyseEnrichRowsForBulk(rows, stKey, importedDateStr, refDate){
     if(!attrs.label && row.label){ attrs.label = row.label; changed = true; }
     if(!attrs.genre && row.genre){ attrs.genre = row.genre; changed = true; }
     if(!attrs[stationField] && row.rangPrec === 'E'){ attrs[stationField] = importedDateStr || ''; changed = true; }
-    if(changed) attrsDirty = true;
+    if(changed) songAttributesSaveToStorage();
     row.label = attrs.label || row.label || '';
     row.genre = attrs.genre || row.genre || '';
     row.dateEntree = attrs[stationField] || '';
     row.decade = attrs.decade || null;
   });
-  if(attrsDirty) songAttributesSaveToStorage();
   if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(rows);
   if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(rows);
   return rows;
@@ -18969,7 +18599,6 @@ async function analyseBulkArchive(preview, silent){
   if(idx >= 0) history[preview.stKey][idx] = entry; else history[preview.stKey].push(entry);
   history[preview.stKey].sort((a,b) => a.weekLabel.localeCompare(b.weekLabel, undefined, {numeric:true}));
   analyseSaveHistory(history);
-  analyseScheduleDriveSync(); // part même si l'import en masse est abandonné en cours de route
 
   const detail = { meta: { station:preview.stKey, weekLabel:preview.label, weekStart:preview.weekStart, weekEnd:preview.weekEnd, fileName:preview.file.name, importedAt:new Date().toISOString(), sheetName:preview.sheetName }, rows: preview.rows.map(analyseCleanRowForSave) };
   const detailSaved = await analyseSaveWeekDetailLocal(preview.stKey, preview.label, detail);
@@ -19150,11 +18779,10 @@ function analyseGetFpaScores(title, artist){
   try{ rows = build360Rows(); }catch(e){ return null; }
   if(!rows || !rows.length) return null;
   const nT = norm(title||''), nA = norm(artist||'');
-  const qT = simPrep(nT), qA = simPrep(nA);
   let best = null, bestScore = 0;
   rows.forEach(r => {
-    const ts = similarityPrep(qT, simPrep(r.title||''));
-    const as = nA ? similarityPrep(qA, simPrep(r.artist||'')) : 0.5;
+    const ts = similarity(nT, norm(r.title||''));
+    const as = nA ? similarity(nA, norm(r.artist||'')) : 0.5;
     const score = ts*0.6 + as*0.4;
     if(score > bestScore && score >= 0.55){ bestScore = score; best = r; }
   });
@@ -19182,7 +18810,6 @@ function analyseEnrichRows(){
   // sinon début de semaine ; à défaut (semaine non datée), null — dans ce
   // cas analyseGetSearchScores retombe sur le dernier chiffre connu.
   const refDate = (analyseWeekMeta && (analyseWeekMeta.weekEnd || analyseWeekMeta.weekStart)) || null;
-  let attrsDirty = false; // une seule écriture du store Song Attributs en fin de boucle (et non une par titre)
   analyseRows.forEach(row => {
     row.search = analyseGetSearchScores(row.title, row.artist, refDate);
     row.fpa = analyseGetFpaScores(row.title, row.artist);
@@ -19195,13 +18822,12 @@ function analyseEnrichRows(){
       attrs[stationField] = (analyseWeekMeta && analyseWeekMeta.importedAt) ? analyseWeekMeta.importedAt.slice(0,10) : '';
       changed = true;
     }
-    if(changed) attrsDirty = true;
+    if(changed) songAttributesSaveToStorage();
     row.label = attrs.label || row.label || '';
     row.genre = attrs.genre || row.genre || '';
     row.dateEntree = attrs[stationField] || '';
     row.decade = attrs.decade || null;
   });
-  if(attrsDirty) songAttributesSaveToStorage();
   if(typeof analyseQueueDecadeEnrichment === 'function') analyseQueueDecadeEnrichment(analyseRows);
   if(typeof mbQueueEnrichment === 'function') mbQueueEnrichment(analyseRows);
 }
@@ -19333,9 +18959,7 @@ async function analyseSaveWeekToHistory(){
   history[stKey].sort((a,b) => a.weekLabel.localeCompare(b.weekLabel, undefined, {numeric:true}));
   analyseSaveHistory(history);
 
-  // 2) Détail complet (tous les titres) — enregistré en local, puis copié sur
-  //    Drive en arrière-plan depuis v30.224 (un fichier par semaine, voir
-  //    analyseDetailEnqueue). Ancien commentaire conservé pour l'historique :
+  // 2) Détail complet (tous les titres) — LOCAL UNIQUEMENT, volontairement.
   //    Pousser 500+ lignes par ce même canal JSONP chunké est exactement le
   //    type de payload qui a déjà causé des corruptions silencieuses sur
   //    Drive Sync par le passé pour des données granulaires par titre (voir
@@ -19357,12 +18981,14 @@ async function analyseSaveWeekToHistory(){
     showToast('✓ Semaine ' + label + ' enregistrée localement (' + STATION_LABELS[stKey] + '). Configurez Drive Sync (Classements → Historique Drive) pour synchroniser les statistiques entre postes.', 'success');
     return;
   }
+  if(analyseDriveSaving) return;
+
   const btn = document.getElementById('analyseSaveBtn');
   if(btn){ btn.disabled = true; btn.style.opacity = '.6'; btn.style.cursor = 'default'; }
   const result = await analyseSaveHistoryToDrive();
   if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
   if(result.ok){
-    showToast('✓ Semaine ' + label + ' enregistrée (' + STATION_LABELS[stKey] + ') — statistiques synchronisées sur ☁️ Drive ; le détail par titre y est copié en arrière-plan', 'success');
+    showToast('✓ Semaine ' + label + ' enregistrée — statistiques synchronisées sur ☁️ Drive, détail complet local à cet appareil (' + STATION_LABELS[stKey] + ')', 'success');
   } else {
     showToast('✓ Semaine ' + label + ' enregistrée localement, mais la synchro Drive des statistiques a échoué (' + (result.reason||'erreur inconnue') + ')', 'err');
   }
@@ -19376,21 +19002,9 @@ async function analyseSaveWeekToHistory(){
  *  local. Si absent (autre poste, ou cache navigateur vidé), on l'explique
  *  clairement plutôt que de laisser croire à un bug. */
 async function analyseViewArchivedWeek(stKey, weekLabel){
-  let detail = await analyseLoadWeekDetailLocal(stKey, weekLabel);
-  if(!detail && DRIVE_SYNC_URL){
-    showToast('⏳ Récupération du détail de « ' + weekLabel + ' » depuis ☁️ Drive…', 'success');
-    detail = await analyseLoadWeekDetail(stKey, weekLabel);
-  }
+  const detail = await analyseLoadWeekDetailLocal(stKey, weekLabel);
   if(!detail || !detail.rows || !detail.rows.length){
-    let msg;
-    if(!DRIVE_SYNC_URL){
-      msg = 'Détail de « ' + weekLabel + ' » introuvable sur ce poste, et Drive Sync n\'est pas configuré pour le récupérer ailleurs. Réimportez le fichier de cette semaine ici si besoin du détail.';
-    } else if(analyseDetailLastDriveError){
-      msg = 'Impossible de récupérer le détail de « ' + weekLabel + ' » depuis Drive (' + analyseDetailLastDriveError + '). Réessayez dans un moment.';
-    } else {
-      msg = 'Le détail de « ' + weekLabel + ' » n\'est ni sur ce poste ni encore sur Drive : il a été enregistré sur un autre poste qui ne l\'a pas encore envoyé. Ouvrez la page Analyse sur ce poste-là (l\'envoi se fait alors automatiquement), ou réimportez ici le fichier de cette semaine.';
-    }
-    showToast(msg, 'err');
+    showToast('Détail indisponible pour « ' + weekLabel + ' » sur cet appareil — le détail complet des titres reste local à l\'appareil qui a fait l\'enregistrement (non synchronisé sur Drive, pour fiabilité). Seules les statistiques agrégées sont partagées entre postes. Réimportez le fichier de cette semaine ici si besoin du détail.', 'err');
     return;
   }
   analyseWeekMeta = detail.meta;
@@ -19409,9 +19023,6 @@ async function analyseDeleteWeekFromHistory(stKey, weekLabel){
   history[stKey] = history[stKey].filter(e => e.weekLabel !== weekLabel);
   analyseSaveHistory(history);
   await analyseDeleteWeekDetailLocal(stKey, weekLabel);
-  analyseDetailDequeue(stKey, weekLabel);
-  analyseDetailSyncedSet(analyseDetailDriveKey(stKey, weekLabel), null);
-  if(DRIVE_SYNC_URL) driveCall('delete', analyseDetailDriveKey(stKey, weekLabel)).catch(() => { /* copie Drive absente ou déjà supprimée */ });
   renderAnalyseHistoryPanel();
   if(DRIVE_SYNC_URL){
     const result = await analyseSaveHistoryToDrive();
@@ -19791,13 +19402,6 @@ function toggleAnalysePage(){
         analyseUpdateSaveProgress(2, 2);
         analyseHideSaveProgress();
         renderAnalyseHistoryPanel();
-        // Envoi resté en attente (page fermée pendant l'envoi, échec Drive…) :
-        // on le reprend maintenant que la fusion avec Drive est faite.
-        if(analyseDriveIsDirty()) analyseSaveHistoryToDrive();
-        // Copie sur Drive du détail des semaines présentes sur ce poste
-        // (rattrapage des semaines enregistrées avant v30.224 + reprise de
-        // la file d'envoi).
-        analyseDetailBackfill();
       });
     }
     saveLastOpenPage('analyse');
