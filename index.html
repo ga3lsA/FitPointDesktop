@@ -2191,9 +2191,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             const r = await analyseSaveHistoryToDrive({force:true});
             if(r.ok) showToast('Statistiques Analyse (toutes semaines) envoyées sur Drive', 'success');
             btn.disabled=false; btn.textContent=orig;
-          })()" title="Renvoie les statistiques agrégées de toutes les semaines archivées vers Drive, même si rien n'a changé depuis — utile après un échec de synchro (le détail par titre, lui, reste toujours local, voir note ci-dessous)">☁️⬆️ Forcer l'envoi vers Drive</button>
+          })()" title="Renvoie les statistiques agrégées de toutes les semaines archivées vers Drive, même si rien n'a changé depuis — utile après un échec de synchro (le détail titre par titre, lui, est copié sur Drive séparément, semaine par semaine, en arrière-plan)">☁️⬆️ Forcer l'envoi vers Drive</button>
         </div>
       </div>
+      <div id="analyseDetailSyncStatus" style="font-size:11px;color:var(--muted);margin:-4px 0 10px"></div>
       <div id="analyseRecalcProgressWrap" style="display:none;margin-bottom:14px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px">
           <span id="analyseRecalcProgressLabel" style="font-size:11px;color:var(--text2);font-weight:700">⏳ Préparation…</span>
@@ -4061,7 +4062,7 @@ var LZString=function(){var r=String.fromCharCode,o="ABCDEFGHIJKLMNOPQRSTUVWXYZa
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.223';
+const FPA_VERSION   = 'v30.224';
 const FPA_BUILD_ISO = '2026-10-03T12:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -12422,9 +12423,13 @@ function analyseWeekLocalKey(stKey, weekLabel){ return 'fpa_analyse_week_' + stK
  *  Toutes les fonctions sont désormais asynchrones — voir les appelants
  *  (analyseBulkArchive, analyseSaveWeekToHistory, analyseRecalculateAllArchives,
  *  analyseViewArchivedWeek) qui utilisent await. */
-async function analyseSaveWeekDetailLocal(stKey, weekLabel, detail){
+async function analyseSaveWeekDetailLocal(stKey, weekLabel, detail, opts){
   try{
     await idbSet(analyseWeekLocalKey(stKey, weekLabel), detail);
+    // Copie sur Drive en arrière-plan (file persistante, une semaine = un
+    // fichier Drive) — sauf quand le détail vient justement d'être récupéré
+    // depuis Drive (opts.noUpload).
+    if(!(opts && opts.noUpload) && typeof analyseDetailEnqueue === 'function') analyseDetailEnqueue(stKey, weekLabel);
     return true;
   }catch(e){
     return false; // quota disque réellement épuisé (rare avec IndexedDB), ou navigateur sans IndexedDB
@@ -12450,6 +12455,189 @@ async function analyseDeleteWeekDetailLocal(stKey, weekLabel){
   const key = analyseWeekLocalKey(stKey, weekLabel);
   try{ await idbDelete(key); }catch(e){}
   try{ localStorage.removeItem(key); }catch(e){} // purge l'éventuel reliquat pré-migration
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DÉTAIL PAR TITRE DES SEMAINES ANALYSE — copie sur Drive (v30.224)
+// ══════════════════════════════════════════════════════════════════════════
+// Auparavant, le détail (≈500 titres/semaine) restait uniquement dans le
+// navigateur du poste qui avait fait l'enregistrement. Il est désormais
+// copié sur Drive, UN FICHIER PAR SEMAINE (clé analyse_detail_<STATION>_<S..>)
+// pour qu'une semaine abîmée n'affecte jamais les autres, compressé
+// (analyseDriveEncode) et envoyé par le canal « gros fichiers »
+// (driveSaveBigFile). Le stockage local reste la source principale : Drive
+// sert de copie partagée, relue seulement quand le détail manque sur ce poste.
+//  - Envoi : file persistante (localStorage), traitée une semaine à la fois,
+//    en arrière-plan ; reprise automatique après un échec ou une fermeture.
+//  - Rattrapage : à l'ouverture de la page Analyse, les semaines dont le
+//    détail est sur ce poste mais pas encore sur Drive sont ajoutées à la file.
+//  - Lecture : analyseLoadWeekDetail() = local, sinon Drive (puis mis en
+//    cache local).
+const ANALYSE_DETAIL_DRIVE_PREFIX = 'analyse_detail_';
+const ANALYSE_DETAIL_QUEUE_KEY    = 'fpa_analyse_detail_queue_v1';
+const ANALYSE_DETAIL_SYNCED_KEY   = 'fpa_analyse_detail_synced_v1';
+let analyseDetailRunning = false;
+let analyseDetailRetryTimer = null;
+let analyseDetailFailures = 0;
+let analyseDetailBackfillDone = false;
+let analyseDetailLastDriveError = null;
+const __analyseDetailDriveMiss = new Set(); // semaines absentes de Drive (évite de redemander dans la session)
+
+function analyseDetailDriveKey(stKey, weekLabel){ return ANALYSE_DETAIL_DRIVE_PREFIX + stKey + '_' + analyseSlugifyWeekLabel(weekLabel); }
+function analyseDetailQueueLoad(){
+  try{ const q = JSON.parse(localStorage.getItem(ANALYSE_DETAIL_QUEUE_KEY) || '[]'); return Array.isArray(q) ? q : []; }
+  catch(e){ return []; }
+}
+function analyseDetailQueueSave(q){ try{ localStorage.setItem(ANALYSE_DETAIL_QUEUE_KEY, JSON.stringify(q)); }catch(e){} }
+function analyseDetailSyncedLoad(){
+  try{ const o = JSON.parse(localStorage.getItem(ANALYSE_DETAIL_SYNCED_KEY) || '{}'); return (o && typeof o === 'object') ? o : {}; }
+  catch(e){ return {}; }
+}
+function analyseDetailSyncedSet(key, val){
+  const o = analyseDetailSyncedLoad();
+  if(val) o[key] = val; else delete o[key];
+  try{ localStorage.setItem(ANALYSE_DETAIL_SYNCED_KEY, JSON.stringify(o)); }catch(e){}
+}
+
+/** Ajoute (ou rafraîchit) une semaine dans la file d'envoi. Le champ v
+ *  identifie la version : si la semaine est ré-enregistrée pendant son
+ *  envoi, l'élément n'est pas retiré de la file à la fin de cet envoi et la
+ *  nouvelle version repart ensuite. */
+function analyseDetailEnqueue(stKey, weekLabel){
+  if(!DRIVE_SYNC_URL) return;
+  const q = analyseDetailQueueLoad();
+  const v = Date.now();
+  const it = q.find(x => x.stKey === stKey && x.label === weekLabel);
+  if(it) it.v = v; else q.push({ stKey, label: weekLabel, v });
+  analyseDetailQueueSave(q);
+  __analyseDetailDriveMiss.delete(analyseDetailDriveKey(stKey, weekLabel));
+  analyseDetailUpdateStatus();
+  analyseDetailProcessQueue();
+}
+function analyseDetailDequeue(stKey, weekLabel){
+  analyseDetailQueueSave(analyseDetailQueueLoad().filter(x => !(x.stKey === stKey && x.label === weekLabel)));
+  analyseDetailUpdateStatus();
+}
+
+function analyseDetailUpdateStatus(failed){
+  const el = document.getElementById('analyseDetailSyncStatus');
+  if(!el) return;
+  const n = analyseDetailQueueLoad().length;
+  if(!n || !DRIVE_SYNC_URL){ el.textContent = ''; el.title = ''; return; }
+  el.textContent = '☁️ Détail par titre : ' + n + ' semaine' + (n > 1 ? 's' : '') + ' à envoyer sur Drive' + (failed ? ' (nouvel essai automatique)' : (analyseDetailRunning ? '…' : ''));
+  el.title = 'Copie du détail titre par titre sur Drive, en arrière-plan, pour qu\'il soit consultable depuis les autres postes. L\'envoi reprend automatiquement si la page est fermée.';
+}
+
+/** Traite la file, une semaine à la fois. Laisse passer en priorité un
+ *  envoi des statistiques (analyseDriveRun) en cours. */
+async function analyseDetailProcessQueue(){
+  if(analyseDetailRunning || !DRIVE_SYNC_URL) return;
+  analyseDetailRunning = true;
+  let failed = false;
+  try{
+    for(;;){
+      const q = analyseDetailQueueLoad();
+      if(!q.length) break;
+      const item = q[0];
+      analyseDetailUpdateStatus();
+      if(analyseDriveRun){ try{ await analyseDriveRun; }catch(e){} }
+      const key = analyseDetailDriveKey(item.stKey, item.label);
+      const detail = await analyseLoadWeekDetailLocal(item.stKey, item.label);
+      if(detail && detail.rows && detail.rows.length){
+        try{
+          await driveSaveBigFile(key, analyseDriveEncode(detail));
+          analyseDetailSyncedSet(key, Date.now());
+          __analyseDetailDriveMiss.delete(key);
+        }catch(e){
+          console.warn('Analyse : échec d\'envoi du détail ' + item.stKey + ' ' + item.label + ' sur Drive —', e.message);
+          failed = true;
+          break;
+        }
+      }
+      // Retire l'élément envoyé (ou dont le détail local n'existe plus) — sauf
+      // s'il a été ré-enregistré entre-temps (version plus récente à envoyer).
+      const q2 = analyseDetailQueueLoad();
+      const idx = q2.findIndex(x => x.stKey === item.stKey && x.label === item.label);
+      if(idx >= 0 && q2[idx].v === item.v) q2.splice(idx, 1);
+      else if(idx >= 0 && idx !== q2.length - 1){ q2.push(q2.splice(idx, 1)[0]); } // version plus récente : repasse en fin de file
+      analyseDetailQueueSave(q2);
+    }
+  }finally{
+    analyseDetailRunning = false;
+    const left = analyseDetailQueueLoad().length;
+    analyseDetailUpdateStatus(failed && left > 0);
+    clearTimeout(analyseDetailRetryTimer);
+    if(failed && left){
+      analyseDetailFailures++;
+      if(analyseDetailFailures <= 5) analyseDetailRetryTimer = setTimeout(analyseDetailProcessQueue, 120000);
+    } else if(!failed){
+      analyseDetailFailures = 0;
+    }
+  }
+}
+
+/** Rattrapage (une fois par session, à l'ouverture de la page Analyse) :
+ *  met en file les semaines dont le détail est sur ce poste mais pas encore
+ *  sur Drive — y compris toutes celles enregistrées avant cette version. */
+async function analyseDetailBackfill(){
+  if(analyseDetailBackfillDone || !DRIVE_SYNC_URL) return;
+  analyseDetailBackfillDone = true;
+  try{
+    await analyseHistoryCacheLoad();
+    const synced = analyseDetailSyncedLoad();
+    let remote = null;
+    try{ const r = await driveCall('list'); if(r && Array.isArray(r.keys)) remote = new Set(r.keys); }catch(e){ /* liste indisponible : on se fie au suivi local */ }
+    const history = analyseLoadHistory();
+    const toAdd = [];
+    const nowSynced = {};
+    for(const stKey of ['EUROPE2','RFM']){
+      for(const e of (history[stKey] || [])){
+        const key = analyseDetailDriveKey(stKey, e.weekLabel);
+        if(synced[key]) continue;
+        if(remote && remote.has(key)){ nowSynced[key] = Date.now(); continue; }
+        const d = await analyseLoadWeekDetailLocal(stKey, e.weekLabel);
+        if(d && d.rows && d.rows.length) toAdd.push({ stKey, label: e.weekLabel });
+      }
+    }
+    if(Object.keys(nowSynced).length){
+      const o = analyseDetailSyncedLoad(); Object.assign(o, nowSynced);
+      try{ localStorage.setItem(ANALYSE_DETAIL_SYNCED_KEY, JSON.stringify(o)); }catch(e){}
+    }
+    if(toAdd.length){
+      const q = analyseDetailQueueLoad(); // relue juste avant l'écriture : la file a pu bouger entre-temps
+      const v = Date.now();
+      toAdd.forEach(a => { if(!q.some(x => x.stKey === a.stKey && x.label === a.label)) q.push({ ...a, v }); });
+      analyseDetailQueueSave(q);
+    }
+  }catch(e){ console.warn('Analyse : rattrapage de l\'envoi des détails impossible —', e.message); }
+  analyseDetailUpdateStatus();
+  analyseDetailProcessQueue();
+}
+
+/** Détail d'une semaine : local d'abord, sinon copie Drive (mise ensuite en
+ *  cache local, sans la renvoyer). Retourne null si introuvable ;
+ *  analyseDetailLastDriveError indique alors si Drive était injoignable
+ *  (plutôt que simplement sans copie de cette semaine). */
+async function analyseLoadWeekDetail(stKey, weekLabel){
+  analyseDetailLastDriveError = null;
+  const local = await analyseLoadWeekDetailLocal(stKey, weekLabel);
+  if(local) return local;
+  if(!DRIVE_SYNC_URL) return null;
+  const key = analyseDetailDriveKey(stKey, weekLabel);
+  if(__analyseDetailDriveMiss.has(key)) return null;
+  try{
+    const r = await driveCall('load', key);
+    if(!r || !r.data){ __analyseDetailDriveMiss.add(key); return null; }
+    const detail = analyseDriveDecode(r.data);
+    if(!detail || !Array.isArray(detail.rows) || !detail.rows.length){ __analyseDetailDriveMiss.add(key); return null; }
+    await analyseSaveWeekDetailLocal(stKey, weekLabel, detail, { noUpload: true });
+    analyseDetailSyncedSet(key, Date.now());
+    return detail;
+  }catch(e){
+    if(/ntrouvable/i.test(e.message || '')) __analyseDetailDriveMiss.add(key);
+    else analyseDetailLastDriveError = e.message || 'erreur inconnue';
+    return null;
+  }
 }
 
 /** Arrondit les décimales avant envoi Drive (discipline payload déjà en
@@ -12530,7 +12718,7 @@ async function analyseRecalculateAllArchives(onProgress){
         report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: null, status: 'no-date', titresModifies: 0 });
         continue;
       }
-      const detail = await analyseLoadWeekDetailLocal(stKey, entry.weekLabel);
+      const detail = await analyseLoadWeekDetail(stKey, entry.weekLabel); // local, sinon copie Drive
       if(!detail || !detail.rows || !detail.rows.length){
         skippedNoDetail++;
         report.push({ station: stKey, weekLabel: entry.weekLabel, weekStart: entry.weekStart, status: 'no-detail', titresModifies: 0 });
@@ -12581,7 +12769,7 @@ function analyseRenderRecalcReport(result){
   const statusMeta = {
     'recalculated':  { label:'✓ Recalculée', color:'#0DA76B' },
     'no-date':       { label:'⚠ Pas de date connue — réimport nécessaire', color:'#CC2222' },
-    'no-detail':     { label:'⚠ Détail introuvable en local (autre appareil ?)', color:'#B85C00' }
+    'no-detail':     { label:'⚠ Détail introuvable (ni sur ce poste, ni sur Drive)', color:'#B85C00' }
   };
   const sorted = result.report.slice().sort((a,b) => {
     if(a.station !== b.station) return a.station.localeCompare(b.station);
@@ -19145,7 +19333,9 @@ async function analyseSaveWeekToHistory(){
   history[stKey].sort((a,b) => a.weekLabel.localeCompare(b.weekLabel, undefined, {numeric:true}));
   analyseSaveHistory(history);
 
-  // 2) Détail complet (tous les titres) — LOCAL UNIQUEMENT, volontairement.
+  // 2) Détail complet (tous les titres) — enregistré en local, puis copié sur
+  //    Drive en arrière-plan depuis v30.224 (un fichier par semaine, voir
+  //    analyseDetailEnqueue). Ancien commentaire conservé pour l'historique :
   //    Pousser 500+ lignes par ce même canal JSONP chunké est exactement le
   //    type de payload qui a déjà causé des corruptions silencieuses sur
   //    Drive Sync par le passé pour des données granulaires par titre (voir
@@ -19172,7 +19362,7 @@ async function analyseSaveWeekToHistory(){
   const result = await analyseSaveHistoryToDrive();
   if(btn){ btn.disabled = false; btn.style.opacity = ''; btn.style.cursor = ''; }
   if(result.ok){
-    showToast('✓ Semaine ' + label + ' enregistrée — statistiques synchronisées sur ☁️ Drive, détail complet local à cet appareil (' + STATION_LABELS[stKey] + ')', 'success');
+    showToast('✓ Semaine ' + label + ' enregistrée (' + STATION_LABELS[stKey] + ') — statistiques synchronisées sur ☁️ Drive ; le détail par titre y est copié en arrière-plan', 'success');
   } else {
     showToast('✓ Semaine ' + label + ' enregistrée localement, mais la synchro Drive des statistiques a échoué (' + (result.reason||'erreur inconnue') + ')', 'err');
   }
@@ -19186,9 +19376,21 @@ async function analyseSaveWeekToHistory(){
  *  local. Si absent (autre poste, ou cache navigateur vidé), on l'explique
  *  clairement plutôt que de laisser croire à un bug. */
 async function analyseViewArchivedWeek(stKey, weekLabel){
-  const detail = await analyseLoadWeekDetailLocal(stKey, weekLabel);
+  let detail = await analyseLoadWeekDetailLocal(stKey, weekLabel);
+  if(!detail && DRIVE_SYNC_URL){
+    showToast('⏳ Récupération du détail de « ' + weekLabel + ' » depuis ☁️ Drive…', 'success');
+    detail = await analyseLoadWeekDetail(stKey, weekLabel);
+  }
   if(!detail || !detail.rows || !detail.rows.length){
-    showToast('Détail indisponible pour « ' + weekLabel + ' » sur cet appareil — le détail complet des titres reste local à l\'appareil qui a fait l\'enregistrement (non synchronisé sur Drive, pour fiabilité). Seules les statistiques agrégées sont partagées entre postes. Réimportez le fichier de cette semaine ici si besoin du détail.', 'err');
+    let msg;
+    if(!DRIVE_SYNC_URL){
+      msg = 'Détail de « ' + weekLabel + ' » introuvable sur ce poste, et Drive Sync n\'est pas configuré pour le récupérer ailleurs. Réimportez le fichier de cette semaine ici si besoin du détail.';
+    } else if(analyseDetailLastDriveError){
+      msg = 'Impossible de récupérer le détail de « ' + weekLabel + ' » depuis Drive (' + analyseDetailLastDriveError + '). Réessayez dans un moment.';
+    } else {
+      msg = 'Le détail de « ' + weekLabel + ' » n\'est ni sur ce poste ni encore sur Drive : il a été enregistré sur un autre poste qui ne l\'a pas encore envoyé. Ouvrez la page Analyse sur ce poste-là (l\'envoi se fait alors automatiquement), ou réimportez ici le fichier de cette semaine.';
+    }
+    showToast(msg, 'err');
     return;
   }
   analyseWeekMeta = detail.meta;
@@ -19207,6 +19409,9 @@ async function analyseDeleteWeekFromHistory(stKey, weekLabel){
   history[stKey] = history[stKey].filter(e => e.weekLabel !== weekLabel);
   analyseSaveHistory(history);
   await analyseDeleteWeekDetailLocal(stKey, weekLabel);
+  analyseDetailDequeue(stKey, weekLabel);
+  analyseDetailSyncedSet(analyseDetailDriveKey(stKey, weekLabel), null);
+  if(DRIVE_SYNC_URL) driveCall('delete', analyseDetailDriveKey(stKey, weekLabel)).catch(() => { /* copie Drive absente ou déjà supprimée */ });
   renderAnalyseHistoryPanel();
   if(DRIVE_SYNC_URL){
     const result = await analyseSaveHistoryToDrive();
@@ -19589,6 +19794,10 @@ function toggleAnalysePage(){
         // Envoi resté en attente (page fermée pendant l'envoi, échec Drive…) :
         // on le reprend maintenant que la fusion avec Drive est faite.
         if(analyseDriveIsDirty()) analyseSaveHistoryToDrive();
+        // Copie sur Drive du détail des semaines présentes sur ce poste
+        // (rattrapage des semaines enregistrées avant v30.224 + reprise de
+        // la file d'envoi).
+        analyseDetailBackfill();
       });
     }
     saveLastOpenPage('analyse');
