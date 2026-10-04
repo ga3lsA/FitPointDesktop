@@ -166,6 +166,21 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 @media (prefers-reduced-motion: reduce) {
   .fpa-la .la-disc, .fpa-la .la-dot, .fpa-la .la-bar, .fpa-la .la-wave { animation: none !important; }
 }
+
+/* ── Page Overview (Décision) — v30.235 ── */
+.ov-grid { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:14px; align-items:start; }
+@media (max-width: 1500px) { .ov-grid { grid-template-columns:repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 1200px) { .ov-grid { grid-template-columns:repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px)  { .ov-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px)  { .ov-grid { grid-template-columns:minmax(0, 1fr); } }
+.ov-card { background:var(--white); border:1.5px solid var(--border); border-radius:12px; padding:0 12px 12px; min-width:0; overflow:hidden; box-shadow:0 1px 4px rgba(11,29,58,.04); transition:box-shadow .15s, opacity .15s; }
+.ov-card:hover { box-shadow:0 4px 14px rgba(11,29,58,.08); }
+.ov-head { display:flex; align-items:center; gap:6px; margin:0 -12px 8px; padding:9px 12px; background:var(--navy); color:#fff; cursor:grab; user-select:none; }
+.ov-head .ov-title { color:#fff !important; }
+.ov-head .ov-grip { color:rgba(255,255,255,.45); }
+.ov-head:active { cursor:grabbing; }
+.ov-grip { color:var(--muted); font-size:11px; letter-spacing:-2px; flex-shrink:0; }
+.ov-dragging { opacity:.45; box-shadow:0 0 0 2px var(--cyan); }
 </style>
 </head>
 <body>
@@ -683,6 +698,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   <div style="background:var(--white);border-bottom:1.5px solid var(--border);padding:0 40px;display:flex;align-items:center;gap:10px;height:48px;position:sticky;top:60px;z-index:90;box-shadow:0 1px 6px rgba(11,29,58,.04)">
     <div style="display:flex;align-items:stretch;gap:2px;flex:1;min-width:0;position:relative" id="decisionSubTabs">
 
+      <!-- OVERVIEW (vue d'ensemble de tous les classements et métriques) -->
+      <button id="decTabOverview" class="dec-group-btn" onclick="switchDecTab('overview')" title="Vue d'ensemble : les 5 premiers titres de chaque classement, métrique et ranking"><span class="dec-subtab-ic">🧭</span>Overview</button>
+
       <!-- Groupe DÉTECTION -->
       <div class="dec-group">
         <button id="decGroupBtnDetection" class="dec-group-btn" onclick="toggleDecGroup('detection')">
@@ -763,7 +781,23 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   </div>
 
   <!-- Contenu -->
-  <div style="padding:28px 40px 60px;max-width:1400px;margin:0 auto">
+  <div id="decContentWrap" style="padding:28px 40px 60px;max-width:1400px;margin:0 auto">
+
+    <!-- ── Onglet Overview ── -->
+    <div id="decPaneOverview" style="display:none">
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:16px">
+        <div>
+          <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Vue d'ensemble</div>
+          <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--navy);line-height:1.15">🧭 Overview</h2>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">Les 5 premiers titres de chaque classement, métrique et ranking. Glissez une carte par son en-tête pour la déplacer ; « Voir → » ouvre la page complète.</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost" onclick="renderOverviewPage()" style="font-size:11.5px;padding:7px 12px">↻ Actualiser</button>
+          <button class="btn-ghost" onclick="overviewResetOrder()" title="Remettre les cartes dans leur ordre d'origine" style="font-size:11.5px;padding:7px 12px">⟲ Disposition d'origine</button>
+        </div>
+      </div>
+      <div id="overviewGrid" class="ov-grid"></div>
+    </div>
 
     <!-- ── Onglet Matrice ── -->
     <div id="decPaneMatrix">
@@ -2969,6 +3003,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div id="chartAirplayGroupMenu" class="dec-group-menu" style="display:none;left:0">
         <button id="chartTabAirplay" onclick="switchChartTab('airplay')" class="dec-subtab-item active"><span class="dec-subtab-ic">📻</span>Airplay Validé</button>
         <button id="chartTabLive" onclick="switchChartTab('live')" class="dec-subtab-item"><span class="dec-subtab-ic">🔴</span>Airplay Live</button>
+        <button id="chartTabInOut" onclick="switchChartTab('inout')" class="dec-subtab-item"><span class="dec-subtab-ic">⇅</span>Entrées / Sorties</button>
         <button id="chartTabEMB" onclick="switchChartTab('emb')" class="dec-subtab-item"><span class="dec-subtab-ic">🌍</span>Europe Music Benchmark</button>
       </div>
     </div>
@@ -3304,6 +3339,23 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
 
     <!-- Panneau Live (sous-onglet du groupe Airplay) -->
+    <div id="inoutChartsPanel" style="display:none">
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Suivi en cours de semaine · Top 50 de chaque radio</div>
+        <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--navy);line-height:1.15">⇅ Entrées / Sorties</h2>
+        <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-top:6px;max-width:900px">
+          <strong style="color:#1a8a4a">Entrée</strong> : titre absent du classement de la radio la dernière semaine complète, entré directement dans son top 50 dans le Live.
+          <strong style="color:#c0392b">Sortie</strong> : titre du top 50 de la radio la dernière semaine complète, absent de son classement dans le Live.
+          Sorties à gauche, entrées à droite ; dans chaque colonne, les titres concernés par le plus de radios sont en haut.
+        </div>
+        <div id="inoutPeriods" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:4px;flex-wrap:wrap;align-items:center">
+        <input id="inoutSearchInput" type="text" placeholder="Filtrer par titre ou artiste…" style="flex:1;min-width:220px;font-size:13px;padding:9px 14px;border-radius:9px" oninput="inOutSetSearch(this.value)">
+        <span id="inoutCount" style="font-size:11.5px;color:var(--muted);white-space:nowrap"></span>
+      </div>
+      <div id="inoutBody"></div>
+    </div>
     <div id="liveChartsPanel" style="display:none">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px">
         <div>
@@ -4115,7 +4167,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.232';
+const FPA_VERSION   = 'v30.237';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -9131,30 +9183,48 @@ function liveDeltaCell(liveVal, lastVal, topN){
 const LIVE_NEWOUT_RADIO_KEY = 'fpa_live_newsorti_radio'; // clé conservée : garde la radio déjà choisie
 let liveNewOutRadio = null;
 
-function liveNewOutCompute(radioKey){
+/** Base commune aux analyses New / Out (fenêtre par radio et page Entrées /
+ *  Sorties) : rangs Live et semaine complète, et rapprochement de chaque
+ *  titre Live avec la dernière semaine complète — calculés UNE fois puis
+ *  réutilisés pour toutes les radios (le rapprochement approché est le
+ *  calcul coûteux). */
+function liveInOutBase(){
+  const uniq = map => { const seen = new Set(), out = []; Object.entries(map || {}).forEach(([k, e]) => { if(k.includes('|||') && e && !seen.has(e)){ seen.add(e); out.push(e); } }); return out; };
   const liveRanks     = liveComputeRadioRanks(liveAirplayData);
   const lastWeekRanks = airplayLoaded ? liveComputeRadioRanks(airplayData) : {};
-  const uniq = map => { const seen = new Set(), out = []; Object.entries(map || {}).forEach(([k, e]) => { if(k.includes('|||') && e && !seen.has(e)){ seen.add(e); out.push(e); } }); return out; };
-  const news = [], outs = [];
   const matchedLast = new Set();
-  uniq(liveAirplayData).forEach(e => {
+  const pairs = uniq(liveAirplayData).map(e => {
     const lastWeek = liveGetLastWeekEntry(e);
     if(lastWeek) matchedLast.add(lastWeek);
-    const liveVal = liveGetRankValue(radioKey, e, liveRanks);
-    const lastVal = lastWeek ? liveGetRankValue(radioKey, lastWeek, lastWeekRanks) : null;
-    if(lastVal === null && liveInTop(liveVal)) news.push({ e, rank: liveVal });
-    else if(liveVal === null && liveInTop(lastVal)) outs.push({ e: lastWeek, rank: lastVal, goneFromLive: false });
+    return { e, lastWeek };
   });
-  if(airplayLoaded){
-    uniq(airplayData).forEach(e => {
-      if(matchedLast.has(e)) return;
-      const lastVal = liveGetRankValue(radioKey, e, lastWeekRanks);
-      if(liveInTop(lastVal)) outs.push({ e, rank: lastVal, goneFromLive: true });
-    });
-  }
+  const goneFromLive = airplayLoaded ? uniq(airplayData).filter(e => !matchedLast.has(e)) : [];
+  return { liveRanks, lastWeekRanks, pairs, goneFromLive };
+}
+
+/** Entrées / sorties d'UNE radio à partir de la base commune. Chaque
+ *  élément porte l'entrée Live (id) qui identifie le titre d'une radio à
+ *  l'autre : entrée Live si le titre est encore dans le Live, sinon son
+ *  entrée de la semaine complète. */
+function liveInOutForRadio(base, radioKey){
+  const news = [], outs = [];
+  base.pairs.forEach(({ e, lastWeek }) => {
+    const liveVal = liveGetRankValue(radioKey, e, base.liveRanks);
+    const lastVal = lastWeek ? liveGetRankValue(radioKey, lastWeek, base.lastWeekRanks) : null;
+    if(lastVal === null && liveInTop(liveVal)) news.push({ id: e, e, rank: liveVal });
+    else if(liveVal === null && liveInTop(lastVal)) outs.push({ id: e, e: lastWeek, rank: lastVal, goneFromLive: false });
+  });
+  base.goneFromLive.forEach(e => {
+    const lastVal = liveGetRankValue(radioKey, e, base.lastWeekRanks);
+    if(liveInTop(lastVal)) outs.push({ id: e, e, rank: lastVal, goneFromLive: true });
+  });
   news.sort((a, b) => a.rank - b.rank);
   outs.sort((a, b) => a.rank - b.rank);
   return { news, outs };
+}
+
+function liveNewOutCompute(radioKey){
+  return liveInOutForRadio(liveInOutBase(), radioKey);
 }
 
 function openLiveNewOutModal(){
@@ -9234,7 +9304,111 @@ function liveNewOutRender(){
     section('New · ' + name, news, 'new', 'Aucune nouvelle entrée dans le top ' + LIVE_TOP_N + ' de cette radio.');
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE « ENTRÉES / SORTIES » (menu Airplay) — v30.233
+// ══════════════════════════════════════════════════════════════════════════
+// Même logique que les mentions NEW / OUT de la page Live (top 50 de chaque
+// radio), regroupée par titre, sur deux colonnes : Sorties à gauche,
+// Entrées à droite. Dans chaque colonne, les titres qui ont le plus de
+// signaux (radios) en haut ; à égalité, le meilleur rang. Un titre qui entre
+// sur certaines radios et sort d'autres apparaît dans les deux colonnes.
+let inOutSearch = '';
+let inOutSearchTimer = null;
+
+function inOutComputeTitles(){
+  const base = liveInOutBase();
+  const byTitle = new Map();
+  const get = (id, e) => {
+    let t = byTitle.get(id);
+    if(!t){ t = { e, news: [], outs: [], goneFromLive: false }; byTitle.set(id, t); }
+    return t;
+  };
+  AIRPLAY_RADIOS_CHART.forEach(radio => {
+    const { news, outs } = liveInOutForRadio(base, radio.key);
+    news.forEach(x => get(x.id, x.e).news.push({ radio, rank: x.rank }));
+    outs.forEach(x => {
+      const t = get(x.id, x.id === x.e ? x.e : x.id);
+      t.outs.push({ radio, rank: x.rank });
+      if(x.goneFromLive) t.goneFromLive = true;
+    });
+  });
+  return [...byTitle.values()];
+}
+
+function inOutSetSearch(v){
+  clearTimeout(inOutSearchTimer);
+  inOutSearchTimer = setTimeout(() => { inOutSearch = v; renderInOutPage(); }, 150);
+}
+
+function renderInOutPage(){
+  const panel = document.getElementById('inoutChartsPanel');
+  if(!panel || panel.style.display === 'none') return;
+  const bodyEl = document.getElementById('inoutBody');
+  const infoEl = document.getElementById('inoutPeriods');
+  if(!bodyEl) return;
+  if(!liveAirplayLoaded || !airplayLoaded){
+    if(infoEl) infoEl.textContent = '';
+    bodyEl.innerHTML = `<div style="padding:24px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center">
+      ${!liveAirplayLoaded ? 'Aucun fichier Live importé.' : 'Aucune semaine complète chargée.'}
+      Cette page compare le classement Live à la dernière semaine complète :
+      importez les fichiers depuis <a href="#" onclick="switchChartTab('live');return false" style="color:var(--cyan);font-weight:700">Airplay Live</a>
+      ${!airplayLoaded ? 'et <a href="#" onclick="switchChartTab(\'airplay\');return false" style="color:var(--cyan);font-weight:700">Airplay Validé</a>' : ''}.
+    </div>`;
+    return;
+  }
+  if(infoEl) infoEl.textContent = 'Live (' + (livePeriod || 'période non détectée') + ') comparé à la dernière semaine complète (' + (airplayPeriod || 'période non détectée') + ')';
+
+  let titles = inOutComputeTitles();
+  const total = titles.length;
+  const q = norm(inOutSearch || '');
+  if(q) titles = titles.filter(t => norm((t.e.title || '') + ' ' + (t.e.artist || '')).includes(q));
+
+  const chip = (x, kind) => {
+    const isNew = kind === 'new';
+    return `<span title="${escHtml((x.radio.col || x.radio.label) + (isNew ? ' : entre en #' : ' : était #') + x.rank)}" style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap;${isNew ? 'background:var(--cyan-light);color:var(--navy);border:1px solid var(--cyan)' : 'background:#FFF4E5;color:#8A4B00;border:1px solid #F2C77B'}">${escHtml(x.radio.label)} <span style="font-weight:800;${isNew ? '' : 'text-decoration:line-through;'}">#${x.rank}</span></span>`;
+  };
+  // Une colonne : titres ayant au moins un signal de ce type, triés par
+  // nombre de radios décroissant puis par meilleur rang.
+  const column = (kind) => {
+    const isNew = kind === 'new';
+    const sig = t => isNew ? t.news : t.outs;
+    const list = titles.filter(t => sig(t).length)
+      .map(t => ({ t, best: Math.min(...sig(t).map(x => x.rank)) }))
+      .sort((a, b) => (sig(b.t).length - sig(a.t).length) || (a.best - b.best))
+      .map(x => x.t);
+    const color = isNew ? '#1a8a4a' : '#c0392b';
+    const head = `<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:14px 0 6px">
+      <div style="font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:${color}">${isNew ? '▲ Entrées' : '▼ Sorties'} (${list.length} titre${list.length > 1 ? 's' : ''})</div>
+      <div style="font-size:10.5px;color:var(--muted)">${list.reduce((n, t) => n + sig(t).length, 0)} signal(aux)</div>
+    </div>`;
+    if(!list.length) return `<div>${head}<div style="padding:18px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;font-size:12px;color:var(--muted);text-align:center">${q ? 'Aucun titre ne correspond à la recherche.' : (isNew ? 'Aucune entrée dans les top ' + LIVE_TOP_N + '.' : 'Aucune sortie des top ' + LIVE_TOP_N + '.')}</div></div>`;
+    return `<div style="min-width:0">${head}
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden">
+        ${list.map((t, i) => {
+          const evo = JSON.stringify({ artist: t.e.artist, title: t.e.title }).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+          const other = isNew ? t.outs.length : t.news.length;
+          const otherTxt = other ? ` · aussi ${other} ${isNew ? 'sortie' : 'entrée'}${other > 1 ? 's' : ''}` : '';
+          return `<div style="padding:9px 14px;${i ? 'border-top:1px solid var(--border);' : ''}">
+            <div style="display:flex;align-items:baseline;gap:10px">
+              <div style="font-size:13px;font-weight:800;color:${color};font-variant-numeric:tabular-nums;flex-shrink:0;min-width:26px">${isNew ? '▲' : '▼'}${sig(t).length}</div>
+              <div style="min-width:0;flex:1">
+                <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evo}" title="Voir l'évolution complète de ce titre" style="font-size:13px;font-weight:700;color:var(--navy);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.e.title || ''))}</div>
+                <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.e.artist || ''))}${!isNew && t.goneFromLive ? ' · absent du Live' : ''}${otherTxt}</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;margin:6px 0 0 36px">${sig(t).map(x => chip(x, kind)).join('')}</div>
+          </div>`;
+        }).join('')}
+      </div></div>`;
+  };
+  const nIn = titles.reduce((n, t) => n + t.news.length, 0), nOut = titles.reduce((n, t) => n + t.outs.length, 0);
+  const countEl = document.getElementById('inoutCount');
+  if(countEl) countEl.textContent = (q ? titles.length + ' / ' + total : total) + ' titre(s) · ' + nIn + ' entrée(s) · ' + nOut + ' sortie(s)';
+  bodyEl.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:18px;align-items:start">${column('out')}${column('new')}</div>`;
+}
+
 function renderLivePage(){
+  renderInOutPage(); // page Entrées / Sorties : mêmes données (sans effet si elle n'est pas affichée)
   const emptyBar  = document.getElementById('liveEmptyBar');
   const body      = document.getElementById('liveBody');
   const weeksBar  = document.getElementById('liveWeeksBar');
@@ -22151,12 +22325,12 @@ function switchChartTab(tab){
   // d'Europe 1 / RTL / France Inter. Europe Music Benchmark a le même besoin
   // (19 radios).
   const wrapEl = document.getElementById('chartsContentWrapper');
-  if(wrapEl) wrapEl.style.maxWidth = (tab === 'airplay' || tab === 'emb' || tab === 'live') ? '1400px' : '900px';
+  if(wrapEl) wrapEl.style.maxWidth = (tab === 'airplay' || tab === 'emb' || tab === 'live' || tab === 'inout') ? '1400px' : '900px';
   // Groupe déroulant Airplay / Europe Music Benchmark : style à part — fond
   // bleu clair discret (distinct des classements marché), anneau cyan
   // renforcé dès que l'un des deux sous-onglets du groupe est actif.
   const groupBtn = document.getElementById('chartAirplayGroup');
-  const inAirplayGroup = (tab === 'airplay' || tab === 'emb' || tab === 'live');
+  const inAirplayGroup = (tab === 'airplay' || tab === 'emb' || tab === 'live' || tab === 'inout');
   if(groupBtn){
     groupBtn.style.boxShadow = inAirplayGroup ? '0 0 0 1.5px var(--cyan)' : '0 0 0 1px var(--blue-border)';
     groupBtn.style.opacity   = inAirplayGroup ? '1' : '.7';
@@ -22167,6 +22341,8 @@ function switchChartTab(tab){
   if(airplayItem) airplayItem.classList.toggle('active', tab === 'airplay');
   if(embItem)      embItem.classList.toggle('active', tab === 'emb');
   if(liveItem)      liveItem.classList.toggle('active', tab === 'live');
+  const inOutItem = document.getElementById('chartTabInOut');
+  if(inOutItem) inOutItem.classList.toggle('active', tab === 'inout');
   // Groupe déroulant International (kworb.net) : même style que le groupe Airplay
   const INTL_TABS = ['spyfr'].concat(KWORB_COUNTRY_TABS).concat(['kwtop']);
   const groupBtnIntl = document.getElementById('chartIntlGroup');
@@ -22384,6 +22560,22 @@ function renderChartTable(){
   const stdHeader  = document.getElementById('chartStandardHeader');
   const chartSearchEl = document.getElementById('chartSearch');
   const chartCountEl  = document.getElementById('chartCount');
+
+  const inoutPanel = document.getElementById('inoutChartsPanel');
+  if(activeChartTab === 'inout'){
+    if(stdHeader) stdHeader.style.display = 'none';
+    const em = document.getElementById('chartEmptyMsg'); if(em) em.style.display = 'none';
+    const th = document.getElementById('chartTableHeader'); if(th) th.style.display = 'none';
+    const tb = document.getElementById('chartTableBody'); if(tb) tb.style.display = 'none';
+    if(chartSearchEl) chartSearchEl.style.display = '';
+    if(chartCountEl)  chartCountEl.style.display  = 'none';
+    if(embPanel) embPanel.style.display = 'none';
+    if(livePanel) livePanel.style.display = 'none';
+    if(inoutPanel) inoutPanel.style.display = 'block';
+    renderInOutPage();
+    return;
+  }
+  if(inoutPanel) inoutPanel.style.display = 'none';
 
   if(activeChartTab === 'live'){
     if(stdHeader) stdHeader.style.display = 'none';
@@ -27205,6 +27397,418 @@ document.addEventListener('click', e => {
 });
 
 /* ── Switcher sous-onglets ── */
+// ══════════════════════════════════════════════════════════════════════════
+// PAGE « OVERVIEW » (Décision) — v30.235
+// ══════════════════════════════════════════════════════════════════════════
+// Une carte par classement / métrique / ranking de FPA : les 5 premiers
+// titres + un lien vers la page complète. Chaque carte RÉUTILISE le calcul
+// de sa page (mêmes fonctions, même tri) : les chiffres sont toujours
+// identiques à ceux de la page détaillée. Grille de 5 colonnes au maximum,
+// hauteur libre, aucune barre de défilement interne. Les cartes se
+// réorganisent par glisser-déposer ; l'ordre est mémorisé dans ce navigateur.
+const OVERVIEW_ORDER_KEY = 'fpa_overview_order_v1';
+const OVERVIEW_TOP = 5;
+const OVERVIEW_ROCKET_MIN = 4; // badge 🚀 : titre présent dans PLUS de 3 cartes
+
+/** Clé de rapprochement d'un titre d'une carte à l'autre : titre sans
+ *  mentions entre parenthèses/crochets (« (quota Fr) », « [Radio Edit] »…)
+ *  + premier mot de l'artiste (les sources n'écrivent pas les featurings
+ *  de la même façon). */
+function overviewTitleKey(title, artist){
+  const t = norm(String(title || '').replace(/\([^)]*\)|\[[^\]]*\]/g, ' '));
+  const a = (norm(artist || '').split(' ')[0]) || '';
+  return t ? t + '|' + a : '';
+}
+
+/** Pose le badge 🚀 sur chaque titre présent dans au moins
+ *  OVERVIEW_ROCKET_MIN cartes différentes (une carte compte une fois, même
+ *  si le titre y figure dans ses deux listes). Rappelé à chaque remplissage
+ *  de carte asynchrone. */
+function overviewUpdateRockets(){
+  const grid = document.getElementById('overviewGrid');
+  if(!grid) return;
+  const spots = [...grid.querySelectorAll('.ov-rocket')];
+  const cardsByKey = {};
+  spots.forEach(el => {
+    const key = el.dataset.ovkey, card = el.closest('.ov-card');
+    if(!key || !card) return;
+    (cardsByKey[key] = cardsByKey[key] || new Set()).add(card.dataset.ovId);
+  });
+  spots.forEach(el => {
+    const n = cardsByKey[el.dataset.ovkey] ? cardsByKey[el.dataset.ovkey].size : 0;
+    if(n >= OVERVIEW_ROCKET_MIN){
+      el.textContent = '🚀';
+      el.title = 'Présent dans ' + n + ' cartes de l\'Overview';
+      el.style.display = '';
+    } else {
+      el.textContent = '';
+      el.style.display = 'none';
+    }
+  });
+}
+let overviewLoadingStarted = false;
+let overviewRenderSeq = 0;
+
+/** Ouvre une page Décision / Classements depuis une carte. */
+function overviewGoDec(tab, after){
+  try{
+    if(document.getElementById('pageDecision')?.style.display === 'none') toggleDecisionPage();
+    switchDecTab(tab);
+    if(after) after();
+  }catch(e){ /* navigation best-effort */ }
+}
+function overviewGoChart(tab){
+  try{
+    if(!chartsPageOpen) toggleChartsPage();
+    switchChartTab(tab);
+  }catch(e){ /* navigation best-effort */ }
+}
+
+/** Convertit un classement {rang: {t, a}} en lignes triées par rang. */
+function overviewFromChart(chart){
+  if(!chart) return [];
+  return Object.entries(chart)
+    .map(([rank, e]) => ({ rank: parseInt(rank, 10), title: e && (e.t || e.title), artist: e && (e.a || e.artist) }))
+    .filter(r => r.rank > 0 && r.title)
+    .sort((a, b) => a.rank - b.rank)
+    .slice(0, OVERVIEW_TOP);
+}
+function overviewFindKeyPlaylist(re){ return keyPlaylists.find(p => re.test(p.label || '')); }
+
+/** Top 5 d'un classement Airplay (Général = rang direct « rg »). */
+function overviewAirplayTop(data){
+  const seen = new Set(), rows = [];
+  Object.entries(data || {}).forEach(([k, e]) => {
+    if(!k.includes('|||') || !e || seen.has(e)) return;
+    seen.add(e);
+    const rg = liveNum(e.rg);
+    if(rg != null && rg > 0) rows.push({ rank: rg, title: e.title, artist: e.artist });
+  });
+  return rows.sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP);
+}
+
+/** Définition des cartes. get() renvoie { rows, note, empty, extra } ;
+ *  getAsync() (cartes réseau) fait de même de façon asynchrone. Chaque
+ *  ligne : { rank?, title, artist, value?, valueTitle?, color? }. */
+const OVERVIEW_WIDGETS = [
+  { id:'airplay', icon:'📻', label:'Airplay Validé', go: () => overviewGoChart('airplay'),
+    get(){
+      if(!airplayLoaded) return { empty:'Aucune semaine Airplay importée.' };
+      return { rows: overviewAirplayTop(airplayData), note: airplayPeriod || '' };
+    } },
+  { id:'live', icon:'🔴', label:'Airplay Live', go: () => overviewGoChart('live'),
+    get(){
+      if(!liveAirplayLoaded) return { empty:'Aucun fichier Live importé.' };
+      return { rows: overviewAirplayTop(liveAirplayData), note: livePeriod || '' };
+    } },
+  { id:'stationplays', icon:'🎙️', get label(){ return 'Diffusions ' + (STATION_LABELS[ACTIVE_STATION] || 'station'); }, go: () => overviewGoChart('airplay'),
+    get(){
+      const key = ACTIVE_STATION === 'RFM' ? 'rfm' : 'e2';
+      const top = data => {
+        const seen = new Set(), rows = [];
+        Object.entries(data || {}).forEach(([k, e]) => {
+          if(!k.includes('|||') || !e || seen.has(e)) return;
+          seen.add(e);
+          const n = liveNum(e[key]);
+          if(n != null && n > 0) rows.push({ title: e.title, artist: e.artist, plays: n });
+        });
+        return rows.sort((a, b) => b.plays - a.plays).slice(0, OVERVIEW_TOP)
+          .map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist, value: r.plays, valueTitle: r.plays + ' diffusion(s)' }));
+      };
+      return { sections: [
+        airplayLoaded     ? { title:'Semaine validée', rows: top(airplayData), note: airplayPeriod || '' } : { title:'Semaine validée', empty:'Aucune semaine Airplay importée.' },
+        liveAirplayLoaded ? { title:'Semaine live', rows: top(liveAirplayData), note: livePeriod || '' }  : { title:'Semaine live', empty:'Aucun fichier Live importé.' },
+      ] };
+    } },
+  { id:'callout', icon:'📋', label:'Call Out actif', go: () => { try{ goToFitScoreTable(); }catch(e){} },
+    get(){
+      if(!analysisResult || !analysisResult.length) return { empty:'Aucune analyse Call Out / OMT en cours.' };
+      const counts = {};
+      analysisResult.forEach(r => { if(r.q) counts[r.q] = (counts[r.q] || 0) + 1; });
+      const extra = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${Object.keys(QUAD).filter(k => counts[k]).map(k =>
+        `<span title="${escHtml(QUAD[k].label)}" style="font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:6px;background:${QUAD[k].badgeBg};color:${QUAD[k].badgeText}">${QUAD[k].icon} ${counts[k]}</span>`).join('')}</div>`;
+      const rows = [...analysisResult].filter(r => r.score != null)
+        .sort((a, b) => b.score - a.score).slice(0, OVERVIEW_TOP)
+        .map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+          value: (QUAD[r.q] ? QUAD[r.q].icon + ' ' : '') + Math.round(r.score),
+          valueTitle: (QUAD[r.q] ? QUAD[r.q].label + ' · ' : '') + 'Pot Score ' + Math.round(r.score) }));
+      return { rows, extra, note: 'Classé par Pot Score' };
+    } },
+  { id:'radar', icon:'🎯', label:'Radar', go: () => overviewGoDec('radar'),
+    async getAsync(){
+      if(!analysisResult || !analysisResult.length) return { empty:'Analyse Call Out / OMT requise.' };
+      const res = await computeRadarRows();
+      if(res.status !== 'ok') return { empty: { 'no-drive':'Drive Sync non configuré.', 'no-history':'Aucune semaine de référence sur Drive.' }[res.status] || 'Radar indisponible.' };
+      if(!res.rows.length) return { empty:'Aucun titre en forte progression.' };
+      return { rows: res.rows.slice(0, OVERVIEW_TOP).map(({ r, gains, totalGain }, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+        value: '+' + totalGain, valueTitle: gains.length + ' signal(aux) en progression', color:'#0DA76B' })),
+        note: res.rows.length + ' titre(s) en forte progression' };
+    } },
+  { id:'daily', icon:'📆', label:'Veille quotidienne', go: () => { try{ goToDailyOverviewPage(); }catch(e){} },
+    async getAsync(){
+      if(!DAILY_SNAPSHOT_URL) return { empty:'Script DailySnapshot non configuré.' };
+      if(!dailySnapshotsLoaded){ try{ await loadDailySnapshots(); }catch(e){} }
+      if(dailySnapshots.length < 2) return { empty:'Pas assez d\'historique quotidien.' };
+      const ranked = computeDailyMovers(Infinity)
+        .map(g => { const rising = g.signals.filter(x => x.delta > 0); return { ...g, risingCount: rising.length, risingTotal: rising.reduce((n, x) => n + x.delta, 0) }; })
+        .filter(g => g.risingCount >= 1)
+        .sort((a, b) => b.risingCount - a.risingCount || b.risingTotal - a.risingTotal);
+      if(!ranked.length) return { empty:'Aucune progression notable aujourd\'hui.' };
+      return { rows: ranked.slice(0, OVERVIEW_TOP).map((g, i) => ({ rank: i + 1, title: g.title, artist: g.artist,
+        value: g.risingCount + ' ▲', valueTitle: 'En progression dans ' + g.risingCount + ' classement(s)', color:'#0DA76B' })) };
+    } },
+  { id:'watchlist', icon:'🔭', label:'Veille manuelle', go: () => { try{ goToWatchlistPage(); }catch(e){} },
+    get(){
+      if(!watchlistTitles.length) return { empty:'Aucun titre en Veille.' };
+      const sorted = watchlistTitles.slice().sort((a, b) => (watchlistHasNewSignalToday(b) ? 1 : 0) - (watchlistHasNewSignalToday(a) ? 1 : 0));
+      return { rows: sorted.slice(0, OVERVIEW_TOP).map(w => ({ title: w.title, artist: w.artist,
+        value: watchlistHasNewSignalToday(w) ? '🎯 Nouveau' : '', valueTitle:'Nouveau signal aujourd\'hui', color:'#0DA76B' })),
+        note: watchlistTitles.length + ' titre(s) suivis' };
+    } },
+  { id:'new', icon:'▲', label:'Titres New', go: () => overviewGoChart('inout'),
+    get(){
+      if(!liveAirplayLoaded || !airplayLoaded) return { empty:'Live et semaine complète requis.' };
+      const list = inOutComputeTitles().filter(t => t.news.length)
+        .map(t => ({ t, best: Math.min(...t.news.map(x => x.rank)) }))
+        .sort((a, b) => (b.t.news.length - a.t.news.length) || (a.best - b.best));
+      if(!list.length) return { empty:'Aucune entrée dans les top ' + LIVE_TOP_N + '.' };
+      return { rows: list.slice(0, OVERVIEW_TOP).map(({ t }) => ({ title: t.e.title, artist: t.e.artist,
+        value: '▲' + t.news.length, valueTitle: t.news.map(x => x.radio.label + ' #' + x.rank).join(', '), color:'#1a8a4a' })),
+        note: list.length + ' titre(s) entrant(s)' };
+    } },
+  { id:'out', icon:'▼', label:'Titres Out', go: () => overviewGoChart('inout'),
+    get(){
+      if(!liveAirplayLoaded || !airplayLoaded) return { empty:'Live et semaine complète requis.' };
+      const list = inOutComputeTitles().filter(t => t.outs.length)
+        .map(t => ({ t, best: Math.min(...t.outs.map(x => x.rank)) }))
+        .sort((a, b) => (b.t.outs.length - a.t.outs.length) || (a.best - b.best));
+      if(!list.length) return { empty:'Aucune sortie des top ' + LIVE_TOP_N + '.' };
+      return { rows: list.slice(0, OVERVIEW_TOP).map(({ t }) => ({ title: t.e.title, artist: t.e.artist,
+        value: '▼' + t.outs.length, valueTitle: t.outs.map(x => x.radio.label + ' #' + x.rank).join(', '), color:'#c0392b' })),
+        note: list.length + ' titre(s) sortant(s)' };
+    } },
+  { id:'potentiel', icon:'🔍', label:'Titres à pousser', go: () => overviewGoDec('shazinc'),
+    get(){
+      if(!analysisResult || !analysisResult.length) return { empty:'Analyse Call Out / OMT requise.' };
+      const allRows = getShazIncData();
+      const getMom = r => shazIncMode === 'fit' ? r.momentumFit : r.momentumBrut;
+      const valid = allRows.map(getMom).filter(v => v !== null && !isNaN(v)).sort((a, b) => a - b);
+      if(!valid.length) return { empty:'Données Shazam / Inc insuffisantes.' };
+      const sensitivity = 15; // même valeur par défaut que la page Analyse de potentiel
+      const fort = valid[Math.min(valid.length - 1, Math.max(0, Math.ceil(((100 - sensitivity) / 100) * valid.length) - 1))];
+      const push = allRows.filter(r => { const m = getMom(r); return m !== null && m >= fort; }).sort((a, b) => (getMom(b) ?? -1) - (getMom(a) ?? -1));
+      if(!push.length) return { empty:'Aucun titre à pousser détecté.' };
+      return { rows: push.slice(0, OVERVIEW_TOP).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+        value: Math.round(getMom(r)), valueTitle:'Indice de potentiel', color:'#E07B00' })),
+        note: push.length + ' titre(s) en signal fort' };
+    } },
+  { id:'polar', icon:'⚡', label:'Polarisation', go: () => overviewGoDec('polar'),
+    get(){
+      const rows = getPolarData().filter(r => r.polar != null).sort((a, b) => (b.polar ?? 0) - (a.polar ?? 0));
+      if(!rows.length) return { empty:'Aucune donnée de polarisation.' };
+      return { rows: rows.slice(0, OVERVIEW_TOP).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+        value: Math.round(r.polar), valueTitle:'Indice de polarisation' })), note:'Les plus polarisants' };
+    } },
+  { id:'matrix', icon:'📊', label:'Matrice de décision', go: () => overviewGoDec('matrix'),
+    get(){
+      const rows = buildDecisionRows();
+      if(!rows.length) return { empty:'Aucune donnée de décision.' };
+      const scores = rows.map(r => r.score).filter(Boolean).sort((a, b) => a - b);
+      const median = scores[Math.floor(scores.length / 2)] || 100;
+      rows.forEach(r => { r.lifecyclePhase = getLifecyclePhase(r.cumPlays); r.dq = decisionQuadrant(r.score, r.momentum, median, r.lifecyclePhase); });
+      const ordered = [...rows].sort((a, b) => DEC_QUAD[a.dq].order - DEC_QUAD[b.dq].order || (b.score || 0) - (a.score || 0));
+      const counts = {};
+      rows.forEach(r => { counts[r.dq] = (counts[r.dq] || 0) + 1; });
+      const extra = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${Object.keys(DEC_QUAD).filter(k => counts[k]).map(k =>
+        `<span style="font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:6px;background:${DEC_QUAD[k].bg};color:${DEC_QUAD[k].color}">${escHtml(DEC_QUAD[k].label)} ${counts[k]}</span>`).join('')}</div>`;
+      return { extra, rows: ordered.slice(0, OVERVIEW_TOP).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+        value: r.score != null ? Math.round(r.score) : '–', valueTitle: DEC_QUAD[r.dq].label, color: DEC_QUAD[r.dq].color })) };
+    } },
+  { id:'spu', icon:'🏆', label:'Score Unifié (SPU)', go: () => overviewGoDec('spu'),
+    get(){
+      const base = buildDecisionRows();
+      if(!base.length) return { empty:'Aucune donnée disponible.' };
+      const rows = computeSPU(base).filter(r => r.spu != null).sort((a, b) => (b.spu ?? -1) - (a.spu ?? -1));
+      if(!rows.length) return { empty:'SPU non calculable.' };
+      return { rows: rows.slice(0, OVERVIEW_TOP).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+        value: Math.round(r.spu), valueTitle:'Score Unifié' })) };
+    } },
+  { id:'cycles', icon:'🧬', label:'Cycles de vie', go: () => overviewGoDec('cycles'),
+    get(){
+      const data = loadLifeCycleClusters();
+      if(!data) return { empty:'Clusters non calculés (page Cycles de vie).' };
+      const recent = collectRecentTitles(data)
+        .map(rec => ({ rec, c: classifyRecentTitle(rec, data) }))
+        .filter(x => x.c);
+      const extra = `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px">${data.clusters.map(c =>
+        `<span style="font-size:9.5px;font-weight:800;padding:2px 6px;border-radius:6px;background:#F3E8FF;color:#6B21A8">${c.icon} ${escHtml(c.name)} ${c.size}</span>`).join('')}</div>`;
+      if(!recent.length) return { extra, empty:'Aucun titre récent à classer.' };
+      return { extra, note:'Titres récents et leur famille probable',
+        rows: recent.slice(0, OVERVIEW_TOP).map(({ rec, c }) => ({ title: rec.title, artist: rec.artist, value: c.icon, valueTitle: c.name })) };
+    } },
+  { id:'burn', icon:'🔥', label:'Burn Rate', go: () => overviewGoDec('burn'),
+    get(){
+      const all = buildBurnRows();
+      if(!all.length) return { empty:'Aucune donnée de burn.' };
+      const urgency = { 'Sortie imminente':0, 'Déjà au seuil':0, 'Question Marks':1, 'Marge confortable':2 };
+      const rows = [...all].sort((a, b) => ((urgency[a.status] ?? 3) - (urgency[b.status] ?? 3)) || ((a.remainingWaves ?? 999) - (b.remainingWaves ?? 999)));
+      return { note:'Les plus urgents', rows: rows.slice(0, OVERVIEW_TOP).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+        value: (r.lastBurn != null ? r.lastBurn.toFixed(0) + '%' : '–'), valueTitle: r.status + (r.remainingWaves != null ? ' · ' + r.remainingWaves + ' vague(s) restante(s)' : ''), color: r.statusColor || '#c0392b' })) };
+    } },
+  { id:'spyfr', icon:'🟢', label:'Spotify FR Daily', go: () => overviewGoChart('kwfr'),
+    get(){ const st = kworbSpotifyState.fr; return st && st.loaded ? { rows: overviewFromChart(st.data), note: st.dateUsed || '' } : { empty: st && st.loading ? '⏳ Chargement…' : 'Non chargé.' }; },
+    load(){ const st = kworbSpotifyState.fr; return st && !st.loaded && !st.loading ? loadKworbSpotify('fr') : null; } },
+  { id:'spytop50', icon:'🌍', label:'Spotify Top 50 Monde', playlist: /top[\s-]*50[\s-]*monde/i,
+    go(){ const p = overviewFindKeyPlaylist(this.playlist); overviewGoChart(p ? 'kp_' + p.id : 'keyplaylists'); },
+    get(){ const p = overviewFindKeyPlaylist(this.playlist);
+      if(!p) return { empty:'Playlist « Top 50 Monde » non suivie.' };
+      return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP) } : { empty:'Non chargée.' }; },
+    load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && (!p.tracks || !isFetchedToday(p)) ? refreshKeyPlaylist(p.id) : null; } },
+  { id:'spyfh', icon:'✨', label:'Spotify Futur Hits', playlist: /futur[es]*[\s-]*hits?/i,
+    go(){ const p = overviewFindKeyPlaylist(this.playlist); overviewGoChart(p ? 'kp_' + p.id : 'keyplaylists'); },
+    get(){ const p = overviewFindKeyPlaylist(this.playlist);
+      if(!p) return { empty:'Playlist « Futur Hits » non suivie.' };
+      return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP) } : { empty:'Non chargée.' }; },
+    load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && (!p.tracks || !isFetchedToday(p)) ? refreshKeyPlaylist(p.id) : null; } },
+  { id:'shzfr', icon:'🔵', label:'Shazam France', go: () => overviewGoChart('shzfr'),
+    get(){ return chartsLoaded.fr ? { rows: overviewFromChart(chartsData.fr), note: shazamDateUsed || '' } : { empty:'Non chargé.' }; },
+    load(){ return (!chartsLoaded.fr || !chartsLoaded.ww) ? loadChartsAndRefresh() : null; } },
+  { id:'shzww', icon:'🌐', label:'Shazam Monde', go: () => overviewGoChart('shzww'),
+    get(){ return chartsLoaded.ww ? { rows: overviewFromChart(chartsData.ww) } : { empty:'Non chargé.' }; } },
+  { id:'dzfr', icon:'🟣', label:'Deezer France', go: () => overviewGoChart('dzfr'),
+    get(){ return deezerLoaded ? { rows: overviewFromChart(deezerData) } : { empty:'Non chargé.' }; },
+    load(){ return !deezerLoaded ? loadDeezerChart() : null; } },
+  { id:'dzfh', icon:'💜', label:'Deezer Futurs Hits', go: () => overviewGoChart('fh'),
+    get(){ return futursHitsLoaded ? { rows: overviewFromChart(futursHitsData) } : { empty:'Non chargé.' }; },
+    load(){ return !futursHitsLoaded ? loadFutursHitsChart() : null; } },
+  { id:'bbradio', icon:'🇺🇸', label:'Billboard Airplay US', go: () => overviewGoChart('kwradio'),
+    get(){ return kworbRadioLoaded ? { rows: overviewFromChart(kworbRadioData), note: kworbRadioDateUsed || '' } : { empty: kworbRadioLoading ? '⏳ Chargement…' : 'Non chargé.' }; },
+    load(){ return !kworbRadioLoaded && !kworbRadioLoading ? loadKworbRadio() : null; } },
+];
+
+function overviewOrder(){
+  let saved = [];
+  try{ saved = JSON.parse(localStorage.getItem(OVERVIEW_ORDER_KEY) || '[]'); }catch(e){}
+  const ids = OVERVIEW_WIDGETS.map(w => w.id);
+  const order = (Array.isArray(saved) ? saved : []).filter(id => ids.includes(id));
+  ids.forEach(id => { if(!order.includes(id)) order.push(id); }); // nouvelles cartes à la fin
+  return order;
+}
+function overviewSaveOrder(){
+  const grid = document.getElementById('overviewGrid');
+  if(!grid) return;
+  const order = [...grid.querySelectorAll('[data-ov-id]')].map(el => el.dataset.ovId);
+  try{ localStorage.setItem(OVERVIEW_ORDER_KEY, JSON.stringify(order)); }catch(e){}
+}
+function overviewResetOrder(){
+  try{ localStorage.removeItem(OVERVIEW_ORDER_KEY); }catch(e){}
+  renderOverviewPage();
+}
+
+function overviewBodyHtml(res){
+  if(!res) return '<div style="font-size:11.5px;color:var(--muted);padding:6px 0">⏳ Calcul…</div>';
+  if(res.sections){
+    return res.sections.map((sec, i) => `<div style="${i ? 'margin-top:10px;' : ''}">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:2px">${escHtml(sec.title)}</div>
+      ${overviewBodyHtml({ rows: sec.rows, empty: sec.empty, note: sec.note })}
+    </div>`).join('');
+  }
+  let html = res.extra || '';
+  if(res.empty || !res.rows || !res.rows.length){
+    return html + `<div style="font-size:11.5px;color:var(--muted);padding:6px 0">${escHtml(res.empty || 'Aucune donnée.')}</div>`;
+  }
+  html += res.rows.map((r, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;${i ? 'border-top:1px solid var(--border)' : ''}">
+      <div style="width:22px;flex-shrink:0;font-size:11px;font-weight:800;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums">${r.rank != null ? r.rank : '•'}</div>
+      <div style="min-width:0;flex:1">
+        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title || '', r.artist || '')}" title="Voir l'évolution complète de ce titre" style="font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.title || ''))}</div>
+        <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.artist || ''))}</div>
+      </div>
+      <span class="ov-rocket" data-ovkey="${escHtml(overviewTitleKey(r.title, r.artist))}" style="display:none;flex-shrink:0;font-size:13px;cursor:default"></span>
+      ${r.value !== undefined && r.value !== '' ? `<div title="${escHtml(r.valueTitle || '')}" style="flex-shrink:0;font-size:11px;font-weight:800;color:${r.color || 'var(--navy)'};white-space:nowrap;max-width:40%;overflow:hidden;text-overflow:ellipsis">${escHtml(String(r.value))}</div>` : ''}
+    </div>`).join('');
+  if(res.note) html += `<div style="font-size:10px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(res.note)}">${escHtml(res.note)}</div>`;
+  return html;
+}
+
+function overviewSafeGet(w){
+  try{ return w.get(); }catch(e){ console.warn('Overview — ' + w.id, e); return { empty:'Indisponible pour le moment.' }; }
+}
+
+function renderOverviewPage(){
+  const grid = document.getElementById('overviewGrid');
+  if(!grid) return;
+  const seq = ++overviewRenderSeq;
+  const byId = Object.fromEntries(OVERVIEW_WIDGETS.map(w => [w.id, w]));
+  grid.innerHTML = overviewOrder().map(id => {
+    const w = byId[id];
+    const res = w.getAsync ? null : overviewSafeGet(w);
+    return `<div class="ov-card" data-ov-id="${w.id}" draggable="true">
+      <div class="ov-head" title="Glisser pour déplacer cette carte">
+        <span class="ov-grip" aria-hidden="true">⋮⋮</span>
+        <span style="font-size:13px;flex-shrink:0">${w.icon}</span>
+        <span class="ov-title" style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${escHtml(w.label)}</span>
+        <button onclick="overviewOpen('${w.id}')" draggable="false" title="Ouvrir la page ${escHtml(w.label)}" style="flex-shrink:0;font-size:10.5px;font-weight:800;color:var(--cyan);background:none;border:none;cursor:pointer;padding:2px 0;white-space:nowrap">Voir →</button>
+      </div>
+      <div id="ovBody_${w.id}">${overviewBodyHtml(res)}</div>
+    </div>`;
+  }).join('');
+  overviewBindDnD(grid);
+  overviewUpdateRockets();
+  // Cartes asynchrones (Radar, Veille quotidienne) : remplies à l'arrivée
+  OVERVIEW_WIDGETS.filter(w => w.getAsync).forEach(w => {
+    w.getAsync().then(res => res, e => { console.warn('Overview — ' + w.id, e); return { empty:'Indisponible pour le moment.' }; })
+      .then(res => {
+        if(seq !== overviewRenderSeq) return; // un rendu plus récent a eu lieu
+        const el = document.getElementById('ovBody_' + w.id);
+        if(el){ el.innerHTML = overviewBodyHtml(res); overviewUpdateRockets(); }
+      });
+  });
+  // Classements pas encore chargés : chargés une fois, puis la page se met à jour
+  if(!overviewLoadingStarted){
+    overviewLoadingStarted = true;
+    const tasks = OVERVIEW_WIDGETS.map(w => { try{ return w.load ? w.load() : null; }catch(e){ return null; } }).filter(Boolean);
+    if(tasks.length){
+      Promise.allSettled(tasks).then(() => {
+        overviewLoadingStarted = false;
+        if(decActiveTab === 'overview' && document.getElementById('decPaneOverview')?.style.display !== 'none') renderOverviewPage();
+      });
+    } else overviewLoadingStarted = false;
+  }
+}
+
+function overviewOpen(id){
+  const w = OVERVIEW_WIDGETS.find(x => x.id === id);
+  if(w) w.go();
+}
+
+/** Glisser-déposer : la carte déplacée s'insère avant ou après la carte
+ *  survolée selon la position du pointeur ; l'ordre est enregistré au lâcher. */
+function overviewBindDnD(grid){
+  let dragged = null;
+  grid.querySelectorAll('.ov-card').forEach(card => {
+    card.addEventListener('dragstart', ev => {
+      dragged = card;
+      card.classList.add('ov-dragging');
+      try{ ev.dataTransfer.effectAllowed = 'move'; ev.dataTransfer.setData('text/plain', card.dataset.ovId); }catch(e){}
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('ov-dragging');
+      dragged = null;
+      overviewSaveOrder();
+    });
+    card.addEventListener('dragover', ev => {
+      if(!dragged || dragged === card) return;
+      ev.preventDefault();
+      const rect = card.getBoundingClientRect();
+      const after = (ev.clientX - rect.left) > rect.width / 2;
+      const ref = after ? card.nextSibling : card;
+      if(ref !== dragged && ref !== dragged.nextSibling) grid.insertBefore(dragged, ref);
+    });
+    card.addEventListener('drop', ev => ev.preventDefault());
+  });
+}
+
 function switchDecTab(tab){
   if(tab === 'list') tab = 'matrix'; // compat : la liste est désormais intégrée à la matrice
   decActiveTab = tab;
@@ -27213,7 +27817,7 @@ function switchDecTab(tab){
   // au lieu de retomber systématiquement sur Radar par défaut.
   try{ localStorage.setItem('fpa_last_dec_tab', tab); }catch(e){ /* sans conséquence */ }
   closeAllDecGroups();
-  ['matrix','spu','comp','burn','polar','shazinc','exclusifs','watchlist','cycles','adoption','radar','iedr','shazlag','compscore','opportunity','benchmark','predExit','predEntry'].forEach(t => {
+  ['overview','matrix','spu','comp','burn','polar','shazinc','exclusifs','watchlist','cycles','adoption','radar','iedr','shazlag','compscore','opportunity','benchmark','predExit','predEntry'].forEach(t => {
     document.getElementById('decPane'+t.charAt(0).toUpperCase()+t.slice(1)).style.display = t===tab?'block':'none';
     const b = document.getElementById('decTab'+t.charAt(0).toUpperCase()+t.slice(1));
     if(b){
@@ -27229,6 +27833,10 @@ function switchDecTab(tab){
     const btn = document.getElementById('decGroupBtn'+capitalize(g));
     if(btn) btn.classList.toggle('active', g === activeGroup);
   });
+  // Overview : toute la largeur de l'écran ; autres onglets : 1400 px max
+  const decWrap = document.getElementById('decContentWrap');
+  if(decWrap) decWrap.style.maxWidth = tab === 'overview' ? 'none' : '1400px';
+  if(tab==='overview') renderOverviewPage();
   if(tab==='matrix') renderDecisionPage();
   if(tab==='spu')  renderSpuPage();
   if(tab==='comp') renderCompPage();
