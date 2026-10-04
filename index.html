@@ -178,6 +178,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 .ov-head { display:flex; align-items:center; gap:6px; margin:0 -12px 8px; padding:9px 12px; background:var(--navy); color:#fff; cursor:grab; user-select:none; }
 .ov-head .ov-title { color:#fff !important; }
 .ov-head .ov-grip { color:rgba(255,255,255,.45); }
+.ov-logo { flex-shrink:0; display:inline-flex; align-items:center; justify-content:center; height:20px; min-width:20px; padding:2px 5px; background:#fff; border-radius:5px; }
+.ov-logo img { height:16px; max-width:52px; object-fit:contain; display:block; }
 .ov-head:active { cursor:grabbing; }
 .ov-grip { color:var(--muted); font-size:11px; letter-spacing:-2px; flex-shrink:0; }
 .ov-dragging { opacity:.45; box-shadow:0 0 0 2px var(--cyan); }
@@ -4167,7 +4169,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.237';
+const FPA_VERSION   = 'v30.238';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -27475,6 +27477,23 @@ function overviewFromChart(chart){
 }
 function overviewFindKeyPlaylist(re){ return keyPlaylists.find(p => re.test(p.label || '')); }
 
+/** Logo de la radio de référence (station active). */
+function overviewStationLogo(){ return ACTIVE_STATION === 'RFM' ? LOGO_RFM_PDF : LOGO_EUROPE2_PDF; }
+
+/** Top 5 des titres les plus diffusés sur la radio de référence. */
+function overviewStationPlaysTop(data){
+  const key = ACTIVE_STATION === 'RFM' ? 'rfm' : 'e2';
+  const seen = new Set(), rows = [];
+  Object.entries(data || {}).forEach(([k, e]) => {
+    if(!k.includes('|||') || !e || seen.has(e)) return;
+    seen.add(e);
+    const n = liveNum(e[key]);
+    if(n != null && n > 0) rows.push({ title: e.title, artist: e.artist, plays: n });
+  });
+  return rows.sort((a, b) => b.plays - a.plays).slice(0, OVERVIEW_TOP)
+    .map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist, value: r.plays, valueTitle: r.plays + ' diffusion(s)' }));
+}
+
 /** Top 5 d'un classement Airplay (Général = rang direct « rg »). */
 function overviewAirplayTop(data){
   const seen = new Set(), rows = [];
@@ -27501,24 +27520,17 @@ const OVERVIEW_WIDGETS = [
       if(!liveAirplayLoaded) return { empty:'Aucun fichier Live importé.' };
       return { rows: overviewAirplayTop(liveAirplayData), note: livePeriod || '' };
     } },
-  { id:'stationplays', icon:'🎙️', get label(){ return 'Diffusions ' + (STATION_LABELS[ACTIVE_STATION] || 'station'); }, go: () => overviewGoChart('airplay'),
+  { id:'stationplays', icon:'🎙️', get logo(){ return overviewStationLogo(); },
+    get label(){ return 'Diffusions · Validé'; }, go: () => overviewGoChart('airplay'),
     get(){
-      const key = ACTIVE_STATION === 'RFM' ? 'rfm' : 'e2';
-      const top = data => {
-        const seen = new Set(), rows = [];
-        Object.entries(data || {}).forEach(([k, e]) => {
-          if(!k.includes('|||') || !e || seen.has(e)) return;
-          seen.add(e);
-          const n = liveNum(e[key]);
-          if(n != null && n > 0) rows.push({ title: e.title, artist: e.artist, plays: n });
-        });
-        return rows.sort((a, b) => b.plays - a.plays).slice(0, OVERVIEW_TOP)
-          .map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist, value: r.plays, valueTitle: r.plays + ' diffusion(s)' }));
-      };
-      return { sections: [
-        airplayLoaded     ? { title:'Semaine validée', rows: top(airplayData), note: airplayPeriod || '' } : { title:'Semaine validée', empty:'Aucune semaine Airplay importée.' },
-        liveAirplayLoaded ? { title:'Semaine live', rows: top(liveAirplayData), note: livePeriod || '' }  : { title:'Semaine live', empty:'Aucun fichier Live importé.' },
-      ] };
+      if(!airplayLoaded) return { empty:'Aucune semaine Airplay importée.' };
+      return { rows: overviewStationPlaysTop(airplayData), note: airplayPeriod || '' };
+    } },
+  { id:'stationplayslive', icon:'🎙️', get logo(){ return overviewStationLogo(); },
+    get label(){ return 'Diffusions · Live'; }, go: () => overviewGoChart('live'),
+    get(){
+      if(!liveAirplayLoaded) return { empty:'Aucun fichier Live importé.' };
+      return { rows: overviewStationPlaysTop(liveAirplayData), note: livePeriod || '' };
     } },
   { id:'callout', icon:'📋', label:'Call Out actif', go: () => { try{ goToFitScoreTable(); }catch(e){} },
     get(){
@@ -27655,33 +27667,33 @@ const OVERVIEW_WIDGETS = [
       return { note:'Les plus urgents', rows: rows.slice(0, OVERVIEW_TOP).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
         value: (r.lastBurn != null ? r.lastBurn.toFixed(0) + '%' : '–'), valueTitle: r.status + (r.remainingWaves != null ? ' · ' + r.remainingWaves + ' vague(s) restante(s)' : ''), color: r.statusColor || '#c0392b' })) };
     } },
-  { id:'spyfr', icon:'🟢', label:'Spotify FR Daily', go: () => overviewGoChart('kwfr'),
+  { id:'spyfr', get logo(){ return LOGO_SPOTIFY; }, icon:'🟢', label:'Spotify FR Daily', go: () => overviewGoChart('kwfr'),
     get(){ const st = kworbSpotifyState.fr; return st && st.loaded ? { rows: overviewFromChart(st.data), note: st.dateUsed || '' } : { empty: st && st.loading ? '⏳ Chargement…' : 'Non chargé.' }; },
     load(){ const st = kworbSpotifyState.fr; return st && !st.loaded && !st.loading ? loadKworbSpotify('fr') : null; } },
-  { id:'spytop50', icon:'🌍', label:'Spotify Top 50 Monde', playlist: /top[\s-]*50[\s-]*monde/i,
+  { id:'spytop50', get logo(){ return LOGO_SPOTIFY; }, icon:'🌍', label:'Spotify Top 50 Monde', playlist: /top[\s-]*50[\s-]*monde/i,
     go(){ const p = overviewFindKeyPlaylist(this.playlist); overviewGoChart(p ? 'kp_' + p.id : 'keyplaylists'); },
     get(){ const p = overviewFindKeyPlaylist(this.playlist);
       if(!p) return { empty:'Playlist « Top 50 Monde » non suivie.' };
       return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP) } : { empty:'Non chargée.' }; },
     load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && (!p.tracks || !isFetchedToday(p)) ? refreshKeyPlaylist(p.id) : null; } },
-  { id:'spyfh', icon:'✨', label:'Spotify Futur Hits', playlist: /futur[es]*[\s-]*hits?/i,
+  { id:'spyfh', get logo(){ return LOGO_SPOTIFY; }, icon:'✨', label:'Spotify Futur Hits', playlist: /futur[es]*[\s-]*hits?/i,
     go(){ const p = overviewFindKeyPlaylist(this.playlist); overviewGoChart(p ? 'kp_' + p.id : 'keyplaylists'); },
     get(){ const p = overviewFindKeyPlaylist(this.playlist);
       if(!p) return { empty:'Playlist « Futur Hits » non suivie.' };
       return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP) } : { empty:'Non chargée.' }; },
     load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && (!p.tracks || !isFetchedToday(p)) ? refreshKeyPlaylist(p.id) : null; } },
-  { id:'shzfr', icon:'🔵', label:'Shazam France', go: () => overviewGoChart('shzfr'),
+  { id:'shzfr', get logo(){ return LOGO_SHAZAM; }, icon:'🔵', label:'Shazam France', go: () => overviewGoChart('shzfr'),
     get(){ return chartsLoaded.fr ? { rows: overviewFromChart(chartsData.fr), note: shazamDateUsed || '' } : { empty:'Non chargé.' }; },
     load(){ return (!chartsLoaded.fr || !chartsLoaded.ww) ? loadChartsAndRefresh() : null; } },
-  { id:'shzww', icon:'🌐', label:'Shazam Monde', go: () => overviewGoChart('shzww'),
+  { id:'shzww', get logo(){ return LOGO_SHAZAM; }, icon:'🌐', label:'Shazam Monde', go: () => overviewGoChart('shzww'),
     get(){ return chartsLoaded.ww ? { rows: overviewFromChart(chartsData.ww) } : { empty:'Non chargé.' }; } },
-  { id:'dzfr', icon:'🟣', label:'Deezer France', go: () => overviewGoChart('dzfr'),
+  { id:'dzfr', get logo(){ return LOGO_DEEZER; }, icon:'🟣', label:'Deezer France', go: () => overviewGoChart('dzfr'),
     get(){ return deezerLoaded ? { rows: overviewFromChart(deezerData) } : { empty:'Non chargé.' }; },
     load(){ return !deezerLoaded ? loadDeezerChart() : null; } },
-  { id:'dzfh', icon:'💜', label:'Deezer Futurs Hits', go: () => overviewGoChart('fh'),
+  { id:'dzfh', get logo(){ return LOGO_DEEZER; }, icon:'💜', label:'Deezer Futurs Hits', go: () => overviewGoChart('fh'),
     get(){ return futursHitsLoaded ? { rows: overviewFromChart(futursHitsData) } : { empty:'Non chargé.' }; },
     load(){ return !futursHitsLoaded ? loadFutursHitsChart() : null; } },
-  { id:'bbradio', icon:'🇺🇸', label:'Billboard Airplay US', go: () => overviewGoChart('kwradio'),
+  { id:'bbradio', get logo(){ return LOGO_BILLBOARD; }, icon:'🇺🇸', label:'Billboard Airplay US', go: () => overviewGoChart('kwradio'),
     get(){ return kworbRadioLoaded ? { rows: overviewFromChart(kworbRadioData), note: kworbRadioDateUsed || '' } : { empty: kworbRadioLoading ? '⏳ Chargement…' : 'Non chargé.' }; },
     load(){ return !kworbRadioLoaded && !kworbRadioLoading ? loadKworbRadio() : null; } },
 ];
@@ -27691,7 +27703,13 @@ function overviewOrder(){
   try{ saved = JSON.parse(localStorage.getItem(OVERVIEW_ORDER_KEY) || '[]'); }catch(e){}
   const ids = OVERVIEW_WIDGETS.map(w => w.id);
   const order = (Array.isArray(saved) ? saved : []).filter(id => ids.includes(id));
-  ids.forEach(id => { if(!order.includes(id)) order.push(id); }); // nouvelles cartes à la fin
+  // Nouvelle carte : insérée juste après la carte qui la précède dans la
+  // disposition d'origine (ou en tête), plutôt qu'en fin de grille.
+  ids.forEach((id, i) => {
+    if(order.includes(id)) return;
+    const prev = ids.slice(0, i).reverse().find(x => order.includes(x));
+    order.splice(prev ? order.indexOf(prev) + 1 : 0, 0, id);
+  });
   return order;
 }
 function overviewSaveOrder(){
@@ -27746,7 +27764,7 @@ function renderOverviewPage(){
     return `<div class="ov-card" data-ov-id="${w.id}" draggable="true">
       <div class="ov-head" title="Glisser pour déplacer cette carte">
         <span class="ov-grip" aria-hidden="true">⋮⋮</span>
-        <span style="font-size:13px;flex-shrink:0">${w.icon}</span>
+        ${w.logo ? `<span class="ov-logo"><img src="${w.logo}" alt=""></span>` : `<span style="font-size:13px;flex-shrink:0">${w.icon}</span>`}
         <span class="ov-title" style="font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0">${escHtml(w.label)}</span>
         <button onclick="overviewOpen('${w.id}')" draggable="false" title="Ouvrir la page ${escHtml(w.label)}" style="flex-shrink:0;font-size:10.5px;font-weight:800;color:var(--cyan);background:none;border:none;cursor:pointer;padding:2px 0;white-space:nowrap">Voir →</button>
       </div>
