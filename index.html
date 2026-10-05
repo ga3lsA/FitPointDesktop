@@ -183,6 +183,15 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 .ov-head:active { cursor:grabbing; }
 .ov-grip { color:var(--muted); font-size:11px; letter-spacing:-2px; flex-shrink:0; }
 .ov-dragging { opacity:.45; box-shadow:0 0 0 2px var(--cyan); }
+
+/* ── Survol des lignes de listes et classements — v30.240 ──
+   Voile gris très léger posé PAR-DESSUS le fond existant de la ligne
+   (ombre interne) : les fonds colorés (top 10, quadrants, lignes
+   alternées…) restent reconnaissables. S'applique à toutes les lignes de
+   tableau (tbody) et aux lignes de liste marquées .fpa-row. */
+.fpa-row, tbody tr > td { transition: box-shadow .12s ease; }
+.fpa-row:hover, tbody tr:hover > td { box-shadow: inset 0 0 0 100vmax rgba(11,29,58,.045); }
+@media (prefers-reduced-motion: reduce) { .fpa-row, tbody tr > td { transition: none; } }
 </style>
 </head>
 <body>
@@ -4169,7 +4178,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.238';
+const FPA_VERSION   = 'v30.240';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -9286,7 +9295,7 @@ function liveNewOutRender(){
       ? '<span style="font-size:9px;font-weight:800;color:var(--cyan);border:1.5px solid var(--cyan);border-radius:5px;padding:1px 5px">NEW</span>'
       : '<span style="font-size:9px;font-weight:800;color:#B05E00;border:1.5px solid #F2C77B;border-radius:5px;padding:1px 5px">OUT</span>';
     const otherTxt = x.goneFromLive ? ' · absent du Live sur toutes les radios' : '';
-    return `<div style="display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--border)">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--border)">
       <div title="Rang ${kind === 'new' ? 'dans le Live' : 'la dernière semaine complète'}" style="font-size:13px;font-weight:800;color:${kind === 'new' ? 'var(--navy)' : 'var(--muted)'};${kind === 'out' ? 'text-decoration:line-through;' : ''}font-variant-numeric:tabular-nums">#${x.rank}</div>
       <div style="min-width:0">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evo}" title="Voir l'évolution complète de ce titre" style="font-size:12.5px;font-weight:700;color:var(--navy);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(x.e.title || ''))}</div>
@@ -9390,7 +9399,7 @@ function renderInOutPage(){
           const evo = JSON.stringify({ artist: t.e.artist, title: t.e.title }).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
           const other = isNew ? t.outs.length : t.news.length;
           const otherTxt = other ? ` · aussi ${other} ${isNew ? 'sortie' : 'entrée'}${other > 1 ? 's' : ''}` : '';
-          return `<div style="padding:9px 14px;${i ? 'border-top:1px solid var(--border);' : ''}">
+          return `<div class="fpa-row" style="padding:9px 14px;${i ? 'border-top:1px solid var(--border);' : ''}">
             <div style="display:flex;align-items:baseline;gap:10px">
               <div style="font-size:13px;font-weight:800;color:${color};font-variant-numeric:tabular-nums;flex-shrink:0;min-width:26px">${isNew ? '▲' : '▼'}${sig(t).length}</div>
               <div style="min-width:0;flex:1">
@@ -9525,7 +9534,7 @@ function liveRenderMainTable(){
     }).join('');
     const evoDataAttr = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
     return `
-    <div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:8px 12px;border-top:1px solid var(--border);font-size:12px">
+    <div class="fpa-row" style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:8px 12px;border-top:1px solid var(--border);font-size:12px">
       <div style="color:var(--muted);font-weight:700">${idx + 1}</div>
       <div>${spotifyLink(e.artist, e.title)}</div>
       <div>${comiteCheckbox(e.title, e.artist)}</div>
@@ -9630,7 +9639,7 @@ function liveRenderChartMiniTable(containerId, rows, savedAvailable){
   const body = rows.map(r => {
     const cell = savedAvailable ? liveDeltaCell(r.rank, r.savedRank) : `<span style="font-weight:800;color:var(--navy)">${r.rank}</span>`;
     return `
-    <div style="display:grid;grid-template-columns:${gridCols};gap:6px;align-items:center;padding:6px 10px;border-top:1px solid var(--border);font-size:11.5px">
+    <div class="fpa-row" style="display:grid;grid-template-columns:${gridCols};gap:6px;align-items:center;padding:6px 10px;border-top:1px solid var(--border);font-size:11.5px">
       <div style="color:var(--muted);font-weight:700">${r.rank}</div>
       <div><div style="font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</div><div style="color:var(--muted);font-size:10.5px">${escHtml(titleCaseDisplay(r.artist))}</div></div>
       <div style="text-align:center;line-height:1.3">${cell}</div>
@@ -10453,7 +10462,7 @@ function renderRawDataTable(){
       </div>`;
     }).join('');
     const bg = ri%2===0 ? 'var(--white)' : 'rgba(240,243,249,.55)';
-    return `<div style="display:grid;grid-template-columns:${gridTemplate};background:${bg};border-bottom:1px solid var(--border)">${cells}</div>`;
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:${gridTemplate};background:${bg};border-bottom:1px solid var(--border)">${cells}</div>`;
   }).join('');
 
   tableEl.innerHTML = rowsHtml || '<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Aucun résultat pour cette recherche.</div>';
@@ -12324,7 +12333,7 @@ function renderTitleHistory(){
         const bg = isLast ? 'rgba(0,184,200,.06)' : vi%2===0 ? 'var(--white)' : 'rgba(240,243,249,.5)';
         const fw = isLast ? '800' : '600';
         const vagueLabel = v.num ? `V${v.num} — ${v.vagueName}` : v.vagueName;
-        return `<div style="display:grid;grid-template-columns:minmax(150px,1fr) 90px;gap:0;background:${bg};border-bottom:1px solid var(--border)">
+        return `<div class="fpa-row" style="display:grid;grid-template-columns:minmax(150px,1fr) 90px;gap:0;background:${bg};border-bottom:1px solid var(--border)">
           <div style="padding:7px 10px;border-right:1px solid var(--border)">
             <div style="font-size:11px;font-weight:${fw};color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${v.vagueName}">${vagueLabel}</div>
             <div style="font-size:10px;color:var(--muted);margin-top:1px">${v.type||''}</div>
@@ -18317,7 +18326,7 @@ function graphRenderLabelsManage(){
     let options = '<option value="">— Non affecté —</option>';
     options += `<optgroup label="Major directe">${MAJORS.map(m => `<option value="M:${m}" ${current==='M:'+m?'selected':''}>${m}</option>`).join('')}</optgroup>`;
     if(groups.length) options += `<optgroup label="Groupe">${groups.map(g => `<option value="G:${escHtml(g)}" ${current==='G:'+g?'selected':''}>${escHtml(g)}</option>`).join('')}</optgroup>`;
-    return `<div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
+    return `<div class="fpa-row" style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
       <div style="flex:1;font-size:11.5px;font-weight:600">${escHtml(label)}${group ? ` <span style="font-size:10px;font-weight:600;color:var(--muted)">(groupe : ${escHtml(group)})</span>` : ''}</div>
       <select style="font-size:11px;padding:4px 8px;border-radius:6px;max-width:220px" onchange="graphAssignLabelMajorOrGroup('${escLabel}', this.value)">${options}</select>
     </div>`;
@@ -23531,7 +23540,7 @@ function renderChartRow(e){
     const gridCols = '48px 24px 26px minmax(0,1fr) ' + AIRPLAY_RADIOS_CHART.map(()=>'52px').join(' ');
     const evoDataAttr = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
 
-    return `<div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:${rowBg};border:1.5px solid ${rowBorder};margin-bottom:0">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:${rowBg};border:1.5px solid ${rowBorder};margin-bottom:0">
       <div style="font-size:13px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">${e.rank}</div>
       ${spotifyLink(e.artist, e.title)}
       ${comiteCheckbox(e.title, e.artist)}
@@ -23571,7 +23580,7 @@ function renderChartRow(e){
     }
     const gridColsSpy = showE2spy ? '48px 24px 26px minmax(0,1fr) 90px 36px 64px' : '48px 24px 26px minmax(0,1fr) 90px 36px';
     const evoAttrSpy = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-    return `<div style="display:grid;grid-template-columns:${gridColsSpy};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#A8E6CE':'var(--border)'};margin-bottom:0">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:${gridColsSpy};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#A8E6CE':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
       ${spotifyLink(e.artist, e.title)}
       ${comiteCheckbox(e.title, e.artist)}
@@ -23607,7 +23616,7 @@ function renderChartRow(e){
     }
     const gridColsKP = showE2KP ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
     const evoAttrKP = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-    return `<div style="display:grid;grid-template-columns:${gridColsKP};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#A8E6CE':'var(--border)'};margin-bottom:0">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:${gridColsKP};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#A8E6CE':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
       ${spotifyLink(e.artist, e.title)}
       ${comiteCheckbox(e.title, e.artist)}
@@ -23636,7 +23645,7 @@ function renderChartRow(e){
     }
     const gridColsR = showE2R ? '48px 24px 26px minmax(0,1fr) 64px' : '48px 24px 26px minmax(0,1fr)';
     const evoAttrR = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-    return `<div style="display:grid;grid-template-columns:${gridColsR};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#FFD9A0':'var(--border)'};margin-bottom:0">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:${gridColsR};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#FFD9A0':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
       ${spotifyLink(e.artist, e.title)}
       ${comiteCheckbox(e.title, e.artist)}
@@ -23678,7 +23687,7 @@ function renderChartRow(e){
       onmouseenter="this.style.filter='brightness(1.08)'" onmouseleave="this.style.filter='none'">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
     </a>`;
-    return `<div style="display:grid;grid-template-columns:${gridColsYt};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#FFCDD2':'var(--border)'};margin-bottom:0">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:${gridColsYt};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'#FFCDD2':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
       ${ytPlayBadge}
       ${comiteCheckbox(e.title, e.artist)}
@@ -23699,7 +23708,7 @@ function renderChartRow(e){
     </div>`;
   } else if(activeChartTab === 'kwtop'){
     // ── Top Artistes (Monde, kworb.net) — pas de titre, artiste seul, donc pas de case Comité ──
-    return `<div style="display:grid;grid-template-columns:48px 24px minmax(0,1fr);gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:48px 24px minmax(0,1fr);gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
       ${spotifyLink(e.artist, '')}
       <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(e.artist||''))}</div>
@@ -25534,7 +25543,7 @@ function buildPlaylistRow(t, metrics, row360){
       <input type="checkbox" name="pl-callout-${safeId}" ${t.callOut?'checked':''} onchange="updatePlaylistField('${t.key}','callOut',this.checked)" title="Call Out — le titre part en recherche" style="width:13px;height:13px;cursor:pointer;accent-color:#E67E22">
     </div>`;
 
-  const rowHtml = `<div draggable="true" ondragstart="playlistDragStart(event,'${t.key}')" ondragend="playlistDragEnd(event)" style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border);cursor:grab;border-left:3px solid ${partner?'var(--cyan)':'transparent'};${selected?';background:var(--cyan-light)':(expanded?';background:var(--bg)':'')}">
+  const rowHtml = `<div class="fpa-row" draggable="true" ondragstart="playlistDragStart(event,'${t.key}')" ondragend="playlistDragEnd(event)" style="display:grid;grid-template-columns:${PLAYLIST_ROW_GRID};gap:0;align-items:center;border-bottom:1px solid var(--border);cursor:grab;border-left:3px solid ${partner?'var(--cyan)':'transparent'};${selected?';background:var(--cyan-light)':(expanded?';background:var(--bg)':'')}">
     ${firstCell}
     <div id="pl-artist-${safeId}" style="padding:7px 6px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text" title="${escHtml(titleCaseDisplay(t.artist))} (double-clic pour corriger l'orthographe)" ondblclick="event.stopPropagation();playlistEditNameField('${t.key}','artist')">${escHtml(titleCaseDisplay(t.artist))}</div>
     <div style="padding:7px 6px;cursor:pointer;display:flex;align-items:center;gap:5px;min-width:0" onclick="${playlistLinkMode ? `togglePlaylistLinkSelect('${t.key}','${catNorm}')` : `togglePlaylistExpand('${t.key}')`}">
@@ -27546,6 +27555,15 @@ const OVERVIEW_WIDGETS = [
           valueTitle: (QUAD[r.q] ? QUAD[r.q].label + ' · ' : '') + 'Pot Score ' + Math.round(r.score) }));
       return { rows, extra, note: 'Classé par Pot Score' };
     } },
+  { id:'fitscore', icon:'🎯', get logo(){ return overviewStationLogo(); }, label:'Fit Score', go: () => { try{ goToFitScoreTable(); }catch(e){} },
+    get(){
+      if(!analysisResult || !analysisResult.length) return { empty:'Aucune analyse Call Out / OMT en cours.' };
+      const rows = analysisResult.filter(r => r.fit != null && !isNaN(r.fit)).sort((a, b) => b.fit - a.fit);
+      if(!rows.length) return { empty:'Fit Score non calculé.' };
+      return { note:'Adéquation au format ' + (STATION_LABELS[ACTIVE_STATION] || ''),
+        rows: rows.slice(0, OVERVIEW_TOP).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+          value: Math.round(r.fit), valueTitle:'Fit Score' + (QUAD[r.q] ? ' · ' + QUAD[r.q].label : ''), color: typeof fitScoreColor === 'function' ? fitScoreColor(r.fit) : undefined })) };
+    } },
   { id:'radar', icon:'🎯', label:'Radar', go: () => overviewGoDec('radar'),
     async getAsync(){
       if(!analysisResult || !analysisResult.length) return { empty:'Analyse Call Out / OMT requise.' };
@@ -27736,7 +27754,7 @@ function overviewBodyHtml(res){
     return html + `<div style="font-size:11.5px;color:var(--muted);padding:6px 0">${escHtml(res.empty || 'Aucune donnée.')}</div>`;
   }
   html += res.rows.map((r, i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;${i ? 'border-top:1px solid var(--border)' : ''}">
+    <div class="fpa-row" style="display:flex;align-items:center;gap:8px;padding:5px 0;${i ? 'border-top:1px solid var(--border)' : ''}">
       <div style="width:22px;flex-shrink:0;font-size:11px;font-weight:800;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums">${r.rank != null ? r.rank : '•'}</div>
       <div style="min-width:0;flex:1">
         <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title || '', r.artist || '')}" title="Voir l'évolution complète de ce titre" style="font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.title || ''))}</div>
@@ -28223,7 +28241,7 @@ function renderDecisionList(filterQuad){
     const burnCol = r.burn !== null && r.burn !== undefined
       ? `<span style="color:${r.burn>=(burnPct||30)?'#CC2222':'var(--text)'};font-weight:${r.burn>=(burnPct||30)?'700':'400'}">${r.burn.toFixed(1)}%</span>`
       : '–';
-    return `<div style="display:grid;grid-template-columns:32px 1fr 100px 90px 90px 80px 140px;gap:0;border-bottom:1px solid var(--border);align-items:center">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:32px 1fr 100px 90px 90px 80px 140px;gap:0;border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:8px 6px 8px 12px">
         <div style="width:10px;height:10px;border-radius:2px;background:${q.color}"></div>
       </div>
@@ -29211,7 +29229,7 @@ function buildWatchlistCard(w){
         }
       });
     }
-    return `<div style="display:flex;gap:8px;padding:4px 0;font-size:10.5px;border-bottom:1px solid var(--border)">
+    return `<div class="fpa-row" style="display:flex;gap:8px;padding:4px 0;font-size:10.5px;border-bottom:1px solid var(--border)">
       <div style="color:var(--muted);flex-shrink:0;width:78px">${new Date(h.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}</div>
       <div style="color:var(--text2)">${parts.length ? escHtml(parts.join(' · ')) : '<span style="color:var(--muted)">Rien trouvé</span>'}</div>
     </div>`;
@@ -30235,7 +30253,7 @@ function buildKeyPlaylistCard(p){
   let body;
   if(p.tracks && p.tracks.length){
     body = `<div style="max-height:280px;overflow-y:auto;margin-top:10px;border:1px solid var(--border);border-radius:8px">
-      ${p.tracks.map(t => `<div style="display:flex;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);font-size:11.5px">
+      ${p.tracks.map(t => `<div class="fpa-row" style="display:flex;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);font-size:11.5px">
         <div style="color:var(--muted);width:28px;flex-shrink:0">${t.rank}</div>
         <div style="font-weight:700;color:var(--navy);min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.title))}</div>
         <div style="color:var(--text2);min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.artist))}</div>
@@ -30452,7 +30470,7 @@ function render360Table(){
     const rowBg = i%2===0 ? 'var(--white)' : 'rgba(240,243,249,.5)';
     const { fpBadge, fitBadge, spuBadge, dqBadge, burnBadge, polarBadge, potBadge } = build360Badges(r);
 
-    return `<div style="display:grid;grid-template-columns:1fr repeat(7,112px);gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:1fr repeat(7,112px);gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 14px">
         <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</div>
         <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))}</div>
@@ -30858,7 +30876,7 @@ function renderSpuPage(){
       </span>`;
     }
 
-    return `<div style="display:grid;grid-template-columns:48px 1fr 72px 70px 65px 65px 85px 75px 100px 130px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:48px 1fr 72px 70px 65px 65px 85px 75px 100px 130px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 6px 10px 14px;font-size:11px;font-weight:700;color:var(--muted);text-align:center">${i+1}</div>
       <div style="padding:10px 10px">
         <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}${shzBadge}${spyBadgeSpu}</div>
@@ -31127,7 +31145,7 @@ function renderCompPage(){
       }).join('')}
     </button>`;
 
-    return `<div style="display:grid;grid-template-columns:1fr 70px 70px 90px 90px 90px 120px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:1fr 70px 70px 90px 90px 90px 120px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 10px 10px 14px">
         <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
         <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}</div>
@@ -31396,7 +31414,7 @@ function renderBurnPage(){
       </svg>
     </button>`;
 
-    return `<div style="display:grid;grid-template-columns:1fr 90px 90px 100px 110px 140px 130px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:1fr 90px 90px 100px 110px 140px 130px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 10px 10px 14px">
         <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
         <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'} <span style="color:var(--muted);font-size:10px">· ${r.series.length} vagues · dernier: ${escHtml(r.lastVagueLabel)}</span></div>
@@ -34578,7 +34596,7 @@ function quotasRenderCards(){
     const ok = val === null || val === undefined ? null : (val >= seuil);
     const color = ok === null ? 'var(--text2)' : (ok ? 'var(--green-text)' : 'var(--orange-text)');
     const trend = quotasTrendArrow(val, prevVal);
-    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
+    return `<div class="fpa-row" style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
       <span style="font-size:12px;color:var(--text2);font-weight:600">${label}</span>
       <span style="font-size:13px;font-weight:800;color:${color}">${val === null || val === undefined ? 'n/d' : val + '%'}<span style="font-size:10px;font-weight:600;color:var(--muted)"> / ${seuil}%</span>${trend}</span>
     </div>`;
@@ -35146,7 +35164,7 @@ function renderCategResultsTable(){
     const rowBg = i%2===0 ? 'var(--white)' : 'rgba(240,243,249,.5)';
     // Fit Score : coloré comme le Fit Score de la page principale
     const fitColor = r.fit===null ? 'var(--muted)' : r.fit>=70 ? 'var(--green-text)' : r.fit>=45 ? 'var(--text)' : '#CC2222';
-    return `<div style="display:grid;grid-template-columns:1fr 110px 110px 70px 70px 70px 70px ${hasFit?'70px ':''}90px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:1fr 110px 110px 70px 70px 70px 70px ${hasFit?'70px ':''}90px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:9px 10px 9px 14px">
         <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
         <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}</div>
@@ -35749,7 +35767,7 @@ function renderExclusifsPage(){
       const refTotal = refVals.reduce((s, v) => s + v, 0);
       const autres = competitors.reduce((sum, s) => sum + exclusifsNum(ap[s.key]), 0);
       return `
-      <div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-top:1px solid var(--border);font-size:12.5px">
+      <div class="fpa-row" style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-top:1px solid var(--border);font-size:12.5px">
         <div style="color:var(--muted);font-weight:700">${idx + 1}</div>
         <div><div style="font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(ap.title || ''))}</div><div style="color:var(--muted);font-size:11.5px">${escHtml(titleCaseDisplay(ap.artist || ''))}</div></div>
         ${refVals.map(v => `<div style="text-align:right;font-weight:700;color:${v > 0 ? 'var(--cyan)' : 'var(--muted)'}">${v}</div>`).join('')}
@@ -36389,7 +36407,7 @@ function renderPolarPage(){
       ? `<span style="font-size:11px;font-weight:800;padding:3px 8px;border-radius:20px;background:${sigScore>=p75*1.1?'#FFF0F6':sigScore>=p75*0.8?'#FAF0FF':'var(--bg)'};color:${sigScore>=p75*1.1?'#BE185D':sigScore>=p75*0.8?'#7C3AED':'var(--muted)'}">${sigScore.toFixed(1)}</span>`
       : '–';
 
-    return `<div style="display:grid;grid-template-columns:1fr 80px 80px 80px 80px 90px 100px 100px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:1fr 80px 80px 80px 80px 90px 100px 100px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center">
       <div style="padding:10px 10px 10px 14px">
         <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
         <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}${r.cat?` <span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:700;color:var(--muted);padding:1px 5px">${escHtml(r.cat)}</span>`:''}</div>
@@ -36664,7 +36682,7 @@ function renderShazIncPage(){
       ? `<span style="font-size:11px;font-weight:800;color:${spyColor}">#${r.spyRank}</span>`
       : '<span style="color:var(--muted);font-size:11px">–</span>';
 
-    return `<div style="display:grid;grid-template-columns:1fr 70px 70px 70px 70px 80px 100px 120px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center${signalFortRow?';border-left:3px solid #E07B00':''}">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:1fr 70px 70px 70px 70px 80px 100px 120px;gap:0;background:${rowBg};border-bottom:1px solid var(--border);align-items:center${signalFortRow?';border-left:3px solid #E07B00':''}">
       <div style="padding:10px 10px 10px 14px">
         <div style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))||'–'}</div>
         <div style="font-size:11px;color:var(--text2)">${escHtml(titleCaseDisplay(r.artist))||'–'}${r.cat?` <span style="background:var(--bg);border:1px solid var(--border);border-radius:4px;font-size:9px;font-weight:700;color:var(--muted);padding:1px 5px">${escHtml(r.cat)}</span>`:''}</div>
@@ -39050,7 +39068,7 @@ function renderCompscorePage(){
   const rowsHtml = rows.map((r,i) => {
     const deltaColor = r.delta === null ? 'var(--muted)' : (r.delta > 2 ? '#0DA76B' : (r.delta < -2 ? '#CC2222' : 'var(--muted)'));
     const deltaSign = r.delta !== null && r.delta > 0 ? '+' : '';
-    return `<div style="display:grid;grid-template-columns:32px 1fr 70px 70px 70px 90px 80px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;background:${i%2===0?'var(--white)':'rgba(240,243,249,.5)'}">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:32px 1fr 70px 70px 70px 90px 80px;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border);font-size:12px;background:${i%2===0?'var(--white)':'rgba(240,243,249,.5)'}">
       <div style="color:var(--muted);font-weight:700">${i+1}</div>
       <div style="min-width:0"><div style="font-weight:700;color:var(--navy);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(titleCaseDisplay(r.title))}</div><div style="font-size:10.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(titleCaseDisplay(r.artist))}</div></div>
       <div style="text-align:center">${pctCell(r.spyPct)}</div>
