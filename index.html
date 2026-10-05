@@ -803,7 +803,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <div style="font-size:12px;color:var(--text2);margin-top:4px">Les 5 premiers titres de chaque classement, métrique et ranking. Glissez une carte par son en-tête pour la déplacer ; « Voir → » ouvre la page complète.</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn-ghost" onclick="renderOverviewPage()" style="font-size:11.5px;padding:7px 12px">↻ Actualiser</button>
+          <button class="btn-ghost" onclick="overviewLoadsDone = false; renderOverviewPage()" style="font-size:11.5px;padding:7px 12px">↻ Actualiser</button>
           <button class="btn-ghost" onclick="overviewResetOrder()" title="Remettre les cartes dans leur ordre d'origine" style="font-size:11.5px;padding:7px 12px">⟲ Disposition d'origine</button>
         </div>
       </div>
@@ -4178,7 +4178,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.240';
+const FPA_VERSION   = 'v30.241';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -8288,6 +8288,11 @@ function isFetchedToday(entry){
   return fetchedDate === todayDate;
 }
 
+/** Playlist Spotify clé chargée AVEC SUCCÈS aujourd'hui (des titres
+ *  récupérés aujourd'hui). Une tentative échouée ne compte plus comme
+ *  « chargée » : elle sera retentée automatiquement. */
+function keyPlaylistFreshToday(p){ return !!(p && p.tracks && p.tracks.length && isFetchedToday(p)); }
+
 function countLoadedAutoCharts(){
   let loaded = 0, total = 3; // Shazam FR + Shazam WW + Deezer + Futurs Hits + ...
   const flags = [
@@ -8301,7 +8306,7 @@ function countLoadedAutoCharts(){
     // aussi pour que le total affiché corresponde à toutes les sources
     // réellement chargées par "Tout charger", pas seulement les classements
     // "génériques" historiques.
-    ...keyPlaylists.map(p => isFetchedToday(p)),
+    ...keyPlaylists.map(p => keyPlaylistFreshToday(p)),
     ...RADIO_TOP_SONGS_SOURCES.map(r => isFetchedToday(radioTopSongsData[r.id])),
     ...DEEZER_KEY_PLAYLISTS.map(p => !!deezerKeyPlaylistLoaded[p.id]),
     // Playlists clés Apple Music : comptées seulement une fois l'URL
@@ -8398,7 +8403,7 @@ async function loadAllCharts(silent = false){
   // auto-fetchables (fetchedAt persiste indéfiniment en localStorage, voir
   // isFetchedToday : sans ce contrôle de fraîcheur, une playlist récupérée
   // une fois ne serait plus jamais rafraîchie automatiquement).
-  keyPlaylists.filter(p => !isFetchedToday(p)).forEach(p => tasks.push(refreshKeyPlaylist(p.id)));
+  keyPlaylists.filter(p => !keyPlaylistFreshToday(p)).forEach(p => tasks.push(refreshKeyPlaylist(p.id, { auto: true })));
   // Radios clés (Top Songs — Z100, KIIS, Capital FM, Radio 538...) pas
   // encore récupérées non plus — oubliées ici jusqu'ici, ce qui sous-
   // comptait le nombre total de sources affiché au chargement global.
@@ -22510,7 +22515,7 @@ function switchChartTab(tab){
     // fetchedAt persiste indéfiniment en localStorage, donc sans ce contrôle
     // de fraîcheur une playlist chargée une fois ne serait plus jamais
     // revérifiée automatiquement, contrairement à Deezer/Apple Music.
-    if(p && !isFetchedToday(p)) refreshKeyPlaylist(pid);
+    if(p && !keyPlaylistFreshToday(p)) refreshKeyPlaylist(pid); // page ouverte : prioritaire (hors file d'attente)
   }
   // Radios clés : même logique, chargement à la demande uniquement à la
   // première visite de la page complète de chaque station.
@@ -27458,6 +27463,7 @@ function overviewUpdateRockets(){
   });
 }
 let overviewLoadingStarted = false;
+let overviewLoadsDone = false;
 let overviewRenderSeq = 0;
 
 /** Ouvre une page Décision / Classements depuis une carte. */
@@ -27693,13 +27699,13 @@ const OVERVIEW_WIDGETS = [
     get(){ const p = overviewFindKeyPlaylist(this.playlist);
       if(!p) return { empty:'Playlist « Top 50 Monde » non suivie.' };
       return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP) } : { empty:'Non chargée.' }; },
-    load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && (!p.tracks || !isFetchedToday(p)) ? refreshKeyPlaylist(p.id) : null; } },
+    load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && !keyPlaylistFreshToday(p) ? refreshKeyPlaylist(p.id, { auto: true }) : null; } },
   { id:'spyfh', get logo(){ return LOGO_SPOTIFY; }, icon:'✨', label:'Spotify Futur Hits', playlist: /futur[es]*[\s-]*hits?/i,
     go(){ const p = overviewFindKeyPlaylist(this.playlist); overviewGoChart(p ? 'kp_' + p.id : 'keyplaylists'); },
     get(){ const p = overviewFindKeyPlaylist(this.playlist);
       if(!p) return { empty:'Playlist « Futur Hits » non suivie.' };
       return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP) } : { empty:'Non chargée.' }; },
-    load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && (!p.tracks || !isFetchedToday(p)) ? refreshKeyPlaylist(p.id) : null; } },
+    load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && !keyPlaylistFreshToday(p) ? refreshKeyPlaylist(p.id, { auto: true }) : null; } },
   { id:'shzfr', get logo(){ return LOGO_SHAZAM; }, icon:'🔵', label:'Shazam France', go: () => overviewGoChart('shzfr'),
     get(){ return chartsLoaded.fr ? { rows: overviewFromChart(chartsData.fr), note: shazamDateUsed || '' } : { empty:'Non chargé.' }; },
     load(){ return (!chartsLoaded.fr || !chartsLoaded.ww) ? loadChartsAndRefresh() : null; } },
@@ -27800,9 +27806,12 @@ function renderOverviewPage(){
         if(el){ el.innerHTML = overviewBodyHtml(res); overviewUpdateRockets(); }
       });
   });
-  // Classements pas encore chargés : chargés une fois, puis la page se met à jour
-  if(!overviewLoadingStarted){
+  // Classements pas encore chargés : chargés UNE fois par ouverture de la
+  // page (pas de relance en boucle sur une source en échec), puis la page
+  // se met à jour. « ↻ Actualiser » relance les chargements.
+  if(!overviewLoadingStarted && !overviewLoadsDone){
     overviewLoadingStarted = true;
+    overviewLoadsDone = true;
     const tasks = OVERVIEW_WIDGETS.map(w => { try{ return w.load ? w.load() : null; }catch(e){ return null; } }).filter(Boolean);
     if(tasks.length){
       Promise.allSettled(tasks).then(() => {
@@ -27872,7 +27881,7 @@ function switchDecTab(tab){
   // Overview : toute la largeur de l'écran ; autres onglets : 1400 px max
   const decWrap = document.getElementById('decContentWrap');
   if(decWrap) decWrap.style.maxWidth = tab === 'overview' ? 'none' : '1400px';
-  if(tab==='overview') renderOverviewPage();
+  if(tab==='overview'){ overviewLoadsDone = false; renderOverviewPage(); }
   if(tab==='matrix') renderDecisionPage();
   if(tab==='spu')  renderSpuPage();
   if(tab==='comp') renderCompPage();
@@ -29040,8 +29049,8 @@ async function refreshDailySourcesIfNeeded(){
     .map(cc => loadKworbSpotify(cc).catch(() => {})));
 
   await Promise.all(keyPlaylists
-    .filter(p => !isFetchedToday(p))
-    .map(p => refreshKeyPlaylist(p.id).catch(() => {})));
+    .filter(p => !keyPlaylistFreshToday(p))
+    .map(p => refreshKeyPlaylist(p.id, { auto: true }).catch(() => {})));
 }
 
 /** Vérifie tous les titres en Veille. Sans "force", ne revérifie que ceux
@@ -30215,27 +30224,103 @@ function removeKeyPlaylist(id){
   if(activeChartTab === 'kp_' + id) switchChartTab('keyplaylists');
 }
 
-async function refreshKeyPlaylist(id){
+// ── Chargement des Playlists Spotify clés — v30.241 ──────────────────────
+// Corrige le chargement automatique qui échouait souvent :
+//  1. Une tentative ratée enregistrait quand même la date du jour : la
+//     playlist passait pour « chargée aujourd'hui » et n'était plus retentée
+//     de la journée — et ses titres de la veille étaient effacés. Désormais,
+//     en cas d'échec, les derniers titres récupérés sont CONSERVÉS et la date
+//     de dernier chargement réussi n'est pas modifiée.
+//  2. Toutes les playlists partaient en même temps que la trentaine d'autres
+//     classements chargés au démarrage, via les mêmes proxies : beaucoup
+//     tombaient en délai dépassé. Les chargements automatiques passent
+//     maintenant par une file de 2 playlists à la fois.
+//  3. Une même playlist pouvait être demandée deux fois en parallèle
+//     (démarrage + Veille + Overview) : les demandes simultanées sont
+//     fusionnées.
+//  4. Après un échec automatique, nouvelles tentatives en arrière-plan
+//     (30 s, 2 min, puis 10 min).
+//  Le bouton « 🔄 Charger » reste prioritaire (il ne fait pas la queue).
+const KP_AUTO_CONCURRENCY = 2;
+const KP_RETRY_DELAYS_MS = [30000, 120000, 600000];
+let __kpActive = 0;
+const __kpWaiters = [];
+const __kpInFlight = new Map();
+const __kpRetryCount = {};
+function kpAcquireSlot(){
+  if(__kpActive < KP_AUTO_CONCURRENCY){ __kpActive++; return Promise.resolve(); }
+  return new Promise(resolve => __kpWaiters.push(resolve));
+}
+function kpReleaseSlot(){
+  const next = __kpWaiters.shift();
+  if(next) next(); else __kpActive = Math.max(0, __kpActive - 1);
+}
+
+/** Charge une Playlist clé. opts.auto : chargement automatique (file
+ *  d'attente, pas de notification, nouvelles tentatives en cas d'échec).
+ *  Résout true si des titres ont été récupérés. */
+function refreshKeyPlaylist(id, opts){
+  const o = opts || {};
+  if(__kpInFlight.has(id)) return __kpInFlight.get(id);
+  const run = (async () => {
+    if(o.auto) await kpAcquireSlot();
+    try{ return await refreshKeyPlaylistNow(id, o); }
+    finally{
+      if(o.auto) kpReleaseSlot();
+      __kpInFlight.delete(id);
+    }
+  })();
+  __kpInFlight.set(id, run);
+  return run;
+}
+
+async function refreshKeyPlaylistNow(id, o){
   const p = keyPlaylists.find(x => x.id === id);
-  if(!p) return;
+  if(!p) return false;
   const statusEl = document.getElementById('kpStatus-' + id);
   if(statusEl) statusEl.textContent = '⏳ Chargement…';
+  let ok = false;
+  const now = new Date().toISOString();
   try{
     const { tracks, rawSample, log } = await fetchKeyPlaylistTracklist(id);
-    p.tracks = tracks;
-    p.rawSample = rawSample;
     p.log = log;
-    p.fetchedAt = new Date().toISOString();
+    p.rawSample = rawSample;
+    p.lastAttemptAt = now;
+    if(tracks && tracks.length){
+      p.tracks = tracks;
+      p.fetchedAt = now;
+      p.lastError = null;
+      ok = true;
+    } else {
+      p.lastError = 'Extraction impossible (aucun proxy n\'a renvoyé la playlist)';
+    }
     keyPlaylistsSaveToStorage();
-    if(tracks) showToast('✓ « ' + p.label + ' » — ' + tracks.length + ' titres récupérés', 'success');
-    else showToast('❌ Extraction impossible pour « ' + p.label + ' » — détail par proxy consultable ci-dessous', 'err');
+    if(!o.auto){
+      if(ok) showToast('✓ « ' + p.label + ' » — ' + tracks.length + ' titres récupérés', 'success');
+      else showToast('❌ Extraction impossible pour « ' + p.label + ' »' + (p.tracks ? ' — les derniers titres récupérés sont conservés' : '') + ' — détail par proxy consultable sur la page', 'err');
+    }
   }catch(e){
-    showToast('Erreur lors de la récupération de « ' + p.label + ' » : ' + (e.message || e), 'err');
+    p.lastAttemptAt = now;
+    p.lastError = (e && e.message) || String(e);
+    keyPlaylistsSaveToStorage();
+    if(!o.auto) showToast('Erreur lors de la récupération de « ' + p.label + ' » : ' + p.lastError, 'err');
+  }
+  if(ok) delete __kpRetryCount[id];
+  else if(o.auto){
+    const n = __kpRetryCount[id] || 0;
+    if(n < KP_RETRY_DELAYS_MS.length){
+      __kpRetryCount[id] = n + 1;
+      setTimeout(() => {
+        const cur = keyPlaylists.find(x => x.id === id);
+        if(cur && !keyPlaylistFreshToday(cur)) refreshKeyPlaylist(id, { auto: true });
+      }, KP_RETRY_DELAYS_MS[n]);
+    }
   }
   renderKeyPlaylistsPage();
   // Si la page complète de cette playlist (onglet 'kp_'+id) est actuellement
   // affichée, on la re-rend aussi pour y refléter le résultat du chargement.
   if(activeChartTab === 'kp_' + id) renderChartTable();
+  return ok;
 }
 
 function keyPlaylistsShowEmpty(msg){
@@ -30246,20 +30331,22 @@ function keyPlaylistsShowEmpty(msg){
 }
 
 function buildKeyPlaylistCard(p){
-  const fetchedLabel = p.fetchedAt
-    ? new Date(p.fetchedAt).toLocaleString('fr-FR', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'})
-    : 'jamais';
+  const fmt = d => new Date(d).toLocaleString('fr-FR', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'});
+  const fetchedLabel = p.fetchedAt ? fmt(p.fetchedAt) : 'jamais';
+  // Échec plus récent que le dernier chargement réussi
+  const recentFailure = p.lastError && p.lastAttemptAt && (!p.fetchedAt || p.lastAttemptAt > p.fetchedAt);
 
   let body;
   if(p.tracks && p.tracks.length){
-    body = `<div style="max-height:280px;overflow-y:auto;margin-top:10px;border:1px solid var(--border);border-radius:8px">
+    body = (recentFailure ? `<div style="margin-top:10px;padding:7px 10px;background:#FFF4E5;border:1px solid #F2C77B;border-radius:8px;font-size:11px;color:#8A4B00">⚠ Dernière tentative échouée (${fmt(p.lastAttemptAt)}) — affichage des titres du ${fetchedLabel}. Nouvel essai automatique en cours de journée, ou « 🔄 Charger ».</div>` : '') +
+    `<div style="max-height:280px;overflow-y:auto;margin-top:10px;border:1px solid var(--border);border-radius:8px">
       ${p.tracks.map(t => `<div class="fpa-row" style="display:flex;gap:8px;padding:5px 10px;border-bottom:1px solid var(--border);font-size:11.5px">
         <div style="color:var(--muted);width:28px;flex-shrink:0">${t.rank}</div>
         <div style="font-weight:700;color:var(--navy);min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.title))}</div>
         <div style="color:var(--text2);min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(t.artist))}</div>
       </div>`).join('')}
     </div>`;
-  } else if(p.fetchedAt){
+  } else if(p.fetchedAt || p.lastAttemptAt){
     const logRows = (p.log || []).map(l => `<div style="display:flex;gap:8px;padding:3px 0;font-size:10.5px">
       <div style="color:var(--muted);width:170px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(l.proxy)}</div>
       <div style="color:var(--text2)">${escHtml(l.status)}</div>
@@ -30281,7 +30368,7 @@ function buildKeyPlaylistCard(p){
     <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
       <div style="min-width:0">
         <div style="font-size:14px;font-weight:800;color:var(--navy)">${escHtml(p.label)}</div>
-        <div id="kpStatus-${p.id}" style="font-size:10.5px;color:var(--muted)">Dernière tentative : ${fetchedLabel}${p.tracks ? ' — ' + p.tracks.length + ' titres' : ''} · Menu : ${inInter ? '🎵 Spotify Charts' : '🎧 Playlists Spotify'}</div>
+        <div id="kpStatus-${p.id}" style="font-size:10.5px;color:var(--muted)">Dernier chargement réussi : ${fetchedLabel}${p.tracks ? ' — ' + p.tracks.length + ' titres' : ''} · Menu : ${inInter ? '🎵 Spotify Charts' : '🎧 Playlists Spotify'}</div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
         <button onclick="toggleKeyPlaylistMenuGroup('${p.id}')" title="${inInter ? 'Déplacer vers le menu Playlists Spotify' : 'Déplacer vers le menu Spotify Charts'}" style="font-size:10.5px;padding:6px 10px;border-radius:6px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700;white-space:nowrap">⇄ ${inInter ? 'Playlists Spotify' : 'Spotify Charts'}</button>
