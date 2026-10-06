@@ -4178,7 +4178,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.241';
+const FPA_VERSION   = 'v30.242';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -26298,10 +26298,11 @@ async function exportPlaylistExcel(){
 }
 
 /** Export "POWER TAB" : liste les titres cochés Power New / Power New Stop /
- *  Power Intro pour la station active, en indiquant automatiquement
- *  "NOUVEAU" pour un titre qui n'était pas coché la semaine précédente
- *  (dernière archive Drive disponible, hors semaine en cours), et "OUT"
- *  pour un titre qui l'était mais ne l'est plus cette semaine. */
+ *  Power Intro pour la station active. En Power New et Power Intro, un titre
+ *  qui n'était pas coché dans la même rubrique la semaine précédente
+ *  (dernière archive Drive disponible, hors semaine en cours) est marqué
+ *  « À PRODUIRE ». Power New Stop : liste simple, sans mention. Les titres
+ *  sortis d'une rubrique ne sont plus listés (v30.242 : jugé confus). */
 async function exportPowerTabPDF(){
   if(typeof window.jspdf === 'undefined'){
     showToast('Bibliothèque PDF non chargée — vérifiez la connexion internet', 'err');
@@ -26317,9 +26318,9 @@ async function exportPowerTabPDF(){
   }
 
   // Dernière semaine archivée sur Drive (hors semaine en cours), pour
-  // déterminer les statuts NOUVEAU / OUT. Silencieux si aucune archive
-  // précédente n'existe : on affiche alors la liste sans comparaison.
-  let prevNew = [], prevNewStop = [], prevIntro = [];
+  // repérer les titres « À PRODUIRE ». Silencieux si aucune archive
+  // précédente n'existe : on affiche alors la liste sans mention.
+  let prevNew = [], prevIntro = [];
   try{
     const todayKey = new Date().toISOString().slice(0, 10);
     const entries = await getPlaylistArchiveList();
@@ -26331,20 +26332,13 @@ async function exportPowerTabPDF(){
       const prevData = await loadPlaylistArchiveData(prevEntry);
       const prevStation = prevData[ACTIVE_STATION] || [];
       prevNew     = prevStation.filter(t => t.powerNew);
-      prevNewStop = prevStation.filter(t => t.powerNewStop);
       prevIntro   = prevStation.filter(t => t.powerIntro);
     }
   }catch(e){ /* pas d'archive précédente disponible : pas de comparaison possible */ }
 
-  const currentNewKeys     = new Set(currentNew.map(t => t.key));
-  const currentNewStopKeys = new Set(currentNewStop.map(t => t.key));
-  const currentIntroKeys   = new Set(currentIntro.map(t => t.key));
-  const prevNewKeys        = new Set(prevNew.map(t => t.key));
-  const prevNewStopKeys    = new Set(prevNewStop.map(t => t.key));
-  const prevIntroKeys      = new Set(prevIntro.map(t => t.key));
-  const outNew     = prevNew.filter(t => !currentNewKeys.has(t.key));
-  const outNewStop = prevNewStop.filter(t => !currentNewStopKeys.has(t.key));
-  const outIntro   = prevIntro.filter(t => !currentIntroKeys.has(t.key));
+  const prevNewKeys   = new Set(prevNew.map(t => t.key));
+  const prevIntroKeys = new Set(prevIntro.map(t => t.key));
+  const TAG_TO_PRODUCE = 'À PRODUIRE';
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
@@ -26413,7 +26407,7 @@ async function exportPowerTabPDF(){
     if(tag){
       doc.setFont('helvetica','bold');
       doc.setFontSize(8);
-      doc.setTextColor(...(tag === 'NOUVEAU' ? COL_GREEN : COL_RED));
+      doc.setTextColor(...COL_GREEN);
       doc.text(tag, PW - MR, y + 5, {align:'right'});
     }
     y += 7;
@@ -26421,35 +26415,23 @@ async function exportPowerTabPDF(){
     doc.line(ML, y - 1.5, PW - MR, y - 1.5);
   }
 
-  function outLabel(){
-    checkBreak(9);
-    doc.setFont('helvetica','italic');
-    doc.setFontSize(8.5);
-    doc.setTextColor(...COL_MUTED);
-    doc.text('Sortis depuis la semaine précédente :', ML, y + 4);
-    y += 7;
-  }
-
   addHeader();
 
-  if(currentNew.length || outNew.length){
+  if(currentNew.length){
     sectionTitle('POWER NEW', COL_GREEN, currentNew.length);
-    currentNew.forEach(t => titleRow(t, prevNewKeys.has(t.key) ? null : 'NOUVEAU'));
-    if(outNew.length){ y += 2; outLabel(); outNew.forEach(t => titleRow(t, 'OUT')); }
+    currentNew.forEach(t => titleRow(t, prevNewKeys.has(t.key) ? null : TAG_TO_PRODUCE));
     y += 6;
   }
 
-  if(currentNewStop.length || outNewStop.length){
+  if(currentNewStop.length){
     sectionTitle('POWER NEW STOP', COL_RED, currentNewStop.length);
-    currentNewStop.forEach(t => titleRow(t, prevNewStopKeys.has(t.key) ? null : 'NOUVEAU'));
-    if(outNewStop.length){ y += 2; outLabel(); outNewStop.forEach(t => titleRow(t, 'OUT')); }
+    currentNewStop.forEach(t => titleRow(t, null));
     y += 6;
   }
 
-  if(currentIntro.length || outIntro.length){
+  if(currentIntro.length){
     sectionTitle('POWER INTRO', COL_PURPLE, currentIntro.length);
-    currentIntro.forEach(t => titleRow(t, prevIntroKeys.has(t.key) ? null : 'NOUVEAU'));
-    if(outIntro.length){ y += 2; outLabel(); outIntro.forEach(t => titleRow(t, 'OUT')); }
+    currentIntro.forEach(t => titleRow(t, prevIntroKeys.has(t.key) ? null : TAG_TO_PRODUCE));
   }
 
   addFooter();
