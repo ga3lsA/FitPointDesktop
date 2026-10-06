@@ -4178,7 +4178,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.242';
+const FPA_VERSION   = 'v30.244';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -26424,7 +26424,7 @@ async function exportPowerTabPDF(){
   }
 
   if(currentNewStop.length){
-    sectionTitle('POWER NEW STOP', COL_RED, currentNewStop.length);
+    sectionTitle('POWER NEW À STOPPER', COL_RED, currentNewStop.length);
     currentNewStop.forEach(t => titleRow(t, null));
     y += 6;
   }
@@ -26446,30 +26446,54 @@ async function exportPowerTabPDF(){
  *  transmise telle quelle à l'institut de recherche (Call Out/OMT), donc
  *  volontairement indépendante des catégories de rotation affichées dans le
  *  reste de la Playlist. Même gabarit visuel que Power Tab (exportPowerTabPDF
- *  ci-dessus), sans le suivi Nouveau/Out qui n'a pas de sens ici. */
+ *  ci-dessus). Depuis v30.244 : deux parties supplémentaires, « À ajouter en
+ *  test » et « Ne plus tester », par comparaison avec la liste Call Out de la
+ *  dernière sauvegarde Playlist d'un jour précédent. */
 async function exportCallOutListPDF(){
   if(typeof window.jspdf === 'undefined'){
     showToast('Bibliothèque PDF non chargée — vérifiez la connexion internet', 'err');
     return;
   }
+  const byArtist = (a, b) => pdfArtistCase(a.artist).localeCompare(pdfArtistCase(b.artist), 'fr');
   const stationTitles = playlistTitles.filter(t => t.station === ACTIVE_STATION);
-  const list = stationTitles.filter(t => t.callOut)
-    .sort((a, b) => pdfArtistCase(a.artist).localeCompare(pdfArtistCase(b.artist), 'fr'));
+  const list = stationTitles.filter(t => t.callOut).sort(byArtist);
   if(!list.length){
     showToast('Aucun titre coché Call Out pour ' + STATION_LABELS[ACTIVE_STATION], 'err');
     return;
   }
+
+  // Comparaison avec la liste Call Out de la dernière sauvegarde Playlist
+  // d'un jour précédent (même source que le Power Tab) : titres à ajouter
+  // en test et titres à ne plus tester. Sans archive précédente, la liste
+  // est exportée seule, avec une mention.
+  let prevList = null;
+  try{
+    const todayKey = new Date().toISOString().slice(0, 10);
+    const entries = await getPlaylistArchiveList();
+    const prevEntry = entries.find(ts => ts.slice(0, 10) !== todayKey);
+    if(prevEntry){
+      const prevData = await loadPlaylistArchiveData(prevEntry);
+      prevList = (prevData[ACTIVE_STATION] || []).filter(t => t.callOut);
+    }
+  }catch(e){ /* pas d'archive précédente disponible : pas de comparaison possible */ }
+  const currentKeys = new Set(list.map(t => t.key));
+  const prevKeys = new Set((prevList || []).map(t => t.key));
+  const toAdd = prevList ? list.filter(t => !prevKeys.has(t.key)) : [];
+  const toStop = prevList ? prevList.filter(t => !currentKeys.has(t.key)).sort(byArtist) : [];
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   const PW = 210, PH = 297, ML = 14, MR = 14;
   const CW = PW - ML - MR;
   const COL_ORANGE = [230, 126, 34];
+  const COL_GREEN  = [13, 167, 107];
+  const COL_RED    = [204, 34, 34];
   const COL_NAVY   = [11, 29, 58];
   const COL_TEXT   = [30, 40, 56];
   const COL_MUTED  = [110, 122, 142];
 
   let y = 0, pageNum = 1;
+  let currentSection = null; // { label, color } — repris en tête de page en cas de saut
 
   function addHeader(){
     y = 14;
@@ -26484,18 +26508,6 @@ async function exportCallOutListPDF(){
     doc.setTextColor(...COL_NAVY);
     doc.text(STATION_LABELS[ACTIVE_STATION] + ' — ' + new Date().toLocaleDateString('fr-FR', {day:'2-digit', month:'long', year:'numeric'}), ML + 40, y + 15);
     y += 24;
-
-    // Bandeau de colonnes
-    doc.setFillColor(...COL_ORANGE);
-    doc.rect(ML, y, CW, 8, 'F');
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(9);
-    doc.setTextColor(255, 255, 255);
-    doc.text('ARTISTE', ML + 4, y + 5.5);
-    doc.text('TITRE', ML + 62, y + 5.5);
-    doc.text('CATÉGORIE', ML + 128, y + 5.5);
-    doc.text("DATE D'ENTRÉE", PW - MR - 2, y + 5.5, {align:'right'});
-    y += 8 + 4;
   }
 
   function addFooter(){
@@ -26506,16 +26518,51 @@ async function exportCallOutListPDF(){
     doc.text('Page ' + pageNum, PW - MR, PH - 8, {align:'right'});
   }
 
+  // Bandeau de section (couleur + libellé) suivi des intitulés de colonnes
+  function sectionBand(label, color){
+    doc.setFillColor(...color);
+    doc.rect(ML, y, CW, 8, 'F');
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(255, 255, 255);
+    doc.text(label, ML + 4, y + 5.5);
+    y += 8 + 2;
+    doc.setFontSize(7.5);
+    doc.setTextColor(...COL_MUTED);
+    doc.text('ARTISTE', ML, y + 3);
+    doc.text('TITRE', ML + 58, y + 3);
+    doc.text('CATÉGORIE', ML + 124, y + 3);
+    doc.text("DATE D'ENTRÉE", PW - MR, y + 3, {align:'right'});
+    y += 6;
+  }
+
   function checkBreak(h){
     if(y + h > PH - 16){
       addFooter();
       doc.addPage();
       pageNum++;
       addHeader();
+      if(currentSection) sectionBand(currentSection.label + ' (suite)', currentSection.color);
     }
   }
 
-  function titleRow(t){
+  function section(label, color, count){
+    currentSection = null;
+    checkBreak(26);
+    currentSection = { label, color };
+    sectionBand(label + ' (' + count + ')', color);
+  }
+
+  function noteRow(text){
+    checkBreak(8);
+    doc.setFont('helvetica','italic');
+    doc.setFontSize(9);
+    doc.setTextColor(...COL_MUTED);
+    doc.text(text, ML, y + 5);
+    y += 8;
+  }
+
+  function titleRow(t, catColor){
     checkBreak(8);
     doc.setFont('helvetica','bold');
     doc.setFontSize(9.5);
@@ -26524,7 +26571,7 @@ async function exportCallOutListPDF(){
     doc.setFont('helvetica','normal');
     doc.text(truncateForPdf(doc, pdfTitleCase(t.title), 62), ML + 58, y + 5);
     doc.setFont('helvetica','bold');
-    doc.setTextColor(...COL_ORANGE);
+    doc.setTextColor(...(catColor || COL_ORANGE));
     doc.text(truncateForPdf(doc, (t.categorie || '—').toUpperCase(), 34), ML + 124, y + 5);
     doc.setFont('helvetica','normal');
     doc.setTextColor(...COL_MUTED);
@@ -26535,12 +26582,28 @@ async function exportCallOutListPDF(){
   }
 
   addHeader();
-  list.forEach(titleRow);
+
+  section('TITRES EN TEST', COL_ORANGE, list.length);
+  list.forEach(t => titleRow(t));
+  y += 6;
+
+  if(prevList){
+    section('À AJOUTER EN TEST', COL_GREEN, toAdd.length);
+    if(toAdd.length) toAdd.forEach(t => titleRow(t, COL_GREEN));
+    else noteRow('Aucun nouveau titre par rapport à la semaine précédente.');
+    y += 6;
+
+    section('NE PLUS TESTER', COL_RED, toStop.length);
+    if(toStop.length) toStop.forEach(t => titleRow(t, COL_RED));
+    else noteRow('Aucun titre retiré par rapport à la semaine précédente.');
+  } else {
+    noteRow('Aucune sauvegarde Playlist d\'une semaine précédente : titres à ajouter / à ne plus tester non déterminables.');
+  }
   addFooter();
 
   const dateFile = new Date().toISOString().slice(0, 10);
   doc.save('Call Out - Titres a tester ' + STATION_LABELS[ACTIVE_STATION] + ' - ' + dateFile + '.pdf');
-  showToast('✓ Liste Call Out exportée en PDF (' + list.length + ' titre' + (list.length > 1 ? 's' : '') + ')', 'success');
+  showToast('✓ Liste Call Out exportée en PDF (' + list.length + ' titre' + (list.length > 1 ? 's' : '') + (prevList ? ' · ' + toAdd.length + ' à ajouter · ' + toStop.length + ' à ne plus tester' : '') + ')', 'success');
 }
 
 // ── ARCHIVES PLAYLIST SUR DRIVE — indépendantes des sauvegardes de
