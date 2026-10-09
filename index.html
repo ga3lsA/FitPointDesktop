@@ -4178,7 +4178,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.244';
+const FPA_VERSION   = 'v30.246';
 const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
@@ -23738,7 +23738,7 @@ function renderChartRow(e){
     }
     const evoAttrGen = JSON.stringify({artist:e.artist, title:e.title}).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
 
-    return `<div style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
+    return `<div class="fpa-row" style="display:grid;grid-template-columns:${gridCols};gap:8px;align-items:center;padding:9px 14px;border-radius:8px;background:var(--white);border:1.5px solid ${e.rank<=10?'var(--cyan-mid)':'var(--border)'};margin-bottom:0">
       <div style="font-size:14px;font-weight:${rankFw};color:${rankColor};font-variant-numeric:tabular-nums">#${e.rank}</div>
       ${spotifyLink(e.artist, e.title)}
       ${comiteCheckbox(e.title, e.artist)}
@@ -27750,6 +27750,12 @@ const OVERVIEW_WIDGETS = [
     get(){ const p = overviewFindKeyPlaylist(this.playlist);
       if(!p) return { empty:'Playlist « Futur Hits » non suivie.' };
       return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP) } : { empty:'Non chargée.' }; },
+    load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && !keyPlaylistFreshToday(p) ? refreshKeyPlaylist(p.id, { auto: true }) : null; } },
+  { id:'spynmf', get logo(){ return LOGO_SPOTIFY; }, icon:'🎵', label:'New Music Friday', playlist: /new[\s-]*music[\s-]*friday/i,
+    go(){ const p = overviewFindKeyPlaylist(this.playlist); overviewGoChart(p ? 'kp_' + p.id : 'keyplaylists'); },
+    get(){ const p = overviewFindKeyPlaylist(this.playlist);
+      if(!p) return { empty:'Playlist « New Music Friday » non suivie.' };
+      return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP), note: p.label } : { empty:'Non chargée.' }; },
     load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && !keyPlaylistFreshToday(p) ? refreshKeyPlaylist(p.id, { auto: true }) : null; } },
   { id:'shzfr', get logo(){ return LOGO_SHAZAM; }, icon:'🔵', label:'Shazam France', go: () => overviewGoChart('shzfr'),
     get(){ return chartsLoaded.fr ? { rows: overviewFromChart(chartsData.fr), note: shazamDateUsed || '' } : { empty:'Non chargé.' }; },
