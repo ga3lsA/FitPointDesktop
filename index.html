@@ -2504,6 +2504,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <div id="analyseStatsArea" style="flex:2 1 420px;display:grid;grid-template-columns:repeat(3,1fr);gap:10px"></div>
         <div id="analyseGenreChartArea" style="flex:1 1 260px"></div>
       </div>
+      <div id="analyseFormatArea" style="margin:-6px 0 18px"></div>
 
       <!-- Filtre -->
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
@@ -18311,6 +18312,7 @@ function graphRenderCard(key){
   if(key==='fit')        graphRenderFitCard(stKey, weeks);
   if(key==='exposition') graphRenderExpositionCard(stKey, weeks);
   if(key==='labels')     graphRenderLabelsCard(stKey, weeks);
+  if(key==='format' && typeof graphRenderFormatCard === 'function') graphRenderFormatCard(stKey, weeks);
 }
 
 /** Carte "Décennies" — un seul bâton empilé par semaine (proportions
@@ -18744,6 +18746,7 @@ function renderGraphPage(){
         <button onclick="analyseBackfillReleaseDatesAllArchives()" title="Recherche la date de sortie officielle (et la décennie si elle manque aussi) de TOUT titre sans date de sortie sur l'ensemble des semaines archivées — que sa décennie soit déjà connue ou non. Alimente le flag Nouvelle Production et le Délai d'adoption." style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">📅 Compléter les dates de sortie manquantes</button>
         <button onclick="analyseRecalcArchivesFromGraph()" title="Recalcule le Genre et la Décennie de toutes les semaines archivées à partir des données actuellement en cache — nécessaire pour que ce graphique et son sélecteur reflètent les décennies résolues APRÈS l'archivage de chaque semaine" style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔁 Recalculer les statistiques archivées</button>
       </div>`),
+    graphCardShell('format', 'Formats', 'Part des diffusions par format (Core / Market / Border), semaine par semaine — pondérée par le nombre de diffusions de chaque titre.', false, true),
     graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
   ].join('');
 
@@ -18764,6 +18767,7 @@ function renderGraphPage(){
   graphRenderFitCard(stKey, weeks);
   graphRenderExpositionCard(stKey, weeks);
   graphRenderLabelsCard(stKey, weeks);
+  if(typeof graphRenderFormatCard === 'function') graphRenderFormatCard(stKey, weeks);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -20174,7 +20178,7 @@ function analyseRowHtml(r){
     <td style="padding:8px 4px" onclick="event.stopPropagation()">${comiteCheckbox(r.title, r.artist)}</td>
     <td style="padding:8px 10px;min-width:0;max-width:230px">
       <div style="font-size:12.5px;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.title))}</div>
-      <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.artist))}</div>
+      <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${typeof formatBadgeHtml === 'function' ? formatBadgeHtml(r.title, r.artist) : ''}${escHtml(titleCaseDisplay(r.artist))}</div>
     </td>
     <td style="padding:8px 10px;text-align:center">${evoIcon}</td>
     <td style="padding:8px 10px;text-align:right;font-weight:700">${r.nbDiffs}</td>
@@ -20256,6 +20260,7 @@ function renderAnalyseStats(){
     analyseStatCard('Fam Score moy.', analyseFmtScore(stats.avgFam), 'Burn OMT : ' + analyseFmtScore(stats.avgBurnOMT)),
     analyseStatCard('Fit Score moy.', analyseFmtScore(stats.avgFit), 'SPU moy. : ' + analyseFmtScore(stats.avgSpu))
   ].join('');
+  if(typeof renderAnalyseFormatShare === 'function') renderAnalyseFormatShare();
 }
 
 const ANALYSE_GENRE_PALETTE = ['#00B8C8','#7C3AED','#E07B00','#0DA76B','#CC2222','#1E6FD9','#B05E00','#5B21B6','#0B1D3A','#F0A020','#0891B2','#94A3B8'];
@@ -21698,6 +21703,10 @@ async function openTevByInfo(info){
     <div style="flex:1;height:3px;background:linear-gradient(90deg,var(--border) 0%,var(--cyan) 50%,var(--border) 100%);border-radius:2px"></div>
   </div>`);
   sections.push(`<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+    <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px">
+      <span style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Format</span>
+      ${typeof formatBadgeHtml === 'function' ? formatBadgeHtml(title, artist, 'lg') : ''}
+    </div>
     ${typeof marketingBadgesHtml === 'function' ? marketingBadgesHtml(title, artist) : ''}
     <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date d'entrée Europe 2
       <input type="date" value="${songAttrs.dateEntreeEurope2 || ''}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','dateEntreeEurope2',this.value)"
@@ -25811,6 +25820,7 @@ function buildPlaylistRow(t, metrics, row360){
     <div style="padding:7px 6px;cursor:pointer;display:flex;align-items:center;gap:5px;min-width:0" onclick="${playlistLinkMode ? `togglePlaylistLinkSelect('${t.key}','${catNorm}')` : `togglePlaylistExpand('${t.key}')`}">
       <div id="pl-title-${safeId}" style="font-size:11.5px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;cursor:text" title="${escHtml(titleCaseDisplay(t.title))} (double-clic pour corriger l'orthographe)" ondblclick="event.stopPropagation();playlistEditNameField('${t.key}','title')">${escHtml(titleCaseDisplay(t.title))}</div>
       <div style="margin-left:auto;flex-shrink:0;display:flex;align-items:center;gap:5px">
+        ${typeof formatBadgeHtml === 'function' ? formatBadgeHtml(t.title, t.artist) : ''}
         ${bundleBadge}
         ${playlistMatchBadge(t)}
       </div>
@@ -41769,6 +41779,8 @@ async function renderDailyProgPage(){
         <div style="display:flex;gap:10px;flex-wrap:wrap">${kpis}</div>
       </div>
 
+      ${typeof dailyFmtCardHtml === 'function' ? dailyFmtCardHtml(day, hourAggs) : ''}
+
       <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px">
         <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy);margin-bottom:8px">📈 Fit, Pot et Fam Score moyens par heure</div>
         <div style="position:relative;height:240px"><canvas id="dailyProgChart"></canvas></div>
@@ -41867,7 +41879,7 @@ function dailyProgListHtml(day, hourAggs){
     const hf = dailyCheckFlagsFor(day.date).hours[h];
     const band = `<div id="dailyHour_${h}" ${hf ? `title="${escHtml(hf.join('\n'))}"` : ''} style="scroll-margin-top:120px;display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:7px 12px;background:${hf ? '#FFF6E5' : 'var(--bg)'};border-top:1.5px solid var(--border);${hf ? 'box-shadow:inset 3px 0 0 #F59E0B;' : ''}font-size:11px">
         <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy)">${String(h).padStart(2,'0')}h</div>
-        <div style="grid-column:2 / 7;color:var(--muted);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${items.length} titre${items.length > 1 ? 's' : ''} · moyennes de l'heure${hf ? ` <span style="color:#B45309;font-weight:800">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
+        <div style="grid-column:2 / 7;color:var(--muted);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${items.length} titre${items.length > 1 ? 's' : ''}${typeof dailyFmtBandHtml === 'function' ? dailyFmtBandHtml(items) : ' · moyennes de l\'heure'}${hf ? ` <span style="color:#B45309;font-weight:800">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
         <div style="text-align:right">${dailyProgFmt(fitM, agg.fit)}</div>
         <div style="text-align:right">${dailyProgFmt(potM, agg.pot)}</div>
       </div>`;
@@ -41882,7 +41894,7 @@ function dailyProgListHtml(day, hourAggs){
         <div>${dailyProgMatchBadge(it, s)}</div>
         <div style="min-width:0">
           <div class="dp-title" style="font-weight:700;color:var(--navy);transition:color .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(it.title))}</div>
-          <div style="color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(it.artist))}${typeof playlistCategoryBadgeHtml === 'function' ? playlistCategoryBadgeHtml(it.title, it.artist) : ''}</div>
+          <div style="color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${typeof formatBadgeHtml === 'function' ? formatBadgeHtml(it.title, it.artist) : ''}${escHtml(titleCaseDisplay(it.artist))}${typeof playlistCategoryBadgeHtml === 'function' ? playlistCategoryBadgeHtml(it.title, it.artist) : ''}</div>
         </div>
         <div style="text-align:center"><span title="Catégorie de rotation du conducteur${it.year ? ' · ' + escHtml(it.year) : ''}" style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:var(--bg);color:var(--text2)">${escHtml(it.cat || '—')}</span></div>
         <div style="text-align:right">${dailyProgFmt(fitM, s.fit)}</div>
@@ -42086,7 +42098,7 @@ async function dailyProgRenderSide(){
         <div style="min-width:0;flex:1">
           <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">${it.time} · ${position}/${day.items.length} · cat. ${escHtml(it.cat || '—')}${it.year ? ' · ' + escHtml(it.year) : ''}</div>
           <div style="font-family:var(--font-display);font-size:19px;font-weight:800;color:var(--navy);line-height:1.2;margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${escHtml(titleCaseDisplay(title))} ${dailyProgMatchBadge(it, s)}</div>
-          <div style="font-size:12.5px;color:var(--text2);margin-top:1px">${escHtml(titleCaseDisplay(artist))}${typeof playlistCategoryBadgeHtml === 'function' ? playlistCategoryBadgeHtml(title, artist) : ''}</div>
+          <div style="font-size:12.5px;color:var(--text2);margin-top:1px">${typeof formatBadgeHtml === 'function' ? formatBadgeHtml(title, artist) : ''}${escHtml(titleCaseDisplay(artist))}${typeof playlistCategoryBadgeHtml === 'function' ? playlistCategoryBadgeHtml(title, artist) : ''}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
           ${typeof spotifyLink === 'function' ? spotifyLink(artist, title) : ''}
@@ -43060,6 +43072,7 @@ function renderHealthBarometer(){
       <button onclick="openHealthSettings()" style="margin-left:auto;flex-shrink:0;font-size:10px;font-weight:800;color:var(--cyan);background:none;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:2px 8px;cursor:pointer">⚙ Seuils</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:6px">${tiles}</div>
+    ${typeof healthFormatLineHtml === 'function' ? healthFormatLineHtml(st) : ''}
   </div>`;
 }
 
@@ -43915,6 +43928,404 @@ mktInitTabs();
     return r;
   };
 })();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ATTRIBUT « FORMAT » (Core / Market / Border)
+     Saisi manuellement, par station, depuis la fiche Song Metrics, la
+     Playlist, la Programmation hebdomadaire ou le Conducteur quotidien.
+     Badge discret cliquable partout où il apparaît.
+     Stockage : local + Drive Sync (clé title_format), fusion titre par titre
+     (la saisie la plus récente gagne) pour que tous les postes convergent.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style id="fpaFormatCss">
+.fmt-badge{display:inline-flex;align-items:center;gap:3px;vertical-align:middle;font-family:inherit;font-size:9.5px;font-weight:800;line-height:1;letter-spacing:.02em;padding:2px 6px;border-radius:20px;border:1px solid;cursor:pointer;margin-right:5px;white-space:nowrap;transition:filter .12s,opacity .12s}
+.fmt-badge:hover{filter:brightness(.96)}
+.fmt-badge.fmt-none{background:transparent;border:1px dashed var(--border);color:var(--muted);opacity:.55;font-weight:700}
+.fmt-badge.fmt-none:hover{opacity:1}
+.fmt-badge.fmt-lg{font-size:11.5px;padding:4px 10px}
+.fmt-badge.fmt-lg.fmt-none{opacity:1}
+#fmtMenu{position:fixed;z-index:1200;background:var(--white);border:1.5px solid var(--border);border-radius:10px;box-shadow:0 12px 32px rgba(11,29,58,.2);padding:5px;min-width:170px}
+#fmtMenu .fmt-opt{display:flex;align-items:center;gap:8px;width:100%;border:none;background:none;border-radius:7px;padding:8px 10px;font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;text-align:left}
+#fmtMenu .fmt-opt:hover,#fmtMenu .fmt-opt.on{background:var(--bg)}
+#fmtMenu .fmt-head{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:5px 10px 4px;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+</style>
+<script id="fpaFormatJs">
+const FMT_LOCAL_KEY = 'fpa_title_format_v1';
+const FMT_DRIVE_KEY = 'title_format';
+/* Valeurs possibles — une nouvelle valeur = une ligne de plus ici */
+const FMT_VALUES = {
+  core:   { label:'Core',   bg:'#E0F2FE', bd:'#7DD3FC', fg:'#075985', dot:'#0284C7' },
+  market: { label:'Market', bg:'#E6F6EC', bd:'#A8DDB9', fg:'#1E7A3C', dot:'#16A34A' },
+  border: { label:'Border', bg:'#FEF3C7', bd:'#FCD34D', fg:'#92400E', dot:'#D97706' }
+};
+let fmtStore = fmtLoadLocal();
+let fmtLookupCache = new Map();
+let fmtDriveTimer = null, fmtDriveLoaded = false;
+
+function fmtLoadLocal(){
+  let s = null;
+  try{ s = JSON.parse(localStorage.getItem(FMT_LOCAL_KEY) || 'null'); }catch(e){}
+  s = s && typeof s === 'object' ? s : {};
+  s.EUROPE2 = s.EUROPE2 || {}; s.RFM = s.RFM || {};
+  return s;
+}
+function fmtStation(){ return (typeof ACTIVE_STATION !== 'undefined' && ACTIVE_STATION === 'RFM') ? 'RFM' : 'EUROPE2'; }
+function fmtDriveOn(){ return typeof DRIVE_SYNC_URL !== 'undefined' && !!DRIVE_SYNC_URL && typeof driveCall === 'function'; }
+
+/** Fusion entrée par entrée : la modification la plus récente l'emporte. */
+function fmtMerge(a, b){
+  const out = { EUROPE2:{}, RFM:{} };
+  ['EUROPE2','RFM'].forEach(st => {
+    const keys = new Set(Object.keys((a && a[st]) || {}).concat(Object.keys((b && b[st]) || {})));
+    keys.forEach(k => {
+      const x = a && a[st] && a[st][k], y = b && b[st] && b[st][k];
+      out[st][k] = !x ? y : !y ? x : ((y.at || '') > (x.at || '') ? y : x);
+    });
+  });
+  return out;
+}
+async function fmtLoadDrive(){
+  if(fmtDriveLoaded || !fmtDriveOn()) return;
+  fmtDriveLoaded = true;
+  try{
+    const r = await driveCall('load', FMT_DRIVE_KEY);
+    const remote = r && r.data ? JSON.parse(r.data) : null;
+    if(remote){
+      const merged = fmtMerge(fmtStore, remote);
+      const changed = JSON.stringify(merged) !== JSON.stringify(fmtStore);
+      fmtStore = merged; fmtLookupCache.clear();
+      try{ localStorage.setItem(FMT_LOCAL_KEY, JSON.stringify(fmtStore)); }catch(e){}
+      if(changed) fmtRefreshAll();
+    }
+  }catch(e){ console.warn('Format — lecture Drive', e); }
+}
+function fmtSave(){
+  try{ localStorage.setItem(FMT_LOCAL_KEY, JSON.stringify(fmtStore)); }catch(e){}
+  if(!fmtDriveOn()) return;
+  clearTimeout(fmtDriveTimer);
+  fmtDriveTimer = setTimeout(async () => {
+    try{
+      let remote = null;
+      try{ const r = await driveCall('load', FMT_DRIVE_KEY); remote = r && r.data ? JSON.parse(r.data) : null; }catch(e){}
+      fmtStore = fmtMerge(fmtStore, remote);
+      try{ localStorage.setItem(FMT_LOCAL_KEY, JSON.stringify(fmtStore)); }catch(e){}
+      await driveCall('save', FMT_DRIVE_KEY, JSON.stringify(fmtStore));
+    }catch(e){ console.warn('Format — envoi Drive', e); }
+  }, 1200);
+}
+
+/** Ressemblance caractère par caractère (espaces ignorés) : « p nk » ≈ « pink ». */
+function fmtCharSim(a, b){
+  a = String(a).replace(/\s+/g, ''); b = String(b).replace(/\s+/g, '');
+  if(!a || !b) return 0;
+  const m = a.length, n = b.length;
+  let prev = Array.from({ length:n + 1 }, (_, j) => j);
+  for(let i = 1; i <= m; i++){
+    const cur = [i];
+    for(let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    prev = cur;
+  }
+  return 1 - prev[n] / Math.max(m, n);
+}
+/** Format d'un titre pour la station active (clé exacte, sinon titre proche :
+ *  « REPEAT IT / MARTIN GARRIX & ED SHEERAN » = « Repeat It / Martin Garrix, Ed Sheeran »). */
+function getTitleFormat(title, artist, st){
+  st = st || fmtStation();
+  const key = comiteKey(title || '', artist || '');
+  const ck = st + '|' + key;
+  if(fmtLookupCache.has(ck)) return fmtLookupCache.get(ck);
+  const map = fmtStore[st] || {};
+  let v = map[key] ? map[key].v : null;
+  if(map[key] === undefined){
+    const nT = norm(title || ''), nA = norm(artist || '');
+    let best = null, bestS = 0;
+    for(const k in map){
+      const e = map[k];
+      if(!e || !e.v) continue;
+      const ts = similarity(nT, norm(e.title || ''));
+      if(ts < 0.88) continue;
+      const eA = norm(e.artist || '');
+      const as = !nA || !eA ? 1 : (nA.includes(eA) || eA.includes(nA)) ? 0.9 : Math.max(similarity(nA, eA), fmtCharSim(nA, eA));
+      if(as < (nT === norm(e.title || '') ? 0.3 : 0.5)) continue;   // titre identique : artiste plus tolérant (« P!nk » / « Pink »)
+      if(ts + as > bestS){ bestS = ts + as; best = e; }
+    }
+    v = best ? best.v : null;
+  }
+  v = v && FMT_VALUES[v] ? v : null;
+  fmtLookupCache.set(ck, v);
+  return v;
+}
+function setTitleFormat(title, artist, value){
+  const st = fmtStation();
+  const key = comiteKey(title, artist);
+  fmtStore[st][key] = { v: value || '', title, artist, at: new Date().toISOString() };
+  fmtLookupCache.clear();
+  fmtSave();
+  fmtRefreshAll();
+}
+
+/** Badge discret : « Core / Market / Border », ou « + format » en pointillés.
+ *  size 'lg' pour la fiche Song Metrics. */
+function formatBadgeHtml(title, artist, size){
+  const v = getTitleFormat(title, artist);
+  const def = v ? FMT_VALUES[v] : null;
+  const key = comiteKey(title || '', artist || '');
+  const data = `data-fmt-key="${escHtml(key)}" data-fmt-t="${escHtml(title || '')}" data-fmt-a="${escHtml(artist || '')}" data-fmt-size="${size || ''}"`;
+  const cls = 'fmt-badge' + (size === 'lg' ? ' fmt-lg' : '') + (def ? '' : ' fmt-none');
+  if(!def) return `<button type="button" class="${cls}" ${data} onclick="event.stopPropagation();fmtOpenMenu(this)" title="Attribuer un format (Core / Market / Border)">+ format</button>`;
+  return `<button type="button" class="${cls}" ${data} onclick="event.stopPropagation();fmtOpenMenu(this)" title="Format : ${def.label} — cliquer pour modifier" style="background:${def.bg};border-color:${def.bd};color:${def.fg}"><span style="width:6px;height:6px;border-radius:50%;background:${def.dot}"></span>${def.label}</button>`;
+}
+function fmtRefreshAll(){
+  document.querySelectorAll('.fmt-badge[data-fmt-key]').forEach(el => {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = formatBadgeHtml(el.dataset.fmtT, el.dataset.fmtA, el.dataset.fmtSize || '');
+    el.replaceWith(tmp.firstElementChild);
+  });
+  if(typeof fmtAfterChange === 'function') fmtAfterChange();
+}
+
+/* ── Menu de choix ─────────────────────────────────────────────────── */
+function fmtCloseMenu(){ const m = document.getElementById('fmtMenu'); if(m) m.remove(); }
+function fmtOpenMenu(el){
+  fmtCloseMenu();
+  const title = el.dataset.fmtT, artist = el.dataset.fmtA;
+  const cur = getTitleFormat(title, artist);
+  const m = document.createElement('div');
+  m.id = 'fmtMenu';
+  m.innerHTML = `<div class="fmt-head" title="${escHtml(titleCaseDisplay(title) + ' — ' + titleCaseDisplay(artist))}">Format · ${escHtml(titleCaseDisplay(title))}</div>`
+    + Object.entries(FMT_VALUES).map(([k, d]) => `<button type="button" class="fmt-opt${cur === k ? ' on' : ''}" data-v="${k}"><span style="width:9px;height:9px;border-radius:50%;background:${d.dot}"></span>Format : ${d.label}${cur === k ? ' <span style="margin-left:auto;color:var(--cyan)">✓</span>' : ''}</button>`).join('')
+    + `<button type="button" class="fmt-opt" data-v="" style="color:var(--muted);font-weight:600;border-top:1px solid var(--border);border-radius:0 0 7px 7px;margin-top:3px">✕ Aucun format</button>`;
+  m.addEventListener('click', e => {
+    e.stopPropagation();
+    const b = e.target.closest('.fmt-opt');
+    if(!b) return;
+    setTitleFormat(title, artist, b.dataset.v);
+    fmtCloseMenu();
+    showToast(b.dataset.v ? '✓ Format : ' + FMT_VALUES[b.dataset.v].label + ' — ' + titleCaseDisplay(title) : 'Format retiré — ' + titleCaseDisplay(title), 'success');
+  });
+  document.body.appendChild(m);
+  const r = el.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  const W = document.documentElement.clientWidth, H = window.innerHeight;
+  let left = Math.min(Math.max(8, r.left), W - mw - 8);
+  let top = r.bottom + 4;
+  if(top + mh > H - 70) top = Math.max(8, r.top - mh - 4);
+  m.style.left = left + 'px'; m.style.top = top + 'px';
+}
+document.addEventListener('click', e => { if(!e.target.closest('#fmtMenu')) fmtCloseMenu(); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape') fmtCloseMenu(); });
+window.addEventListener('scroll', () => fmtCloseMenu(), true);
+
+/* Bascule de station : les badges suivent */
+(function(){
+  const orig = window.toggleActiveStation;
+  if(typeof orig !== 'function') return;
+  window.toggleActiveStation = function(){
+    const r = orig.apply(this, arguments);
+    try{ fmtLookupCache.clear(); fmtRefreshAll(); }catch(e){}
+    return r;
+  };
+})();
+setTimeout(fmtLoadDrive, 3000);
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ANALYSES DU FORMAT (Core / Market / Border)
+     Part de chaque format, pondérée par le nombre de diffusions :
+       • Analyse → Graphiques : bâtons empilés par semaine (carte « Formats »)
+       • Programmation hebdomadaire : carte de la semaine chargée
+       • Programmation quotidienne : carte du jour + mini-barre par heure
+       • Overview : ligne « Formats » sous le baromètre santé
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaFormatAnalyticsJs">
+const FMT_SHARE_KEYS = ['core','market','border','none'];
+const FMT_NONE = { label:'Non renseigné', dot:'#CBD5E1', fg:'#64748B', bg:'#F1F5F9', bd:'#E2E8F0' };
+let fmtVersion = 0;
+function fmtDef(k){ return k === 'none' ? FMT_NONE : FMT_VALUES[k]; }
+
+/** Parts (%) de chaque format sur une liste { title, artist, w } — w = nombre
+ *  de diffusions (1 par défaut : une ligne de conducteur = une diffusion). */
+function fmtShareOf(list){
+  const acc = { core:0, market:0, border:0, none:0 };
+  let tot = 0;
+  list.forEach(x => {
+    const w = x.w == null ? 1 : +x.w;
+    if(!(w > 0)) return;
+    const v = getTitleFormat(x.title, x.artist) || 'none';
+    acc[v] += w; tot += w;
+  });
+  const out = { total: tot };
+  FMT_SHARE_KEYS.forEach(k => { out[k] = tot ? acc[k] / tot * 100 : null; out[k + 'W'] = acc[k]; });
+  return out;
+}
+function fmtPct(v){ return v === null || v === undefined ? '—' : (Math.round(v * 10) / 10).toLocaleString('fr-FR') + ' %'; }
+
+/** Barre empilée + légende. opts : { h, legend:true|false|'compact', title } */
+function fmtShareBarHtml(share, opts){
+  opts = opts || {};
+  const h = opts.h || 10;
+  if(!share || !share.total) return `<span style="font-size:11px;color:var(--muted)">Aucune diffusion</span>`;
+  const segs = FMT_SHARE_KEYS.filter(k => share[k] > 0).map(k => {
+    const d = fmtDef(k);
+    return `<span title="${escHtml(d.label + ' : ' + fmtPct(share[k]))}" style="display:block;height:100%;width:${share[k].toFixed(2)}%;background:${d.dot}"></span>`;
+  }).join('');
+  const bar = `<span style="display:flex;width:100%;height:${h}px;border-radius:${h}px;overflow:hidden;background:var(--bg)">${segs}</span>`;
+  if(opts.legend === false) return bar;
+  const compact = opts.legend === 'compact';
+  const leg = FMT_SHARE_KEYS.filter(k => k !== 'none' || share.none > 0).map(k => {
+    const d = fmtDef(k);
+    const lbl = compact ? (k === 'none' ? '?' : d.label.charAt(0)) : d.label;
+    return `<span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:${d.dot}"></span><span style="color:var(--text2)">${lbl}</span> <b style="color:var(--navy)">${fmtPct(share[k])}</b></span>`;
+  }).join(compact ? '<span style="color:var(--border)">·</span>' : '');
+  return `<span style="display:flex;flex-direction:column;gap:${compact ? 3 : 6}px;width:100%">${bar}<span style="display:flex;flex-wrap:wrap;gap:${compact ? '4px 6px' : '6px 14px'};font-size:${compact ? 10 : 11.5}px">${leg}</span></span>`;
+}
+
+/* ── Semaines archivées (détail par titre, local ou Drive) ─────────── */
+const fmtWeekCache = new Map();
+async function fmtWeekShare(stKey, weekLabel){
+  const ck = stKey + '|' + weekLabel + '|' + fmtVersion;
+  if(fmtWeekCache.has(ck)) return fmtWeekCache.get(ck);
+  let res = null;
+  try{
+    const detail = await analyseLoadWeekDetail(stKey, weekLabel);
+    if(detail && Array.isArray(detail.rows) && detail.rows.length)
+      res = fmtShareOf(detail.rows.map(r => ({ title: r.title, artist: r.artist, w: r.nbDiffs || 0 })));
+  }catch(e){ res = null; }
+  fmtWeekCache.set(ck, res);
+  return res;
+}
+
+/* ── 1. Analyse → Graphiques : carte « Formats » ───────────────────── */
+let fmtGraphToken = 0;
+function graphRenderFormatCard(stKey, weeks){
+  if(!graphFilters.format) graphFilters.format = Object.assign({}, graphFilters.decades, { from:null, to:null });
+  const f = graphFilters.format;
+  if(!f.from || !weeks.some(w => w.weekLabel === f.from)) f.from = weeks[0].weekLabel;
+  if(!f.to || !weeks.some(w => w.weekLabel === f.to)) f.to = weeks[weeks.length - 1].weekLabel;
+  const controls = document.getElementById('graphformatControls');
+  if(!controls) return;
+  controls.innerHTML = `
+    ${graphWeekControlsHtml('format', weeks, f.from, f.to)}
+    ${graphAudToggleHtml('format', f.showAudience)}
+    ${graphAudienceMetricSelectHtml('format', f.audienceMetric, !f.showAudience)}
+    ${graphMusicalToggleHtml('format', f.musicalFocus, stKey !== 'EUROPE2' || !f.showAudience || !(AUDIENCE_METRICS[f.audienceMetric] || {}).musicalCompatible)}
+    ${graphMediametrieToggleHtml('format', f.showMediametrie)}
+    ${graphMediametrieMetricSelectHtml('format', f.mediametrieMetric, !f.showMediametrie)}
+    ${graphMediametriePeriodSelectHtml('format', f.mediametriePeriod, !f.showMediametrie)}
+    <span id="graphformatNote" style="font-size:10.5px;color:var(--muted)">⏳ Calcul des parts…</span>`;
+  const range = graphWeekRangeSlice(weeks, f.from, f.to);
+  const token = ++fmtGraphToken;
+  Promise.all(range.map(w => fmtWeekShare(stKey, w.weekLabel))).then(shares => {
+    if(token !== fmtGraphToken || !document.getElementById('graphformatChart')) return;
+    const r1 = v => v === null || v === undefined ? null : Math.round(v * 10) / 10;
+    const series = FMT_SHARE_KEYS.map(k => ({ label: fmtDef(k).label, color: fmtDef(k).dot, data: shares.map(s => s ? r1(s[k]) : null) }));
+    graphBuildStackedChart('graphformatChart', range, series, f.showAudience, stKey, 'Part des diffusions (%)', f.musicalFocus, f.audienceMetric, f.showMediametrie, f.mediametrieMetric, f.mediametriePeriod);
+    const miss = shares.filter(s => !s).length;
+    const note = document.getElementById('graphformatNote');
+    if(note) note.textContent = miss ? '⚠ ' + miss + ' semaine(s) sans détail par titre sur ce poste ni sur Drive — bâton vide' : 'Pondéré par le nombre de diffusions de chaque titre';
+  });
+}
+
+/* ── 2. Programmation hebdomadaire : carte de la semaine chargée ───── */
+function renderAnalyseFormatShare(){
+  const area = document.getElementById('analyseFormatArea');
+  if(!area) return;
+  if(typeof analyseRows === 'undefined' || !analyseRows.length){ area.innerHTML = ''; return; }
+  const share = fmtShareOf(analyseRows.map(r => ({ title: r.title, artist: r.artist, w: r.nbDiffs || 0 })));
+  area.innerHTML = `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div style="min-width:150px">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">🎨 Formats de la semaine</div>
+      <div style="font-size:10.5px;color:var(--muted);margin-top:2px">pondérés par les diffusions (${share.total.toLocaleString('fr-FR')})</div>
+    </div>
+    <div style="flex:1;min-width:260px">${fmtShareBarHtml(share, { h:12 })}</div>
+  </div>`;
+}
+
+/* ── 3. Programmation quotidienne : carte du jour + bandeaux horaires ─ */
+function dailyFmtShareOfItems(items){ return fmtShareOf(items.map(it => ({ title: it.title, artist: it.artist, w: 1 }))); }
+function dailyFmtCardHtml(day, hourAggs){
+  const share = dailyFmtShareOfItems(day.items);
+  const hours = hourAggs.map(({ h, items }) => {
+    const s = dailyFmtShareOfItems(items);
+    return `<div onclick="dailyProgOpenHour(${h})" title="Voir cette heure dans le conducteur" style="display:grid;grid-template-columns:34px minmax(0,1fr);gap:8px;align-items:center;cursor:pointer;padding:2px 0">
+      <span style="font-size:10.5px;font-weight:800;color:var(--navy)">${String(h).padStart(2,'0')}h</span>
+      ${fmtShareBarHtml(s, { h:8, legend:false })}
+    </div>`;
+  }).join('');
+  return `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">🎨 Formats de la journée</div>
+      <span style="font-size:11px;color:var(--muted)">part des ${share.total} diffusions · le détail heure par heure figure aussi en tête de chaque heure du conducteur</span>
+    </div>
+    ${fmtShareBarHtml(share, { h:14 })}
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 18px;margin-top:12px">${hours}</div>
+  </div>`;
+}
+function dailyFmtBandHtml(items){
+  const s = dailyFmtShareOfItems(items);
+  if(!s.total) return '';
+  const txt = FMT_SHARE_KEYS.filter(k => s[k] > 0).map(k => `<span style="color:${fmtDef(k).dot === '#CBD5E1' ? 'var(--muted)' : fmtDef(k).fg}">${k === 'none' ? '?' : fmtDef(k).label.charAt(0)} ${Math.round(s[k])}</span>`).join(' ');
+  const tip = FMT_SHARE_KEYS.map(k => fmtDef(k).label + ' : ' + fmtPct(s[k])).join(' · ');
+  return `<span title="${escHtml('Formats de l\'heure — ' + tip)}" style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;margin-left:8px;white-space:nowrap"><span style="display:inline-block;width:64px">${fmtShareBarHtml(s, { h:6, legend:false })}</span><span style="font-size:10px;font-weight:800">${txt}<span style="color:var(--muted);font-weight:600"> %</span></span></span>`;
+}
+
+/* ── 4. Overview : ligne « Formats » sous le baromètre santé ───────── */
+let fmtHealthPending = false;
+function healthFormatLineHtml(st){
+  // Journée « en cours » : conducteur du jour s'il existe, sinon le plus récent déjà passé
+  let dayHtml = '<span style="color:var(--muted)">aucun conducteur importé</span>';
+  try{
+    const store = (dailyProgStore && dailyProgStore[st]) || {};
+    const dates = Object.keys(store).sort();
+    if(dates.length){
+      const today = dailyProgTodayISO();
+      const past = dates.filter(d => d <= today);
+      const d = dates.includes(today) ? today : (past.length ? past[past.length - 1] : dates[0]);
+      const diff = Math.round((new Date(today + 'T12:00:00') - new Date(d + 'T12:00:00')) / 86400000);
+      const tag = diff === 0 ? '<span style="font-size:9.5px;font-weight:800;padding:1px 6px;border-radius:20px;background:#E6F6EC;color:#1E7A3C">aujourd\'hui</span>'
+        : diff > 0 ? `<span title="Le conducteur du jour n'est pas encore importé" style="font-size:9.5px;font-weight:800;padding:1px 6px;border-radius:20px;background:#FEF3C7;color:#B45309">⚠ il y a ${diff} j</span>`
+        : '<span style="font-size:9.5px;font-weight:800;padding:1px 6px;border-radius:20px;background:#EEF2FF;color:#3730A3">à venir</span>';
+      dayHtml = `<b style="color:var(--navy)">${escHtml(dailyProgDateLabel(d, true))}</b> ${tag} ${fmtShareBarHtml(dailyFmtShareOfItems(store[d].items), { legend:'compact', h:5 })}`;
+    }
+  }catch(e){}
+  // Dernière semaine archivée (détail chargé de façon asynchrone)
+  let weekHtml = '<span style="color:var(--muted)">aucune semaine archivée</span>';
+  try{
+    const w = healthLastProgWeek(st);
+    if(w){
+      const ck = st + '|' + w.weekLabel + '|' + fmtVersion;
+      if(fmtWeekCache.has(ck)){
+        const s = fmtWeekCache.get(ck);
+        weekHtml = `<b style="color:var(--navy)">Sem. ${escHtml(w.weekLabel)}</b> ` + (s ? fmtShareBarHtml(s, { legend:'compact', h:5 }) : '<span style="color:var(--muted)">détail par titre indisponible sur ce poste</span>');
+      } else {
+        weekHtml = `<b style="color:var(--navy)">Sem. ${escHtml(w.weekLabel)}</b> <span style="color:var(--muted)">⏳</span>`;
+        if(!fmtHealthPending){
+          fmtHealthPending = true;
+          fmtWeekShare(st, w.weekLabel).then(() => { fmtHealthPending = false; renderHealthBarometer(); });
+        }
+      }
+    }
+  }catch(e){}
+  const cell = (label, html) => `<div style="min-width:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:center;font-size:10.5px;padding:6px 9px;border:1px solid var(--border);border-radius:9px;background:var(--white)">
+      <span style="font-weight:800;color:var(--muted);text-transform:uppercase;font-size:9px;letter-spacing:.06em">${label}</span>
+      <span style="display:flex;align-items:center;gap:6px;min-width:0">${html}</span>
+    </div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:6px;margin-top:6px">
+    ${cell('🎨 Formats semaine', weekHtml)}
+    ${cell('🎨 Formats journée', dayHtml)}
+  </div>`;
+}
+
+/* ── Rafraîchissement quand un format change ───────────────────────── */
+let fmtAfterTimer = null;
+function fmtAfterChange(){
+  fmtVersion++;
+  clearTimeout(fmtAfterTimer);
+  fmtAfterTimer = setTimeout(() => {
+    try{ if(typeof dailyProgIsVisible === 'function' && dailyProgIsVisible()) renderDailyProgPage(); }catch(e){}
+    try{ renderAnalyseFormatShare(); }catch(e){}
+    try{ if(typeof analyseSubView !== 'undefined' && analyseSubView === 'graph' && document.getElementById('graphformatChart')) graphRenderCard('format'); }catch(e){}
+    try{ const hb = document.getElementById('healthBarometer'); if(hb && hb.offsetParent !== null) renderHealthBarometer(); }catch(e){}
+  }, 350);
+}
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
      FPA MOBILE — adaptation automatique aux téléphones (v1)
