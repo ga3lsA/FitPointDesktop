@@ -41228,6 +41228,7 @@ window.addEventListener('message', (event) => {
 <style id="fpaDailyProgCss">
 .dp-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
 .dp-row{scroll-margin-top:118px;scroll-margin-bottom:16px;border-left:3px solid transparent}
+.dp-row.dp-flag{border-left-color:#F59E0B;background:#FFFBF2}
 .dp-row.dp-sel{background:var(--cyan-light)!important;border-left-color:var(--cyan)}
 .dp-row.dp-sel .dp-title{color:var(--navy)!important}
 .dp-side{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto;background:var(--white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px rgba(11,29,58,.06)}
@@ -41735,7 +41736,8 @@ async function renderDailyProgPage(){
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
           <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy)">${escHtml(dailyProgDateLabel(day.date))}</div>
           <span style="font-size:11px;color:var(--muted)">${day.items.length} diffusions musicales · ${day.excluded || 0} éléments non musicaux écartés · ${escHtml(day.fileName || '')}</span>
-          <button class="btn-ghost" onclick="dailyProgDeleteDay('${day.date}')" style="margin-left:auto;font-size:11px;padding:6px 12px;color:#dc2626">🗑 Supprimer cette journée</button>
+          <button onclick="dailyCheckRun()" title="Contrôle de la journée : séparation artistes, heures sous la moyenne… (règles réglables)" style="margin-left:auto;font-size:11.5px;padding:6px 14px;border-radius:8px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;font-weight:800;cursor:pointer">✅ Check</button>
+          <button class="btn-ghost" onclick="dailyProgDeleteDay('${day.date}')" style="font-size:11px;padding:6px 12px;color:#dc2626">🗑 Supprimer cette journée</button>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">${kpis}</div>
       </div>
@@ -41787,7 +41789,7 @@ function dailyProgDrawChart(hourAggs){
   });
 }
 
-function dailyProgSelect(date){ if(date !== dailyProgSelected) dailyProgSelIdx = null; dailyProgSelected = date; renderDailyProgPage(); }
+function dailyProgSelect(date){ if(date !== dailyProgSelected){ dailyProgSelIdx = null; } dailyProgSelected = date; renderDailyProgPage(); }
 function dailyProgRememberHour(h, isOpen){
   if(!dailyProgSelected) return;
   const o = dailyProgOpenHours[dailyProgSelected] = dailyProgOpenHours[dailyProgSelected] || {};
@@ -41828,24 +41830,26 @@ let dailyProgSelIdx = null;      // index dans day.items du titre sélectionné
 let dailyProgSideToken = 0;      // évite qu'un chargement asynchrone tardif écrase un titre plus récent
 
 function dailyProgListHtml(day, hourAggs){
-  const gridCols = '44px 22px 24px 18px minmax(0,1fr) 40px 50px 50px';
+  const gridCols = '54px 22px 24px 18px minmax(0,1fr) 40px 50px 50px';
   const fitM = DAILY_METRICS.find(m => m.key === 'fit'), potM = DAILY_METRICS.find(m => m.key === 'pot');
   const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:9px 12px;background:var(--white);font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);position:sticky;top:68px;z-index:10;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--cyan);box-shadow:0 3px 10px rgba(11,29,58,.08)">
       <div>Heure</div><div></div><div></div><div></div><div>Titre / Artiste</div><div style="text-align:center">Cat.</div><div style="text-align:right">Fit</div><div style="text-align:right">Pot</div>
     </div>`;
   let idx = 0;
   const body = hourAggs.map(({ h, items, agg }) => {
-    const band = `<div id="dailyHour_${h}" style="scroll-margin-top:120px;display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:7px 12px;background:var(--bg);border-top:1.5px solid var(--border);font-size:11px">
+    const hf = dailyCheckFlagsFor(day.date).hours[h];
+    const band = `<div id="dailyHour_${h}" ${hf ? `title="${escHtml(hf.join('\n'))}"` : ''} style="scroll-margin-top:120px;display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:7px 12px;background:${hf ? '#FFF6E5' : 'var(--bg)'};border-top:1.5px solid var(--border);${hf ? 'box-shadow:inset 3px 0 0 #F59E0B;' : ''}font-size:11px">
         <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy)">${String(h).padStart(2,'0')}h</div>
-        <div style="grid-column:2 / 7;color:var(--muted);font-weight:700">${items.length} titre${items.length > 1 ? 's' : ''} · moyennes de l'heure</div>
+        <div style="grid-column:2 / 7;color:var(--muted);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${items.length} titre${items.length > 1 ? 's' : ''} · moyennes de l'heure${hf ? ` <span style="color:#B45309;font-weight:800">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
         <div style="text-align:right">${dailyProgFmt(fitM, agg.fit)}</div>
         <div style="text-align:right">${dailyProgFmt(potM, agg.pot)}</div>
       </div>`;
     const rows = items.map(it => {
       const i = day.items.indexOf(it);
       const s = dailyScoresFor(it.title, it.artist, day.date);
-      return `<div id="dpRow_${i}" data-i="${i}" class="fpa-row dp-row${i === dailyProgSelIdx ? ' dp-sel' : ''}" onclick="dailyProgRowClick(event,this)" ondblclick="dailyProgOpenFull()" style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:8px 12px 8px 9px;border-top:1px solid var(--border);font-size:12px;cursor:pointer">
-        <div style="color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums">${it.time}</div>
+      const rf = dailyCheckFlagsFor(day.date).items[i];
+      return `<div id="dpRow_${i}" data-i="${i}" class="fpa-row dp-row${i === dailyProgSelIdx ? ' dp-sel' : ''}${rf ? ' dp-flag' : ''}" ${rf ? `title="${escHtml(rf.join('\n'))}"` : ''} onclick="dailyProgRowClick(event,this)" ondblclick="dailyProgOpenFull()" style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:8px 12px 8px 9px;border-top:1px solid var(--border);font-size:12px;cursor:pointer">
+        <div style="color:${rf ? '#B45309' : 'var(--muted)'};font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap">${rf ? '⚠ ' : ''}${it.time}</div>
         <div>${typeof spotifyLink === 'function' ? spotifyLink(it.artist, it.title) : ''}</div>
         <div>${typeof comiteCheckbox === 'function' ? comiteCheckbox(it.title, it.artist) : ''}</div>
         <div>${dailyProgMatchBadge(it, s)}</div>
@@ -41864,7 +41868,8 @@ function dailyProgListHtml(day, hourAggs){
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">🎛️ Conducteur — ${escHtml(dailyProgDateLabel(day.date))}</div>
       <span style="font-size:11px;color:var(--muted)">${day.items.length} titres · cliquez un titre, puis ↑ ↓ pour naviguer · Entrée ou double-clic : fiche complète</span>
-      <input type="search" placeholder="Rechercher un titre, un artiste…" oninput="dailyProgFilter(this.value)" style="margin-left:auto;min-width:200px;font-size:12px;padding:7px 10px;border-radius:8px">
+      <button onclick="dailyCheckRun()" title="Lancer le contrôle de cette journée" style="margin-left:auto;font-size:11px;padding:6px 12px;border-radius:8px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;font-weight:800;cursor:pointer">✅ Check</button>
+      <input type="search" placeholder="Rechercher un titre, un artiste…" oninput="dailyProgFilter(this.value)" style="min-width:200px;font-size:12px;padding:7px 10px;border-radius:8px">
     </div>
     <div class="dp-split">
       <div id="dailyProgList" style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;min-width:0">${header}${body}</div>
@@ -42172,6 +42177,212 @@ function dailyProgFilter(q){
     r.style.display = !n || (typeof norm === 'function' ? norm(txt) : txt.toLowerCase()).includes(n) ? '' : 'none';
   });
 }
+
+/* ══════════════════════════════════════════════════════════════════════
+   CHECK — contrôle d'une journée de programmation
+   Chaque règle a des paramètres réglables (sauvegardés par station) et
+   renvoie une liste d'alertes { text, items:[index], hour }.
+   ▸ Ajouter une règle = ajouter un objet dans DAILY_CHECK_RULES.
+   ══════════════════════════════════════════════════════════════════════ */
+const DAILY_CHECK_KEY = 'fpa_daily_check_rules_v1';
+let dailyCheckFlags = { date:null, items:{}, hours:{} };
+
+/** Artistes d'une ligne : « A & B », « A X B », « A feat. B », « A, B » → [A, B] */
+function dailyCheckArtists(artist){
+  return String(artist || '').split(/\s*(?:&|,|\s[xX]\s|\bfeat\.?\s|\bft\.?\s|\bvs\.?\s|\bavec\s)\s*/i)
+    .map(a => a.trim()).filter(Boolean)
+    .map(a => ({ key: typeof norm === 'function' ? norm(a) : a.toLowerCase(), label: a }));
+}
+/** Minutes « continues » des diffusions (gère un conducteur qui passe minuit). */
+function dailyCheckAbsMinutes(items){
+  let prev = -1, offset = 0;
+  return items.map(it => { let m = dailyProgItemMins(it) + offset; if(m < prev){ offset += 1440; m += 1440; } prev = m; return m; });
+}
+function dailyCheckHourRule(key, label){
+  return {
+    id: 'hour_' + key, label: 'Heure sous la moyenne du jour — ' + label, icon: key === 'fit' ? '🎯' : key === 'pot' ? '📋' : '💗',
+    description: 'Alerte quand le ' + label + ' moyen d\'une heure est inférieur à la moyenne de la journée (moins la tolérance).',
+    params: [
+      { id:'tolerance', label:'Tolérance (points sous la moyenne)', def:0, step:0.5, min:0 },
+      { id:'minMatched', label:'Titres matchés minimum dans l\'heure', def:2, step:1, min:1 }
+    ],
+    run(day, p){
+      const dayAgg = dailyProgAggregate(day.items, day.date);
+      const ref = dayAgg[key];
+      if(ref === null) return { alerts:[], note:'Aucun ' + label + ' disponible pour cette journée.' };
+      const byH = {}, order = [];
+      day.items.forEach((it, i) => { if(!byH[it.hour]){ byH[it.hour] = []; order.push(it.hour); } byH[it.hour].push(i); });
+      const alerts = [];
+      order.forEach(h => {
+        const agg = dailyProgAggregate(byH[h].map(i => day.items[i]), day.date);
+        if(agg[key] === null || agg[key + 'N'] < p.minMatched) return;
+        if(agg[key] < ref - p.tolerance){
+          const fmt = v => v.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 });
+          alerts.push({ hour: h, items: [], text: String(h).padStart(2,'0') + 'h : ' + label + ' ' + fmt(agg[key]) + ' (journée ' + fmt(ref) + ', ' + fmt(agg[key] - ref) + ') · ' + agg[key + 'N'] + '/' + agg.total + ' titres matchés' });
+        }
+      });
+      return { alerts, note: 'Moyenne de la journée : ' + ref.toLocaleString('fr-FR', { maximumFractionDigits:1 }) };
+    }
+  };
+}
+const DAILY_CHECK_RULES = [
+  {
+    id:'artist_sep', label:'Séparation artiste', icon:'👥',
+    description:'Alerte quand un même artiste (y compris en featuring ou en duo) revient avant le délai minimum.',
+    params: [ { id:'minutes', label:'Délai minimum entre deux diffusions d\'un artiste (minutes)', def:30, step:5, min:1 } ],
+    run(day, p){
+      const abs = dailyCheckAbsMinutes(day.items);
+      const last = {};
+      const alerts = [];
+      day.items.forEach((it, i) => {
+        dailyCheckArtists(it.artist).forEach(a => {
+          const prev = last[a.key];
+          if(prev !== undefined){
+            const gap = abs[i] - abs[prev];
+            if(gap < p.minutes){
+              const pi = day.items[prev];
+              alerts.push({ items:[prev, i], hour: it.hour, text: titleCaseDisplay(a.label) + ' : ' + pi.time + ' « ' + titleCaseDisplay(pi.title) + ' » → ' + it.time + ' « ' + titleCaseDisplay(it.title) + ' » — ' + gap + ' min (minimum ' + p.minutes + ')' });
+            }
+          }
+          last[a.key] = i;
+        });
+      });
+      return { alerts };
+    }
+  },
+  dailyCheckHourRule('fit', 'Fit Score'),
+  dailyCheckHourRule('pot', 'Pot Score'),
+  dailyCheckHourRule('fam', 'Fam Score')
+];
+
+function dailyCheckLoadSettings(){
+  let all = {};
+  try{ all = JSON.parse(localStorage.getItem(DAILY_CHECK_KEY) || '{}') || {}; }catch(e){}
+  return all[dailyProgStation()] || {};
+}
+function dailyCheckRuleConf(rule){
+  const c = dailyCheckLoadSettings()[rule.id] || {};
+  const params = {};
+  rule.params.forEach(pa => { const v = c.params && c.params[pa.id]; params[pa.id] = (v === undefined || v === null || isNaN(v)) ? pa.def : +v; });
+  return { enabled: c.enabled !== false, params };
+}
+function dailyCheckSaveSettings(conf){
+  let all = {};
+  try{ all = JSON.parse(localStorage.getItem(DAILY_CHECK_KEY) || '{}') || {}; }catch(e){}
+  all[dailyProgStation()] = conf;
+  try{ localStorage.setItem(DAILY_CHECK_KEY, JSON.stringify(all)); }catch(e){}
+}
+function dailyCheckFlagsFor(date){ return dailyCheckFlags.date === date ? dailyCheckFlags : { items:{}, hours:{} }; }
+
+/** Lance le check sur la journée affichée et ouvre le rapport. */
+function dailyCheckRun(){
+  const day = dailyProgCurrentDay();
+  if(!day){ showToast('Aucune journée affichée', 'err'); return; }
+  const results = DAILY_CHECK_RULES.map(rule => {
+    const conf = dailyCheckRuleConf(rule);
+    if(!conf.enabled) return { rule, conf, disabled:true, alerts:[] };
+    let r = { alerts:[] };
+    try{ r = rule.run(day, conf.params) || r; }catch(e){ console.warn('Check — ' + rule.id, e); r = { alerts:[], note:'Erreur pendant le contrôle.' }; }
+    return Object.assign({ rule, conf }, r);
+  });
+  // Repères dans le conducteur
+  const flags = { date: day.date, items:{}, hours:{} };
+  results.forEach(r => r.alerts.forEach(a => {
+    if(a.items && a.items.length) a.items.forEach(i => (flags.items[i] = flags.items[i] || []).push(r.rule.label + ' : ' + a.text));
+    else if(a.hour !== undefined) (flags.hours[a.hour] = flags.hours[a.hour] || []).push(r.rule.label.replace('Heure sous la moyenne du jour — ', '') + ' : ' + a.text);
+  }));
+  dailyCheckFlags = flags;
+  renderDailyProgPage().then(() => dailyCheckShowReport(day, results));
+}
+function dailyCheckClose(){ const m = document.getElementById('dailyCheckModal'); if(m) m.remove(); }
+function dailyCheckShowReport(day, results){
+  dailyCheckClose();
+  const total = results.reduce((n, r) => n + r.alerts.length, 0);
+  const ov = document.createElement('div');
+  ov.id = 'dailyCheckModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,29,58,.5);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('click', e => { if(e.target === ov) dailyCheckClose(); });
+  const section = r => {
+    const head = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:13.5px;font-weight:800;color:var(--navy)">${r.rule.icon} ${escHtml(r.rule.label)}</span>
+        ${r.disabled ? '<span style="font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:var(--bg);color:var(--muted)">désactivée</span>'
+          : r.alerts.length ? `<span style="font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:#FEF3C7;color:#B45309">⚠ ${r.alerts.length} alerte${r.alerts.length > 1 ? 's' : ''}</span>`
+          : '<span style="font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:#E6F6EC;color:#1E7A3C">✓ OK</span>'}
+        <span style="font-size:10.5px;color:var(--muted)">${escHtml(r.rule.params.map(pa => pa.label + ' : ' + r.conf.params[pa.id]).join(' · '))}</span>
+      </div>
+      ${r.note ? `<div style="font-size:11px;color:var(--text2);margin-top:3px">${escHtml(r.note)}</div>` : ''}`;
+    const list = r.alerts.map(a => {
+      const target = a.items && a.items.length ? `dailyCheckGoto(${a.items[a.items.length - 1]}, null)` : `dailyCheckGoto(null, ${a.hour})`;
+      return `<div onclick="${target}" title="Afficher dans le conducteur" style="cursor:pointer;font-size:12px;color:var(--text2);padding:7px 10px;border-radius:8px;border:1px solid #FDE68A;background:#FFFBEB;margin-top:5px" onmouseenter="this.style.background='#FEF3C7'" onmouseleave="this.style.background='#FFFBEB'">⚠ ${escHtml(a.text)}</div>`;
+    }).join('');
+    return `<div style="padding:12px 0;border-top:1px solid var(--border)">${head}${list}</div>`;
+  };
+  ov.innerHTML = `<div style="background:var(--white);border-radius:16px;width:100%;max-width:720px;max-height:90vh;overflow:auto;padding:22px;box-shadow:0 20px 60px rgba(11,29,58,.3)">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy)">✅ Check — ${escHtml(dailyProgDateLabel(day.date))}</div>
+        <div style="font-size:12px;margin-top:4px;font-weight:700;color:${total ? '#B45309' : '#1E7A3C'}">${total ? '⚠ ' + total + ' alerte' + (total > 1 ? 's' : '') + ' — repérées en orange dans le conducteur' : '✓ Aucune alerte sur cette journée'}</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn-ghost" onclick="dailyCheckOpenSettings()" style="font-size:11px;padding:6px 10px">⚙ Règles</button>
+        <button onclick="dailyCheckClose()" aria-label="Fermer" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+      </div>
+    </div>
+    <div style="margin-top:12px">${results.map(section).join('')}</div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+/** Depuis le rapport : sélectionne le titre (ou l'heure) dans le conducteur. */
+function dailyCheckGoto(i, hour){
+  dailyCheckClose();
+  if(i !== null && i !== undefined){
+    dailyProgSelect_(i, false);
+    const row = document.getElementById('dpRow_' + i);
+    if(row) row.scrollIntoView({ block:'center', behavior:'smooth' });
+  } else if(hour !== null && hour !== undefined){
+    dailyProgOpenHour(hour);
+  }
+}
+function dailyCheckClearFlags(){ dailyCheckFlags = { date:null, items:{}, hours:{} }; renderDailyProgPage(); }
+
+/* ── Réglage des règles ────────────────────────────────────────────── */
+function dailyCheckOpenSettings(){
+  const box = document.querySelector('#dailyCheckModal > div');
+  if(!box) return;
+  box.innerHTML = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
+      <div>
+        <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy)">⚙ Règles du Check · ${escHtml(dailyProgStationLabel(dailyProgStation()))}</div>
+        <div style="font-size:11.5px;color:var(--text2);margin-top:3px">Activez / désactivez chaque règle et ajustez ses seuils. Réglages propres à chaque station.</div>
+      </div>
+      <button onclick="dailyCheckClose()" aria-label="Fermer" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+    </div>
+    ${DAILY_CHECK_RULES.map(rule => {
+      const c = dailyCheckRuleConf(rule);
+      return `<div data-rule="${rule.id}" style="border:1.5px solid var(--border);border-radius:12px;padding:12px;margin-top:10px">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:800;color:var(--navy);cursor:pointer">
+          <input type="checkbox" data-enabled ${c.enabled ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--navy)"> ${rule.icon} ${escHtml(rule.label)}
+        </label>
+        <div style="font-size:11px;color:var(--text2);margin:4px 0 8px 24px">${escHtml(rule.description)}</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-left:24px">${rule.params.map(pa => `<label style="font-size:10.5px;font-weight:700;color:var(--muted)">${escHtml(pa.label)}
+          <input type="number" data-param="${pa.id}" value="${c.params[pa.id]}" step="${pa.step}" min="${pa.min}" style="display:block;width:120px;margin-top:3px;font-size:13px;padding:6px 8px;border-radius:7px"></label>`).join('')}</div>
+      </div>`;
+    }).join('')}
+    <div style="display:flex;justify-content:space-between;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn-ghost" onclick="dailyCheckResetSettings()" style="font-size:12px;padding:9px 14px">⟲ Valeurs par défaut</button>
+      <button class="btn-primary" onclick="dailyCheckSaveFromForm()" style="font-size:12px;padding:9px 16px;border-radius:9px">Enregistrer et relancer le Check</button>
+    </div>`;
+}
+function dailyCheckSaveFromForm(){
+  const conf = {};
+  document.querySelectorAll('#dailyCheckModal [data-rule]').forEach(el => {
+    const params = {};
+    el.querySelectorAll('[data-param]').forEach(inp => { const v = parseFloat(inp.value); if(!isNaN(v)) params[inp.dataset.param] = v; });
+    conf[el.dataset.rule] = { enabled: el.querySelector('[data-enabled]').checked, params };
+  });
+  dailyCheckSaveSettings(conf);
+  dailyCheckRun();
+}
+function dailyCheckResetSettings(){ dailyCheckSaveSettings({}); dailyCheckOpenSettings(); }
 
 /* ══════════════════════════════════════════════════════════════════════
    SYNCHRONISATION : Gmail → Drive → tous les postes
