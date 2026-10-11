@@ -254,7 +254,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   #pageUpload h1{font-size:28px!important}
 
   /* ── HEADER ─────────────────────────────────────────────────────────── */
-  #appHeader{height:var(--m-hdr)!important;padding:0 10px!important;gap:8px!important;padding-top:env(safe-area-inset-top,0px)!important;box-sizing:content-box!important}
+  #appHeader{height:56px!important;padding:0 10px!important;gap:8px!important;padding-top:env(safe-area-inset-top,0px)!important;box-sizing:content-box!important}
   #appHeader > div:first-child{gap:8px!important;min-width:0;flex-shrink:1!important}
   #appHeader > div:first-child > :not(:first-child){display:none!important}
   #appHeader > div:first-child > div:first-child{gap:8px!important}
@@ -327,14 +327,39 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   #decisionSubTabs::-webkit-scrollbar{display:none}
   .dec-group-btn{flex-shrink:0;white-space:nowrap}
 
-  /* Menus déroulants de groupes : positionnés en fixe par le script pour
-     ne jamais être rognés par une barre défilante horizontale. */
-  .dec-group-menu.m-menu-fixed{
-    position:fixed!important;top:var(--m-mt,120px)!important;left:var(--m-ml,8px)!important;right:auto!important;
-    width:var(--m-mw,auto);max-width:calc(100vw - 16px)!important;max-height:var(--m-mh,60vh)!important;overflow-y:auto!important;
-    border-radius:12px!important;z-index:460!important;box-shadow:0 14px 40px rgba(11,29,58,.25)!important;
-  }
+  /* Menus déroulants de groupes : présentés dans une feuille en bas
+     d'écran (#mMenuSheet, construite par le script) ; l'original est masqué. */
+  html.fpa-m .dec-group-menu{display:none!important}
+  #mMenuSheet{position:fixed;inset:0;z-index:470}
+  #mMenuSheet .m-ms-back{position:absolute;inset:0;background:rgba(11,29,58,.35)}
+  #mMenuSheet .m-ms-list{position:absolute;left:0;right:0;bottom:calc(var(--m-tab) + var(--m-safe-b));max-height:62vh;overflow-y:auto;background:var(--white);border-radius:18px 18px 0 0;box-shadow:0 -10px 30px rgba(11,29,58,.2);padding:8px 10px 10px}
+  #mMenuSheet .m-ms-head{font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--navy);padding:8px 8px 10px;border-bottom:1.5px solid var(--border);margin-bottom:4px;position:sticky;top:-8px;background:var(--white)}
+  #mMenuSheet .m-ms-head::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 8px}
+  #mMenuSheet .m-ms-label{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:10px 10px 4px}
+  #mMenuSheet .m-ms-item{display:flex;align-items:center;gap:10px;width:100%;min-height:46px;padding:10px 12px;border:none;border-radius:10px;background:none;font-size:14.5px;font-weight:700;color:var(--navy);text-align:left;cursor:pointer}
+  #mMenuSheet .m-ms-item:active,#mMenuSheet .m-ms-item.active{background:var(--cyan-light)}
+  #mMenuSheet .m-ms-item.active{box-shadow:inset 3px 0 0 var(--cyan)}
+  #mMenuSheet .m-ms-item img,#mMenuSheet .m-ms-item svg{max-height:22px;width:auto}
   .dec-subtab-item{padding:12px 14px!important;font-size:14px!important;min-height:44px}
+
+
+  /* ── FICHE SONG METRICS : en-tête mis en page explicitement ─────────── */
+  #tevHeader{padding:10px 14px 12px!important}
+  #tevLogosRow{flex-wrap:nowrap!important;gap:8px!important;justify-content:space-between!important;padding-bottom:8px!important;margin-bottom:8px!important;overflow:hidden}
+  #tevLogosRow > *{flex-shrink:1;min-width:0}
+  #tevLogosRow img{max-height:22px!important;width:auto!important}
+  #tevHeader > div:nth-child(2){font-size:12px!important;letter-spacing:.22em!important;margin-bottom:10px!important}
+  #tevHeader > div:nth-child(3){flex-direction:column!important;align-items:stretch!important;gap:10px!important;flex-wrap:nowrap!important}
+  #tevHeader > div:nth-child(3) > div:first-child{display:flex!important;flex-direction:row!important;align-items:center!important;gap:12px!important;width:100%!important;min-width:0!important;flex-wrap:nowrap!important}
+  #tevCoverWrap{width:72px!important;height:72px!important;flex:0 0 72px!important}
+  #tevHeader > div:nth-child(3) > div:first-child > div:last-child{flex:1 1 auto!important;min-width:0!important;max-width:none!important}
+  #tevTitle{font-size:17px!important;white-space:normal!important;overflow-wrap:anywhere;min-width:0!important;max-width:none!important}
+  #tevArtist{font-size:12.5px!important}
+  #tevHeader > div:nth-child(3) > div:first-child > div:last-child > div{flex-wrap:wrap!important}
+  #tevHeader > div:nth-child(3) > div:last-child{width:100%!important;justify-content:flex-start!important;flex-wrap:nowrap!important;gap:6px!important;position:relative!important}
+  #tevNavWrap{margin-right:auto!important}
+  #tevNavWrap > button{width:36px!important;height:36px!important}
+  #tevShareBtn{height:36px!important}
 
   /* ── MODALES : « feuilles » qui montent du bas ──────────────────────── */
   .m-modal{padding:0!important;align-items:flex-end!important;justify-content:stretch!important}
@@ -388,6 +413,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
 /* Petits téléphones (≤ 380 px) : on resserre encore */
 @media (max-width: 380px){
+  #tevLogosRow img{max-height:17px!important}
+  #tevLogosRow{gap:6px!important}
   #appHeader div[style*="font-size:17px"]{font-size:13.5px!important}
   #appHeader #headerTabsRow > button,#appHeader #headerTabsRow #datasTabBtn{min-width:44px;padding:2px 3px!important}
   #appHeader #headerTabsRow > button::after,#appHeader #headerTabsRow #datasTabBtn::after{font-size:9px}
@@ -44236,7 +44263,7 @@ mktInitTabs();
 
   /* ── 6. Balayage des débordements restants ─────────────────────────── */
   function inScroller(el){
-    return !!el.closest('.m-hscroll,.m-row-self,.m-row-in,.m-tblock,#headerTabsRow,.dec-group-menu,#decisionSubTabs,[data-m-scroll]');
+    return !!el.closest('.m-hscroll,.m-row-self,.m-row-in,.m-tblock,#headerTabsRow,.dec-group-menu,#decisionSubTabs,[data-m-scroll],#tevHeader');
   }
   function sweep(roots){
     var W = vw(), changed = 0;
@@ -44258,7 +44285,7 @@ mktInitTabs();
     // Rangées flex où un bloc de texte se retrouve écrasé (< 80 px) par ses voisins
     scopes.forEach(function(root){
       root.querySelectorAll('[style*="display:flex"],[style*="display: flex"]').forEach(function(p){
-        if(p.classList.contains('m-wrap') || inScroller(p) || p.closest('#appHeader')) return;
+        if(p.classList.contains('m-wrap') || inScroller(p) || p.closest('#appHeader,#tevHeader')) return;
         if(p.children.length < 2) return;
         var cs = getComputedStyle(p);
         if(cs.flexWrap !== 'nowrap' || cs.flexDirection.indexOf('row') !== 0) return;
@@ -44300,7 +44327,7 @@ mktInitTabs();
         // Cas A : l'élément tient en largeur mais déborde parce qu'il est poussé
         // dans une rangée flex qui ne passe pas à la ligne
         if(pcs && pcs.display.indexOf('flex') >= 0 && pcs.flexDirection.indexOf('row') === 0 && pcs.flexWrap === 'nowrap' && r.width < pr.width){
-          if(p.closest('#appHeader')) { skipUntil = el; continue; }
+          if(p.closest('#appHeader,#tevHeader')) { skipUntil = el; continue; }
           // éléments rétrécissables (texte) : on les laisse se réduire d'abord
           if(el.children.length === 0 && el.textContent.trim() && cs.flexShrink !== '0' && r.width > 60 && !el.classList.contains('m-flexshrink')){
             addCls(el,'m-flexshrink'); addCls(el,'m-fitw-text'); changed++; continue;
@@ -44344,23 +44371,81 @@ mktInitTabs();
     });
   }
 
-  /* ── 8. Menus déroulants de groupes en position fixe ───────────────── */
-  function placeMenus(){
-    var W = vw(), H = window.innerHeight;
-    document.querySelectorAll('.dec-group-menu').forEach(function(menu){
-      if(menu.style.display === 'none' || !menu.parentElement){ rmCls(menu,'m-menu-fixed'); return; }
-      var anchor = menu.parentElement.getBoundingClientRect();
-      if(anchor.width === 0 && anchor.height === 0) return;
-      addCls(menu,'m-menu-fixed');
-      var mw = Math.min(Math.max(menu.scrollWidth, 220), W - 16);
-      var left = Math.min(Math.max(8, anchor.left), W - mw - 8);
-      var top = anchor.bottom + 4;
-      var tabTop = (document.getElementById('headerTabsRow') || {getBoundingClientRect:function(){return {top:H};}}).getBoundingClientRect().top;
-      setVar(menu,'--m-ml', left+'px');
-      setVar(menu,'--m-mt', top+'px');
-      setVar(menu,'--m-mw', mw+'px');
-      setVar(menu,'--m-mh', Math.max(160, tabTop - top - 10)+'px');
+  /* ── 8. Menus déroulants de groupes → « feuille » en bas d'écran ─────
+     Sur téléphone, les menus des barres Classements / Décision étaient
+     rognés par la barre défilante qui les contient (Safari iOS notamment).
+     Le menu d'origine reste piloté par l'application (ouverture,
+     fermeture, état actif) mais il est masqué ; son contenu est présenté
+     dans une feuille posée au-dessus de la barre de navigation, et chaque
+     choix y est transmis au bouton d'origine. */
+  var sheetFor = null, lastOpened = null;
+  function menuOpen(m){ return !!(m && m.isConnected && m.style.display && m.style.display !== 'none'); }
+  function menuLabel(menu){
+    var g = menu.parentElement, btn = g && g.querySelector('.dec-group-btn, button');
+    var t = btn ? (btn.textContent || '').replace(/\s+/g, ' ').trim() : '';
+    return t || 'Menu';
+  }
+  function closeMenu(menu){
+    if(!menuOpen(menu)) return;
+    menu.style.display = 'none';
+    var g = menu.parentElement;
+    if(g){
+      var ch = g.querySelector('.dec-group-chevron'); if(ch) ch.style.transform = '';
+      var b = g.querySelector('.dec-group-btn'); if(b) b.classList.remove('open');
+    }
+  }
+  function removeSheet(){
+    var s = document.getElementById('mMenuSheet');
+    if(s) s.remove();
+    sheetFor = null;
+  }
+  function buildSheet(menu){
+    removeSheet();
+    sheetFor = menu;
+    var wrap = document.createElement('div');
+    wrap.id = 'mMenuSheet';
+    var list = document.createElement('div');
+    list.className = 'm-ms-list';
+    var head = document.createElement('div');
+    head.className = 'm-ms-head';
+    head.textContent = menuLabel(menu);
+    list.appendChild(head);
+    Array.prototype.forEach.call(menu.children, function(child){
+      if(child.style.display === 'none') return;
+      var clickable = child.matches('button, a, [onclick], .dec-subtab-item');
+      if(clickable){
+        var it = document.createElement('button');
+        it.type = 'button';
+        it.className = 'm-ms-item' + (child.classList.contains('active') ? ' active' : '');
+        it.innerHTML = child.innerHTML;
+        it.addEventListener('click', function(ev){
+          ev.stopPropagation();
+          removeSheet();
+          child.click();                                        // action d'origine (onglet, classement…)
+          setTimeout(function(){ closeMenu(menu); window.scrollTo(0, 0); schedule(80); }, 0);
+        });
+        list.appendChild(it);
+      } else if((child.textContent || '').trim()){
+        var lab = document.createElement('div');
+        lab.className = 'm-ms-label';
+        lab.textContent = child.textContent.trim();
+        list.appendChild(lab);
+      }
     });
+    var back = document.createElement('div');
+    back.className = 'm-ms-back';
+    back.addEventListener('click', function(ev){ ev.stopPropagation(); closeMenu(menu); removeSheet(); });
+    wrap.appendChild(back);
+    wrap.appendChild(list);
+    document.body.appendChild(wrap);
+  }
+  function placeMenus(){
+    if(!MQ.matches){ removeSheet(); return; }
+    var open = Array.prototype.filter.call(document.querySelectorAll('.dec-group-menu'), menuOpen);
+    if(!open.length){ removeSheet(); return; }
+    var target = (lastOpened && open.indexOf(lastOpened) >= 0) ? lastOpened : open[open.length - 1];
+    open.forEach(function(m){ if(m !== target) closeMenu(m); });     // un seul menu à la fois
+    if(sheetFor !== target || !document.getElementById('mMenuSheet')) buildSheet(target);
   }
 
   /* ── Orchestration ─────────────────────────────────────────────────── */
@@ -44376,7 +44461,7 @@ mktInitTabs();
       fixTables(roots); flush();
       fixCharts(roots); flush();
       for(var k=0;k<4;k++){ sweep(roots); if(!flush()) break; }
-      placeMenus(); flush();
+      placeMenus();
     }catch(e){ if(window.console) console.warn('[FPA mobile]', e); }
     if(mo) mo.takeRecords();     // ignore nos propres modifications
     running = false;
@@ -44402,7 +44487,10 @@ mktInitTabs();
         relevant = true;
         if(m.type === 'attributes'){
           var t = m.target;
-          if(m.attributeName === 'style' && t.classList && t.classList.contains('dec-group-menu')){ placeMenus(); flush(); }
+          if(m.attributeName === 'style' && t.classList && t.classList.contains('dec-group-menu')){
+            if(menuOpen(t)) lastOpened = t;
+            placeMenus(); mo.takeRecords();
+          }
         }
       }
       if(relevant) schedule();
@@ -44410,8 +44498,7 @@ mktInitTabs();
     mo.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['style','class']});
     window.addEventListener('resize', function(){ schedule(80); });
     window.addEventListener('orientationchange', function(){ schedule(250); });
-    window.addEventListener('scroll', function(){ if(document.querySelector('.dec-group-menu.m-menu-fixed')){ placeMenus(); flush(); } }, true);
-    document.addEventListener('click', function(){ setTimeout(function(){ placeMenus(); flush(); }, 0); schedule(120); }, true);
+    document.addEventListener('click', function(){ setTimeout(placeMenus, 0); schedule(120); }, true);
     if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ schedule(0); });
     window.addEventListener('load', function(){ schedule(0); });
     schedule(0);
