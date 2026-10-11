@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, viewport-fit=cover">
 <title>FPA — Fit Point Analyzer</title>
 <link rel="icon" type="image/png" sizes="16x16" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAABlElEQVQ4jY2TTUsbURSGn3Nn0rgqFmlwZ8QuxIJuBBuyLhjGX1GKKNgu1J8RN91JFVy5cNtIm01n0ZamIHQjWKF+RAJuXLRk4QQz97iYSabNJMGzuXDue5/3PYcZGFa+7+L77jCJpDofv+cR2QQ8YCLuXoIeEtoyXrE+GFCtLaPyDjQ7wDAAfcNiYScNqNZeoewOi9stlRVKC9sJoPpjEuUk5Xx3B64DYtJJwnAar1iPbtSu9z429QaPDj5gGtf9MozgOusAMVqW/r11Ts/I+F+RVovM5y+Y0zOcn8eYq0YisixFIxwdZbhpBwkMsrv7YC04DjiCYhAjtOdmCGefJ4jsbdbQbOrwjQ0sjRIAfKpdAPnuCL9+I6FFRSNJfNrcU3TsSef5OaUXU/FXphWQtQ4gnH4WbebPX0DQ0cdpf0OF7tyhLQNBr0aCFhKk2gABxt1KAF6xjupqr8qO57DjuX7jv+Xl/FUCACgV9kCX+yX5z1nlNYuF992UKcnhtwmMuwHqIfFilUsMFYy71XF+WD3gd74HPIqF235VsH8AAAAASUVORK5CYII=">
 <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAC/UlEQVRYhdWXTUhUURiGn+/mODr+Za1KzTZRuwgi86eFi5wpCndRCAUFRkEQBFGuWhjRIrcFRUWLgnb9QI1moaJT4MZFRAWRv1AiE5Uzo6P3a+GMM+PMvc7VsejdnHvP+b73fe/hnvOdA/81nveV87yvfDUUknWkf6gIM+RFpBmlAWEzUBAbjaBMgPYBTzE8frw7p3Nj4PH7fEp/nQGuAOuztPsb1Rv80uscqQuv3MCLtw0Ij4DKLIWXYhRDj9FU228VYFim+gMtCF2rEAeowpTX+N+etArIPAP+dydQvb8K4QzQVny1t5c30BmoxzS6Qd25NUAU09zPwboeawOPBwopNT6xumm3gY7gjmynsTES70n9B0qM81mLqyKTUzA768CAbCHiOZfckzDgHypCuJg11VQQT9tV8gaHHBgARC/zbNCTbkDDPrJY5zI5RUHHLYzRCWfCCZSTP9+UbgCas8mWUJh1Hz4hvxc2OonOUdR6AVd372LMus9fML5NWpOoLmolzQD1dsLG1xEK2zswvi8lNkEVTEWmgkgkgvvmPfJe9WbkiaEh3YDBJrsMCUUwhsdgJmoZ42lrx/XyjR1NjIyKVAMvBzagFC6fmSMohfEqumBgbl7/mngcRcWaMHBoXxDBtmrlGCEad/1IGABQsV1X6inArK6EYs9CW1KMWV2JGWu1rARzaxVmeRlmVQW60facMh5/SGzFLwL3ETmx0k9yiLv49p6ClH3AePKXxEF1UStpGRZ0Aj+c8Li6enB19SwfmIogc65X6Qa8O6dBrjlhMkbGMEbGlw9MxVUO7w7FXzKV449AlVPWLDGMO7zDuhwfqQsj5lGQmTUQjyLG8WTxdAMA3roBoDX3+noW7560ApH5UOqreQDSAkQyjjuCzAAn8dXeyThqm9sZqMfkIciWFaoPo3KMAzUBqwDrYzlAU20/P0u3IZwGsSnwaQiCXsId3mEnDk6uZs8GPeTPN8UOEw0IFYsVVAijjAN9wBOieV3JS23tkIPL6T/HH24w7Ylrqk+OAAAAAElFTkSuQmCC">
@@ -192,6 +192,206 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 .fpa-row, tbody tr > td { transition: box-shadow .12s ease; }
 .fpa-row:hover, tbody tr:hover > td { box-shadow: inset 0 0 0 100vmax rgba(11,29,58,.045); }
 @media (prefers-reduced-motion: reduce) { .fpa-row, tbody tr > td { transition: none; } }
+</style>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     COUCHE MOBILE FPA — v1
+     Tout ce bloc est enfermé dans une media query « téléphone » : sur un
+     écran d'ordinateur, AUCUNE de ces règles ne s'applique et le rendu
+     Desktop reste strictement identique. Le script « FPA Mobile » en fin de
+     fichier complète ces règles pour le contenu généré dynamiquement.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style id="fpaMobileCss">
+/* Bouton « Accueil » de la barre mobile : n'existe qu'en mobile */
+#mHomeBtn{display:none}
+
+@media (max-width: 760px), (max-height: 500px) and (max-width: 1000px) and (orientation: landscape){
+  :root{
+    --m-hdr:56px;          /* hauteur du header mobile */
+    --m-sub:48px;          /* hauteur du sous-header de la page ouverte (mesurée en JS) */
+    --m-tab:60px;          /* hauteur de la barre de navigation basse */
+    --m-safe-b:env(safe-area-inset-bottom, 0px);
+  }
+  html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+  body{padding-bottom:calc(var(--m-tab) + var(--m-safe-b));overscroll-behavior-y:none}
+  img,canvas,video{max-width:100%}
+  /* iOS zoome sur tout champ < 16px au focus : on l'évite */
+  input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{font-size:16px!important}
+  button,label,a,select{touch-action:manipulation}
+
+
+  /* ── PREMIER AFFICHAGE SANS ATTENDRE LE SCRIPT ──────────────────────────
+     Safari iOS fixe le zoom de la page dès le premier rendu : si la page est
+     plus large que l'écran à cet instant, il « dézoome » tout et n'y revient
+     pas. Ces règles purement CSS garantissent une page à la bonne largeur
+     dès le départ (le script affine ensuite). */
+  html{overflow-x:hidden;overflow-x:clip}
+  #app{max-width:100vw}
+  [style*="grid-template-columns:1fr 1.05fr"],
+  [style*="grid-template-columns:repeat(3,1fr)"],
+  [style*="grid-template-columns:1fr 1fr 1fr"],
+  [style*="grid-template-columns:1.3fr 1fr 0.8fr"],
+  [style*="grid-template-columns:repeat(3,minmax(240px,1fr))"],
+  [style*="grid-template-columns:repeat(3, minmax(0, 1fr))"],
+  [style*="grid-template-columns:repeat(auto-fit,minmax(380px,1fr))"],
+  [style*="grid-template-columns:repeat(auto-fit,minmax(360px,1fr))"]{grid-template-columns:minmax(0,1fr)!important}
+  [style*="grid-template-columns:repeat(4,1fr)"],
+  [style*="grid-template-columns:repeat(5,1fr)"],
+  [style*="grid-template-columns:repeat(4, minmax(0, 1fr))"],
+  [style*="grid-template-columns:repeat(5, minmax(0, 1fr))"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  [style*="grid-template-columns:1fr 1.05fr"]{gap:22px!important}
+  [style*="gap:40px"]{gap:20px!important}
+  [style*="padding:40px 40px 36px"],[style*="padding:28px 40px 60px"],[style*="padding:0 40px"],
+  [style*="padding:48px 40px"],[style*="padding:40px 40px"],[style*="padding:32px 40px 40px"],
+  [style*="padding:40px;"],[style*="padding:40px\""]{padding-left:14px!important;padding-right:14px!important}
+  [style*="padding:40px 40px 36px"],[style*="padding:48px 40px"],[style*="padding:32px 40px 40px"]{padding-top:24px!important;padding-bottom:24px!important}
+  [style*="padding:28px;border-radius:16px"]{padding:20px!important}
+  [style*="display:inline-flex"][style*="border-radius:24px"]{flex-wrap:wrap;max-width:100%;row-gap:4px}
+  [style*="min-width:280px"],[style*="min-width:260px"],[style*="min-width:230px"]{min-width:0!important}
+  [style*="flex-shrink:0;flex-wrap:wrap"]{flex-shrink:1!important;max-width:100%!important;min-width:0!important}
+  [style*="justify-content:space-between;flex-wrap:wrap"] > [style^="display:flex;gap:8px"]{flex-wrap:wrap;max-width:100%}
+  [style*="display:flex;gap:6px;"][style*="border-bottom:1.5px solid var(--border)"]{overflow-x:auto;overflow-y:hidden;scrollbar-width:none;max-width:100%}
+  [style*="display:flex;gap:6px;"][style*="border-bottom:1.5px solid var(--border)"] > *{flex-shrink:0}
+  #pageUpload h1{font-size:28px!important}
+
+  /* ── HEADER ─────────────────────────────────────────────────────────── */
+  #appHeader{height:var(--m-hdr)!important;padding:0 10px!important;gap:8px!important;padding-top:env(safe-area-inset-top,0px)!important;box-sizing:content-box!important}
+  #appHeader > div:first-child{gap:8px!important;min-width:0;flex-shrink:1!important}
+  #appHeader > div:first-child > :not(:first-child){display:none!important}
+  #appHeader > div:first-child > div:first-child{gap:8px!important}
+  #appHeader svg[aria-label="Fit Point Analyzer"]{width:32px!important;height:32px!important}
+  #appHeader div[style*="font-size:17px"]{font-size:15px!important;white-space:nowrap}
+  #appHeader div[style*="font-size:9px"]{display:none!important}
+  #steps{display:none!important}
+  #headerFixedControls{gap:6px!important;margin-left:auto}
+  #headerFixedControls > div[style*="width:1px"]{display:none!important}
+  #stationToggleBtn{font-size:11.5px!important;padding:7px 10px!important;min-height:34px}
+  #stationToggleBtn > svg{display:none}
+  #fpaRoleBadge{font-size:0!important;padding:0!important;width:32px;height:32px;display:inline-flex!important;align-items:center;justify-content:center;border-radius:50%!important}
+  #fpaRoleBadge::after{content:attr(data-m-emoji);font-size:15px}
+  #headerFixedControls > button[onclick="fpaLogout()"]{min-width:34px;min-height:34px;font-size:14px!important;padding:0!important}
+
+  /* ── BARRE DE NAVIGATION BASSE (les onglets du header) ──────────────── */
+  #headerTabsRow{
+    position:fixed!important;left:0;right:0;bottom:0;z-index:450;
+    height:calc(var(--m-tab) + var(--m-safe-b));
+    padding:5px 4px calc(5px + var(--m-safe-b))!important;
+    background:var(--white);
+    border-top:1.5px solid var(--border);
+    box-shadow:0 -4px 18px rgba(11,29,58,.08);
+    gap:1px!important;justify-content:flex-start;align-items:stretch!important;
+    overflow-x:auto;overflow-y:hidden;scrollbar-width:none;
+  }
+  #headerTabsRow::-webkit-scrollbar{display:none}
+  #headerTabsRow > div[style*="width:1px"]{display:none!important}
+  #appHeader #headerTabsRow > button,
+  #appHeader #headerTabsRow #datasTabBtn{
+    flex:1 0 auto!important;min-width:0;height:100%;
+    flex-direction:column!important;justify-content:center;align-items:center!important;gap:3px!important;
+    padding:2px 3px!important;border:none!important;border-radius:10px!important;
+    font-size:0!important;line-height:1;position:relative;
+  }
+  #appHeader #headerTabsRow > button:not([style*="display:none"]):not([style*="display: none"]){display:flex!important}
+  #headerTabsRow > button[style*="display:none"],
+  #headerTabsRow > button[style*="display: none"]{display:none!important}
+  #appHeader #headerTabsRow > button > svg:first-child,
+  #appHeader #headerTabsRow #datasTabBtn > svg:first-child{width:20px!important;height:20px!important;flex-shrink:0}
+  #headerTabsRow #datasTabBtn > svg:last-of-type{display:none}
+  #appHeader #headerTabsRow > button::after,
+  #appHeader #headerTabsRow #datasTabBtn::after{content:attr(data-m-label);font-size:9.5px;font-weight:700;letter-spacing:0;white-space:nowrap}
+  #headerTabsRow #datasDropdownWrap{display:flex!important;flex:1 0 auto}
+  #headerTabsRow #datasTabBtn{width:100%}
+  /* pastilles de compteur : en exposant sur l'icône */
+  #comiteBadge,#playlistBadge,#datasBadge{position:absolute;top:3px;left:calc(50% + 6px);font-size:9px!important}
+  #backBtn::before{content:"←";font-size:18px;font-weight:700;line-height:1}
+  #mHomeBtn{display:flex}
+  #mHomeBtn.m-active{background:var(--cyan-light)!important;color:var(--navy)!important}
+  /* menu « Datas » : s'ouvre AU-DESSUS de la barre basse */
+  #datasDropdownMenu{top:auto!important;bottom:calc(var(--m-tab) + var(--m-safe-b) + 6px)!important;min-width:190px!important}
+  #appHeader #datasDropdownMenu > button{font-size:14px!important;padding:13px 16px!important;min-height:46px}
+
+  /* ── TOAST ──────────────────────────────────────────────────────────── */
+  #toast{left:12px!important;right:12px!important;bottom:calc(var(--m-tab) + var(--m-safe-b) + 10px)!important;font-size:13px!important}
+
+  /* ── SOUS-HEADERS STICKY DES PAGES ──────────────────────────────────── */
+  .m-subhdr{top:var(--m-hdr)!important;padding-left:12px!important;padding-right:12px!important;height:auto!important;min-height:48px;flex-wrap:wrap!important;row-gap:6px!important;column-gap:8px!important}
+  .m-subhdr.m-subhdr-scroll{flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden;scrollbar-width:none;padding-top:6px!important;padding-bottom:6px!important}
+  .m-subhdr.m-subhdr-scroll::-webkit-scrollbar{display:none}
+  .m-subhdr.m-subhdr-scroll > *{flex-shrink:0!important}
+  .m-subhdr.m-subhdr-scroll input{min-width:180px}
+  .m-unstick{position:relative!important;top:auto!important}
+  .m-subhdr.m-subhdr-pad{padding-top:7px!important;padding-bottom:7px!important}
+  .m-subhdr2{top:calc(var(--m-hdr) + var(--m-sub))!important}
+  .m-stick-hdr{top:var(--m-hdr)!important}
+  .m-sticky0{top:0!important}
+  #decisionSubTabs{flex:1 1 100%!important;overflow-x:auto!important;overflow-y:hidden;scrollbar-width:none;min-width:0}
+  #decisionSubTabs::-webkit-scrollbar{display:none}
+  .dec-group-btn{flex-shrink:0;white-space:nowrap}
+
+  /* Menus déroulants de groupes : positionnés en fixe par le script pour
+     ne jamais être rognés par une barre défilante horizontale. */
+  .dec-group-menu.m-menu-fixed{
+    position:fixed!important;top:var(--m-mt,120px)!important;left:var(--m-ml,8px)!important;right:auto!important;
+    width:var(--m-mw,auto);max-width:calc(100vw - 16px)!important;max-height:var(--m-mh,60vh)!important;overflow-y:auto!important;
+    border-radius:12px!important;z-index:460!important;box-shadow:0 14px 40px rgba(11,29,58,.25)!important;
+  }
+  .dec-subtab-item{padding:12px 14px!important;font-size:14px!important;min-height:44px}
+
+  /* ── MODALES : « feuilles » qui montent du bas ──────────────────────── */
+  .m-modal{padding:0!important;align-items:flex-end!important;justify-content:stretch!important}
+  .m-sheet{
+    width:100%!important;max-width:100%!important;min-width:0!important;
+    max-height:calc(100dvh - 24px - env(safe-area-inset-top,0px))!important;
+    overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;
+    border-radius:18px 18px 0 0!important;
+    padding:18px 14px calc(18px + var(--m-safe-b))!important;
+    margin:0!important;
+  }
+  .m-sheet.m-sheet-flex{display:flex!important;flex-direction:column}
+  .m-sheet::before{content:"";display:block;width:40px;height:4px;border-radius:2px;background:var(--border);margin:-8px auto 12px;flex-shrink:0}
+  .m-modal .m-sheet [onclick^="close"][style*="font-size:20px"],
+  .m-modal .m-sheet button[style*="font-size:20px"]{font-size:26px!important;min-width:40px;min-height:40px}
+  #fpaLoginOverlay > div{padding:28px 20px!important}
+
+  /* ── GRILLES ────────────────────────────────────────────────────────── */
+  .m-g1{grid-template-columns:minmax(0,1fr)!important}
+  .m-g2{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .m-gapfix{column-gap:14px!important;row-gap:14px!important}
+  .m-span-reset > *{grid-column:auto!important}
+  /* lignes « tableau » en grille : largeur mini + défilement horizontal synchronisé */
+  .m-row-in{min-width:var(--m-minw)!important;grid-template-columns:var(--m-gtc)!important}
+  .m-row-self{grid-template-columns:var(--m-gtc)!important;overflow-x:auto!important;overflow-y:hidden!important;scrollbar-width:none}
+  .m-row-self::-webkit-scrollbar{display:none}
+  .m-hscroll{overflow-x:auto!important;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain;max-width:100%}
+  .m-tblock{display:block!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;max-width:100%!important}
+  .m-hscroll > table,.m-tblock{-webkit-overflow-scrolling:touch}
+  .m-hscroll th,.m-tblock th{white-space:nowrap}
+
+  /* ── CORRECTIFS GÉNÉRIQUES POSÉS PAR LE SCRIPT ──────────────────────── */
+  .m-padx{padding-left:12px!important;padding-right:12px!important}
+  .m-padx-s{padding-left:14px!important;padding-right:14px!important}
+  .m-pady{padding-top:18px!important}
+  .m-wrap{flex-wrap:wrap!important;row-gap:8px}
+  .m-grow{flex:1 1 100%!important;min-width:0!important}
+  .m-fitw{max-width:100%!important;min-width:0!important}
+  .m-fitw-text{overflow:hidden!important;text-overflow:ellipsis!important}
+  .m-flexshrink{min-width:0!important;flex-shrink:1!important}
+  .m-ch{height:min(var(--m-chh,60vh),60vh)!important}
+  .m-scroll-y{max-height:none!important}
+  .m-hide-sep{display:none!important}
+
+  /* Cartes Overview (Décision) : une seule colonne déjà gérée par .ov-grid */
+  .ov-head{cursor:default}
+
+  /* Tableaux natifs : cibles tactiles un peu plus confortables */
+  td,th{-webkit-tap-highlight-color:rgba(0,184,200,.12)}
+}
+
+/* Petits téléphones (≤ 380 px) : on resserre encore */
+@media (max-width: 380px){
+  #appHeader div[style*="font-size:17px"]{font-size:13.5px!important}
+  #appHeader #headerTabsRow > button,#appHeader #headerTabsRow #datasTabBtn{min-width:44px;padding:2px 3px!important}
+  #appHeader #headerTabsRow > button::after,#appHeader #headerTabsRow #datasTabBtn::after{font-size:9px}
+}
 </style>
 </head>
 <body>
@@ -807,6 +1007,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           <button class="btn-ghost" onclick="overviewResetOrder()" title="Remettre les cartes dans leur ordre d'origine" style="font-size:11.5px;padding:7px 12px">⟲ Disposition d'origine</button>
         </div>
       </div>
+      <div id="healthBarometer"></div>
       <div id="overviewGrid" class="ov-grid"></div>
     </div>
 
@@ -2183,6 +2384,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <input type="file" id="analyseFileInput" accept=".xlsx,.xls" multiple style="display:none" onchange="analyseHandleFiles(this)">
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="analyseTriggerImport()">📥 Importer un ou plusieurs fichiers hebdo</button>
       </div>
+      <div id="dailyProgActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
+        <input type="file" id="dailyProgFileInput" accept=".xls,.xlsx" multiple style="display:none" onchange="dailyProgHandleFiles(this)">
+        <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="dailyProgTriggerImport()">📥 Importer des conducteurs quotidiens</button>
+      </div>
       <div id="digitalAudienceActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <input type="file" id="digitalAudienceFileInput" accept=".pdf" multiple style="display:none" onchange="digitalAudienceHandleFiles(this)">
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="digitalAudienceLoadHistoryFromDrive(true)" title="Recharge l'historique audience digitale depuis Drive Sync">☁️ Synchroniser Drive</button>
@@ -2210,7 +2415,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
     <!-- Sous-onglets Analyse : Programmation musicale vs Audience digitale -->
     <div style="display:flex;gap:6px;margin-bottom:18px;border-bottom:1.5px solid var(--border)">
-      <button id="analyseSubProgBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--navy)" onclick="analyseSetSubView('prog')">📊 Programmation musicale</button>
+      <button id="analyseSubProgBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--navy)" onclick="analyseSetSubView('prog')">📊 Programmation hebdomadaire</button>
+      <button id="analyseSubDailyBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('daily')">🗓️ Programmation quotidienne</button>
       <button id="analyseSubAudienceBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('audience')">🎧 Audience digitale</button>
       <button id="analyseSubMediaBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('media')">📡 Médiamétrie</button>
       <button id="analyseSubGraphBtn" class="btn-ghost" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:8px 8px 0 0;border-bottom:2.5px solid transparent;color:var(--muted)" onclick="analyseSetSubView('graph')">📈 Graphiques</button>
@@ -2219,6 +2425,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
 
     <div id="analyseTargetContainer" style="display:none"></div>
+
+    <div id="analyseDailyContainer" style="display:none"></div>
 
     <div id="analyseProgContainer">
 
@@ -3522,7 +3730,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <!-- Programmation musicale (Analyse) — chargement direct depuis la home, Europe 2 et RFM, avec statut de la dernière semaine connue — même famille qu'Airplay, même accent bleu -->
         <div style="padding:10px 16px;border-radius:14px;background:rgba(255,255,255,.04);border:1.5px solid rgba(255,255,255,.12);border-left:3px solid #3B82F6" class="admin-only">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px">
-            <div style="font-size:12.5px;font-weight:800;color:#fff">📊 Programmation musicale</div>
+            <div style="font-size:12.5px;font-weight:800;color:#fff">📊 Programmation hebdomadaire</div>
             <label style="background:rgba(0,184,200,.15);border:1.5px solid rgba(0,184,200,.35);color:var(--cyan);font-weight:700;font-size:11px;padding:6px 12px;border-radius:8px;cursor:pointer;white-space:nowrap">
               Importer une/des semaine(s)
               <input type="file" accept=".xlsx,.xls" multiple style="display:none" onchange="homeProgTriggerImport(this)">
@@ -11720,7 +11928,7 @@ function fitRetroRenderReport(result){
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
-    <div style="font-size:11px;color:var(--muted);margin-top:10px">Pense ensuite à relancer <b>🔄 Recalculer les scores (semaines archivées)</b> dans l'onglet Analyse → Programmation musicale, pour que ces Fit Score fraîchement reconstruits remontent dans tes semaines déjà importées.</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:10px">Pense ensuite à relancer <b>🔄 Recalculer les scores (semaines archivées)</b> dans l'onglet Analyse → Programmation hebdomadaire, pour que ces Fit Score fraîchement reconstruits remontent dans tes semaines déjà importées.</div>
   `;
 }
 
@@ -13446,6 +13654,13 @@ function analyseSetSubView(view){
     btn.style.borderBottomColor = active ? 'var(--navy)' : 'transparent';
     btn.style.color = active ? '' : 'var(--muted)';
   });
+  // Programmation quotidienne (conducteurs journaliers)
+  const dailyBtn = document.getElementById('analyseSubDailyBtn');
+  if(dailyBtn){ dailyBtn.style.borderBottomColor = view==='daily' ? 'var(--navy)' : 'transparent'; dailyBtn.style.color = view==='daily' ? '' : 'var(--muted)'; }
+  const dailyC = document.getElementById('analyseDailyContainer');
+  if(dailyC) dailyC.style.display = view==='daily' ? 'block' : 'none';
+  const dailyAct = document.getElementById('dailyProgActions');
+  if(dailyAct) dailyAct.style.display = view==='daily' ? 'flex' : 'none';
   if(progC)   progC.style.display   = view==='prog'     ? 'block' : 'none';
   if(audC)    audC.style.display    = view==='audience' ? 'block' : 'none';
   if(corrC)   corrC.style.display   = view==='corr'      ? 'block' : 'none';
@@ -13482,6 +13697,7 @@ function analyseSetSubView(view){
   if(view==='graph') renderGraphPage();
   if(view==='corr') renderCorrPage();
   if(view==='target') renderSearchTargetPage();
+  if(view==='daily' && typeof renderDailyProgPage === 'function') renderDailyProgPage();
 }
 
 function digitalAudienceLoadLocal(){
@@ -21536,6 +21752,10 @@ async function openTevByInfo(info){
     </div>
   </div>`);
 
+  // ── Historique de diffusion (programmation quotidienne, 14 derniers jours) ──
+  try{ if(typeof dailyProgFicheHistoryHtml === 'function') sections.push(await dailyProgFicheHistoryHtml(title, artist)); }
+  catch(e){ console.warn('Fiche — historique de diffusion', e); }
+
   document.getElementById('tevBody').innerHTML = sections.join('');
   updateTevNavUI();
   mbUpdateTevBadge();
@@ -27831,6 +28051,7 @@ function overviewSafeGet(w){
 function renderOverviewPage(){
   const grid = document.getElementById('overviewGrid');
   if(!grid) return;
+  try{ if(typeof renderHealthBarometer === 'function') renderHealthBarometer(); }catch(e){ console.warn('Baromètre santé', e); }
   const seq = ++overviewRenderSeq;
   const byId = Object.fromEntries(OVERVIEW_WIDGETS.map(w => [w.id, w]));
   grid.innerHTML = overviewOrder().map(id => {
@@ -40986,5 +41207,2242 @@ window.addEventListener('message', (event) => {
 })();
 </script>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     ANALYSE → PROGRAMMATION QUOTIDIENNE
+     Import des conducteurs journaliers (.xls « CONDUCTEUR EUROPE 2 … »),
+     nettoyage (seule la musique est conservée), matching FPA de chaque titre
+     et moyennes des scores par heure et par jour.
+     ▸ Ajouter un score = ajouter une entrée dans DAILY_METRICS (+ son calcul
+       dans dailyScoresFor). Tableaux, moyennes et graphique suivent.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style id="fpaDailyProgCss">
+.dp-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
+.dp-row{scroll-margin-top:118px;scroll-margin-bottom:16px;border-left:3px solid transparent}
+.dp-row.dp-sel{background:var(--cyan-light)!important;border-left-color:var(--cyan)}
+.dp-row.dp-sel .dp-title{color:var(--navy)!important}
+.dp-side{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto;background:var(--white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px rgba(11,29,58,.06)}
+.dp-side-close{display:none}
+.dp-hist-grid{min-width:520px;border:1px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff}
+.dp-hist-row{display:grid;align-items:stretch;border-top:1px solid #CBD5E1}
+.dp-hist-head{border-top:none;background:var(--white)}
+.dp-hh{font-size:9.5px;font-weight:800;color:var(--text2);text-align:center;padding:5px 0 4px;font-variant-numeric:tabular-nums}
+.dp-hc{position:relative;height:22px;background:#F4F6FA;border-left:1px solid #DDE3EC}
+.dp-hc-odd{background:#E9EEF5}
+.dp-hc-6{border-left:1.5px solid #8A9AB3}
+.dp-hist-head .dp-hc{height:auto;background:#F4F6FA}
+.dp-hist-head .dp-hc-odd{background:#E9EEF5}
+.dp-hc-on{background:#D9F4F7}
+.dp-hc-on.dp-hc-odd{background:#CBEFF3}
+.dp-hist-day{font-size:10.5px;font-weight:700;color:var(--text2);padding:0 6px;display:flex;align-items:center;white-space:nowrap;background:var(--white)}
+.dp-hist-n{font-size:10.5px;font-weight:800;text-align:right;padding-right:6px;display:flex;align-items:center;justify-content:flex-end;background:var(--white);border-left:1.5px solid #8A9AB3}
+.dp-hist-we .dp-hist-day{color:#7C3AED}
+.dp-hist-sel .dp-hist-day{color:var(--navy);font-weight:800;background:var(--cyan-light)}
+.dp-hist-sel .dp-hist-n{background:var(--cyan-light)}
+.dp-hist-sel{box-shadow:inset 0 0 0 2px var(--cyan);position:relative;z-index:1}
+.dp-hist-off .dp-hc{background:repeating-linear-gradient(135deg,#F4F6FA 0 4px,#fff 4px 8px)}
+.dp-hist-off .dp-hist-day{color:var(--muted)}
+.dp-hist-row:not(.dp-hist-head):hover .dp-hist-day{background:var(--bg)}
+.dp-hist-dot{position:absolute;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:var(--cyan);box-shadow:0 0 0 1.5px #fff;cursor:pointer;transition:transform .1s ease;z-index:1}
+.dp-hist-dot:hover{transform:scale(1.5);z-index:3}
+.dp-hist-dot.dp-cur{background:#E6007E;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;z-index:2}
+@media (max-width: 1000px){
+  .dp-split{grid-template-columns:minmax(0,1fr)}
+  .dp-side{position:fixed;left:0;right:0;bottom:0;top:auto;max-height:78vh;z-index:600;border-radius:18px 18px 0 0;transform:translateY(105%);transition:transform .22s ease;box-shadow:0 -10px 40px rgba(11,29,58,.25)}
+  .dp-side.dp-open{transform:none}
+  .dp-side-close{display:inline-flex}
+}
+.dp-row:hover .dp-title{color:var(--cyan)!important}
+</style>
+<script id="fpaDailyProgJs">
+const DAILY_PROG_KEY = 'fpa_daily_prog_v1';
+let dailyProgStore = null;          // { EUROPE2:{ 'YYYY-MM-DD': day }, RFM:{…} }
+let dailyProgSelected = null;       // date affichée
+let dailyProgScoreMemo = {};        // cache des scores par titre + date
+let dailyProgChart = null;
+let dailyProgOpenHours = {};        // heures dépliées (par date)
+
+/* Scores affichés. kind 'score' : plus haut = mieux ; kind 'rank' : rang (#1 = meilleur). */
+const DAILY_METRICS = [
+  { key:'fit', label:'Fit Score',      short:'Fit',     dec:1, kind:'score' },
+  { key:'pot', label:'Pot Score',      short:'Pot',     dec:1, kind:'score' },
+  { key:'fam', label:'Fam Score',      short:'Fam',     dec:1, kind:'score' },
+  { key:'shz', label:'Shazam France',  short:'Shazam',  dec:0, kind:'rank'  },
+  { key:'spy', label:'Spotify France', short:'Spotify', dec:0, kind:'rank'  },
+  { key:'dz',  label:'Deezer France',  short:'Deezer',  dec:0, kind:'rank'  },
+  { key:'ap',  label:'Airplay (rang général)', short:'Airplay', dec:0, kind:'rank' }
+];
+
+/* ── Stockage (IndexedDB, repli localStorage) ───────────────────────── */
+async function dailyProgLoad(){
+  if(dailyProgStore) return dailyProgStore;
+  let s = null;
+  try{ if(typeof idbGet === 'function') s = await idbGet(DAILY_PROG_KEY); }catch(e){ s = null; }
+  if(!s){ try{ s = JSON.parse(localStorage.getItem(DAILY_PROG_KEY) || 'null'); }catch(e){ s = null; } }
+  dailyProgStore = s && typeof s === 'object' ? s : {};
+  if(!dailyProgStore.EUROPE2) dailyProgStore.EUROPE2 = {};
+  if(!dailyProgStore.RFM) dailyProgStore.RFM = {};
+  return dailyProgStore;
+}
+async function dailyProgSave(){
+  try{
+    if(typeof idbSet === 'function'){ await idbSet(DAILY_PROG_KEY, dailyProgStore); return true; }
+  }catch(e){ /* repli ci-dessous */ }
+  try{ localStorage.setItem(DAILY_PROG_KEY, JSON.stringify(dailyProgStore)); return true; }
+  catch(e){ showToast('⚠ Stockage du navigateur plein : la journée n\'a pas pu être enregistrée.', 'err'); return false; }
+}
+function dailyProgStation(){ return (typeof ACTIVE_STATION !== 'undefined' && ACTIVE_STATION === 'RFM') ? 'RFM' : 'EUROPE2'; }
+function dailyProgStationLabel(st){
+  try{ if(typeof STATION_LABELS !== 'undefined' && STATION_LABELS[st]) return STATION_LABELS[st]; }catch(e){}
+  return st === 'RFM' ? 'RFM' : 'Europe 2';
+}
+
+/* ── Dates Excel ────────────────────────────────────────────────────── */
+function dailyProgSerialToISO(serial){
+  const d = new Date(Math.round((Math.floor(serial) - 25569) * 86400000));
+  return d.toISOString().slice(0, 10);
+}
+function dailyProgSerialToTime(serial){
+  const mins = Math.round((serial - Math.floor(serial)) * 1440) % 1440;
+  return String(Math.floor(mins / 60)).padStart(2, '0') + ':' + String(mins % 60).padStart(2, '0');
+}
+const DAILY_DAY_NAMES = ['Dimanche','Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+function dailyProgDayName(iso){ const d = new Date(iso + 'T12:00:00'); return DAILY_DAY_NAMES[d.getDay()]; }
+function dailyProgDateLabel(iso, short){
+  const [y, m, d] = iso.split('-');
+  const name = dailyProgDayName(iso);
+  return (short ? name.slice(0, 3) + '.' : name) + ' ' + d + '/' + m + (short ? '' : '/' + y);
+}
+
+/* ── Nettoyage : on ne garde que la musique ─────────────────────────── */
+// Éléments d'habillage / antenne qui ne sont jamais de la musique, même si
+// une colonne artiste était renseignée.
+const DAILY_NON_MUSIC_RE = /^\s*(\$|ETM_)|\bLINER\b|JINGLE|ECRAN PUBLICITAIRE|PUBLICIT|SWEEPER|VIRGULE|HABILLAGE|\bMODULE\b|PODCAST|FLASH INFO|\bMETEO\b|M[EÉ]T[EÉ]O|\bPROMO\b|\bID STATION\b|\bTOP HORAIRE\b/i;
+function dailyProgCleanArtist(a){
+  return String(a || '')
+    .replace(/\s*\[\+\]\s*/g, ' & ')
+    .replace(/\s+/g, ' ')
+    .replace(/[.\s]+$/, '')
+    .trim();
+}
+function dailyProgCleanTitle(t){
+  return String(t || '')
+    .replace(/\s*[\(\[]\s*(FEAT|FT)\.?\s[^\)\]]*[\)\]]/ig, '')
+    .replace(/\s+/g, ' ')
+    .replace(/[.\s]+$/, '')
+    .trim();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   FORMATS D'IMPORT PAR STATION
+   Chaque station de référence a son propre lecteur de conducteur. Le
+   lecteur utilisé est TOUJOURS celui de la station active (bouton Europe 2 /
+   RFM de l'en-tête) ; un conducteur d'une autre station est refusé avec un
+   message clair plutôt que rangé au mauvais endroit.
+   ▸ Pour adapter le format RFM : modifier DAILY_IMPORT_FORMATS.RFM.parse.
+   ══════════════════════════════════════════════════════════════════════ */
+
+/** Station écrite dans le fichier (titre « CONDUCTEUR … » ou nom du fichier). */
+function dailyProgDetectStation(rows, fileName){
+  const headText = rows.slice(0, 4).map(r => r.join(' ')).join(' ').toUpperCase() + ' ' + String(fileName || '').toUpperCase().replace(/_/g, ' ');
+  if(/\bRFM\b/.test(headText)) return 'RFM';
+  if(/EUROPE\s*2/.test(headText)) return 'EUROPE2';
+  return null;
+}
+
+/** Date d'après le nom du fichier : « …_LUNDI_12_OCTOBRE… », « 12-10-2026 », « 2026-10-12 ». */
+const DAILY_MONTHS = {JANVIER:1,FEVRIER:2,'FÉVRIER':2,MARS:3,AVRIL:4,MAI:5,JUIN:6,JUILLET:7,AOUT:8,'AOÛT':8,SEPTEMBRE:9,OCTOBRE:10,NOVEMBRE:11,DECEMBRE:12,'DÉCEMBRE':12};
+function dailyProgDateFromFileName(fileName){
+  const f = String(fileName || '').toUpperCase().replace(/^\d{4}-\d{2}-\d{2}__/, '');
+  let m = f.match(/(20\d\d)[-_.](\d{2})[-_.](\d{2})/);
+  if(m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = f.match(/(\d{1,2})[-_.](\d{1,2})[-_.](20\d\d)/);
+  if(m) return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+  m = f.match(/(\d{1,2})[\s_-]+(JANVIER|F[EÉ]VRIER|MARS|AVRIL|MAI|JUIN|JUILLET|AO[UÛ]T|SEPTEMBRE|OCTOBRE|NOVEMBRE|D[EÉ]CEMBRE)(?:[\s_-]+(20\d\d))?/);
+  if(m){
+    const mon = DAILY_MONTHS[m[2]] || DAILY_MONTHS[m[2].normalize('NFD').replace(/[\u0300-\u036f]/g,'')];
+    const now = new Date();
+    let y = m[3] ? +m[3] : now.getFullYear();
+    // sans année : on prend la plus récente qui ne soit pas dans le futur lointain
+    if(!m[3] && mon > now.getMonth() + 2) y--;
+    return y + '-' + String(mon).padStart(2,'0') + '-' + m[1].padStart(2,'0');
+  }
+  return null;
+}
+
+/** Heure d'une cellule : nombre Excel (date+heure ou fraction), Date, ou texte « HH:MM[:SS] ». */
+function dailyProgCellTime(v){
+  if(typeof v === 'number' && v >= 0){
+    const frac = v - Math.floor(v);
+    if(v >= 30000 || (v < 1 && v > 0) || frac > 0) return { serial: v >= 30000 ? v : null, mins: Math.round(frac * 1440) % 1440 };
+    return null;
+  }
+  if(v instanceof Date && !isNaN(v)) return { serial:null, mins: v.getHours() * 60 + v.getMinutes() };
+  const m = String(v || '').trim().match(/^(\d{1,2})[:hH](\d{2})(?::(\d{2}))?$/);
+  if(m && +m[1] < 30) return { serial:null, mins: (+m[1] % 24) * 60 + +m[2] };
+  return null;
+}
+function dailyProgMinsLabel(mins){ return String(Math.floor(mins / 60)).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0'); }
+
+/** Lecteur « conducteur GSelector » en 2 lignes par élément (format Europe 2) :
+ *  ligne 1 = heure · artiste · titre · durée ; ligne 2 = ID · année · catégorie. */
+function dailyProgParseTwoLineConductor(rows){
+  let hdr = rows.findIndex(r => r.some(c => /^\s*heure\s*$/i.test(String(c))));
+  if(hdr < 0) return null;
+  const H = rows[hdr];
+  if(!H.some(c => /artiste/i.test(String(c)))) return null;
+  const timeCol = Math.max(0, H.findIndex(c => /^\s*heure\s*$/i.test(String(c))));
+  const artistCol = H.findIndex(c => /artiste/i.test(String(c)));
+  let introCol = H.findIndex(c => /intro|dur[ée]e/i.test(String(c)));     if(introCol < 0) introCol = artistCol + 6;
+  let dateSerial = null;
+  (rows[0] || []).forEach(c => { if(dateSerial === null && typeof c === 'number' && c > 30000) dateSerial = c; });
+  const items = [];
+  let excluded = 0;
+  for(let i = hdr + 1; i < rows.length; i++){
+    const r = rows[i];
+    const t = r[timeCol];
+    if(typeof t !== 'number' || t < 30000) continue;
+    if(dateSerial === null) dateSerial = t;
+    const artistRaw = String(r[artistCol] || '').trim();
+    let titleRaw = '';
+    for(let c = artistCol + 1; c < introCol; c++){
+      const v = r[c];
+      if(typeof v === 'string' && v.trim()){ titleRaw = v.trim(); break; }
+    }
+    if(!artistRaw || !titleRaw){ excluded++; continue; }
+    if(DAILY_NON_MUSIC_RE.test(artistRaw) || DAILY_NON_MUSIC_RE.test(titleRaw)){ excluded++; continue; }
+    const next = rows[i + 1] || [];
+    let cat = '', year = '';
+    next.slice(introCol).map(v => String(v).trim()).filter(v => v && v !== '\\').forEach(v => {
+      if(/^(19|20)\d\d$/.test(v)) year = v; else if(!cat && /^[A-Z]{1,3}\d*\*?$/.test(v)) cat = v;
+    });
+    const mins = Math.round((t - Math.floor(t)) * 1440) % 1440;
+    items.push({ ts: t, mins, time: dailyProgMinsLabel(mins), hour: Math.floor(mins / 60),
+      artist: dailyProgCleanArtist(artistRaw), title: dailyProgCleanTitle(titleRaw), cat, year });
+  }
+  if(!items.length) return null;
+  return { date: dateSerial !== null ? dailyProgSerialToISO(dateSerial) : null, items, excluded };
+}
+
+/** Lecteur générique « tableau » : une ligne par élément, colonnes repérées
+ *  par leur intitulé (Heure/Horaire, Artiste/Interprète, Titre, Catégorie). */
+function dailyProgParseTable(rows){
+  const isH = (re) => c => re.test(String(c).trim());
+  let hdr = -1;
+  for(let i = 0; i < Math.min(rows.length, 40); i++){
+    const r = rows[i];
+    if(r.some(isH(/^(artiste|interpr[eè]te|artist)s?$/i)) && r.some(isH(/^(titre|title)s?$/i))){ hdr = i; break; }
+  }
+  if(hdr < 0) return null;
+  const H = rows[hdr].map(c => String(c).trim());
+  const col = re => H.findIndex(c => re.test(c));
+  const timeCol = col(/^(heure|horaire|heure de diffusion|diffusion|d[ée]but|time|start)/i);
+  const artistCol = col(/^(artiste|interpr[eè]te|artist)s?$/i);
+  const titleCol = col(/^(titre|title)s?$/i);
+  const catCol = col(/^(cat[ée]gorie|cat\.?|category|rotation)$/i);
+  const yearCol = col(/^(ann[ée]e|year)$/i);
+  const dateCol = col(/^(date|jour)$/i);
+  if(timeCol < 0) return null;
+  const items = [];
+  let excluded = 0, date = null;
+  for(let i = hdr + 1; i < rows.length; i++){
+    const r = rows[i];
+    const tm = dailyProgCellTime(r[timeCol]);
+    if(!tm) continue;
+    if(!date && tm.serial) date = dailyProgSerialToISO(tm.serial);
+    if(!date && dateCol >= 0){
+      const dv = r[dateCol];
+      if(typeof dv === 'number' && dv > 30000) date = dailyProgSerialToISO(dv);
+      else { const mm = String(dv).match(/(\d{1,2})\/(\d{1,2})\/(20\d\d)/); if(mm) date = mm[3] + '-' + mm[2].padStart(2,'0') + '-' + mm[1].padStart(2,'0'); }
+    }
+    const artistRaw = String(r[artistCol] || '').trim(), titleRaw = String(r[titleCol] || '').trim();
+    if(!artistRaw || !titleRaw || DAILY_NON_MUSIC_RE.test(artistRaw) || DAILY_NON_MUSIC_RE.test(titleRaw)){ excluded++; continue; }
+    items.push({ ts: tm.serial || (tm.mins / 1440), mins: tm.mins, time: dailyProgMinsLabel(tm.mins), hour: Math.floor(tm.mins / 60),
+      artist: dailyProgCleanArtist(artistRaw), title: dailyProgCleanTitle(titleRaw),
+      cat: catCol >= 0 ? String(r[catCol] || '').trim() : '', year: yearCol >= 0 ? String(r[yearCol] || '').trim() : '' });
+  }
+  if(!items.length) return null;
+  return { date, items, excluded };
+}
+
+const DAILY_IMPORT_FORMATS = {
+  EUROPE2: {
+    label: 'Conducteur Europe 2 (export GSelector .xls, 2 lignes par élément)',
+    parse(rows){ return dailyProgParseTwoLineConductor(rows); }
+  },
+  RFM: {
+    // Modèle RFM pas encore reçu : on accepte le même type de conducteur 2
+    // lignes s'il est utilisé, sinon tout tableau « une ligne par titre »
+    // avec des colonnes Heure / Artiste / Titre (Catégorie, Année facultatives).
+    label: 'Conducteur RFM (conducteur 2 lignes ou tableau Heure / Artiste / Titre)',
+    parse(rows){ return dailyProgParseTwoLineConductor(rows) || dailyProgParseTable(rows); }
+  }
+};
+
+/** Lit un conducteur avec le lecteur de la station active. */
+function dailyProgParseWorkbook(arrayBuffer, fileName, station){
+  const wb = XLSX.read(arrayBuffer, { type:'array' });
+  const sh = wb.Sheets[wb.SheetNames[0]];
+  const rows = XLSX.utils.sheet_to_json(sh, { header:1, raw:true, defval:'' });
+  if(!rows.length) throw new Error('fichier vide');
+  const fileStation = dailyProgDetectStation(rows, fileName);
+  if(fileStation && fileStation !== station){
+    throw new Error('conducteur ' + dailyProgStationLabel(fileStation) + ' — basculez la station de référence sur ' + dailyProgStationLabel(fileStation) + ' pour l\'importer');
+  }
+  const fmt = DAILY_IMPORT_FORMATS[station];
+  const res = fmt.parse(rows);
+  if(!res) throw new Error('format non reconnu pour ' + dailyProgStationLabel(station) + ' (attendu : ' + fmt.label + ')');
+  res.date = res.date || dailyProgDateFromFileName(fileName);
+  if(!res.date) throw new Error('date introuvable (ni dans le fichier, ni dans son nom)');
+  res.items.sort((a, b) => a.ts - b.ts);
+  return res;
+}
+
+async function dailyProgHandleFiles(input){
+  const files = Array.from(input.files || []);
+  input.value = '';
+  if(!files.length) return;
+  if(typeof XLSX === 'undefined'){ showToast('Lecteur Excel indisponible (connexion internet requise au chargement de FPA).', 'err'); return; }
+  await dailyProgLoad();
+  const st = dailyProgStation();
+  const ok = [], ko = [];
+  for(const f of files){
+    try{
+      const buf = await f.arrayBuffer();
+      const res = dailyProgParseWorkbook(buf, f.name, st);
+      dailyProgStore[st][res.date] = { station: st, date: res.date, fileName: f.name, importedAt: new Date().toISOString(), items: res.items, excluded: res.excluded };
+      ok.push(res.date);
+    }catch(e){
+      console.warn('Programmation quotidienne —', f.name, e);
+      ko.push(f.name + ' : ' + (e.message || 'format non reconnu'));
+    }
+  }
+  if(ok.length){
+    await dailyProgSave();
+    dailyProgSelected = ok.sort().slice(-1)[0];
+    dailyProgPushDays(st, ok);   // copie Drive (silencieuse) pour les autres postes
+  }
+  const okMsg = ok.length ? '✓ ' + ok.length + ' journée(s) ' + dailyProgStationLabel(st) + ' importée(s)' : '';
+  if(ko.length) showToast((okMsg ? okMsg + ' · ' : '') + 'Non importé — ' + ko.join(' · '), 'err');
+  else if(okMsg) showToast(okMsg, 'success');
+  renderDailyProgPage();
+}
+function dailyProgTriggerImport(){ const i = document.getElementById('dailyProgFileInput'); if(i) i.click(); }
+
+async function dailyProgDeleteDay(date){
+  await dailyProgLoad();
+  const st = dailyProgStation();
+  if(!dailyProgStore[st][date]) return;
+  if(!confirm('Supprimer la journée du ' + dailyProgDateLabel(date) + ' (' + dailyProgStationLabel(st) + ') ?')) return;
+  delete dailyProgStore[st][date];
+  if(dailyProgSelected === date) dailyProgSelected = null;
+  await dailyProgSave();
+  dailyProgMarkDeleted(st, date);
+  renderDailyProgPage();
+}
+
+/* ── Matching FPA ───────────────────────────────────────────────────── */
+function dailyProgNum(v){ const n = parseFloat(v); return isNaN(n) ? null : n; }
+function dailyScoresFor(title, artist, dateISO){
+  const key = dailyProgStation() + '|' + (typeof norm === 'function' ? norm(artist) + '|' + norm(title) : artist + '|' + title) + '|' + dateISO;
+  if(dailyProgScoreMemo[key]) return dailyProgScoreMemo[key];
+  const s = { fit:null, pot:null, fam:null, shz:null, spy:null, dz:null, ap:null };
+  // Recherche (Call Out / OMT) : chiffres de la vague la plus proche AVANT la date diffusée
+  try{
+    const se = analyseGetSearchScores(title, artist, dateISO);
+    if(se){ s.pot = dailyProgNum(se.potTous); s.fam = dailyProgNum(se.famTous); s.fit = dailyProgNum(se.fit); }
+  }catch(e){}
+  // Fit Score : à défaut du chiffre daté, dernier Fit Score FPA connu (corpus 360°)
+  if(s.fit === null){
+    try{ const f = analyseGetFpaScores(title, artist); if(f && f.fit != null) s.fit = dailyProgNum(f.fit); }catch(e){}
+  }
+  // Classements digitaux (rang du jour chargé dans FPA)
+  try{
+    const fr = (chartsLoaded && chartsLoaded.fr) ? chartsData.fr : (typeof SHAZAM_FR_BUILTIN !== 'undefined' ? SHAZAM_FR_BUILTIN : null);
+    if(fr) s.shz = findInChart(fr, title, artist);
+  }catch(e){}
+  try{ if(spotifyLoaded) s.spy = findInChart(spotifyData, title, artist); }catch(e){}
+  try{ if(deezerLoaded) s.dz = findInChart(deezerData, title, artist); }catch(e){}
+  // Airplay : rang « Général » toutes radios du classement de référence
+  try{ if(airplayLoaded){ const ap = findAirplay(title, artist); if(ap) s.ap = dailyProgNum(ap.rg); } }catch(e){}
+  dailyProgScoreMemo[key] = s;
+  return s;
+}
+function dailyProgRecompute(){ dailyProgScoreMemo = {}; renderDailyProgPage(); }
+
+/** Moyennes d'une liste de diffusions : chaque passage compte (un titre
+ *  diffusé 3 fois pèse 3 fois, comme à l'antenne). */
+function dailyProgAggregate(items, dateISO){
+  const acc = {};
+  DAILY_METRICS.forEach(m => acc[m.key] = { sum:0, n:0 });
+  items.forEach(it => {
+    const s = dailyScoresFor(it.title, it.artist, it._date || dateISO);
+    DAILY_METRICS.forEach(m => { const v = s[m.key]; if(v !== null && v !== undefined && !isNaN(v)){ acc[m.key].sum += v; acc[m.key].n++; } });
+  });
+  const out = { total: items.length };
+  DAILY_METRICS.forEach(m => { out[m.key] = acc[m.key].n ? acc[m.key].sum / acc[m.key].n : null; out[m.key + 'N'] = acc[m.key].n; });
+  return out;
+}
+
+/* ── Couleurs (mêmes seuils que le baromètre santé) ─────────────────── */
+function dailyProgColor(key, v){
+  if(v === null || v === undefined) return '';
+  let g = null, o = null;
+  if(key === 'fit'){ g = 62.5; o = 50; }
+  if(key === 'pot'){
+    try{ const t = typeof healthFpaPotThresholds === 'function' ? healthFpaPotThresholds() : null; if(t){ g = t.green; o = t.orange; } }catch(e){}
+  }
+  if(g === null) return '';
+  return v >= g ? '#16a34a' : v >= o ? '#d97706' : '#dc2626';
+}
+function dailyProgFmt(m, v){
+  if(v === null || v === undefined || isNaN(v)) return '<span style="color:var(--muted)">—</span>';
+  const txt = (m.kind === 'rank' ? '#' : '') + Number(v).toLocaleString('fr-FR', { minimumFractionDigits:m.dec, maximumFractionDigits:m.dec });
+  const col = m.kind === 'score' ? dailyProgColor(m.key, v) : '';
+  return col ? `<span style="color:${col};font-weight:800">${txt}</span>` : `<span style="font-weight:700">${txt}</span>`;
+}
+function dailyProgAvgCell(m, agg){
+  const v = agg[m.key], n = agg[m.key + 'N'];
+  const fmtM = Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec });
+  return `<td style="padding:8px 10px;text-align:right;white-space:nowrap">${dailyProgFmt(fmtM, v)}<div style="font-size:9.5px;color:var(--muted);font-weight:600">${n}/${agg.total}</div></td>`;
+}
+
+/* ── Rendu ──────────────────────────────────────────────────────────── */
+function dailyProgSourcesHtml(){
+  const pill = (ok, label, title) => `<span title="${escHtml(title || '')}" style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;border:1px solid var(--border);background:${ok ? '#ecfdf3' : 'var(--bg)'};color:${ok ? '#15803d' : 'var(--muted)'}">${ok ? '✓' : '–'} ${label}</span>`;
+  let nWaves = 0; try{ nWaves = (histLoad() || []).length; }catch(e){}
+  const shzLive = typeof chartsLoaded !== 'undefined' && chartsLoaded.fr;
+  return `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+    <span style="font-size:10.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:2px">Sources</span>
+    ${pill(nWaves > 0, 'Call Out / OMT (' + nWaves + ' vague' + (nWaves > 1 ? 's' : '') + ')', 'Fit, Pot et Fam Score : vague la plus proche avant la date diffusée')}
+    ${pill(true, 'Shazam FR' + (shzLive ? '' : ' (données de secours)'))}
+    ${pill(typeof spotifyLoaded !== 'undefined' && spotifyLoaded, 'Spotify FR')}
+    ${pill(typeof deezerLoaded !== 'undefined' && deezerLoaded, 'Deezer FR')}
+    ${pill(typeof airplayLoaded !== 'undefined' && airplayLoaded, 'Airplay' + (typeof airplayPeriod !== 'undefined' && airplayPeriod ? ' · ' + airplayPeriod : ''))}
+    <button class="btn-ghost" onclick="dailyProgRecompute()" style="font-size:10.5px;padding:4px 10px" title="À relancer après avoir chargé des classements ou un nouveau Call Out">↻ Recalculer les scores</button>
+  </div>`;
+}
+
+function dailyProgHeaderCells(){
+  return DAILY_METRICS.map(m => `<th title="${escHtml(m.label)}${m.kind === 'rank' ? ' — rang moyen des titres classés' : ' — moyenne des titres matchés'}" style="padding:8px 10px;text-align:right;white-space:nowrap">${escHtml(m.short)}</th>`).join('');
+}
+const DAILY_TH = 'font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--bg);border-bottom:1.5px solid var(--border)';
+
+async function renderDailyProgPage(){
+  const box = document.getElementById('analyseDailyContainer');
+  if(!box) return;
+  await dailyProgLoad();
+  const st = dailyProgStation();
+  const allDays = Object.values(dailyProgStore[st] || {}).sort((a, b) => a.date < b.date ? -1 : 1);
+  if(!dailyProgSyncStartedFor[st]){ dailyProgSyncStartedFor[st] = true; setTimeout(() => dailyProgAutoSync(false), 50); }
+
+  if(!allDays.length){
+    box.innerHTML = `<div style="padding:34px 20px;text-align:center;background:var(--white);border:1.5px dashed var(--border);border-radius:14px">
+      <div style="font-size:34px;margin-bottom:8px">🗓️</div>
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">Aucune journée de programmation pour ${escHtml(dailyProgStationLabel(st))}</div>
+      <div style="font-size:12px;color:var(--text2);max-width:560px;margin:6px auto 14px;line-height:1.5">Importez un ou plusieurs conducteurs quotidiens (fichiers <b>CONDUCTEUR … .xls</b>). Seuls les titres musicaux sont conservés — liners, pubs, modules, jingles et repères techniques sont écartés — puis chaque titre est rapproché de FPA pour calculer les scores moyens par heure et par jour.</div>
+      <div style="font-size:11px;color:var(--muted);margin:-6px auto 14px">Format attendu pour ${escHtml(dailyProgStationLabel(st))} : ${escHtml(DAILY_IMPORT_FORMATS[st].label)}</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn-primary" onclick="dailyProgTriggerImport()" style="font-size:12.5px;padding:10px 18px">📥 Importer des conducteurs ${escHtml(dailyProgStationLabel(st))}</button>
+        <button class="btn-ghost" onclick="openDailyProgSyncSettings()" style="font-size:12px;padding:10px 16px">⚙ Import automatique (Gmail + Drive)</button>
+      </div>
+      <div id="dailyProgSyncStatus" style="font-size:11.5px;color:var(--text2);margin-top:12px">${dailyProgSyncStatusText()}</div>
+    </div>`;
+    return;
+  }
+  const range = dailyProgViewRange(allDays);
+  let days = allDays.filter(d => d.date >= range.from && d.date <= range.to);
+  if(!days.length) days = allDays.slice(-14);
+  if(!dailyProgSelected || !dailyProgStore[st][dailyProgSelected] || !days.some(d => d.date === dailyProgSelected)) dailyProgSelected = days[days.length - 1].date;
+  const day = dailyProgStore[st][dailyProgSelected];
+
+  // 1) Synthèse de toutes les journées
+  const dayAggs = days.map(d => ({ d, agg: dailyProgAggregate(d.items, d.date) }));
+  const allItems = [];
+  dayAggs.forEach(x => x.d.items.forEach(it => allItems.push({ title: it.title, artist: it.artist, _date: x.d.date })));
+  const periodAgg = dailyProgAggregate(allItems, null);
+  const daysRows = dayAggs.map(({ d, agg }) => {
+    const sel = d.date === dailyProgSelected;
+    return `<tr onclick="dailyProgSelect('${d.date}')" style="cursor:pointer;border-top:1px solid var(--border);${sel ? 'background:var(--cyan-light);' : ''}">
+      <td style="padding:8px 10px;font-weight:800;color:var(--navy);white-space:nowrap">${sel ? '▸ ' : ''}${escHtml(dailyProgDateLabel(d.date, true))}</td>
+      <td style="padding:8px 10px;text-align:right;font-weight:700">${d.items.length}</td>
+      ${DAILY_METRICS.map(m => dailyProgAvgCell(m, agg)).join('')}
+    </tr>`;
+  }).join('');
+
+  // 2) Moyennes par heure du jour sélectionné
+  const byHour = {};
+  day.items.forEach(it => { (byHour[it.hour] = byHour[it.hour] || []).push(it); });
+  const hours = [];
+  day.items.forEach(it => { if(!hours.includes(it.hour)) hours.push(it.hour); });
+  const hourAggs = hours.map(h => ({ h, items: byHour[h], agg: dailyProgAggregate(byHour[h], day.date) }));
+  const dayAgg = dailyProgAggregate(day.items, day.date);
+  const hourRows = hourAggs.map(({ h, agg }) => `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:8px 10px;font-weight:800;color:var(--navy);white-space:nowrap"><a href="#" onclick="dailyProgOpenHour(${h});return false" title="Voir les titres de cette heure" style="color:inherit;text-decoration:none">${String(h).padStart(2,'0')}h</a></td>
+      <td style="padding:8px 10px;text-align:right;font-weight:700">${agg.total}</td>
+      ${DAILY_METRICS.map(m => dailyProgAvgCell(m, agg)).join('')}
+    </tr>`).join('');
+
+  // 3) Programmation complète, au format des classements FPA
+  const listHtml = dailyProgListHtml(day, hourAggs);
+
+  const kpis = DAILY_METRICS.map(m => `<div style="flex:1 1 120px;min-width:110px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:10px 12px">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">${escHtml(m.label)}${m.kind === 'rank' ? ' · rang moy.' : ''}</div>
+      <div style="font-family:var(--font-display);font-size:21px;margin-top:2px">${dailyProgFmt(Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec }), dayAgg[m.key])}</div>
+      <div style="font-size:10px;color:var(--muted)">${dayAgg[m.key + 'N']} / ${dayAgg.total} diffusions matchées</div>
+    </div>`).join('');
+
+  box.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px">
+        ${dailyProgSourcesHtml()}
+        ${dailyProgSyncBarHtml()}
+        <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.45">Chaque diffusion compte dans les moyennes (un titre passé 3 fois pèse 3 fois). Scores : Fit / Pot / Fam de la vague Call Out-OMT la plus proche <b>avant</b> la date diffusée ; classements digitaux et Airplay : rangs actuellement chargés dans FPA. Les chiffres « n/N » indiquent combien de diffusions ont été matchées.</div>
+      </div>
+
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">📅 Scores moyens par jour</div>
+          <span style="font-size:11px;color:var(--muted)">${dailyProgView ? 'Période du ' + escHtml(dailyProgDateLabel(range.from, true)) + ' au ' + escHtml(dailyProgDateLabel(range.to, true)) : '14 derniers jours'} · ${days.length} journée${days.length > 1 ? 's' : ''} · cliquez une ligne pour l'afficher</span>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:11px;font-weight:700;color:var(--muted)">Historique plus ancien :</span>
+            <input id="dailyProgFrom" type="date" value="${dailyProgView ? range.from : ''}" style="font-size:12px;padding:6px 8px;border-radius:8px">
+            <input id="dailyProgTo" type="date" value="${dailyProgView ? range.to : ''}" style="font-size:12px;padding:6px 8px;border-radius:8px">
+            <button class="btn-ghost" onclick="dailyProgLoadPeriodFromInputs()" style="font-size:11px;padding:6px 12px">📂 Charger la période</button>
+            ${dailyProgView ? '<button class="btn-ghost" onclick="dailyProgResetView()" style="font-size:11px;padding:6px 12px">↺ 14 derniers jours</button>' : ''}
+          </div>
+        </div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="${DAILY_TH}"><th style="padding:8px 10px;text-align:left">Jour</th><th style="padding:8px 10px;text-align:right">Titres</th>${dailyProgHeaderCells()}</tr></thead>
+            <tbody>${daysRows}
+              <tr style="border-top:2px solid var(--navy);background:var(--bg)"><td style="padding:8px 10px;font-weight:800;color:var(--navy)">Période</td><td style="padding:8px 10px;text-align:right;font-weight:800">${allItems.length}</td>${DAILY_METRICS.map(m => dailyProgAvgCell(m, periodAgg)).join('')}</tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy)">${escHtml(dailyProgDateLabel(day.date))}</div>
+          <span style="font-size:11px;color:var(--muted)">${day.items.length} diffusions musicales · ${day.excluded || 0} éléments non musicaux écartés · ${escHtml(day.fileName || '')}</span>
+          <button class="btn-ghost" onclick="dailyProgDeleteDay('${day.date}')" style="margin-left:auto;font-size:11px;padding:6px 12px;color:#dc2626">🗑 Supprimer cette journée</button>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">${kpis}</div>
+      </div>
+
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px">
+        <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy);margin-bottom:8px">📈 Fit, Pot et Fam Score moyens par heure</div>
+        <div style="position:relative;height:240px"><canvas id="dailyProgChart"></canvas></div>
+      </div>
+
+      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden">
+        <div style="padding:12px 14px;font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">🕐 Scores moyens par heure</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="${DAILY_TH}"><th style="padding:8px 10px;text-align:left">Heure</th><th style="padding:8px 10px;text-align:right">Titres</th>${dailyProgHeaderCells()}</tr></thead>
+            <tbody>${hourRows}
+              <tr style="border-top:2px solid var(--navy);background:var(--bg)"><td style="padding:8px 10px;font-weight:800;color:var(--navy)">Journée</td><td style="padding:8px 10px;text-align:right;font-weight:800">${dayAgg.total}</td>${DAILY_METRICS.map(m => dailyProgAvgCell(m, dayAgg)).join('')}</tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      ${listHtml}
+    </div>`;
+
+  dailyProgDrawChart(hourAggs);
+  if(dailyProgSelIdx !== null && !day.items[dailyProgSelIdx]) dailyProgSelIdx = null;
+  dailyProgRenderSide();
+}
+
+function dailyProgDrawChart(hourAggs){
+  const cv = document.getElementById('dailyProgChart');
+  if(!cv || typeof Chart === 'undefined') return;
+  if(dailyProgChart){ try{ dailyProgChart.destroy(); }catch(e){} dailyProgChart = null; }
+  const ds = [
+    { key:'fit', label:'Fit Score', color:'#00B8C8' },
+    { key:'pot', label:'Pot Score', color:'#0B1D3A' },
+    { key:'fam', label:'Fam Score', color:'#E6007E' }
+  ].map(d => ({
+    label: d.label, data: hourAggs.map(x => x.agg[d.key] !== null ? +x.agg[d.key].toFixed(1) : null),
+    borderColor: d.color, backgroundColor: d.color, tension: .3, spanGaps: true, pointRadius: 3, borderWidth: 2
+  }));
+  dailyProgChart = new Chart(cv.getContext('2d'), {
+    type: 'line',
+    data: { labels: hourAggs.map(x => String(x.h).padStart(2, '0') + 'h'), datasets: ds },
+    options: { responsive: true, maintainAspectRatio: false, animation: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+      scales: { y: { suggestedMin: 0, suggestedMax: 100, ticks: { font: { size: 10 } } }, x: { ticks: { font: { size: 10 } } } } }
+  });
+}
+
+function dailyProgSelect(date){ if(date !== dailyProgSelected) dailyProgSelIdx = null; dailyProgSelected = date; renderDailyProgPage(); }
+function dailyProgRememberHour(h, isOpen){
+  if(!dailyProgSelected) return;
+  const o = dailyProgOpenHours[dailyProgSelected] = dailyProgOpenHours[dailyProgSelected] || {};
+  if(isOpen) o[h] = true; else delete o[h];
+}
+function dailyProgOpenHour(h){ const d = document.getElementById('dailyHour_' + h); if(d) d.scrollIntoView({ behavior:'smooth', block:'start' }); }
+function dailyProgToggleAll(open){
+  document.querySelectorAll('#analyseDailyContainer details[id^="dailyHour_"]').forEach(d => { d.open = open; });
+}
+
+/* ── Pastille « match FPA » (même logique et même aspect que la Playlist) ── */
+function dailyProgMatchBadge(it, s){
+  const base = 'flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;border-radius:50%;font-size:9.5px;font-weight:800;line-height:1;padding:0;font-family:inherit;border:1.5px solid;cursor:default;';
+  const hasScore = s && DAILY_METRICS.some(m => s[m.key] !== null && s[m.key] !== undefined);
+  let m = { status:'nodata' };
+  try{ if(typeof playlistPlatformMatch === 'function') m = playlistPlatformMatch({ key: comiteKey(it.title, it.artist), artist: it.artist, title: it.title }); }catch(e){}
+  if(m.status === 'ok') return `<span title="Correspondance FPA exacte — ${escHtml(m.ref.sources.join(', '))}" style="${base}background:#E6F6EC;border-color:#A8DDB9;color:#1E7A3C">✓</span>`;
+  if(m.status === 'fix') return `<span title="${escHtml((m.sure ? 'Écrit autrement dans FPA' : 'Correspondance probable') + ' — ' + titleCaseDisplay(m.ref.artist) + ' – ' + titleCaseDisplay(m.ref.title) + ' (' + m.ref.sources.join(', ') + ')')}" style="${base}background:${m.sure ? '#FFF4E0' : '#FFF9EE'};border-color:${m.sure ? '#F2C77B' : '#F5DDB0'};color:#B05E00">≈</span>`;
+  if(hasScore) return `<span title="Retrouvé dans FPA par similarité (scores affichés)" style="${base}background:#FFF4E0;border-color:#F2C77B;color:#B05E00">≈</span>`;
+  return `<span title="Introuvable dans les données chargées de FPA (Programmation, Airplay, Call Out, classements)" style="${base}background:var(--bg);border-color:var(--border);color:var(--muted)">?</span>`;
+}
+
+function dailyProgEvoAttr(it){
+  return JSON.stringify({ artist: it.artist, title: it.title }).replace(/'/g, '&#39;').replace(/"/g, '&quot;');
+}
+
+function dailyProgItemMins(it){
+  if(typeof it.mins === 'number') return it.mins;
+  const m = String(it.time || '').match(/^(\d{1,2}):(\d{2})/);
+  return m ? (+m[1]) * 60 + (+m[2]) : 0;
+}
+
+/* ── CONDUCTEUR : déroulé titre par titre (format des classements FPA) ─
+   Moitié gauche : le conducteur ; moitié droite : les données du titre
+   sélectionné (Song Metrics + Historique de diffusion). Flèches ↑ ↓ pour
+   passer d'un titre à l'autre, Entrée pour ouvrir la fiche complète. */
+let dailyProgSelIdx = null;      // index dans day.items du titre sélectionné
+let dailyProgSideToken = 0;      // évite qu'un chargement asynchrone tardif écrase un titre plus récent
+
+function dailyProgListHtml(day, hourAggs){
+  const gridCols = '44px 22px 24px 18px minmax(0,1fr) 40px 50px 50px';
+  const fitM = DAILY_METRICS.find(m => m.key === 'fit'), potM = DAILY_METRICS.find(m => m.key === 'pot');
+  const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:9px 12px;background:var(--white);font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);position:sticky;top:68px;z-index:10;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--cyan);box-shadow:0 3px 10px rgba(11,29,58,.08)">
+      <div>Heure</div><div></div><div></div><div></div><div>Titre / Artiste</div><div style="text-align:center">Cat.</div><div style="text-align:right">Fit</div><div style="text-align:right">Pot</div>
+    </div>`;
+  let idx = 0;
+  const body = hourAggs.map(({ h, items, agg }) => {
+    const band = `<div id="dailyHour_${h}" style="scroll-margin-top:120px;display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:7px 12px;background:var(--bg);border-top:1.5px solid var(--border);font-size:11px">
+        <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy)">${String(h).padStart(2,'0')}h</div>
+        <div style="grid-column:2 / 7;color:var(--muted);font-weight:700">${items.length} titre${items.length > 1 ? 's' : ''} · moyennes de l'heure</div>
+        <div style="text-align:right">${dailyProgFmt(fitM, agg.fit)}</div>
+        <div style="text-align:right">${dailyProgFmt(potM, agg.pot)}</div>
+      </div>`;
+    const rows = items.map(it => {
+      const i = day.items.indexOf(it);
+      const s = dailyScoresFor(it.title, it.artist, day.date);
+      return `<div id="dpRow_${i}" data-i="${i}" class="fpa-row dp-row${i === dailyProgSelIdx ? ' dp-sel' : ''}" onclick="dailyProgRowClick(event,this)" ondblclick="dailyProgOpenFull()" style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:8px 12px 8px 9px;border-top:1px solid var(--border);font-size:12px;cursor:pointer">
+        <div style="color:var(--muted);font-weight:700;font-variant-numeric:tabular-nums">${it.time}</div>
+        <div>${typeof spotifyLink === 'function' ? spotifyLink(it.artist, it.title) : ''}</div>
+        <div>${typeof comiteCheckbox === 'function' ? comiteCheckbox(it.title, it.artist) : ''}</div>
+        <div>${dailyProgMatchBadge(it, s)}</div>
+        <div style="min-width:0">
+          <div class="dp-title" style="font-weight:700;color:var(--navy);transition:color .12s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(it.title))}</div>
+          <div style="color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(it.artist))}${typeof playlistCategoryBadgeHtml === 'function' ? playlistCategoryBadgeHtml(it.title, it.artist) : ''}</div>
+        </div>
+        <div style="text-align:center"><span title="Catégorie de rotation du conducteur${it.year ? ' · ' + escHtml(it.year) : ''}" style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:var(--bg);color:var(--text2)">${escHtml(it.cat || '—')}</span></div>
+        <div style="text-align:right">${dailyProgFmt(fitM, s.fit)}</div>
+        <div style="text-align:right">${dailyProgFmt(potM, s.pot)}</div>
+      </div>`;
+    }).join('');
+    return band + rows;
+  }).join('');
+  return `<div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">🎛️ Conducteur — ${escHtml(dailyProgDateLabel(day.date))}</div>
+      <span style="font-size:11px;color:var(--muted)">${day.items.length} titres · cliquez un titre, puis ↑ ↓ pour naviguer · Entrée ou double-clic : fiche complète</span>
+      <input type="search" placeholder="Rechercher un titre, un artiste…" oninput="dailyProgFilter(this.value)" style="margin-left:auto;min-width:200px;font-size:12px;padding:7px 10px;border-radius:8px">
+    </div>
+    <div class="dp-split">
+      <div id="dailyProgList" style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;min-width:0">${header}${body}</div>
+      <aside id="dailyProgSide" class="dp-side"></aside>
+    </div>
+  </div>`;
+}
+
+/* ── Sélection et navigation clavier ───────────────────────────────── */
+function dailyProgCurrentDay(){
+  const st = dailyProgStation();
+  return (dailyProgStore && dailyProgStore[st] && dailyProgSelected) ? dailyProgStore[st][dailyProgSelected] : null;
+}
+function dailyProgRowClick(ev, row){
+  if(ev.target.closest('a,button,input,select,label,.membership-btn,[data-membership-key]')) return;
+  dailyProgSelect_(+row.dataset.i, false);
+}
+function dailyProgSelect_(i, scroll){
+  const day = dailyProgCurrentDay();
+  if(!day || !day.items[i]) return;
+  const prev = document.querySelector('#dailyProgList .dp-row.dp-sel');
+  if(prev) prev.classList.remove('dp-sel');
+  dailyProgSelIdx = i;
+  const row = document.getElementById('dpRow_' + i);
+  if(row){
+    row.classList.add('dp-sel');
+    if(scroll) row.scrollIntoView({ block:'nearest' });
+  }
+  dailyProgRenderSide();
+}
+function dailyProgStep(delta){
+  const rows = Array.from(document.querySelectorAll('#dailyProgList .dp-row')).filter(r => r.style.display !== 'none');
+  if(!rows.length) return;
+  let pos = rows.findIndex(r => +r.dataset.i === dailyProgSelIdx);
+  pos = pos < 0 ? (delta > 0 ? 0 : rows.length - 1) : Math.min(rows.length - 1, Math.max(0, pos + delta));
+  dailyProgSelect_(+rows[pos].dataset.i, true);
+}
+function dailyProgIsVisible(){
+  const c = document.getElementById('analyseDailyContainer');
+  return !!(c && c.offsetParent !== null && typeof analyseSubView !== 'undefined' && analyseSubView === 'daily');
+}
+document.addEventListener('keydown', function(e){
+  if(!dailyProgIsVisible() || e.altKey || e.ctrlKey || e.metaKey) return;
+  if(e.target && e.target.closest && e.target.closest('input,textarea,select,[contenteditable="true"]')) return;
+  const evo = document.getElementById('modalTitleEvolution');
+  if(evo && evo.style.display && evo.style.display !== 'none') return;     // la fiche gère ses propres touches
+  if(document.querySelector('.m-modal')) return;
+  if(e.key === 'ArrowDown' || e.key === 'ArrowUp'){
+    if(!document.querySelector('#dailyProgList .dp-row')) return;
+    e.preventDefault();
+    dailyProgStep(e.key === 'ArrowDown' ? 1 : -1);
+  } else if(e.key === 'Enter' && dailyProgSelIdx !== null){
+    e.preventDefault(); dailyProgOpenFull();
+  } else if(e.key === 'Escape'){
+    const side = document.getElementById('dailyProgSide'); if(side) side.classList.remove('dp-open');
+  }
+});
+
+/** Fiche Song Metrics complète (modale), avec ‹ › sur les titres du conducteur. */
+async function dailyProgOpenFull(){
+  const day = dailyProgCurrentDay();
+  if(!day || dailyProgSelIdx === null) return;
+  try{
+    tevNavList = day.items.map(it => ({ title: it.title, artist: it.artist }));
+    tevNavIndex = dailyProgSelIdx;
+  }catch(e){}
+  const it = day.items[dailyProgSelIdx];
+  await openTevByInfo({ title: it.title, artist: it.artist });
+}
+
+/* ── Panneau latéral : Song Metrics + Historique ──────────────────── */
+function dailyProgKey(it){ return (typeof norm === 'function' ? norm(it.artist) + '|' + norm(it.title) : (it.artist + '|' + it.title).toUpperCase()); }
+function dailyProgAddDays(iso, n){ const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+
+function dailyProgHistoryHtml(it, day, opts){
+  opts = opts || {};
+  const st = dailyProgStation();
+  const store = dailyProgStore[st] || {};
+  const dates = Object.keys(store).sort();
+  if(!dates.length) return '';
+  const end = opts.end || dailyProgViewRange(Object.values(store).sort((a, b) => a.date < b.date ? -1 : 1)).to;
+  const key = dailyProgKey(it);
+  const isMatch = opts.match || (x => dailyProgKey(x) === key);
+  const curMins = it.time ? dailyProgItemMins(it) : -1;
+  day = day || { date:'' };
+  const cols = '68px repeat(24, minmax(0,1fr)) 30px';
+  const hourCls = h => 'dp-hc' + (h % 2 ? ' dp-hc-odd' : '') + (h % 6 === 0 ? ' dp-hc-6' : '');
+  // En-tête : toutes les heures
+  const head = `<div class="dp-hist-row dp-hist-head" style="grid-template-columns:${cols}">
+      <div></div>
+      ${Array.from({ length:24 }, (_, h) => `<div class="${hourCls(h)} dp-hh">${String(h).padStart(2,'0')}</div>`).join('')}
+      <div class="dp-hh" style="text-align:right;padding-right:2px">Nb</div>
+    </div>`;
+  const rows = [];
+  let total = 0, loaded = 0;
+  for(let k = 0; k < 14; k++){
+    const d = dailyProgAddDays(end, -k);
+    const dd = store[d];
+    const plays = dd ? dd.items.filter(isMatch) : [];
+    if(dd) loaded++;
+    total += plays.length;
+    const isSel = !!day.date && d === day.date;
+    const wd = new Date(d + 'T12:00:00').getDay();
+    const byH = {};
+    plays.forEach(p => { const m = dailyProgItemMins(p); (byH[Math.floor(m / 60)] = byH[Math.floor(m / 60)] || []).push({ m, t: p.time }); });
+    const cells = Array.from({ length:24 }, (_, h) => {
+      const list = byH[h] || [];
+      const dots = list.map(p => {
+        const cur = isSel && p.m === curMins;
+        return `<span class="dp-hist-dot${cur ? ' dp-cur' : ''}" onclick="${opts.fromFiche ? 'dailyProgOpenFromFiche' : 'dailyProgGoto'}('${d}',${p.m})" title="${escHtml(dailyProgDateLabel(d, true) + ' · ' + p.t + (cur ? ' (sélection)' : ''))}" style="left:${(8 + (p.m % 60) / 60 * 84).toFixed(1)}%"></span>`;
+      }).join('');
+      return `<div class="${hourCls(h)}${list.length ? ' dp-hc-on' : ''}" title="${escHtml(dailyProgDateLabel(d, true) + ' · ' + String(h).padStart(2,'0') + 'h' + (dd ? ' · ' + list.length + ' diffusion' + (list.length > 1 ? 's' : '') : ' · conducteur non chargé'))}">${dots}</div>`;
+    }).join('');
+    rows.push(`<div class="dp-hist-row${isSel ? ' dp-hist-sel' : ''}${dd ? '' : ' dp-hist-off'}${wd === 0 || wd === 6 ? ' dp-hist-we' : ''}" style="grid-template-columns:${cols}">
+      <div class="dp-hist-day">${isSel ? '▸ ' : ''}${escHtml(dailyProgDateLabel(d, true))}</div>
+      ${cells}
+      <div class="dp-hist-n" style="color:${plays.length ? 'var(--navy)' : 'var(--muted)'}">${dd ? (plays.length ? plays.length + '×' : '0') : '—'}</div>
+    </div>`);
+  }
+  const avg = loaded ? (total / loaded) : 0;
+  return `<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:2px 0 8px">🗓️ Historique — 14 derniers jours</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:11px;font-weight:800;padding:3px 9px;border-radius:20px;background:var(--navy);color:#fff">${total} diffusion${total > 1 ? 's' : ''}</span>
+      <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--bg);color:var(--text2)">${avg.toLocaleString('fr-FR', { maximumFractionDigits:1 })} / jour chargé</span>
+      <span style="font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:var(--bg);color:var(--text2)">${loaded}/14 jours chargés</span>
+    </div>
+    <div style="overflow-x:auto" data-m-scroll>
+      <div class="dp-hist-grid">${head}${rows.join('')}</div>
+    </div>`;
+}
+
+function dailyProgSideScoresHtml(s){
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px">${DAILY_METRICS.map(m => `<div style="padding:7px 9px;border-radius:9px;background:var(--bg)">
+      <div style="font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escHtml(m.label)}">${escHtml(m.short)}</div>
+      <div style="font-family:var(--font-display);font-size:16px;margin-top:1px">${dailyProgFmt(m, s[m.key])}</div>
+    </div>`).join('')}</div>`;
+}
+
+async function dailyProgRenderSide(){
+  const side = document.getElementById('dailyProgSide');
+  if(!side) return;
+  const day = dailyProgCurrentDay();
+  const it = day && dailyProgSelIdx !== null ? day.items[dailyProgSelIdx] : null;
+  if(!it){
+    side.classList.remove('dp-open');
+    side.innerHTML = `<div style="padding:40px 20px;text-align:center;color:var(--muted)">
+      <div style="font-size:28px;margin-bottom:8px">👈</div>
+      <div style="font-size:13px;font-weight:800;color:var(--navy)">Sélectionnez un titre du conducteur</div>
+      <div style="font-size:11.5px;margin-top:4px;line-height:1.5">Ses données Song Metrics et son historique de diffusion s'afficheront ici.<br>Ensuite, les flèches ↑ ↓ du clavier font défiler les titres.</div>
+    </div>`;
+    return;
+  }
+  side.classList.add('dp-open');
+  const token = ++dailyProgSideToken;
+  const s = dailyScoresFor(it.title, it.artist, day.date);
+  const title = it.title, artist = it.artist;
+  const position = day.items.indexOf(it) + 1;
+
+  // Song Metrics (mêmes briques que la fiche complète)
+  let badges = '';
+  try{
+    const row360 = findRow360Match(build360Rows(), title, artist);
+    if(row360){
+      const b = build360Badges(row360);
+      badges = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px">
+        <span style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;margin-right:2px">Fit</span>${b.fitBadge}${b.fpBadge}${b.dqBadge}${b.spuBadge}${b.burnBadge}${b.polarBadge}${b.potBadge}</div>`;
+    }
+  }catch(e){}
+  let research = '';
+  try{
+    const v = getTitleVagueSeries(title, artist);
+    let fam = null; try{ fam = getTitleFamScoreSeries(title, artist); }catch(e){}
+    research = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">
+      ${buildEvoCard('Pot Score Tous', '🎯', v.potTous, { color:'var(--cyan)', title, artist })}
+      ${buildEvoCard('Fit Score', '📐', v.fit, { color:'#7C3AED', title, artist })}
+      ${fam && fam.famTous ? buildEvoCard('Fam Score Tous', '💗', fam.famTous, { color:'#E6007E', title, artist }) : ''}
+      ${buildEvoCard('Pot Score P1', '🎯', v.potP1, { color:'var(--blue)', title, artist })}
+      ${buildEvoCard('Burn Ensemble', '🔥', v.burnTous, { color:'#CC2222', suffix:'%', lowerIsBetter:true, title, artist })}
+      ${buildEvoCard('Inconnu Ensemble', '❓', v.incTous, { color:'var(--orange-text)', suffix:'%', title, artist })}
+    </div>`;
+  }catch(e){ research = '<div style="font-size:12px;color:var(--muted)">Historique Call Out indisponible.</div>'; }
+
+  const sec = t => `<div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px">${t}</div>`;
+  side.innerHTML = `
+    <div style="position:sticky;top:0;z-index:3;background:var(--white);padding:14px 16px 12px;border-bottom:1.5px solid var(--border)">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">${it.time} · ${position}/${day.items.length} · cat. ${escHtml(it.cat || '—')}${it.year ? ' · ' + escHtml(it.year) : ''}</div>
+          <div style="font-family:var(--font-display);font-size:19px;font-weight:800;color:var(--navy);line-height:1.2;margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">${escHtml(titleCaseDisplay(title))} ${dailyProgMatchBadge(it, s)}</div>
+          <div style="font-size:12.5px;color:var(--text2);margin-top:1px">${escHtml(titleCaseDisplay(artist))}${typeof playlistCategoryBadgeHtml === 'function' ? playlistCategoryBadgeHtml(title, artist) : ''}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0;align-items:center">
+          ${typeof spotifyLink === 'function' ? spotifyLink(artist, title) : ''}
+          <button class="btn-ghost" onclick="dailyProgStep(-1)" title="Titre précédent (↑)" style="font-size:12px;padding:5px 9px">↑</button>
+          <button class="btn-ghost" onclick="dailyProgStep(1)" title="Titre suivant (↓)" style="font-size:12px;padding:5px 9px">↓</button>
+          <button class="dp-side-close btn-ghost" onclick="document.getElementById('dailyProgSide').classList.remove('dp-open')" title="Fermer" style="font-size:14px;padding:4px 9px">×</button>
+        </div>
+      </div>
+      <button class="btn-primary" onclick="dailyProgOpenFull()" style="margin-top:10px;font-size:11.5px;padding:7px 12px;border-radius:8px">📈 Ouvrir la fiche Song Metrics complète</button>
+    </div>
+    <div style="padding:4px 16px 18px">
+      ${sec('📊 Scores à la date du ' + escHtml(dailyProgDateLabel(day.date, true)))}
+      ${dailyProgSideScoresHtml(s)}
+      ${badges ? sec('🎯 FPA Metrics') + badges : ''}
+      ${sec('📋 Recherche musicale ' + escHtml(dailyProgStationLabel(dailyProgStation())))}
+      ${research}
+      <div style="margin-top:18px;padding-top:14px;border-top:1.5px solid var(--border)">${dailyProgHistoryHtml(it, day)}</div>
+      <div id="dpSideCharts">${sec('📻 Airplay & 🎧 Digital')}<div style="font-size:12px;color:var(--muted)">⏳ Chargement…</div></div>
+    </div>`;
+
+  // Airplay / Digital archivés (asynchrone, comme dans la fiche complète)
+  const box = () => document.getElementById('dpSideCharts');
+  try{
+    if(typeof DRIVE_SYNC_URL === 'undefined' || !DRIVE_SYNC_URL){
+      if(box()) box().innerHTML = sec('📻 Airplay & 🎧 Digital') + '<div style="font-size:12px;color:var(--muted)">☁️ Configurez Drive Sync pour afficher l\'historique Airplay et digital du titre.</div>';
+      return;
+    }
+    const cs = await getTitleChartsSeries(title, artist);
+    if(token !== dailyProgSideToken || !box()) return;
+    const cards = [
+      buildEvoCard('Airplay Général', '📻', cs.airplay.rg, { color:'var(--navy)', invert:true, unit:'Rang', title, artist }),
+      buildEvoCard('Airplay ' + dailyProgStationLabel(dailyProgStation()), '📻', dailyProgStation() === 'RFM' ? cs.airplay.rfm : cs.airplay.e2, { color:'var(--cyan)', unit:'Passages', title, artist }),
+      buildEvoCard('Shazam France', '🔵', cs.shzFR, { color:'#1E90FF', invert:true, unit:'Rang', title, artist }),
+      buildEvoCard('Spotify France', '🟢', cs.spyFR, { color:'#1DB954', invert:true, unit:'Rang', title, artist }),
+      buildEvoCard('Deezer France', '🟣', cs.dzFR, { color:'#A238FF', invert:true, unit:'Rang', title, artist })
+    ].join('');
+    box().innerHTML = sec('📻 Airplay & 🎧 Digital') + `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">${cards}</div>`;
+  }catch(e){
+    if(token === dailyProgSideToken && box()) box().innerHTML = sec('📻 Airplay & 🎧 Digital') + '<div style="font-size:12px;color:var(--muted)">Historique Airplay / digital indisponible.</div>';
+  }
+}
+
+/* ── Historique dans la fiche Song Metrics (tout en bas) ────────────── */
+let dailyProgGotoMatch = null;     // critère de titre transmis par la fiche lors d'un clic sur un point
+let dailyProgFicheMatch = null;
+/** Correspondance tolérante entre le titre de la fiche (orthographe Call
+ *  Out, Playlist…) et celle des conducteurs (MAJUSCULES, « & », « X »…). */
+function dailyProgFicheMatcher(title, artist){
+  const nT = norm(title || ''), nA = norm(artist || '');
+  const cache = new Map();
+  return x => {
+    const k = dailyProgKey(x);
+    if(cache.has(k)) return cache.get(k);
+    const xt = norm(x.title || ''), xa = norm(x.artist || '');
+    let ok = false;
+    if(xt === nT) ok = !nA || xa === nA || similarity(nA, xa) >= 0.5 || xa.includes(nA.split(' ')[0]) || nA.includes(xa.split(' ')[0]);
+    else if(similarity(nT, xt) >= 0.88) ok = !nA || similarity(nA, xa) >= 0.6;
+    cache.set(k, ok);
+    return ok;
+  };
+}
+async function dailyProgFicheHistoryHtml(title, artist){
+  await dailyProgLoad();
+  const st = dailyProgStation();
+  const store = dailyProgStore[st] || {};
+  const dates = Object.keys(store).sort();
+  const head = '<div style="display:flex;align-items:center;gap:12px;margin:26px 0 14px"><div style="flex:1;height:3px;background:linear-gradient(90deg,var(--border) 0%,var(--cyan) 50%,var(--border) 100%);border-radius:2px"></div><span style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap">Programmation quotidienne ' + escHtml(dailyProgStationLabel(st)) + '</span><div style="flex:1;height:3px;background:linear-gradient(90deg,var(--border) 0%,var(--cyan) 50%,var(--border) 100%);border-radius:2px"></div></div>';
+  if(!dates.length){
+    return head + '<div style="padding:14px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px;font-size:12px;color:var(--text2)">🗓️ Aucun conducteur quotidien chargé pour ' + escHtml(dailyProgStationLabel(st)) + ' — l\'historique de diffusion apparaîtra ici dès l\'import des programmations quotidiennes (Analyse → Programmation quotidienne).</div>';
+  }
+  dailyProgFicheMatch = dailyProgFicheMatcher(title, artist);
+  const html = dailyProgHistoryHtml({ title, artist, time:'' }, null, { end: dates[dates.length - 1], match: dailyProgFicheMatch, fromFiche: true });
+  return head + '<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px">' + html + '</div>';
+}
+/** Clic sur un point depuis la fiche : ferme la fiche et ouvre ce jour
+ *  dans le conducteur, sur cette diffusion. */
+function dailyProgOpenFromFiche(date, mins){
+  const match = dailyProgFicheMatch;
+  try{ closeTitleEvolutionModal(); }catch(e){}
+  if(typeof analysePageOpen !== 'undefined' && !analysePageOpen){
+    if(typeof goHome === 'function') goHome();
+    toggleAnalysePage();
+    if(typeof analysePageOpen !== 'undefined' && !analysePageOpen) return;   // accès refusé
+  }
+  if(typeof analyseSubView === 'undefined' || analyseSubView !== 'daily') analyseSetSubView('daily');
+  dailyProgView = null;
+  dailyProgGotoMatch = match;
+  dailyProgGoto(date, mins);
+}
+
+/** Depuis l'historique : ouvre le jour cliqué et sélectionne cette diffusion. */
+function dailyProgGoto(date, mins){
+  const st = dailyProgStation();
+  const day = dailyProgStore[st] && dailyProgStore[st][date];
+  if(!day) return;
+  const cur = dailyProgCurrentDay();
+  const key = dailyProgGotoMatch ? null : (cur && dailyProgSelIdx !== null ? dailyProgKey(cur.items[dailyProgSelIdx]) : null);
+  const match = dailyProgGotoMatch || (x => !key || dailyProgKey(x) === key);
+  dailyProgGotoMatch = null;
+  let idx = day.items.findIndex(x => dailyProgItemMins(x) === mins && match(x));
+  if(idx < 0) idx = day.items.findIndex(x => dailyProgItemMins(x) === mins);
+  dailyProgSelected = date;
+  dailyProgSelIdx = idx >= 0 ? idx : null;
+  renderDailyProgPage().then(() => {
+    const row = dailyProgSelIdx !== null ? document.getElementById('dpRow_' + dailyProgSelIdx) : null;
+    if(row) row.scrollIntoView({ block:'center' });
+  });
+}
+
+function dailyProgFilter(q){
+  const n = (typeof norm === 'function' ? norm(q || '') : String(q || '').toLowerCase()).trim();
+  document.querySelectorAll('#dailyProgList .dp-row').forEach(r => {
+    const t = r.querySelector('.dp-title');
+    const txt = r.textContent || '';
+    r.style.display = !n || (typeof norm === 'function' ? norm(txt) : txt.toLowerCase()).includes(n) ? '' : 'none';
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   SYNCHRONISATION : Gmail → Drive → tous les postes
+   • Le script Apps Script « FPA_Conducteurs_Gmail.gs » relève chaque jour à
+     18h les mails « PROG du … » et range les .xls dans un dossier Drive.
+   • FPA lit ce dossier (URL du script, réglage « Import automatique »),
+     décode chaque nouveau conducteur avec le lecteur de la station, puis
+     publie la journée décodée (légère) dans Drive Sync — clés
+     daily_prog_index et daily_prog_<STATION>_<AAAA-MM-JJ>. Les autres postes
+     n'ont alors qu'à relire ces petites journées décodées.
+   • Navigation : 14 derniers jours synchronisés automatiquement ; périodes
+     plus anciennes chargées à la demande (dates du / au).
+   ══════════════════════════════════════════════════════════════════════ */
+const DAILY_GAS_URL_KEY = 'fpa_daily_gmail_url';
+const DAILY_GAS_TOKEN_KEY = 'fpa_daily_gmail_token';
+const DAILY_DRIVE_INDEX_KEY = 'daily_prog_index';
+const DAILY_AUTO_DAYS = 14;
+let dailyProgView = null;                 // null = 14 derniers jours ; sinon {from, to}
+let dailyProgSyncStartedFor = {};         // synchro auto lancée une fois par station et par session
+let dailyProgSyncBusy = false;
+let dailyProgSyncMsg = '';
+let dailyProgLastSync = null;
+
+function dailyGasUrl(){ try{ return (localStorage.getItem(DAILY_GAS_URL_KEY) || '').trim(); }catch(e){ return ''; } }
+function dailyGasToken(){ try{ return (localStorage.getItem(DAILY_GAS_TOKEN_KEY) || '').trim(); }catch(e){ return ''; } }
+function dailyDriveOn(){ return typeof DRIVE_SYNC_URL !== 'undefined' && !!DRIVE_SYNC_URL && typeof driveCall === 'function'; }
+
+function dailyProgTodayISO(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function dailyProgViewRange(allDays){
+  if(dailyProgView) return dailyProgView;
+  const last = allDays && allDays.length ? allDays[allDays.length - 1].date : dailyProgTodayISO();
+  return { from: dailyProgAddDays(last, -(DAILY_AUTO_DAYS - 1)), to: last };
+}
+function dailyProgResetView(){ dailyProgView = null; dailyProgSelected = null; dailyProgSelIdx = null; renderDailyProgPage(); }
+
+/* ── Appel JSONP du script Gmail → Drive ───────────────────────────── */
+let __dailyGasCb = 0;
+function dailyGasCall(params, timeoutMs){
+  const base = dailyGasUrl();
+  return new Promise((resolve, reject) => {
+    if(!/^https:\/\//i.test(base)){ reject(new Error('URL du script d\'import automatique non configurée')); return; }
+    const cb = '__fpaDailyGas_' + (++__dailyGasCb);
+    const script = document.createElement('script');
+    const done = () => { window[cb] = () => {}; script.remove(); };
+    const timer = setTimeout(() => { done(); reject(new Error('Délai dépassé — vérifiez l\'URL et le déploiement du script')); }, timeoutMs || 45000);
+    window[cb] = data => { clearTimeout(timer); done(); if(data && data.ok === false) reject(new Error(data.error || 'Erreur du script')); else resolve(data); };
+    const q = Object.assign({}, params, dailyGasToken() ? { token: dailyGasToken() } : {});
+    script.src = base + (base.includes('?') ? '&' : '?') + 'callback=' + cb + Object.keys(q).map(k => '&' + encodeURIComponent(k) + '=' + encodeURIComponent(q[k])).join('');
+    script.onerror = () => { clearTimeout(timer); done(); reject(new Error('Erreur réseau vers le script d\'import')); };
+    document.head.appendChild(script);
+  });
+}
+/** Télécharge un .xls du dossier Drive (en plusieurs morceaux base64). */
+async function dailyGasDownload(id){
+  let parts = [], total = 1;
+  for(let p = 0; p < total; p++){
+    const r = await dailyGasCall({ action:'get', id, part:p }, 60000);
+    total = r.total || 1;
+    parts.push(r.data || '');
+  }
+  const bin = atob(parts.join(''));
+  const bytes = new Uint8Array(bin.length);
+  for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+/** Date probable d'un fichier avant téléchargement (nom + date du mail). */
+function dailyProgGuessFileDate(f){
+  const d = dailyProgDateFromFileName(f.name || '');
+  if(!d) return f.mailDate || null;
+  if(!f.mailDate) return d;
+  // l'année vient du mail (gère le passage d'une année à l'autre)
+  const y = +f.mailDate.slice(0, 4), md = d.slice(4);
+  const cands = [y - 1, y, y + 1].map(yy => yy + md);
+  const ref = new Date(f.mailDate + 'T12:00:00').getTime();
+  return cands.sort((a, b) => Math.abs(new Date(a + 'T12:00:00') - ref) - Math.abs(new Date(b + 'T12:00:00') - ref))[0];
+}
+
+/* ── Drive Sync : index + journées décodées ────────────────────────── */
+async function dailyDriveLoadIndex(){
+  const r = await driveCall('load', DAILY_DRIVE_INDEX_KEY);
+  let idx = {};
+  try{ idx = r && r.data ? JSON.parse(r.data) : {}; }catch(e){ idx = {}; }
+  ['EUROPE2','RFM'].forEach(st => { idx[st] = idx[st] || {}; });
+  idx.deleted = idx.deleted || { EUROPE2:{}, RFM:{} };
+  ['EUROPE2','RFM'].forEach(st => { idx.deleted[st] = idx.deleted[st] || {}; });
+  return idx;
+}
+let __dailyIndexQueue = Promise.resolve();
+/** Mise à jour de l'index Drive (sérialisée : relit, modifie, réécrit). */
+function dailyDriveUpdateIndex(mutator){
+  __dailyIndexQueue = __dailyIndexQueue.then(async () => {
+    const idx = await dailyDriveLoadIndex();
+    mutator(idx);
+    await driveCall('save', DAILY_DRIVE_INDEX_KEY, JSON.stringify(idx));
+  }).catch(e => console.warn('Programmation quotidienne — index Drive :', e));
+  return __dailyIndexQueue;
+}
+async function dailyProgPushDays(st, dates){
+  if(!dailyDriveOn() || !dates.length) return;
+  const pushed = [];
+  for(const d of dates){
+    const day = dailyProgStore[st][d];
+    if(!day) continue;
+    try{
+      await driveCall('save', 'daily_prog_' + st + '_' + d, JSON.stringify({ station: st, date: d, fileName: day.fileName, importedAt: day.importedAt, excluded: day.excluded, items: day.items }));
+      pushed.push(d);
+    }catch(e){ console.warn('Programmation quotidienne — envoi Drive ' + d, e); }
+  }
+  if(pushed.length) await dailyDriveUpdateIndex(idx => {
+    pushed.forEach(d => { idx[st][d] = { n: dailyProgStore[st][d].items.length, at: new Date().toISOString() }; delete idx.deleted[st][d]; });
+  });
+}
+function dailyProgMarkDeleted(st, date){
+  if(!dailyDriveOn()) return;
+  dailyDriveUpdateIndex(idx => { delete idx[st][date]; idx.deleted[st][date] = new Date().toISOString(); });
+}
+
+/** Synchronise les journées d'un intervalle [from, to] pour la station :
+ *  1) journées déjà décodées sur Drive Sync ; 2) nouveaux .xls du dossier
+ *  Gmail → Drive (décodés ici puis publiés pour les autres postes). */
+async function dailyProgSyncRange(st, from, to, opts){
+  opts = opts || {};
+  await dailyProgLoad();
+  const local = dailyProgStore[st];
+  const added = [];
+  let idx = null;
+  if(dailyDriveOn()){
+    try{
+      dailyProgSetSync('☁️ Lecture de l\'historique Drive…');
+      idx = await dailyDriveLoadIndex();
+      const wanted = Object.keys(idx[st]).filter(d => d >= from && d <= to && !local[d]).sort();
+      for(let i = 0; i < wanted.length; i++){
+        dailyProgSetSync('☁️ Récupération Drive ' + (i + 1) + '/' + wanted.length + ' (' + dailyProgDateLabel(wanted[i], true) + ')…');
+        try{
+          const r = await driveCall('load', 'daily_prog_' + st + '_' + wanted[i]);
+          const day = r && r.data ? JSON.parse(r.data) : null;
+          if(day && day.items && day.items.length){ local[wanted[i]] = day; added.push(wanted[i]); }
+        }catch(e){ console.warn('Programmation quotidienne — lecture Drive ' + wanted[i], e); }
+      }
+    }catch(e){ console.warn('Programmation quotidienne — index Drive', e); }
+  }
+  if(st === 'EUROPE2' && dailyGasUrl()){     // la règle Gmail ne concerne que les conducteurs Europe 2
+    try{
+      if(opts.fetchMail){ dailyProgSetSync('📬 Relève des mails « PROG du … »…'); await dailyGasCall({ action:'fetch_now' }, 120000); }
+      dailyProgSetSync('📂 Lecture du dossier Drive des conducteurs…');
+      const list = await dailyGasCall({ action:'list' });
+      const deleted = (idx && idx.deleted && idx.deleted[st]) || {};
+      const todo = (list.files || []).map(f => Object.assign({ guess: dailyProgGuessFileDate(f) }, f))
+        .filter(f => f.guess && f.guess >= dailyProgAddDays(from, -1) && f.guess <= dailyProgAddDays(to, 1) && !local[f.guess] && !deleted[f.guess]);
+      const fresh = [];
+      for(let i = 0; i < todo.length; i++){
+        const f = todo[i];
+        dailyProgSetSync('📥 Décodage du conducteur ' + (i + 1) + '/' + todo.length + ' (' + f.name + ')…');
+        try{
+          const buf = await dailyGasDownload(f.id);
+          const res = dailyProgParseWorkbook(buf, f.name, st);
+          if(res.date < from || res.date > to || local[res.date]) continue;
+          local[res.date] = { station: st, date: res.date, fileName: f.name, importedAt: new Date().toISOString(), items: res.items, excluded: res.excluded, source: 'gmail' };
+          added.push(res.date); fresh.push(res.date);
+        }catch(e){ console.warn('Programmation quotidienne — ' + f.name, e); }
+      }
+      if(fresh.length){ await dailyProgSave(); dailyProgPushDays(st, fresh); }
+    }catch(e){
+      if(opts.manual) showToast('Import automatique : ' + e.message, 'err');
+      console.warn('Programmation quotidienne — script Gmail', e);
+    }
+  }
+  if(added.length) await dailyProgSave();
+  return added;
+}
+
+/** Synchro des 14 derniers jours (à l'ouverture de l'onglet, chaque jour à
+ *  18h15 si FPA reste ouvert, ou sur demande avec relève Gmail immédiate). */
+async function dailyProgAutoSync(manual){
+  if(dailyProgSyncBusy) return;
+  if(!dailyDriveOn() && !dailyGasUrl()){ if(manual) openDailyProgSyncSettings(); return; }
+  dailyProgSyncBusy = true;
+  const st = dailyProgStation();
+  try{
+    // 14 jours d'historique + les conducteurs déjà envoyés pour les jours à venir
+    const today = dailyProgTodayISO(), from = dailyProgAddDays(today, -(DAILY_AUTO_DAYS - 1)), to = dailyProgAddDays(today, 7);
+    const added = await dailyProgSyncRange(st, from, to, { fetchMail: !!manual, manual });
+    dailyProgLastSync = new Date();
+    dailyProgSetSync(added.length ? '✓ ' + added.length + ' nouvelle(s) journée(s) synchronisée(s)' : '✓ À jour');
+    if(added.length && !dailyProgView){ dailyProgSelected = added.sort().slice(-1)[0]; dailyProgSelIdx = null; }
+    if(added.length || manual) showToast(added.length ? '✓ ' + added.length + ' journée(s) ' + dailyProgStationLabel(st) + ' récupérée(s)' : '✓ Programmation quotidienne à jour', 'success');
+  }finally{
+    dailyProgSyncBusy = false;
+    if(dailyProgIsVisible()) renderDailyProgPage();
+  }
+}
+/** Charge une période plus ancienne (dates du / au). */
+async function dailyProgLoadPeriodFromInputs(){
+  const f = (document.getElementById('dailyProgFrom') || {}).value, t = (document.getElementById('dailyProgTo') || {}).value;
+  if(!f || !t){ showToast('Choisissez une date de début et une date de fin', 'err'); return; }
+  const from = f <= t ? f : t, to = f <= t ? t : f;
+  if(dailyProgSyncBusy){ showToast('Une synchronisation est déjà en cours…', 'err'); return; }
+  dailyProgSyncBusy = true;
+  let added = [];
+  try{ added = await dailyProgSyncRange(dailyProgStation(), from, to, { manual:true }); }
+  finally{ dailyProgSyncBusy = false; }
+  const st = dailyProgStation();
+  const n = Object.keys(dailyProgStore[st]).filter(d => d >= from && d <= to).length;
+  dailyProgSetSync(n ? '✓ ' + n + ' journée(s) sur la période' : 'Aucune journée disponible sur cette période');
+  if(!n){ showToast('Aucun conducteur trouvé du ' + dailyProgDateLabel(from, true) + ' au ' + dailyProgDateLabel(to, true), 'err'); renderDailyProgPage(); return; }
+  dailyProgView = { from, to };
+  dailyProgSelected = null; dailyProgSelIdx = null;
+  renderDailyProgPage();
+}
+
+/* ── Affichage de l'état de synchro ────────────────────────────────── */
+function dailyProgSetSync(msg){
+  dailyProgSyncMsg = msg;
+  const el = document.getElementById('dailyProgSyncStatus');
+  if(el) el.innerHTML = dailyProgSyncStatusText();
+}
+function dailyProgSyncStatusText(){
+  const parts = [];
+  parts.push(dailyGasUrl() ? '📬 Gmail : relève automatique chaque jour à 18h' : '📬 Gmail : non configuré');
+  parts.push(dailyDriveOn() ? '☁️ Drive : historique partagé entre postes' : '☁️ Drive Sync non configuré');
+  if(dailyProgSyncMsg) parts.push((dailyProgSyncBusy ? '⏳ ' : '') + escHtml(dailyProgSyncMsg));
+  else if(dailyProgLastSync) parts.push('Dernière synchro ' + dailyProgLastSync.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }));
+  return parts.join(' · ');
+}
+function dailyProgSyncBarHtml(){
+  return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+    <span id="dailyProgSyncStatus" style="font-size:11px;color:var(--text2)">${dailyProgSyncStatusText()}</span>
+    <span style="margin-left:auto;display:inline-flex;gap:6px">
+      <button class="btn-ghost" onclick="dailyProgAutoSync(true)" style="font-size:10.5px;padding:4px 10px" title="Relève les mails « PROG du … » et récupère les journées manquantes des 14 derniers jours">🔄 Synchroniser maintenant</button>
+      <button class="btn-ghost" onclick="openDailyProgSyncSettings()" style="font-size:10.5px;padding:4px 10px">⚙ Import automatique</button>
+    </span>
+  </div>`;
+}
+
+/* ── Réglage de l'import automatique ───────────────────────────────── */
+function openDailyProgSyncSettings(){
+  closeDailyProgSyncSettings();
+  const ov = document.createElement('div');
+  ov.id = 'dailyProgSyncModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,29,58,.5);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('click', e => { if(e.target === ov) closeDailyProgSyncSettings(); });
+  ov.innerHTML = `<div style="background:var(--white);border-radius:16px;width:100%;max-width:580px;max-height:90vh;overflow:auto;padding:22px;box-shadow:0 20px 60px rgba(11,29,58,.3)">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+      <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy)">⚙ Import automatique des conducteurs</div>
+      <button onclick="closeDailyProgSyncSettings()" aria-label="Fermer" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.55;margin-top:8px">
+      Chaque jour à 18h, le script Google <b>FPA_Conducteurs_Gmail</b> relève dans votre Gmail les mails dont l'objet commence par <b>« PROG du »</b> (envoyés par Pierre Edouard Le Boucher ou Mickael Bois) et range leur fichier Excel dans le dossier Drive <b>« FPA – Conducteurs Europe 2 »</b>. FPA y récupère ensuite les nouvelles journées et les partage entre tous vos postes via Drive Sync.
+    </div>
+    <ol style="font-size:11.5px;color:var(--text2);line-height:1.6;margin:10px 0 0 18px;padding:0">
+      <li>Sur <b>script.google.com</b>, créez un projet et collez le fichier <b>FPA_Conducteurs_Gmail.gs</b>.</li>
+      <li>Exécutez la fonction <b>setup</b> et acceptez les autorisations (Gmail, Drive).</li>
+      <li>Déployez-le en <b>Application Web</b> (exécuter en tant que : moi · accès : tout le monde) et collez l'URL ci-dessous.</li>
+    </ol>
+    <label style="display:block;font-size:11px;font-weight:800;color:var(--muted);margin-top:14px">URL du script (…/exec)
+      <input id="dailyGasUrlInput" type="url" value="${escHtml(dailyGasUrl())}" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%;margin-top:4px;font-size:12.5px;padding:9px 11px;border-radius:8px"></label>
+    <label style="display:block;font-size:11px;font-weight:800;color:var(--muted);margin-top:10px">Jeton (facultatif — seulement si renseigné dans le script)
+      <input id="dailyGasTokenInput" type="text" value="${escHtml(dailyGasToken())}" style="width:100%;margin-top:4px;font-size:12.5px;padding:9px 11px;border-radius:8px"></label>
+    <div style="font-size:11px;color:var(--text2);margin-top:10px">${dailyDriveOn() ? '☁️ Drive Sync est configuré : l\'historique sera partagé entre vos postes.' : '⚠️ Drive Sync n\'est pas configuré sur ce poste : les journées resteront locales (réglage Drive Sync de FPA).'}</div>
+    <div id="dailyGasTestResult" style="font-size:11.5px;margin-top:10px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;flex-wrap:wrap">
+      <button class="btn-ghost" onclick="dailyGasTest()" style="font-size:12px;padding:9px 14px">Tester la connexion</button>
+      <button class="btn-primary" onclick="dailyGasSaveSettings()" style="font-size:12px;padding:9px 16px;border-radius:9px">Enregistrer et synchroniser</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function closeDailyProgSyncSettings(){ const m = document.getElementById('dailyProgSyncModal'); if(m) m.remove(); }
+function dailyGasStoreInputs(){
+  const u = (document.getElementById('dailyGasUrlInput') || {}).value || '', t = (document.getElementById('dailyGasTokenInput') || {}).value || '';
+  try{ localStorage.setItem(DAILY_GAS_URL_KEY, u.trim()); localStorage.setItem(DAILY_GAS_TOKEN_KEY, t.trim()); }catch(e){}
+}
+async function dailyGasTest(){
+  dailyGasStoreInputs();
+  const out = document.getElementById('dailyGasTestResult');
+  if(out) out.innerHTML = '<span style="color:var(--muted)">⏳ Test en cours…</span>';
+  try{
+    const r = await dailyGasCall({ action:'ping' }, 20000);
+    const l = await dailyGasCall({ action:'list' }, 30000);
+    const last = r.lastRun ? ' · dernière relève Gmail : ' + new Date(r.lastRun.at).toLocaleString('fr-FR') : '';
+    if(out) out.innerHTML = `<span style="color:#15803d;font-weight:800">✓ Connexion réussie</span> — ${(l.files || []).length} conducteur(s) dans le dossier Drive${escHtml(last)}`;
+  }catch(e){
+    if(out) out.innerHTML = `<span style="color:#dc2626;font-weight:800">✗ ${escHtml(e.message)}</span>`;
+  }
+}
+async function dailyGasSaveSettings(){
+  dailyGasStoreInputs();
+  closeDailyProgSyncSettings();
+  renderDailyProgPage();
+  dailyProgAutoSync(true);
+}
+
+/* Relève quotidienne quand FPA reste ouvert : 18h15 chaque jour */
+(function scheduleDaily(){
+  const now = new Date(), next = new Date(now);
+  next.setHours(18, 15, 0, 0);
+  if(next <= now) next.setDate(next.getDate() + 1);
+  setTimeout(() => {
+    try{ if(dailyGasUrl() || dailyDriveOn()){ dailyProgSyncStartedFor = {}; dailyProgAutoSync(false); } }catch(e){}
+    scheduleDaily();
+  }, next - now);
+})();
+
+// Rafraîchit l'onglet quand on bascule de station (Europe 2 ↔ RFM)
+(function(){
+  const orig = window.toggleActiveStation;
+  if(typeof orig !== 'function') return;
+  window.toggleActiveStation = function(){
+    const r = orig.apply(this, arguments);
+    try{ if(typeof analyseSubView !== 'undefined' && analyseSubView === 'daily'){ dailyProgSelected = null; dailyProgSelIdx = null; dailyProgView = null; dailyProgScoreMemo = {}; renderDailyProgPage(); } }catch(e){}
+    return r;
+  };
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     BAROMÈTRE SANTÉ (page Décision → Overview)
+     Voyants rouge / orange / vert sur une liste de critères extensible.
+     ▸ Ajouter un critère = ajouter un objet dans HEALTH_CRITERIA (voir le
+       modèle documenté juste au-dessus du tableau). Rien d'autre à toucher :
+       la carte, les voyants, le réglage des seuils et leur sauvegarde
+       s'adaptent automatiquement.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaHealthBarometerJs">
+const HEALTH_THRESHOLDS_KEY = 'fpa_health_thresholds_v1';
+const HEALTH_COLORS = {
+  green : { c:'#16a34a', bg:'#ecfdf3', label:'Bon' },
+  orange: { c:'#f59e0b', bg:'#fff8eb', label:'À surveiller' },
+  red   : { c:'#dc2626', bg:'#fef2f2', label:'Alerte' },
+  none  : { c:'#94a3b8', bg:'var(--bg)', label:'Indisponible' }
+};
+
+/* ── Petits utilitaires ─────────────────────────────────────────────── */
+function healthFmt(v, dec){
+  if(v === null || v === undefined || isNaN(v)) return '—';
+  return Number(v).toLocaleString('fr-FR', { minimumFractionDigits:dec, maximumFractionDigits:dec });
+}
+function healthMean(arr){
+  const xs = arr.filter(v => v !== null && v !== undefined && !isNaN(v));
+  return xs.length ? xs.reduce((s, v) => s + v, 0) / xs.length : null;
+}
+function healthStationKey(){ return (typeof ACTIVE_STATION !== 'undefined' && ACTIVE_STATION === 'RFM') ? 'RFM' : 'EUROPE2'; }
+function healthStationLabel(st){
+  try{ if(typeof STATION_LABELS !== 'undefined' && STATION_LABELS[st]) return STATION_LABELS[st]; }catch(e){}
+  return st === 'RFM' ? 'RFM' : 'Europe 2';
+}
+
+/* Sources de données partagées par plusieurs critères */
+function healthCallOutRows(){
+  return (typeof analysisResult !== 'undefined' && Array.isArray(analysisResult)) ? analysisResult : [];
+}
+function healthCallOutContext(){
+  const rows = healthCallOutRows();
+  const name = (typeof sourceFileName !== 'undefined' && sourceFileName) ? sourceFileName : 'Call Out / OMT';
+  return name + ' · ' + rows.length + ' titres';
+}
+/** Seuils FPA de l'analyse affichée : Fit Zone (Fit Point − 1,5σ) et seuil
+ *  Hit Song (Fit Point − 2σ), exactement ceux du tableau Fit Score. */
+function healthFpaPotThresholds(){
+  if(!healthCallOutRows().length) return null;
+  if(typeof fitZoneLow === 'undefined' || typeof hst === 'undefined') return null;
+  if(!isFinite(fitZoneLow) || !isFinite(hst) || (!fitZoneLow && !hst)) return null;
+  return { green: fitZoneLow, orange: hst,
+    explain: 'Fit Zone de l\'analyse affichée (Fit Point − 1,5σ = ' + healthFmt(fitZoneLow,1) + ') / seuil Hit Song (− 2σ = ' + healthFmt(hst,1) + ')' };
+}
+/** Le Fit Score vaut 100 − |écart|/σ × 25 : la limite de la Fit Zone (1,5σ)
+ *  correspond donc toujours à 62,5 et le seuil Hit Song (2σ) à 50. */
+function healthFpaFitThresholds(){
+  return { green: 62.5, orange: 50,
+    explain: 'Limite de la Fit Zone (1,5σ → Fit Score 62,5) / seuil Hit Song (2σ → Fit Score 50)' };
+}
+/** Dernière semaine exhaustive de programmation archivée (onglet Analyse). */
+function healthLastProgWeek(st){
+  let h = {};
+  try{ h = analyseLoadHistory() || {}; }catch(e){ h = {}; }
+  const weeks = (h[st] || []).slice();
+  if(!weeks.length) return null;
+  weeks.sort((a, b) => {
+    const da = a.weekStart || '', db = b.weekStart || '';
+    if(da && db && da !== db) return da < db ? -1 : 1;
+    return String(a.weekLabel).localeCompare(String(b.weekLabel), undefined, { numeric:true });
+  });
+  return weeks[weeks.length - 1];
+}
+function healthProgContext(w){
+  if(!w) return '';
+  let s = 'Semaine ' + w.weekLabel;
+  try{ if(w.weekStart) s += ' · du ' + formatDateFr(w.weekStart) + (w.weekEnd ? ' au ' + formatDateFr(w.weekEnd) : ''); }catch(e){}
+  return s + ' · pondéré par diffusions';
+}
+/** Semaines d'audience digitale de la station, de la plus ancienne à la plus récente. */
+function healthDaudWeeks(st){
+  const h = (typeof digitalAudienceHistory !== 'undefined' && digitalAudienceHistory && digitalAudienceHistory[st]) || {};
+  return Object.keys(h).sort().map(k => Object.assign({ _key:k }, h[k]));
+}
+/** Seuils automatiques d'audience : moyenne des (jusqu'à) 8 semaines
+ *  précédant la dernière. Vert ≥ moyenne, orange ≥ 90 % de la moyenne. */
+function healthDaudAutoThresholds(st, field, label){
+  const weeks = healthDaudWeeks(st);
+  if(weeks.length < 2) return null;
+  const prev = weeks.slice(0, -1).slice(-8).map(w => w[field]);
+  const m = healthMean(prev);
+  if(m === null) return null;
+  const n = prev.filter(v => v !== null && v !== undefined && !isNaN(v)).length;
+  return { green: m, orange: m * 0.9,
+    explain: label + ' moyenne des ' + n + ' semaine(s) précédente(s) (' + healthFmt(m,0) + ') ; orange dès −10 %' };
+}
+function healthDaudContext(w){
+  if(!w) return '';
+  try{ return 'Semaine du ' + formatDateFr(w.weekStart || w._key); }catch(e){ return 'Semaine du ' + (w.weekStart || w._key); }
+}
+
+/** Dernière journée de programmation quotidienne importée (onglet Analyse
+ *  → Programmation quotidienne) et ses moyennes, chaque diffusion comptant. */
+function healthLastDailyDay(st){
+  if(typeof dailyProgStore === 'undefined' || !dailyProgStore || !dailyProgStore[st]) return null;
+  const dates = Object.keys(dailyProgStore[st]).sort();
+  return dates.length ? dailyProgStore[st][dates[dates.length - 1]] : null;
+}
+function healthDailyValue(st, key, label){
+  const d = healthLastDailyDay(st);
+  if(!d) return { value:null, empty:'Aucune journée de programmation quotidienne importée (onglet Analyse).' };
+  let agg = null;
+  try{ agg = dailyProgAggregate(d.items, d.date); }catch(e){ agg = null; }
+  let ctx = d.date;
+  try{ ctx = dailyProgDateLabel(d.date, true); }catch(e){}
+  ctx += ' · ' + d.items.length + ' diffusions';
+  if(!agg || agg[key] === null || agg[key] === undefined) return { value:null, context: ctx, empty: label + ' indisponible : aucun titre de cette journée n\'est retrouvé dans l\'historique Call Out.' };
+  return { value: agg[key], context: ctx + ' · ' + agg[key + 'N'] + ' matchées' };
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   CRITÈRES SURVEILLÉS
+   Modèle d'un critère :
+   {
+     id      : 'identifiant_unique',        // sert de clé pour les seuils sauvegardés
+     group   : 'Recherche' | 'Programmation' | 'Audience digitale' | …,
+     icon    : '🎯',
+     label   : 'Libellé affiché',
+     decimals: 1,                           // décimales affichées
+     unit    : '',                          // suffixe éventuel (ex. '%')
+     higherIsBetter: true,                  // false → vert si ≤ seuil
+     value(st)  → { value:Number|null, context:'texte', empty:'raison si indisponible' }
+     auto(st)   → { green, orange, explain } | null   // seuils calculés par FPA
+   }
+   ══════════════════════════════════════════════════════════════════════ */
+const HEALTH_CRITERIA = [
+  { id:'co_fit', group:'Recherche', icon:'🎯', label:'Fit Score moyen — Call Out affiché', decimals:1, unit:'', higherIsBetter:true,
+    value(){
+      const rows = healthCallOutRows();
+      if(!rows.length) return { value:null, empty:'Aucune analyse Call Out / OMT affichée.' };
+      return { value: healthMean(rows.map(r => r.fit)), context: healthCallOutContext() };
+    },
+    auto(){ return healthFpaFitThresholds(); } },
+
+  { id:'co_pot', group:'Recherche', icon:'📋', label:'Pot Score moyen — Call Out affiché', decimals:1, unit:'', higherIsBetter:true,
+    value(){
+      const rows = healthCallOutRows();
+      if(!rows.length) return { value:null, empty:'Aucune analyse Call Out / OMT affichée.' };
+      return { value: healthMean(rows.map(r => r.score)), context: healthCallOutContext() };
+    },
+    auto(){ return healthFpaPotThresholds(); } },
+
+  { id:'prog_pot', group:'Programmation hebdo', icon:'📻', label:'Pot Score moyen — dernière semaine programmée', decimals:1, unit:'', higherIsBetter:true,
+    value(st){
+      const w = healthLastProgWeek(st);
+      if(!w) return { value:null, empty:'Aucune semaine exhaustive archivée (onglet Analyse).' };
+      const v = w.stats ? w.stats.avgPot : null;
+      if(v === null || v === undefined) return { value:null, context: healthProgContext(w), empty:'Pot Score non calculé pour la semaine ' + w.weekLabel + ' (historique Call Out absent ?).' };
+      return { value:v, context: healthProgContext(w) };
+    },
+    auto(){ return healthFpaPotThresholds(); } },
+
+  { id:'prog_fit', group:'Programmation hebdo', icon:'🎚️', label:'Fit Score moyen — dernière semaine programmée', decimals:1, unit:'', higherIsBetter:true,
+    value(st){
+      const w = healthLastProgWeek(st);
+      if(!w) return { value:null, empty:'Aucune semaine exhaustive archivée (onglet Analyse).' };
+      const v = w.stats ? w.stats.avgFit : null;
+      if(v === null || v === undefined) return { value:null, context: healthProgContext(w), empty:'Fit Score non calculé pour la semaine ' + w.weekLabel + '.' };
+      return { value:v, context: healthProgContext(w) };
+    },
+    auto(){ return healthFpaFitThresholds(); } },
+
+  { id:'daily_fit', group:'Programmation quotidienne', icon:'🎛️', label:'Fit Score moyen — dernière journée programmée', decimals:1, unit:'', higherIsBetter:true,
+    value(st){ return healthDailyValue(st, 'fit', 'Fit Score'); },
+    auto(){ return healthFpaFitThresholds(); } },
+
+  { id:'daily_pot', group:'Programmation quotidienne', icon:'🗓️', label:'Pot Score moyen — dernière journée programmée', decimals:1, unit:'', higherIsBetter:true,
+    value(st){ return healthDailyValue(st, 'pot', 'Pot Score'); },
+    auto(){ return healthFpaPotThresholds(); } },
+
+  { id:'daud_sessions', group:'Audience digitale', icon:'🎧', label:'Sessions — dernière semaine', decimals:0, unit:'', higherIsBetter:true,
+    value(st){
+      const weeks = healthDaudWeeks(st);
+      if(!weeks.length) return { value:null, empty:'Aucune semaine d\'audience digitale importée.' };
+      const w = weeks[weeks.length - 1];
+      return { value: w.sessions, context: healthDaudContext(w) + ' · sessions > 30 s' };
+    },
+    auto(st){ return healthDaudAutoThresholds(st, 'sessions', 'Vert dès la'); } },
+
+  { id:'daud_uniques', group:'Audience digitale', icon:'👤', label:'Visiteurs uniques — dernière semaine', decimals:0, unit:'', higherIsBetter:true,
+    value(st){
+      const weeks = healthDaudWeeks(st);
+      if(!weeks.length) return { value:null, empty:'Aucune semaine d\'audience digitale importée.' };
+      const w = weeks[weeks.length - 1];
+      return { value: w.uniques, context: healthDaudContext(w) };
+    },
+    auto(st){ return healthDaudAutoThresholds(st, 'uniques', 'Vert dès la'); } },
+
+  { id:'daud_audience', group:'Audience digitale', icon:'📈', label:'Audience moyenne — dernière semaine', decimals:0, unit:'', higherIsBetter:true,
+    value(st){
+      const weeks = healthDaudWeeks(st);
+      if(!weeks.length) return { value:null, empty:'Aucune semaine d\'audience digitale importée.' };
+      const w = weeks[weeks.length - 1];
+      return { value: w.audienceMoyenne, context: healthDaudContext(w) + ' · 5h-24h' };
+    },
+    auto(st){ return healthDaudAutoThresholds(st, 'audienceMoyenne', 'Vert dès la'); } }
+];
+
+/* ── Seuils : sauvegarde par station (les audiences Europe 2 et RFM n'ont
+      pas les mêmes ordres de grandeur) ─────────────────────────────────── */
+function healthLoadSettings(){
+  try{ return JSON.parse(localStorage.getItem(HEALTH_THRESHOLDS_KEY) || '{}') || {}; }catch(e){ return {}; }
+}
+function healthSaveSettings(s){
+  try{ localStorage.setItem(HEALTH_THRESHOLDS_KEY, JSON.stringify(s)); }catch(e){}
+}
+/** Seuils effectifs d'un critère : manuels s'ils sont définis, sinon auto. */
+function healthThresholds(crit, st){
+  const conf = ((healthLoadSettings()[st] || {})[crit.id]) || {};
+  let auto = null;
+  try{ auto = crit.auto ? crit.auto(st) : null; }catch(e){ auto = null; }
+  if(conf.mode === 'manual' && isFinite(conf.green) && isFinite(conf.orange)){
+    return { green:+conf.green, orange:+conf.orange, mode:'manual', auto };
+  }
+  return auto ? { green:auto.green, orange:auto.orange, mode:'auto', explain:auto.explain, auto } : { mode:'auto', auto:null };
+}
+function healthStatus(crit, value, th){
+  if(value === null || value === undefined || isNaN(value) || !th || !isFinite(th.green) || !isFinite(th.orange)) return 'none';
+  if(crit.higherIsBetter === false){
+    if(value <= th.green) return 'green';
+    if(value <= th.orange) return 'orange';
+    return 'red';
+  }
+  if(value >= th.green) return 'green';
+  if(value >= th.orange) return 'orange';
+  return 'red';
+}
+
+/* ── Chargement des historiques nécessaires (une fois par session) ────── */
+let healthLoadsStarted = false;
+function healthEnsureData(){
+  if(healthLoadsStarted) return;
+  healthLoadsStarted = true;
+  const tasks = [];
+  try{ if(typeof analyseHistoryCacheLoad === 'function') tasks.push(analyseHistoryCacheLoad()); }catch(e){}
+  try{
+    if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL && typeof analyseDriveLoaded !== 'undefined' && !analyseDriveLoaded && typeof analyseLoadHistoryFromDrive === 'function')
+      tasks.push(analyseLoadHistoryFromDrive());
+  }catch(e){}
+  try{
+    if(typeof digitalAudienceDriveLoaded !== 'undefined' && !digitalAudienceDriveLoaded){
+      const empty = !healthDaudWeeks('EUROPE2').length && !healthDaudWeeks('RFM').length;
+      if(empty && typeof digitalAudienceLoadLocal === 'function') digitalAudienceLoadLocal();
+      if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL && typeof digitalAudienceLoadHistoryFromDrive === 'function')
+        tasks.push(digitalAudienceLoadHistoryFromDrive(false));
+    }
+  }catch(e){}
+  // Programmation quotidienne : cache local, puis synchro Drive / Gmail si configurée
+  try{
+    if(typeof dailyProgLoad === 'function'){
+      tasks.push(dailyProgLoad().then(() => {
+        const st = healthStationKey();
+        if(typeof dailyProgAutoSync === 'function' && typeof dailyProgSyncStartedFor !== 'undefined' && !dailyProgSyncStartedFor[st]
+           && ((typeof dailyGasUrl === 'function' && dailyGasUrl()) || (typeof dailyDriveOn === 'function' && dailyDriveOn()))){
+          dailyProgSyncStartedFor[st] = true;
+          dailyProgAutoSync(false).then(() => renderHealthBarometer()).catch(() => {});
+        }
+      }));
+    }
+  }catch(e){}
+  if(tasks.length) Promise.allSettled(tasks).then(() => renderHealthBarometer());
+}
+
+/* ── Rendu de la carte ──────────────────────────────────────────────── */
+function healthLightHtml(status){
+  const dot = key => {
+    const on = status === key;
+    const col = HEALTH_COLORS[key].c;
+    return `<span style="width:13px;height:13px;border-radius:50%;display:block;background:${on ? col : 'rgba(255,255,255,.13)'};${on ? 'box-shadow:0 0 0 2px ' + col + '33,0 0 10px ' + col + ';' : ''}"></span>`;
+  };
+  return `<div aria-label="${HEALTH_COLORS[status].label}" title="${HEALTH_COLORS[status].label}" style="flex-shrink:0;display:flex;flex-direction:column;gap:5px;padding:7px 6px;border-radius:12px;background:var(--navy);box-shadow:inset 0 1px 3px rgba(0,0,0,.35)">${dot('red')}${dot('orange')}${dot('green')}</div>`;
+}
+
+function renderHealthBarometer(){
+  const box = document.getElementById('healthBarometer');
+  if(!box) return;
+  healthEnsureData();
+  const st = healthStationKey();
+  const results = HEALTH_CRITERIA.map(crit => {
+    let v = { value:null, empty:'Calcul impossible.' };
+    try{ v = crit.value(st) || v; }catch(e){ console.warn('Baromètre — ' + crit.id, e); }
+    const th = healthThresholds(crit, st);
+    return { crit, v, th, status: healthStatus(crit, v.value, th) };
+  });
+  const counts = { green:0, orange:0, red:0, none:0 };
+  results.forEach(r => counts[r.status]++);
+  const globalStatus = counts.red ? 'red' : counts.orange ? 'orange' : counts.green ? 'green' : 'none';
+  const chip = key => counts[key] ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:rgba(255,255,255,.12);color:#fff"><span style="width:8px;height:8px;border-radius:50%;background:${HEALTH_COLORS[key].c}"></span>${counts[key]}</span>` : '';
+
+  const tiles = results.map(({ crit, v, th, status }) => {
+    const col = HEALTH_COLORS[status];
+    const cmp = crit.higherIsBetter === false ? '≤' : '≥';
+    const thLine = (th && isFinite(th.green) && isFinite(th.orange))
+      ? `<span style="color:${HEALTH_COLORS.green.c}">●</span> ${cmp} ${healthFmt(th.green, crit.decimals)} &nbsp;<span style="color:${HEALTH_COLORS.orange.c}">●</span> ${cmp} ${healthFmt(th.orange, crit.decimals)} &nbsp;<span style="font-weight:800;color:${th.mode === 'manual' ? 'var(--navy)' : 'var(--cyan)'}">${th.mode === 'manual' ? 'manuel' : 'auto'}</span>`
+      : `<span>Seuils auto indisponibles — réglables dans ⚙ Seuils</span>`;
+    const valueHtml = (v.value === null || v.value === undefined || isNaN(v.value))
+      ? `<div style="font-size:11.5px;color:var(--muted);line-height:1.35;margin:4px 0 2px">${escHtml(v.empty || 'Indisponible')}</div>`
+      : `<div style="font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--navy);line-height:1.1;margin:3px 0 1px">${healthFmt(v.value, crit.decimals)}${crit.unit ? `<span style="font-size:13px;color:var(--muted)"> ${escHtml(crit.unit)}</span>` : ''}</div>`;
+    return `<div style="display:flex;gap:12px;align-items:stretch;min-width:0;padding:12px;border-radius:12px;border:1.5px solid var(--border);border-left:4px solid ${col.c};background:${col.bg}">
+      ${healthLightHtml(status)}
+      <div style="min-width:0;flex:1;display:flex;flex-direction:column">
+        <div style="font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)">${crit.icon} ${escHtml(crit.group)}</div>
+        <div style="font-size:12px;font-weight:800;color:var(--navy);line-height:1.25;margin-top:2px">${escHtml(crit.label)}</div>
+        ${valueHtml}
+        ${v.context ? `<div style="font-size:10.5px;color:var(--text2);line-height:1.3">${escHtml(v.context)}</div>` : ''}
+        <div style="font-size:10px;color:var(--muted);margin-top:auto;padding-top:6px">${thLine}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  box.innerHTML = `<div class="ov-card" style="padding:0 14px 14px;margin-bottom:16px">
+    <div class="ov-head" style="cursor:default;flex-wrap:wrap;row-gap:6px;margin-bottom:12px;padding:10px 14px;margin-left:-14px;margin-right:-14px">
+      <span style="font-size:15px;flex-shrink:0">🩺</span>
+      <span class="ov-title" style="font-size:12.5px;font-weight:800">Baromètre santé · ${escHtml(healthStationLabel(st))}</span>
+      <span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <span style="font-size:10.5px;font-weight:800;padding:2px 9px;border-radius:20px;background:${HEALTH_COLORS[globalStatus].c};color:#fff">${HEALTH_COLORS[globalStatus].label}</span>
+        ${chip('green')}${chip('orange')}${chip('red')}${chip('none')}
+      </span>
+      <button onclick="openHealthSettings()" style="margin-left:auto;flex-shrink:0;font-size:10.5px;font-weight:800;color:var(--cyan);background:none;border:1px solid rgba(255,255,255,.25);border-radius:7px;padding:4px 10px;cursor:pointer">⚙ Seuils</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px">${tiles}</div>
+  </div>`;
+}
+
+/* ── Fenêtre de réglage des seuils ──────────────────────────────────── */
+function openHealthSettings(){
+  closeHealthSettings();
+  const st = healthStationKey();
+  const conf = healthLoadSettings()[st] || {};
+  const rowsHtml = HEALTH_CRITERIA.map(crit => {
+    const c = conf[crit.id] || {};
+    let auto = null;
+    try{ auto = crit.auto ? crit.auto(st) : null; }catch(e){}
+    const manual = c.mode === 'manual';
+    const step = crit.decimals ? '0.1' : '1';
+    const val = (x, fallback) => (x !== undefined && x !== null && isFinite(x)) ? x : (fallback !== undefined && fallback !== null && isFinite(fallback) ? +(+fallback).toFixed(crit.decimals) : '');
+    const cmp = crit.higherIsBetter === false ? '≤' : '≥';
+    return `<div data-hs-id="${crit.id}" style="border:1.5px solid var(--border);border-radius:12px;padding:12px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div style="min-width:0">
+          <div style="font-size:9.5px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)">${crit.icon} ${escHtml(crit.group)}</div>
+          <div style="font-size:12.5px;font-weight:800;color:var(--navy)">${escHtml(crit.label)}</div>
+        </div>
+        <div style="display:inline-flex;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;flex-shrink:0">
+          <button type="button" data-hs-mode="auto" onclick="healthSettingsMode('${crit.id}','auto')" style="font-size:11px;font-weight:800;padding:6px 12px;border:none;cursor:pointer;background:${manual ? 'var(--white)' : 'var(--navy)'};color:${manual ? 'var(--muted)' : '#fff'}">Auto</button>
+          <button type="button" data-hs-mode="manual" onclick="healthSettingsMode('${crit.id}','manual')" style="font-size:11px;font-weight:800;padding:6px 12px;border:none;cursor:pointer;background:${manual ? 'var(--navy)' : 'var(--white)'};color:${manual ? '#fff' : 'var(--muted)'}">Manuel</button>
+        </div>
+      </div>
+      <div style="font-size:10.5px;color:var(--text2);margin-top:6px;line-height:1.35">Auto : ${auto ? escHtml(auto.explain) + ' → vert ' + cmp + ' ' + healthFmt(auto.green, crit.decimals) + ', orange ' + cmp + ' ' + healthFmt(auto.orange, crit.decimals) : 'pas de seuil calculable pour le moment (données manquantes).'}</div>
+      <div data-hs-inputs style="display:${manual ? 'grid' : 'none'};grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+        <label style="font-size:10.5px;font-weight:700;color:var(--muted)"><span style="color:${HEALTH_COLORS.green.c}">●</span> Vert si ${cmp}
+          <input type="number" step="${step}" data-hs-green value="${val(c.green, auto && auto.green)}" style="width:100%;margin-top:3px;font-size:13px;padding:8px 10px;border-radius:8px"></label>
+        <label style="font-size:10.5px;font-weight:700;color:var(--muted)"><span style="color:${HEALTH_COLORS.orange.c}">●</span> Orange si ${cmp}
+          <input type="number" step="${step}" data-hs-orange value="${val(c.orange, auto && auto.orange)}" style="width:100%;margin-top:3px;font-size:13px;padding:8px 10px;border-radius:8px"></label>
+        <div style="grid-column:1/-1;font-size:10px;color:var(--muted)">En dessous du seuil orange : voyant rouge.</div>
+      </div>
+    </div>`;
+  }).join('');
+  const ov = document.createElement('div');
+  ov.id = 'healthSettingsModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,29,58,.5);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('click', e => { if(e.target === ov) closeHealthSettings(); });
+  ov.innerHTML = `<div style="background:var(--white);border-radius:16px;width:100%;max-width:620px;max-height:90vh;overflow:auto;padding:22px;box-shadow:0 20px 60px rgba(11,29,58,.3)">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:6px">
+      <div>
+        <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy)">⚙ Seuils du baromètre · ${escHtml(healthStationLabel(st))}</div>
+        <div style="font-size:11.5px;color:var(--text2);margin-top:3px;line-height:1.4">« Auto » suit les seuils calculés par FPA (ils évoluent avec le Call Out affiché et l'historique). « Manuel » fige vos propres valeurs. Réglages propres à chaque station, enregistrés sur ce poste.</div>
+      </div>
+      <button onclick="closeHealthSettings()" aria-label="Fermer" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;padding:2px 4px">×</button>
+    </div>
+    <div style="margin-top:14px">${rowsHtml}</div>
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn-ghost" onclick="healthSettingsResetAll()" style="font-size:12px;padding:9px 14px">⟲ Tout repasser en auto</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-ghost" onclick="closeHealthSettings()" style="font-size:12px;padding:9px 14px">Annuler</button>
+        <button class="btn-primary" onclick="healthSettingsSave()" style="font-size:12px;padding:9px 16px;border-radius:9px">Enregistrer</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+function closeHealthSettings(){
+  const m = document.getElementById('healthSettingsModal');
+  if(m) m.remove();
+}
+function healthSettingsMode(id, mode){
+  const row = document.querySelector('#healthSettingsModal [data-hs-id="' + id + '"]');
+  if(!row) return;
+  row.dataset.hsMode = mode;
+  row.querySelectorAll('[data-hs-mode]').forEach(b => {
+    const on = b.dataset.hsMode === mode;
+    b.style.background = on ? 'var(--navy)' : 'var(--white)';
+    b.style.color = on ? '#fff' : 'var(--muted)';
+  });
+  const inputs = row.querySelector('[data-hs-inputs]');
+  if(inputs) inputs.style.display = mode === 'manual' ? 'grid' : 'none';
+}
+function healthSettingsSave(){
+  const st = healthStationKey();
+  const all = healthLoadSettings();
+  const conf = all[st] || {};
+  let bad = null;
+  document.querySelectorAll('#healthSettingsModal [data-hs-id]').forEach(row => {
+    const id = row.dataset.hsId;
+    const crit = HEALTH_CRITERIA.find(c => c.id === id);
+    const prevMode = (conf[id] || {}).mode === 'manual' ? 'manual' : 'auto';
+    const mode = row.dataset.hsMode || prevMode;
+    if(mode !== 'manual'){ delete conf[id]; return; }
+    const g = parseFloat(row.querySelector('[data-hs-green]').value);
+    const o = parseFloat(row.querySelector('[data-hs-orange]').value);
+    if(!isFinite(g) || !isFinite(o)){ bad = bad || (crit.label + ' : renseignez les deux seuils'); return; }
+    const ordered = crit.higherIsBetter === false ? g <= o : g >= o;
+    if(!ordered){ bad = bad || (crit.label + ' : le seuil vert doit être ' + (crit.higherIsBetter === false ? 'inférieur' : 'supérieur') + ' ou égal au seuil orange'); return; }
+    conf[id] = { mode:'manual', green:g, orange:o };
+  });
+  if(bad){ showToast(bad, 'err'); return; }
+  all[st] = conf;
+  healthSaveSettings(all);
+  closeHealthSettings();
+  renderHealthBarometer();
+  showToast('✓ Seuils du baromètre enregistrés', 'success');
+}
+function healthSettingsResetAll(){
+  document.querySelectorAll('#healthSettingsModal [data-hs-id]').forEach(row => healthSettingsMode(row.dataset.hsId, 'auto'));
+}
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     FPA MOBILE — adaptation automatique aux téléphones (v1)
+     Ce script ne fait RIEN tant que l'écran n'est pas un écran de téléphone
+     (même media query que le bloc CSS #fpaMobileCss). Il ne touche à aucune
+     fonction existante : il se contente d'observer le DOM produit par
+     l'application et d'y poser des classes « m-… » dont les styles n'existent
+     QUE dans la media query mobile. Sur Desktop, ces classes sont inertes.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaMobileJs">
+(function(){
+  'use strict';
+  var MQ = window.matchMedia('(max-width: 760px), (max-height: 500px) and (max-width: 1000px) and (orientation: landscape)');
+  var DOC = document.documentElement;
+  var started = false, running = false, timer = null, lastRun = 0, mo = null;
+  var syncGroups = {};             // clé -> [éléments défilants synchronisés]
+  var PAGE_IDS = ['pageUpload','pageConfig','pageResults','pageHistory','pageDecision','pageComite','pagePlaylist','pageQuotas','pageAnalyse','pageCateg','pageRawData','pageCharts'];
+
+  /* ── Libellés courts de la barre basse ─────────────────────────────── */
+  var LABELS = {homeTabBtn:'Tableau', backBtn:'Modifier', chartsTabBtn:'Classements', decisionTabBtn:'Décision',
+                comiteTabBtn:'Comité', playlistTabBtn:'Playlist', datasTabBtn:'Datas', analyseTabBtn:'Analyse'};
+
+  function setupChrome(){
+    var row = document.getElementById('headerTabsRow');
+    if(!row) return;
+    Object.keys(LABELS).forEach(function(id){
+      var b = document.getElementById(id);
+      if(b && !b.hasAttribute('data-m-label')) b.setAttribute('data-m-label', LABELS[id]);
+    });
+    // L'icône « maison » du header ouvre le tableau Fit Score : on lui donne
+    // une icône de tableau et on ajoute un vrai bouton « Accueil » en tête.
+    var hb = document.getElementById('homeTabBtn');
+    if(hb && !hb.hasAttribute('data-m-icon')){
+      hb.setAttribute('data-m-icon','1');
+      var s = hb.querySelector('svg');
+      if(s) s.innerHTML = '<rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="10" x2="9" y2="20"/>';
+    }
+    if(!document.getElementById('mHomeBtn')){
+      var b = document.createElement('button');
+      b.id = 'mHomeBtn'; b.type = 'button'; b.className = 'btn-ghost';
+      b.setAttribute('data-m-label','Accueil');
+      b.setAttribute('aria-label','Accueil');
+      b.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></svg>';
+      b.addEventListener('click', function(){
+        if(typeof window.goHome === 'function') window.goHome();
+        window.scrollTo(0,0);
+      });
+      row.insertBefore(b, row.firstChild);
+    }
+    // viewport-fit=cover : permet de respecter les encoches (safe areas)
+    var vp = document.querySelector('meta[name=viewport]');
+    if(vp && vp.content.indexOf('viewport-fit') < 0) vp.content += ', viewport-fit=cover';
+  }
+
+  function updateRoleBadge(){
+    var badge = document.getElementById('fpaRoleBadge');
+    if(!badge) return;
+    var t = (badge.textContent || '').trim();
+    var emo = t ? Array.from(t)[0] : '';
+    if(badge.getAttribute('data-m-emoji') !== emo) badge.setAttribute('data-m-emoji', emo);
+  }
+
+  /* ── Utilitaires ───────────────────────────────────────────────────── */
+  function visible(el){
+    if(!el) return false;
+    if(el.offsetParent !== null) return true;
+    var cs = getComputedStyle(el);
+    return cs.position === 'fixed' && cs.display !== 'none' && cs.visibility !== 'hidden';
+  }
+  function px(v){ v = parseFloat(v); return isNaN(v) ? 0 : v; }
+  function vw(){ return DOC.clientWidth || window.innerWidth; }
+  // Écritures différées : on lit d'abord toute la mise en page, puis on écrit
+  // en une seule fois (évite les recalculs de layout en cascade).
+  var pending = [];
+  function rmCls(el, c){ if(el.classList.contains(c)) el.classList.remove(c); }
+  function addCls(el, c){ if(!el.classList.contains(c)) pending.push(function(){ el.classList.add(c); }); }
+  function setVar(el, k, v){ if(el.style.getPropertyValue(k) !== v) pending.push(function(){ el.style.setProperty(k, v); }); }
+  function flush(){ var n = pending.length; var p = pending; pending = []; for(var i=0;i<p.length;i++) p[i](); return n; }
+
+  /** Découpe une valeur grid-template-columns en pistes (en développant repeat(n, …)). */
+  function splitTracks(str){
+    var out = [], depth = 0, cur = '';
+    for(var i=0;i<str.length;i++){
+      var c = str[i];
+      if(c === '(') depth++;
+      if(c === ')') depth--;
+      if(/\s/.test(c) && depth === 0){ if(cur) out.push(cur); cur=''; }
+      else cur += c;
+    }
+    if(cur) out.push(cur);
+    var res = [];
+    out.forEach(function(t){
+      var m = /^repeat\(\s*(\d+)\s*,\s*(.+)\)$/.exec(t);
+      if(m){ var inner = splitTracks(m[2]); for(var k=0;k<+m[1];k++) res = res.concat(inner); }
+      else res.push(t);
+    });
+    return res;
+  }
+
+  /** Analyse une piste : {fixed: px fixes, flex: bool, min: px minimum} */
+  function trackInfo(t){
+    t = t.trim();
+    var m;
+    if(/^-?[\d.]+px$/.test(t)) return {fixed:px(t), flex:false, min:px(t)};
+    if(/^[\d.]+fr$/.test(t)) return {fixed:0, flex:true, min:0, fr:t};
+    if((m = /^minmax\(\s*([^,]+?)\s*,\s*([^)]+?)\s*\)$/.exec(t))){
+      var lo = m[1], hi = m[2];
+      if(/px$/.test(lo) && /px$/.test(hi)) return {fixed:px(hi), flex:false, min:px(lo)};
+      if(/px$/.test(lo)) return {fixed:0, flex:true, min:px(lo), fr:hi};
+      return {fixed:0, flex:true, min:0, fr:/fr$/.test(hi)?hi:'1fr'};
+    }
+    if(t === 'auto' || t === 'max-content' || t === 'min-content' || /^fit-content/.test(t)) return {fixed:0, flex:true, min:0, auto:true};
+    if(/%$/.test(t)) return {fixed:0, flex:true, min:0, fr:'1fr'};
+    return {fixed:0, flex:true, min:0, fr:'1fr'};
+  }
+
+  function pageRoots(){
+    var roots = [];
+    PAGE_IDS.forEach(function(id){ var el = document.getElementById(id); if(el && visible(el)) roots.push(el); });
+    return roots;
+  }
+
+  /* ── 1. Header : hauteur réelle + bouton actif ─────────────────────── */
+  function updateChrome(){
+    var hdr = document.getElementById('appHeader');
+    if(hdr){ var h = Math.round(hdr.getBoundingClientRect().height); if(h > 0) setVar(DOC,'--m-hdr', h+'px'); }
+    var home = document.getElementById('mHomeBtn');
+    var up = document.getElementById('pageUpload');
+    if(home) home.classList.toggle('m-active', !!(up && visible(up)));
+    updateRoleBadge();
+  }
+
+  /* ── 2. Sous-headers sticky, en-têtes collants imbriqués ───────────── */
+  function scrollParent(el){
+    var p = el.parentElement;
+    while(p && p !== document.body && p !== DOC){
+      var cs = getComputedStyle(p);
+      if(/(auto|scroll|hidden)/.test(cs.overflowX + cs.overflowY)) return p;
+      p = p.parentElement;
+    }
+    return null;
+  }
+  function fixSticky(){
+    var subH = 0;
+    document.querySelectorAll('[style*="sticky"]').forEach(function(el){
+      if(!visible(el)) return;
+      var top = px(el.style.top);
+      var sp = scrollParent(el);
+      // En-tête collant dans un conteneur défilant (tableau, liste) : il ne
+      // doit pas être décalé vers le bas à l'intérieur de son conteneur.
+      if(sp && !sp.classList.contains('m-sheet') && top > 0){ addCls(el,'m-sticky0'); return; }
+      rmCls(el,'m-sticky0');
+      if(sp) return;
+      if(top >= 56 && top <= 64){            // sous-header de page
+        addCls(el,'m-subhdr');
+        // barre d'onglets/groupes (Classements…) : une seule ligne défilante
+        if(el.querySelector('.dec-group') && !el.querySelector('#decisionSubTabs')) addCls(el,'m-subhdr-scroll');
+        else if(el.scrollHeight > 50) addCls(el,'m-subhdr-pad');
+        var hh = Math.round(el.getBoundingClientRect().height);
+        // un sous-header trop haut ne reste pas collé (il mangerait l'écran)
+        if(hh > 112) addCls(el,'m-unstick'); else rmCls(el,'m-unstick');
+        if(!el.classList.contains('m-unstick')) subH = Math.max(subH, hh);
+      } else if(top >= 66 && top <= 72){     // collé directement sous le header
+        addCls(el,'m-stick-hdr');
+      } else if(top >= 100 && top <= 120){   // collé sous le sous-header
+        addCls(el,'m-subhdr2');
+      }
+    });
+    if(subH) setVar(DOC,'--m-sub', subH+'px');
+  }
+
+  /* ── 3. Modales → feuilles plein écran par le bas ──────────────────── */
+  function fixModals(){
+    var W = vw(), H = window.innerHeight;
+    document.querySelectorAll('[style*="fixed"]').forEach(function(el){
+      if(el.id === 'fpaLoginOverlay' || el.id === 'toast' || el.id === 'headerTabsRow') return;
+      if(!visible(el)) return;
+      var r = el.getBoundingClientRect();
+      if(r.width < W - 2 || r.height < H - 2) return;      // pas un voile plein écran
+      var kids = Array.prototype.filter.call(el.children, function(c){ return getComputedStyle(c).display !== 'none'; });
+      if(kids.length !== 1) return;
+      addCls(el,'m-modal');
+      var sheet = kids[0];
+      addCls(sheet,'m-sheet');
+      var cs = getComputedStyle(sheet);
+      if(cs.display === 'flex' && cs.flexDirection === 'column') addCls(sheet,'m-sheet-flex');
+    });
+  }
+
+  /* ── 4. Grilles ────────────────────────────────────────────────────── */
+  function fixGrids(roots){
+    var W = vw();
+    var seen = [], tpl = new Map();
+    var scopes = roots.concat(Array.prototype.slice.call(document.querySelectorAll('.m-sheet')));
+    scopes.forEach(function(root){
+      root.querySelectorAll('[style*="grid-template-columns"]').forEach(function(el){ if(!tpl.has(el)){ seen.push(el); tpl.set(el, el.style.gridTemplateColumns); } });
+    });
+    // grilles définies par une feuille de style (ex. .grid-row générée en JS)
+    cssGridRules().forEach(function(rule){
+      scopes.forEach(function(root){
+        var list; try{ list = root.querySelectorAll(rule.sel); }catch(e){ return; }
+        list.forEach(function(el){ if(!tpl.has(el) && !el.style.gridTemplateColumns){ seen.push(el); tpl.set(el, rule.gtc); } });
+      });
+    });
+    var rowsByParent = new Map();
+    seen.forEach(function(el){
+      if(!visible(el)) return;
+      if(el.closest('[data-m-scroll]')) return;   // grille qui gère déjà sa propre largeur
+      var gtc = tpl.get(el);
+      if(!gtc || el.classList.contains('m-row-in') || el.classList.contains('m-row-self')){
+        if(el.classList.contains('m-row-in') || el.classList.contains('m-row-self')) registerRow(el, rowsByParent);
+        return;
+      }
+      if(getComputedStyle(el).display.indexOf('grid') < 0) return;
+      if(splitTracks(getComputedStyle(el).gridTemplateColumns).length < 2) return;
+      var avail = el.parentElement ? el.parentElement.clientWidth : W;
+      var cs = getComputedStyle(el);
+      var padX = px(cs.paddingLeft)+px(cs.paddingRight)+px(cs.borderLeftWidth)+px(cs.borderRightWidth);
+      var gap = px(cs.columnGap);
+      // auto-fit / auto-fill : seule la largeur minimale peut poser problème
+      if(/auto-(fit|fill)/.test(gtc)){
+        var mm = /minmax\(\s*(\d+(?:\.\d+)?)px/.exec(gtc);
+        if(mm && +mm[1] + padX > avail - 4) addCls(el,'m-g1');
+        if(gap >= 24) addCls(el,'m-gapfix');
+        return;
+      }
+      var tracks = splitTracks(gtc).map(trackInfo);
+      var n = tracks.length;
+      if(n < 2) return;
+      var fixedSum = 0, flexN = 0, minSum = 0;
+      tracks.forEach(function(t){ fixedSum += t.fixed; if(t.flex){ flexN++; minSum += t.min; } });
+      if(fixedSum === 0){
+        // grille de mise en page 100 % fluide (1fr 1fr, repeat(3,1fr)…)
+        var inner = avail - padX;
+        if(n === 2 && inner < 520) addCls(el,'m-g1');
+        else if(n === 3 && inner / n < 150) addCls(el, 'm-g1');
+        else if(n >= 4 && inner / n < 150) addCls(el, inner / 2 >= 150 ? 'm-g2' : 'm-g1');
+        if((el.classList.contains('m-g1') || el.classList.contains('m-g2'))){
+          if(gap >= 24) addCls(el,'m-gapfix');
+          addCls(el,'m-span-reset');
+        }
+        return;
+      }
+      if(n < 4){
+        // petite grille mixte (ex. 48px 1fr 160px) : on laisse les fr se réduire,
+        // sauf si les seules pistes fixes débordent déjà
+        if(fixedSum + gap*(n-1) + padX > avail){ addCls(el,'m-g1'); addCls(el,'m-span-reset'); }
+        return;
+      }
+      // Ligne de « tableau » en grille : largeur mini + défilement horizontal
+      var FRMIN = n >= 7 ? 150 : 130;
+      var minW = Math.ceil(fixedSum + gap*(n-1) + padX);
+      var conv = tracks.map(function(t, i){
+        var raw = splitTracks(gtc)[i];
+        if(!t.flex) return raw;
+        if(t.auto){ minW += 70; return 'minmax(70px,auto)'; }
+        var lo = Math.max(t.min, FRMIN); minW += lo;
+        return 'minmax('+lo+'px,'+(t.fr||'1fr')+')';
+      }).join(' ');
+      if(minW <= avail + 1) return;
+      setVar(el,'--m-gtc', conv);
+      setVar(el,'--m-minw', minW+'px');
+      el.setAttribute('data-m-key', conv);
+      registerRow(el, rowsByParent, true);
+    });
+    // Décide, par parent, si on fait défiler le parent (liste de lignes) ou chaque ligne
+    rowsByParent.forEach(function(rows, parent){
+      if(rows[0].classList.contains('m-row-in') || rows[0].classList.contains('m-row-self')) return;
+      var kids = parent.children.length;
+      var mode = (rows.length >= 2 && rows.length >= kids * 0.5) ? 'in' : 'self';
+      rows.forEach(function(r){
+        if(r.classList.contains('m-row-in') || r.classList.contains('m-row-self')) return;
+        addCls(r, mode === 'in' ? 'm-row-in' : 'm-row-self');
+        sync(mode === 'in' ? parent : r, r.getAttribute('data-m-key'));
+      });
+      if(mode === 'in') addCls(parent,'m-hscroll');
+    });
+  }
+  /** Règles CSS (hors media queries et hors couche mobile) qui définissent
+   *  un grid-template-columns : sélecteur + valeur. */
+  var gridRuleCache = {sig:'', list:[]};
+  function cssGridRules(){
+    var sheets = Array.prototype.filter.call(document.styleSheets, function(sh){ return !(sh.ownerNode && sh.ownerNode.id === 'fpaMobileCss'); });
+    var sig = sheets.map(function(sh){ return sh.ownerNode ? (sh.ownerNode.textContent || '').length : 0; }).join(',');
+    if(sig === gridRuleCache.sig) return gridRuleCache.list;
+    var list = [];
+    sheets.forEach(function(sh){
+      var rules; try{ rules = sh.cssRules; }catch(e){ return; }
+      if(!rules) return;
+      for(var i=0;i<rules.length;i++){
+        var r = rules[i];
+        if(r.style && r.selectorText && r.style.gridTemplateColumns) list.push({sel:r.selectorText, gtc:r.style.gridTemplateColumns});
+      }
+    });
+    gridRuleCache = {sig:sig, list:list};
+    return list;
+  }
+  function registerRow(el, map, fresh){
+    if(!fresh) return;
+    var p = el.parentElement; if(!p) return;
+    if(!map.has(p)) map.set(p, []);
+    map.get(p).push(el);
+  }
+
+  /* Défilement horizontal synchronisé (en-tête ↔ lignes d'un même tableau) */
+  function sync(scroller, key){
+    if(!scroller || !key) return;
+    var page = scroller.closest('[id^=page], .m-sheet') || document.body;
+    var k = (page.id || 'sheet') + '|' + key;
+    if(scroller._mSyncKey === k) return;
+    scroller._mSyncKey = k;
+    (syncGroups[k] = syncGroups[k] || []).push(scroller);
+    scroller.addEventListener('scroll', function(){
+      if(scroller._mSyncing) return;
+      var x = scroller.scrollLeft;
+      var list = syncGroups[k] || [];
+      for(var i=list.length-1;i>=0;i--){
+        var o = list[i];
+        if(!o.isConnected){ list.splice(i,1); continue; }
+        if(o !== scroller && o.scrollLeft !== x){ o._mSyncing = true; o.scrollLeft = x; o._mSyncing = false; }
+      }
+    }, {passive:true});
+    // aligne un scroller nouvellement créé sur ses frères
+    var others = syncGroups[k].filter(function(o){ return o !== scroller && o.isConnected; });
+    if(others.length && others[0].scrollLeft) scroller.scrollLeft = others[0].scrollLeft;
+  }
+
+  /* ── 5. Tableaux natifs ────────────────────────────────────────────── */
+  function fixTables(roots){
+    var scope = roots.concat(Array.prototype.slice.call(document.querySelectorAll('.m-sheet')));
+    scope.forEach(function(root){
+      root.querySelectorAll('table').forEach(function(t){
+        if(!visible(t) || t.classList.contains('m-tblock')) return;
+        var p = t.parentElement; if(!p) return;
+        if(p.classList.contains('m-hscroll')) return;
+        var pw = p.clientWidth;
+        if(t.offsetWidth <= pw + 1 && t.scrollWidth <= pw + 1) return;
+        var cs = getComputedStyle(p);
+        if(/(auto|scroll)/.test(cs.overflowX) && p.getBoundingClientRect().width <= vw() + 1) return;
+        var onlyChild = Array.prototype.filter.call(p.children, function(c){ return getComputedStyle(c).display !== 'none'; }).length === 1;
+        if(onlyChild && p.tagName !== 'TD' && p.tagName !== 'TH'){ addCls(p,'m-hscroll'); addCls(p,'m-fitw'); }
+        else addCls(t,'m-tblock');
+      });
+    });
+  }
+
+  /* ── 6. Balayage des débordements restants ─────────────────────────── */
+  function inScroller(el){
+    return !!el.closest('.m-hscroll,.m-row-self,.m-row-in,.m-tblock,#headerTabsRow,.dec-group-menu,#decisionSubTabs,[data-m-scroll]');
+  }
+  function sweep(roots){
+    var W = vw(), changed = 0;
+    var scopes = roots.concat(Array.prototype.slice.call(document.querySelectorAll('.m-sheet')));
+    scopes.forEach(function(root){
+      // padding horizontal trop généreux sur les blocs pleine largeur
+      var all = root.querySelectorAll('div,section,form,header,main');
+      for(var i=0;i<all.length;i++){
+        var el = all[i];
+        if(!el.style || !el.style.padding && !el.style.paddingLeft) continue;
+        var pl = px(el.style.paddingLeft), pr = px(el.style.paddingRight);
+        if((pl >= 28 || pr >= 28) && el.offsetWidth >= W * 0.8 && !el.classList.contains('m-padx')){
+          addCls(el, 'm-padx'); changed++;
+        } else if((pl >= 20 || pr >= 20) && el.offsetWidth >= W * 0.6 && el.offsetWidth < W * 0.98 && !el.classList.contains('m-padx-s') && !el.classList.contains('m-padx') && !el.classList.contains('m-sheet')){
+          addCls(el, 'm-padx-s'); changed++;
+        }
+      }
+    });
+    // Rangées flex où un bloc de texte se retrouve écrasé (< 80 px) par ses voisins
+    scopes.forEach(function(root){
+      root.querySelectorAll('[style*="display:flex"],[style*="display: flex"]').forEach(function(p){
+        if(p.classList.contains('m-wrap') || inScroller(p) || p.closest('#appHeader')) return;
+        if(p.children.length < 2) return;
+        var cs = getComputedStyle(p);
+        if(cs.flexWrap !== 'nowrap' || cs.flexDirection.indexOf('row') !== 0) return;
+        var pw = p.getBoundingClientRect().width; if(!pw) return;
+        for(var i=0;i<p.children.length;i++){
+          var c = p.children[i];
+          var txt = (c.textContent || '').trim();
+          if(txt.length < 14) continue;
+          var w = c.getBoundingClientRect().width;
+          if(w > 0 && w < 80 && pw - w > 120){ addCls(p,'m-wrap'); addCls(c,'m-grow'); break; }
+        }
+      });
+    });
+    scopes.forEach(function(root){
+      var rr = root.getBoundingClientRect();
+      var limit = root.classList.contains('m-sheet') ? rr.right - px(getComputedStyle(root).paddingRight) : W;
+      var all = root.querySelectorAll('*');
+      var skipUntil = null;
+      for(var i=0;i<all.length;i++){
+        var el = all[i];
+        if(skipUntil && skipUntil.contains(el)) continue;
+        skipUntil = null;
+        if(el instanceof SVGElement && !(el instanceof SVGSVGElement)) continue;
+        var r = el.getBoundingClientRect();
+        if(r.width === 0 && r.height === 0) continue;
+        if(r.right <= limit + 1) continue;
+        var cs = getComputedStyle(el);
+        if(cs.position === 'fixed' || cs.position === 'absolute'){ skipUntil = el; continue; }
+        if(inScroller(el)){ skipUntil = el; continue; }
+        if(/(auto|scroll)/.test(cs.overflowX)){
+          // conteneur défilant déjà prévu : il doit juste tenir dans l'écran
+          if(r.left >= -1 && r.width > limit - Math.max(0,r.left) + 1){ addCls(el,'m-fitw'); changed++; }
+          skipUntil = el; continue;
+        }
+        var p = el.parentElement;
+        var pcs = p ? getComputedStyle(p) : null;
+        var pr = p ? p.getBoundingClientRect() : null;
+        var pInner = p ? (pr.right - px(pcs.paddingRight) - px(pcs.borderRightWidth)) : limit;
+        // Cas A : l'élément tient en largeur mais déborde parce qu'il est poussé
+        // dans une rangée flex qui ne passe pas à la ligne
+        if(pcs && pcs.display.indexOf('flex') >= 0 && pcs.flexDirection.indexOf('row') === 0 && pcs.flexWrap === 'nowrap' && r.width < pr.width){
+          if(p.closest('#appHeader')) { skipUntil = el; continue; }
+          // éléments rétrécissables (texte) : on les laisse se réduire d'abord
+          if(el.children.length === 0 && el.textContent.trim() && cs.flexShrink !== '0' && r.width > 60 && !el.classList.contains('m-flexshrink')){
+            addCls(el,'m-flexshrink'); addCls(el,'m-fitw-text'); changed++; continue;
+          }
+          addCls(p,'m-wrap'); changed++; skipUntil = p; continue;
+        }
+        // Cas B : l'élément est lui-même plus large que son parent
+        if(r.width > (pInner - Math.max(r.left, pr ? pr.left : 0)) + 1){
+          var hasW = /(^|;)\s*(min-)?width\s*:\s*\d/.test(el.getAttribute('style') || '') || el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA' || el.tagName === 'IMG' || el.tagName === 'CANVAS' || el.tagName === 'svg';
+          if(hasW){ addCls(el,'m-fitw'); changed++; skipUntil = el; continue; }
+          if(el.children.length === 0 && el.textContent.trim()){
+            addCls(el,'m-fitw'); addCls(el,'m-fitw-text'); changed++; continue;
+          }
+          if(pcs && pcs.display.indexOf('flex') >= 0 && !el.classList.contains('m-fitw')){
+            addCls(el,'m-fitw'); addCls(el,'m-flexshrink'); changed++; continue;
+          }
+          if(cs.display.indexOf('flex') >= 0 && cs.flexDirection.indexOf('row') === 0 && !el.classList.contains('m-fitw')){
+            addCls(el,'m-fitw'); addCls(el,'m-wrap'); changed++; continue;
+          }
+          if(cs.display.indexOf('flex') >= 0 && cs.flexWrap !== 'nowrap' && !el.classList.contains('m-fitw')){
+            addCls(el,'m-fitw'); changed++; continue;
+          }
+          // sinon on descend : ce sont ses enfants qui débordent
+          continue;
+        }
+      }
+    });
+    return changed;
+  }
+
+  /* ── 7. Graphiques : hauteur raisonnable ───────────────────────────── */
+  function fixCharts(roots){
+    var H = window.innerHeight;
+    var scope = roots.concat(Array.prototype.slice.call(document.querySelectorAll('.m-sheet')));
+    scope.forEach(function(root){
+      root.querySelectorAll('canvas').forEach(function(c){
+        var p = c.parentElement; if(!p || !visible(p)) return;
+        var h = px(p.style.height);
+        if(h && h > H * 0.62) addCls(p,'m-ch');
+      });
+    });
+  }
+
+  /* ── 8. Menus déroulants de groupes en position fixe ───────────────── */
+  function placeMenus(){
+    var W = vw(), H = window.innerHeight;
+    document.querySelectorAll('.dec-group-menu').forEach(function(menu){
+      if(menu.style.display === 'none' || !menu.parentElement){ rmCls(menu,'m-menu-fixed'); return; }
+      var anchor = menu.parentElement.getBoundingClientRect();
+      if(anchor.width === 0 && anchor.height === 0) return;
+      addCls(menu,'m-menu-fixed');
+      var mw = Math.min(Math.max(menu.scrollWidth, 220), W - 16);
+      var left = Math.min(Math.max(8, anchor.left), W - mw - 8);
+      var top = anchor.bottom + 4;
+      var tabTop = (document.getElementById('headerTabsRow') || {getBoundingClientRect:function(){return {top:H};}}).getBoundingClientRect().top;
+      setVar(menu,'--m-ml', left+'px');
+      setVar(menu,'--m-mt', top+'px');
+      setVar(menu,'--m-mw', mw+'px');
+      setVar(menu,'--m-mh', Math.max(160, tabTop - top - 10)+'px');
+    });
+  }
+
+  /* ── Orchestration ─────────────────────────────────────────────────── */
+  function run(){
+    if(!MQ.matches || running) return;
+    running = true;
+    try{
+      updateChrome(); flush();
+      fixModals(); flush();
+      var roots = pageRoots();
+      fixSticky(); flush();
+      fixGrids(roots); flush();
+      fixTables(roots); flush();
+      fixCharts(roots); flush();
+      for(var k=0;k<4;k++){ sweep(roots); if(!flush()) break; }
+      placeMenus(); flush();
+    }catch(e){ if(window.console) console.warn('[FPA mobile]', e); }
+    if(mo) mo.takeRecords();     // ignore nos propres modifications
+    running = false;
+    lastRun = Date.now();
+  }
+  function schedule(delay){
+    if(!MQ.matches) return;
+    clearTimeout(timer);
+    var wait = delay != null ? delay : Math.max(60, 250 - (Date.now() - lastRun));
+    timer = setTimeout(function(){ requestAnimationFrame(run); }, wait);
+  }
+
+  function start(){
+    if(started) { schedule(0); return; }
+    started = true;
+    setupChrome();
+    mo = new MutationObserver(function(muts){
+      if(running) return;
+      var relevant = false;
+      for(var i=0;i<muts.length;i++){
+        var m = muts[i];
+        if(m.target && m.target.tagName === 'CANVAS') continue;
+        relevant = true;
+        if(m.type === 'attributes'){
+          var t = m.target;
+          if(m.attributeName === 'style' && t.classList && t.classList.contains('dec-group-menu')){ placeMenus(); flush(); }
+        }
+      }
+      if(relevant) schedule();
+    });
+    mo.observe(document.body, {subtree:true, childList:true, attributes:true, attributeFilter:['style','class']});
+    window.addEventListener('resize', function(){ schedule(80); });
+    window.addEventListener('orientationchange', function(){ schedule(250); });
+    window.addEventListener('scroll', function(){ if(document.querySelector('.dec-group-menu.m-menu-fixed')){ placeMenus(); flush(); } }, true);
+    document.addEventListener('click', function(){ setTimeout(function(){ placeMenus(); flush(); }, 0); schedule(120); }, true);
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(function(){ schedule(0); });
+    window.addEventListener('load', function(){ schedule(0); });
+    schedule(0);
+  }
+
+  function onChange(){
+    DOC.classList.toggle('fpa-m', MQ.matches);
+    if(MQ.matches) start();
+  }
+  if(MQ.addEventListener) MQ.addEventListener('change', onChange); else if(MQ.addListener) MQ.addListener(onChange);
+  onChange();
+})();
+</script>
 </body>
 </html>
