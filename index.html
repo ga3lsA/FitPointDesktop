@@ -42237,6 +42237,76 @@ function dailyCheckAbsMinutes(items){
   let prev = -1, offset = 0;
   return items.map(it => { let m = dailyProgItemMins(it) + offset; if(m < prev){ offset += 1440; m += 1440; } prev = m; return m; });
 }
+/* ── Règles « Format » (Core / Market / Border) ─────────────────────── */
+function dailyCheckFormats(day){
+  return day.items.map(it => (typeof getTitleFormat === 'function') ? getTitleFormat(it.title, it.artist) : null);
+}
+function dailyCheckFmtLabel(k){ return (typeof FMT_VALUES !== 'undefined' && FMT_VALUES[k]) ? FMT_VALUES[k].label : (k.charAt(0).toUpperCase() + k.slice(1)); }
+/** Heure dont la part d'un format dépasse la part de la journée. */
+function dailyCheckFmtHourRule(fmt){
+  const L = dailyCheckFmtLabel(fmt);
+  return {
+    id:'fmt_hour_' + fmt, label:'Heure au-dessus de la moyenne — ' + L, icon: fmt === 'market' ? '🟢' : '🟠',
+    description:'Alerte quand la part de ' + L + ' d\'une heure (en diffusions) dépasse la part de ' + L + ' sur la journée, plus la tolérance.',
+    params: [
+      { id:'tolerance', label:'Tolérance (points de % au-dessus de la journée)', def:0, step:1, min:0 },
+      { id:'minTitles', label:'Titres minimum dans l\'heure', def:3, step:1, min:1 }
+    ],
+    run(day, p){
+      const f = dailyCheckFormats(day);
+      if(!f.some(Boolean)) return { alerts:[], note:'Aucun format renseigné sur cette journée.' };
+      const n = f.filter(v => v === fmt).length;
+      const ref = n / day.items.length * 100;
+      const byH = {}, order = [];
+      day.items.forEach((it, i) => { if(!byH[it.hour]){ byH[it.hour] = []; order.push(it.hour); } byH[it.hour].push(i); });
+      const fmtP = v => (Math.round(v * 10) / 10).toLocaleString('fr-FR') + ' %';
+      const alerts = [];
+      order.forEach(h => {
+        const idx = byH[h];
+        if(idx.length < p.minTitles) return;
+        const k = idx.filter(i => f[i] === fmt).length;
+        const share = k / idx.length * 100;
+        if(share > ref + p.tolerance)
+          alerts.push({ hour: h, items: [], text: String(h).padStart(2,'0') + 'h : ' + L + ' ' + fmtP(share) + ' (' + k + '/' + idx.length + ' titres) — journée ' + fmtP(ref) + ', +' + fmtP(share - ref).replace(' %', ' pts') });
+      });
+      return { alerts, note: 'Part de ' + L + ' sur la journée : ' + fmtP(ref) + ' (' + n + '/' + day.items.length + ' diffusions)' };
+    }
+  };
+}
+/** Enchaînements : trop de titres d'un même format dans une fenêtre glissante. */
+function dailyCheckFmtSeqRule(fmt){
+  const L = dailyCheckFmtLabel(fmt);
+  return {
+    id:'fmt_seq_' + fmt, label:'Enchaînement — ' + L, icon:'⛓️',
+    description:'Alerte quand une suite de titres consécutifs (fenêtre glissante) contient trop de titres ' + L + '. Par défaut : 2 ou 3 ' + L + ' sur 3 titres à la suite.',
+    params: [
+      { id:'window', label:'Titres consécutifs examinés', def:3, step:1, min:2 },
+      { id:'max', label:'Nombre de ' + L + ' déclenchant l\'alerte (au moins)', def:2, step:1, min:2 }
+    ],
+    run(day, p){
+      const f = dailyCheckFormats(day);
+      if(!f.some(Boolean)) return { alerts:[], note:'Aucun format renseigné sur cette journée.' };
+      const W = Math.max(2, Math.round(p.window)), M = Math.max(2, Math.round(p.max));
+      // fenêtres en alerte, puis fusion des fenêtres qui se chevauchent
+      const segs = [];
+      for(let i = 0; i + W <= day.items.length; i++){
+        const k = f.slice(i, i + W).filter(v => v === fmt).length;
+        if(k < M) continue;
+        const last = segs[segs.length - 1];
+        if(last && i <= last.end) last.end = i + W - 1; else segs.push({ start:i, end:i + W - 1 });
+      }
+      const alerts = segs.map(sg => {
+        const idx = [];
+        for(let i = sg.start; i <= sg.end; i++) if(f[i] === fmt) idx.push(i);
+        const a = day.items[sg.start], b = day.items[sg.end];
+        const names = idx.map(i => day.items[i].time + ' « ' + titleCaseDisplay(day.items[i].title) + ' »').join(', ');
+        return { items: idx, hour: a.hour, text: a.time + ' → ' + b.time + ' : ' + idx.length + ' ' + L + ' sur ' + (sg.end - sg.start + 1) + ' titres à la suite — ' + names };
+      });
+      return { alerts };
+    }
+  };
+}
+
 function dailyCheckHourRule(key, label){
   return {
     id: 'hour_' + key, label: 'Heure sous la moyenne du jour — ' + label, icon: key === 'fit' ? '🎯' : key === 'pot' ? '📋' : '💗',
@@ -42291,7 +42361,29 @@ const DAILY_CHECK_RULES = [
   },
   dailyCheckHourRule('fit', 'Fit Score'),
   dailyCheckHourRule('pot', 'Pot Score'),
-  dailyCheckHourRule('fam', 'Fam Score')
+  dailyCheckHourRule('fam', 'Fam Score'),
+  dailyCheckFmtHourRule('market'),
+  dailyCheckFmtHourRule('border'),
+  dailyCheckFmtSeqRule('market'),
+  dailyCheckFmtSeqRule('border'),
+  {
+    id:'fmt_adj_mb', label:'Market et Border à la suite', icon:'🔀',
+    description:'Alerte quand un titre Market est immédiatement suivi d\'un titre Border, ou l\'inverse.',
+    params: [],
+    run(day){
+      const f = dailyCheckFormats(day);
+      if(!f.some(Boolean)) return { alerts:[], note:'Aucun format renseigné sur cette journée.' };
+      const alerts = [];
+      for(let i = 0; i + 1 < day.items.length; i++){
+        const a = f[i], b = f[i + 1];
+        if((a === 'market' && b === 'border') || (a === 'border' && b === 'market')){
+          const x = day.items[i], y = day.items[i + 1];
+          alerts.push({ items:[i, i + 1], hour: y.hour, text: x.time + ' « ' + titleCaseDisplay(x.title) + ' » (' + FMT_VALUES[a].label + ') → ' + y.time + ' « ' + titleCaseDisplay(y.title) + ' » (' + FMT_VALUES[b].label + ')' });
+        }
+      }
+      return { alerts };
+    }
+  }
 ];
 
 function dailyCheckLoadSettings(){
@@ -42328,7 +42420,7 @@ function dailyCheckRun(){
   const flags = { date: day.date, items:{}, hours:{} };
   results.forEach(r => r.alerts.forEach(a => {
     if(a.items && a.items.length) a.items.forEach(i => (flags.items[i] = flags.items[i] || []).push(r.rule.label + ' : ' + a.text));
-    else if(a.hour !== undefined) (flags.hours[a.hour] = flags.hours[a.hour] || []).push(r.rule.label.replace('Heure sous la moyenne du jour — ', '') + ' : ' + a.text);
+    else if(a.hour !== undefined) (flags.hours[a.hour] = flags.hours[a.hour] || []).push(r.rule.label.replace(/^Heure (sous|au-dessus de) la moyenne( du jour)? — /, '') + ' : ' + a.text);
   }));
   dailyCheckFlags = flags;
   renderDailyProgPage().then(() => dailyCheckShowReport(day, results));
