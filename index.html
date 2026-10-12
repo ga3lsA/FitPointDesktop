@@ -14878,6 +14878,18 @@ function targetUpdateMontageValidity(stKey, field, value){
   cfg.montage.validity[field] = value;
   searchTargetPersist();
 }
+/** Date de création du screener (remplace l'ancienne période de validité :
+ *  à défaut, on reprend le début de l'ancienne période). */
+function fpaLocalTodayISO(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function screenerCreatedDate(m){
+  if(!m) return '';
+  return m.createdDate || (m.validity && m.validity.from) || '';
+}
+function targetUpdateMontageCreated(stKey, value){
+  targetGet(stKey).montage.createdDate = value || '';
+  searchTargetPersist();
+  if(typeof mktTab !== 'undefined' && mktTab === 'marketing' && typeof mktVisible === 'function' && mktVisible()) renderMarketingPage();
+}
 
 /** Archive le montage actuel (avec sa période de validité et ses résultats
  *  tels qu'ils sont à cet instant) puis en repart d'un montage vierge — pour
@@ -14896,10 +14908,12 @@ function targetArchiveMontage(stKey){
     minScore: cfg.montage.minScore,
     songs: [...cfg.montage.songs],
     validity: { ...cfg.montage.validity },
+    createdDate: screenerCreatedDate(cfg.montage),
     archivedAt: new Date().toISOString()
   });
   cfg.montage.songs = [];
   cfg.montage.validity = { from:'', to:'' };
+  cfg.montage.createdDate = fpaLocalTodayISO();
   searchTargetPersist();
   renderSearchTargetPage();
 }
@@ -14922,12 +14936,12 @@ function targetRestoreMontageFromArchive(stKey, archiveIdx){
   if(cfg.montage.songs.some(s => (s||'').trim())){
     cfg.montageArchive.unshift({
       minScore: cfg.montage.minScore, songs: [...cfg.montage.songs],
-      validity: { ...cfg.montage.validity }, archivedAt: new Date().toISOString()
+      validity: { ...cfg.montage.validity }, createdDate: screenerCreatedDate(cfg.montage), archivedAt: new Date().toISOString()
     });
     archiveIdx++; // l'entrée à restaurer a décalé d'un rang avec le unshift ci-dessus
   }
   cfg.montageArchive.splice(archiveIdx, 1);
-  cfg.montage = { minScore: entry.minScore, songs: [...entry.songs], validity: { ...entry.validity } };
+  cfg.montage = { minScore: entry.minScore, songs: [...entry.songs], validity: { ...(entry.validity || { from:'', to:'' }) }, createdDate: screenerCreatedDate(entry) };
   searchTargetPersist();
   renderSearchTargetPage();
 }
@@ -15141,11 +15155,8 @@ function renderSearchTargetPage(){
           style="font-size:10.5px;font-weight:700;padding:5px 10px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--text2);cursor:pointer">📦 Archiver et créer un nouveau screener</button>
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:12px;color:var(--text2)">
-        Validité du screener : du
-        <input type="date" value="${escHtml(montage.validity.from || '')}" onchange="targetUpdateMontageValidity('${stKey}','from',this.value)"
-          style="font-size:11.5px;padding:5px 6px;border-radius:6px;border:1.5px solid var(--border)">
-        au
-        <input type="date" value="${escHtml(montage.validity.to || '')}" onchange="targetUpdateMontageValidity('${stKey}','to',this.value)"
+        Date de création du screener :
+        <input type="date" value="${escHtml(screenerCreatedDate(montage))}" onchange="targetUpdateMontageCreated('${stKey}',this.value)"
           style="font-size:11.5px;padding:5px 6px;border-radius:6px;border:1.5px solid var(--border)">
       </div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:12.5px;color:var(--text2)">
@@ -15203,9 +15214,8 @@ function renderSearchTargetPage(){
         <button onclick="targetToggleMontageArchiveView()" style="font-size:11px;font-weight:700;color:var(--muted);background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;gap:5px">🗄 Historique des screeners (${cfg.montageArchive.length})</button>
         <div id="montageArchiveList" style="display:none;margin-top:10px">
           ${cfg.montageArchive.map((entry, aIdx) => {
-            const period = (entry.validity && (entry.validity.from || entry.validity.to))
-              ? `Du ${entry.validity.from ? new Date(entry.validity.from).toLocaleDateString('fr-FR') : '?'} au ${entry.validity.to ? new Date(entry.validity.to).toLocaleDateString('fr-FR') : '?'}`
-              : 'Période non renseignée';
+            const cd = screenerCreatedDate(entry);
+            const period = cd ? 'Créé le ' + new Date(cd + 'T12:00:00').toLocaleDateString('fr-FR') : 'Date de création non renseignée';
             return `<div style="padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;margin-bottom:8px">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
                 <div style="font-size:11.5px;font-weight:700;color:var(--navy)">${escHtml(period)}</div>
@@ -41266,6 +41276,22 @@ window.addEventListener('message', (event) => {
 .dp-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start}
 .dp-row{scroll-margin-top:118px;scroll-margin-bottom:16px;border-left:3px solid transparent}
 .dp-row.dp-flag{border-left-color:#F59E0B;background:#FFFBF2}
+/* En-têtes d'heure du conducteur : bandeau sombre, bien distinct des lignes
+   de titres (blanches) et des titres en alerte (ambre) */
+.dp-band{background:linear-gradient(90deg,#0B1D3A 0%,#16325C 100%);border-top:2px solid #0B1D3A;color:#fff}
+.dp-band.dp-band-flag{box-shadow:inset 5px 0 0 #F59E0B}
+.dp-band .dp-band-warn{color:#FCD34D;font-weight:800;margin-left:6px}
+.dp-band [style*="color:#16a34a"]{color:#4ADE80!important}
+.dp-band [style*="color:#d97706"]{color:#FBBF24!important}
+.dp-band [style*="color:#dc2626"]{color:#F87171!important}
+.dp-band [style*="color:var(--muted)"]{color:rgba(255,255,255,.6)!important}
+.dp-band [style*="color:var(--navy)"]{color:#fff!important}
+.dp-band [style*="color:var(--text2)"]{color:rgba(255,255,255,.8)!important}
+.dp-band [style*="color:#075985"]{color:#7DD3FC!important}
+.dp-band [style*="color:#1E7A3C"]{color:#86EFAC!important}
+.dp-band [style*="color:#92400E"]{color:#FCD34D!important}
+.dp-band [style*="background:var(--bg)"]{background:rgba(255,255,255,.18)!important}
+.dp-band [style*="color:rgba(255,255,255"]{color:inherit}
 .dp-row.dp-sel{background:var(--cyan-light)!important;border-left-color:var(--cyan)}
 .dp-row.dp-sel .dp-title{color:var(--navy)!important}
 .dp-side{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto;background:var(--white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px rgba(11,29,58,.06)}
@@ -41950,12 +41976,12 @@ function dailyProgListHtml(day, hourAggs){
   let idx = 0;
   const body = hourAggs.map(({ h, items, agg }) => {
     const hf = dailyCheckFlagsFor(day.date).hours[h];
-    const band = `<div id="dailyHour_${h}" ${hf ? `title="${escHtml(hf.join('\n'))}"` : ''} style="scroll-margin-top:120px;display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:7px 12px;background:${hf ? '#FFF6E5' : 'var(--bg)'};border-top:1.5px solid var(--border);${hf ? 'box-shadow:inset 3px 0 0 #F59E0B;' : ''}font-size:11px">
-        <div style="font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy)">${String(h).padStart(2,'0')}h</div>
-        <div style="grid-column:2 / 7;color:var(--muted);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${items.length} titre${items.length > 1 ? 's' : ''}${typeof dailyFmtBandHtml === 'function' ? dailyFmtBandHtml(items) : ' · moyennes de l\'heure'}${hf ? ` <span style="color:#B45309;font-weight:800">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
+    const band = `<div id="dailyHour_${h}" class="dp-band${hf ? ' dp-band-flag' : ''}" ${hf ? `title="${escHtml(hf.join('\n'))}"` : ''} style="scroll-margin-top:120px;display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:8px 12px;font-size:11px">
+        <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:#fff">${String(h).padStart(2,'0')}h</div>
+        <div style="grid-column:2 / 7;color:rgba(255,255,255,.72);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${items.length} titre${items.length > 1 ? 's' : ''}${typeof dailyFmtBandHtml === 'function' ? dailyFmtBandHtml(items) : ' · moyennes de l\'heure'}${hf ? ` <span class="dp-band-warn">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
         <div style="text-align:right">${dailyProgFmt(fitM, agg.fit)}</div>
         <div style="text-align:right">${dailyProgFmt(potM, agg.pot)}</div>
-        ${extraMetrics.length ? `<div style="grid-column:2 / -1;display:flex;flex-wrap:wrap;gap:3px 12px;font-size:10.5px;color:var(--muted);font-weight:700">${extraMetrics.map(m => `<span title="${escHtml(m.label + ' — ' + agg[m.key + 'N'] + '/' + agg.total + ' titres matchés')}">${escHtml(m.short)} ${dailyProgFmt(Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec }), agg[m.key])}</span>`).join('')}</div>` : ''}
+        ${extraMetrics.length ? `<div style="grid-column:2 / -1;display:flex;flex-wrap:wrap;gap:3px 12px;font-size:10.5px;color:rgba(255,255,255,.7);font-weight:700">${extraMetrics.map(m => `<span title="${escHtml(m.label + ' — ' + agg[m.key + 'N'] + '/' + agg.total + ' titres matchés')}">${escHtml(m.short)} ${dailyProgFmt(Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec }), agg[m.key])}</span>`).join('')}</div>` : ''}
       </div>`;
     const rows = items.map(it => {
       const i = day.items.indexOf(it);
@@ -43610,6 +43636,11 @@ function mktAcPick(i){
   else { const f = parseMontageSong(inp.value); if(!f.title) return; song = { title: f.title, artist: f.artist }; }
   song.key = comiteKey(song.title, song.artist);
   const target = inp.dataset.target;
+  if(target === 'screener'){
+    mktScreenerAdd(song);
+    setTimeout(() => { const n = document.getElementById('mktScreenerInput'); if(n) n.focus(); }, 30);
+    return;
+  }
   if(target === 'pool'){
     const d = mktGet();
     if(d.pool.some(t => mktSame(t, song))){ showToast('Ce titre est déjà dans la liste Marketing antenne', 'err'); return; }
@@ -43623,9 +43654,15 @@ function mktAcPick(i){
 
 /* ── Montages ──────────────────────────────────────────────────────── */
 function mktFind(id){ return mktGet().montages.find(m => m.id === id); }
+function mktCreatedDate(m){ return (m && (m.createdDate || (m.createdAt || '').slice(0, 10))) || ''; }
+function mktSetCreated(id, value){
+  const m = mktFind(id); if(!m) return;
+  m.createdDate = value || '';
+  mktSave();
+}
 function mktAddMontage(){
   const d = mktGet();
-  const m = { id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: 'Montage ' + (d.montages.length + 1), songs: [null, null, null], createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  const m = { id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: 'Montage ' + (d.montages.length + 1), songs: [null, null, null], createdAt: new Date().toISOString(), createdDate: fpaLocalTodayISO(), updatedAt: new Date().toISOString() };
   d.montages.push(m);
   mktSave(); renderMarketingPage();
   setTimeout(() => { const n = document.querySelector('[data-mname="' + m.id + '"]'); if(n){ n.focus(); n.select(); } }, 40);
@@ -43722,7 +43759,8 @@ function mktScoresCells(title, artist){
 function mktAvgRow(songs, cols, lead){
   const a = mktAverages(songs);
   const cell = k => `<div class="mkt-sc" title="${escHtml('Moyenne sur ' + a[k + 'N'] + ' titre(s) ayant un ' + ({fit:'Fit',pot:'Pot',fam:'Fam'})[k] + ' Score')}">${mktScoreHtml(a[k], k)}<div style="font-size:8.5px;color:var(--muted);font-weight:700">${a[k + 'N']}/${a.n}</div></div>`;
-  return `<div class="mkt-row" style="grid-template-columns:${cols};background:var(--bg);border-top:1.5px solid var(--navy);border-radius:0 0 8px 8px">${lead}${cell('fit')}${cell('pot')}${cell('fam')}${cols.split(' ').length > 6 ? '<div></div>' : ''}</div>`;
+  const extra = Math.max(0, cols.split(' ').length - 6);
+  return `<div class="mkt-row" style="grid-template-columns:${cols};background:var(--bg);border-top:1.5px solid var(--navy);border-radius:0 0 8px 8px">${lead}${cell('fit')}${cell('pot')}${cell('fam')}${'<div></div>'.repeat(extra)}</div>`;
 }
 const MKT_H = 'font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)';
 
@@ -43733,23 +43771,34 @@ function renderMarketingPage(){
   const st = mktSt(), d = mktGet(st);
   const stLabel = (typeof STATION_LABELS !== 'undefined' && STATION_LABELS[st]) || st;
 
-  // 1) Screener (lecture seule)
-  let scr = { songs:[], validity:{} };
+  // 1) Screener (modifiable ici comme dans Analyse → Cible de recherche)
+  let scr = { songs:[] };
   mktEnsureScreener();
   try{ scr = targetGet(st).montage; }catch(e){}
-  const scrSongs = (scr.songs || []).map(s => parseMontageSong(s)).filter(s => s.title);
-  const vFrom = scr.validity && scr.validity.from, vTo = scr.validity && scr.validity.to;
-  const scrCols = '22px 18px minmax(0,1fr) 46px 46px 46px';
+  const scrRaw = (scr.songs || []).map((raw, i) => ({ raw, i, s: parseMontageSong(raw) })).filter(x => x.s.title);
+  const scrSongs = scrRaw.map(x => x.s);
+  const scrCreated = typeof screenerCreatedDate === 'function' ? screenerCreatedDate(scr) : '';
+  const scrCols = '22px 18px minmax(0,1fr) 44px 44px 44px 70px';
   const screenerHtml = `<div class="mkt-card" style="padding:14px">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
       <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">🎼 Screener</div>
-      <span style="font-size:11px;color:var(--muted)">${scrSongs.length} titre${scrSongs.length > 1 ? 's' : ''}${vFrom || vTo ? ' · validité ' + (vFrom ? 'du ' + formatDateFr(vFrom) : '') + (vTo ? ' au ' + formatDateFr(vTo) : '') : ''}</span>
-      <button class="btn-ghost" onclick="goHome();toggleAnalysePage();analyseSetSubView('target')" style="margin-left:auto;font-size:10.5px;padding:4px 10px" title="Le Screener se modifie dans Analyse → Cible de recherche">✏️ Modifier</button>
+      <span style="font-size:11px;color:var(--muted)">${scrSongs.length} titre${scrSongs.length > 1 ? 's' : ''}</span>
+      <label style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--text2)">Créé le
+        <input type="date" value="${escHtml(scrCreated)}" onchange="targetUpdateMontageCreated('${st}', this.value)" style="font-size:11px;padding:4px 6px;border-radius:7px;border:1.5px solid var(--border)"></label>
     </div>
-    ${scrSongs.length ? `<div class="mkt-row" style="grid-template-columns:${scrCols};${MKT_H};padding-top:2px;padding-bottom:4px"><div></div><div></div><div>Titre / Artiste</div><div style="text-align:right">Fit</div><div style="text-align:right">Pot</div><div style="text-align:right">Fam</div></div>
-      ${scrSongs.map((s, i) => `<div class="mkt-row fpa-row" style="grid-template-columns:${scrCols}"><div style="color:var(--muted);font-weight:700">${i + 1}.</div>${fpaMatchBadgeHtml(s.title, s.artist)}${mktTitleCell(s.title, s.artist)}${mktScoresCells(s.title, s.artist)}</div>`).join('')}
+    ${scrSongs.length ? `<div class="mkt-row" style="grid-template-columns:${scrCols};${MKT_H};padding-top:2px;padding-bottom:4px"><div></div><div></div><div>Titre / Artiste</div><div style="text-align:right">Fit</div><div style="text-align:right">Pot</div><div style="text-align:right">Fam</div><div></div></div>
+      ${scrRaw.map((x, n) => `<div class="mkt-row fpa-row" style="grid-template-columns:${scrCols}"><div style="color:var(--muted);font-weight:700">${n + 1}.</div>${fpaMatchBadgeHtml(x.s.title, x.s.artist)}${mktTitleCell(x.s.title, x.s.artist)}${mktScoresCells(x.s.title, x.s.artist)}
+        <div style="display:flex;gap:3px;justify-content:flex-end">
+          <button class="mkt-x" onclick="mktScreenerMove(${x.i},-1)" title="Monter" ${n === 0 ? 'disabled style="opacity:.35"' : ''}>↑</button>
+          <button class="mkt-x" onclick="mktScreenerMove(${x.i},1)" title="Descendre" ${n === scrRaw.length - 1 ? 'disabled style="opacity:.35"' : ''}>↓</button>
+          <button class="mkt-x" onclick="mktScreenerRemove(${x.i})" title="Retirer du Screener">×</button>
+        </div></div>`).join('')}
       ${mktAvgRow(scrSongs, scrCols, '<div></div><div></div><div style="font-weight:800;color:var(--navy)">Moyenne du screener</div>')}`
-      : '<div style="font-size:12px;color:var(--muted)">Aucun titre dans le Screener (Analyse → Cible de recherche).</div>'}
+      : '<div style="font-size:12px;color:var(--muted);padding:2px 0 6px">Aucun titre dans le Screener.</div>'}
+    <div class="mkt-ac-wrap" style="margin-top:8px">
+      <input id="mktScreenerInput" class="mkt-ac-in" data-target="screener" placeholder="Ajouter un titre au Screener : tapez un titre ou un artiste…" oninput="mktAcInput(this)" onkeydown="mktAcKey(event,this)" onblur="mktAcBlur(this)" autocomplete="off">
+      <div class="mkt-ac"></div>
+    </div>
   </div>`;
 
   // 2) Liste des titres Marketing antenne
@@ -43806,7 +43855,8 @@ function renderMarketingPage(){
       <div class="mkt-row" style="grid-template-columns:${slotCols};${MKT_H};padding:2px 4px 3px;border-top:none"><div></div><div></div><div></div><div style="text-align:right">Fit</div><div style="text-align:right">Pot</div><div style="text-align:right">Fam</div><div></div></div>
       ${slots}
       ${mktAvgRow(m.songs.slice(0, MKT_SLOTS), slotCols, '<div></div><div></div><div style="font-weight:800;color:var(--navy)">Moyenne</div>')}
-      <div style="font-size:10px;color:var(--muted);margin-top:auto;padding-top:6px">Mis à jour le ${new Date(m.updatedAt || m.createdAt).toLocaleDateString('fr-FR')}</div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:var(--muted);margin-top:auto;padding-top:8px">Créé le
+        <input type="date" value="${escHtml(mktCreatedDate(m))}" onchange="mktSetCreated('${m.id}', this.value)" style="font-size:10.5px;padding:3px 5px;border-radius:6px;border:1.5px solid var(--border);color:var(--text2)"></label>
     </div>`;
   }).join('');
 
@@ -43818,12 +43868,6 @@ function renderMarketingPage(){
           <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Marketing antenne ${escHtml(stLabel)}</div>
           <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">📣 Marketing Antenne</h2>
         </div>
-      </div>
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:11.5px;font-weight:700;color:var(--text2)">
-        🗓️ Validité : du
-        <input type="date" value="${escHtml(d.validity.from || '')}" onchange="mktSetValidity('from', this.value)" style="font-size:11.5px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--border)">
-        au
-        <input type="date" value="${escHtml(d.validity.to || '')}" onchange="mktSetValidity('to', this.value)" style="font-size:11.5px;padding:5px 6px;border-radius:7px;border:1.5px solid var(--border)">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <button onclick="toggleActiveStation();renderMarketingPage()" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--navy);cursor:pointer;font-weight:700">🔁 ${escHtml(stLabel)}</button>
@@ -43858,7 +43902,7 @@ async function exportMarketingPDF(snapshot){
   let y = 0, page = 1;
   const dateStr = new Date(snapshot ? snapshot.date + 'T12:00:00' : Date.now()).toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
   const v = d.validity || {};
-  const validStr = (v.from || v.to) ? ' — valable ' + (v.from ? 'du ' + formatDateFr(v.from) : '') + (v.to ? ' au ' + formatDateFr(v.to) : '') : '';
+  const validStr = '';
   function header(){
     y = 14;
     try{
@@ -43887,7 +43931,13 @@ async function exportMarketingPDF(snapshot){
       doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.roundedRect(x, y, BW, BH, 2, 2, 'S');
       doc.setFillColor(...NAVY); doc.roundedRect(x, y, BW, 9, 2, 2, 'F'); doc.rect(x, y + 5, BW, 4, 'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(255,255,255);
-      doc.text(truncateForPdf(doc, m.name || 'Sans nom', BW - 8), x + 4, y + 6.1);
+      const cdate = mktCreatedDate(m);
+      const cTxt = cdate ? 'créé le ' + formatDateFr(cdate) : '';
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5);
+      const cW = cTxt ? doc.getTextWidth(cTxt) : 0;
+      if(cTxt) doc.text(cTxt, x + BW - 4, y + 6, { align:'right' });
+      doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
+      doc.text(truncateForPdf(doc, m.name || 'Sans nom', BW - 10 - cW), x + 4, y + 6.1);
       for(let k = 0; k < MKT_SLOTS; k++){
         const s = m.songs[k];
         const ly = y + 9 + k * 8 + 5.6;
@@ -43939,9 +43989,6 @@ function mktTodayISO(){ const d = new Date(); return d.getFullYear() + '-' + Str
 async function mktArchiveSave(){
   const st = mktSt(), d = mktGet(st);
   if(!d.montages.length && !d.pool.length){ showToast('Rien à sauvegarder : aucun montage ni titre', 'err'); return; }
-  if(!d.validity.from || !d.validity.to){
-    if(!confirm('La date de validité n\'est pas renseignée. Sauvegarder quand même ?')) return;
-  }
   const date = mktTodayISO();
   // Instantané complet, scores compris (tels qu'ils sont aujourd'hui)
   const withScores = s => s ? Object.assign({}, s, { scores: mktLatestScores(s.title, s.artist) }) : null;
@@ -43949,9 +43996,10 @@ async function mktArchiveSave(){
   const snap = {
     station: st, date, savedAt: new Date().toISOString(),
     validity: Object.assign({}, d.validity),
-    montages: d.montages.map(m => Object.assign({}, m, { songs: m.songs.slice(0, MKT_SLOTS).map(withScores), averages: mktAverages(m.songs.slice(0, MKT_SLOTS)) })),
+    montages: d.montages.map(m => Object.assign({}, m, { createdDate: mktCreatedDate(m), songs: m.songs.slice(0, MKT_SLOTS).map(withScores), averages: mktAverages(m.songs.slice(0, MKT_SLOTS)) })),
     pool: d.pool.map(withScores),
-    screener, screenerAverages: mktAverages(screener)
+    screener, screenerAverages: mktAverages(screener),
+    screenerCreatedDate: (() => { try{ return screenerCreatedDate(targetGet(st).montage); }catch(e){ return ''; } })()
   };
   const loc = mktLocalArchives();
   const existed = !!loc[st][date];
@@ -44016,11 +44064,11 @@ async function mktArchiveOpen(){
   const body = document.getElementById('mktArchiveBody');
   if(!body) return;
   if(!list.length){ body.innerHTML = 'Aucune sauvegarde pour ' + escHtml(stLabel) + '. Utilisez « 💾 Sauvegarder » sur la page Marketing antenne.'; return; }
-  const vStr = v => (v && (v.from || v.to)) ? 'Validité ' + (v.from ? 'du ' + formatDateFr(v.from) : '') + (v.to ? ' au ' + formatDateFr(v.to) : '') : 'Validité non renseignée';
+  const vStr = () => 'Montages, titres et Screener du jour de la sauvegarde';
   body.innerHTML = list.map(e => `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 4px;border-top:1px solid var(--border)">
       <div style="min-width:0;flex:1">
         <div style="font-size:13px;font-weight:800;color:var(--navy)">Sauvegarde du ${escHtml(formatDateFr(e.date))}</div>
-        <div style="font-size:11px;color:var(--text2)">${escHtml(vStr(e.validity))} · ${e.n || 0} montage${(e.n || 0) > 1 ? 's' : ''} · ${e.drive ? '☁️ Drive' : '💻 ce poste'}</div>
+        <div style="font-size:11px;color:var(--text2)">${escHtml(vStr())} · ${e.n || 0} montage${(e.n || 0) > 1 ? 's' : ''} · ${e.drive ? '☁️ Drive' : '💻 ce poste'}</div>
       </div>
       <button class="btn-ghost" onclick="mktArchiveView('${e.date}')" style="font-size:11px;padding:5px 10px">👁 Consulter</button>
       <button class="btn-ghost" onclick="mktArchivePdf('${e.date}')" style="font-size:11px;padding:5px 10px">📄 PDF</button>
@@ -44042,10 +44090,10 @@ async function mktArchiveView(date){
   const v = snap.validity || {};
   body.innerHTML = `<button class="btn-ghost" onclick="mktArchiveOpen()" style="font-size:11px;padding:5px 10px;margin-bottom:10px">← Toutes les sauvegardes</button>
     <div style="font-size:14px;font-weight:800;color:var(--navy)">Sauvegarde du ${escHtml(formatDateFr(snap.date))}</div>
-    <div style="font-size:11.5px;color:var(--text2);margin-bottom:12px">${(v.from || v.to) ? 'Validité ' + (v.from ? 'du ' + escHtml(formatDateFr(v.from)) : '') + (v.to ? ' au ' + escHtml(formatDateFr(v.to)) : '') : 'Validité non renseignée'} · scores tels qu'au jour de la sauvegarde</div>
+    <div style="font-size:11.5px;color:var(--text2);margin-bottom:12px">Scores tels qu'au jour de la sauvegarde</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:10px">
-      ${(snap.montages || []).map(m => `<div class="mkt-card" style="padding:10px"><div style="font-weight:800;color:var(--navy);margin-bottom:4px">${escHtml(m.name || 'Sans nom')}</div>${(m.songs || []).map(row).join('')}${avg(m.averages)}</div>`).join('')}
-      ${(snap.screener || []).length ? `<div class="mkt-card" style="padding:10px;background:#F7F8FF"><div style="font-weight:800;color:#3730A3;margin-bottom:4px">🎼 Screener</div>${snap.screener.map(row).join('')}${avg(snap.screenerAverages)}</div>` : ''}
+      ${(snap.montages || []).map(m => `<div class="mkt-card" style="padding:10px"><div style="font-weight:800;color:var(--navy);margin-bottom:4px">${escHtml(m.name || 'Sans nom')}${m.createdDate ? ` <span style="font-size:10.5px;font-weight:600;color:var(--muted)">· créé le ${escHtml(formatDateFr(m.createdDate))}</span>` : ''}</div>${(m.songs || []).map(row).join('')}${avg(m.averages)}</div>`).join('')}
+      ${(snap.screener || []).length ? `<div class="mkt-card" style="padding:10px;background:#F7F8FF"><div style="font-weight:800;color:#3730A3;margin-bottom:4px">🎼 Screener${snap.screenerCreatedDate ? ` <span style="font-size:10.5px;font-weight:600;color:var(--muted)">· créé le ${escHtml(formatDateFr(snap.screenerCreatedDate))}</span>` : ''}</div>${snap.screener.map(row).join('')}${avg(snap.screenerAverages)}</div>` : ''}
     </div>`;
 }
 async function mktArchivePdf(date){
@@ -44057,10 +44105,10 @@ async function mktArchiveRestore(date){
   const st = mktSt();
   const snap = await mktArchiveLoad(st, date);
   if(!snap){ showToast('Sauvegarde introuvable', 'err'); return; }
-  if(!confirm('Remplacer les montages, la liste de titres et la validité actuels par la sauvegarde du ' + formatDateFr(date) + ' ? (Le Screener n\'est pas modifié.)')) return;
+  if(!confirm('Remplacer les montages et la liste de titres actuels par la sauvegarde du ' + formatDateFr(date) + ' ? (Le Screener n\'est pas modifié.)')) return;
   const strip = s => s ? { title: s.title, artist: s.artist, key: s.key || comiteKey(s.title, s.artist) } : null;
   const d = mktGet(st);
-  d.montages = (snap.montages || []).map(m => ({ id: m.id, name: m.name, songs: (m.songs || []).map(strip), createdAt: m.createdAt, updatedAt: new Date().toISOString() }));
+  d.montages = (snap.montages || []).map(m => ({ id: m.id, name: m.name, songs: (m.songs || []).map(strip), createdAt: m.createdAt, createdDate: m.createdDate || (m.createdAt || '').slice(0, 10), updatedAt: new Date().toISOString() }));
   d.pool = (snap.pool || []).map(s => Object.assign(strip(s), { addedAt: s.addedAt || snap.savedAt }));
   d.validity = Object.assign({ from:'', to:'' }, snap.validity);
   mktSave();
@@ -44068,6 +44116,38 @@ async function mktArchiveRestore(date){
   renderMarketingPage();
   refreshAllMembershipButtons();
   showToast('✓ Sauvegarde du ' + formatDateFr(date) + ' restaurée', 'success');
+}
+
+/* ── Modification du Screener depuis cette page (même stockage que
+      Analyse → Cible de recherche : local + Drive) ─────────────────── */
+function mktScreenerAdd(song){
+  const st = mktSt(), cfg = targetGet(st);
+  const list = cfg.montage.songs || (cfg.montage.songs = []);
+  if(list.some(raw => { const p = parseMontageSong(raw); return p.title && mktSame(p, song); })){ showToast('Ce titre est déjà dans le Screener', 'err'); return; }
+  const blank = list.findIndex(raw => !(raw || '').trim());
+  const val = (song.artist ? song.artist + ' - ' : '') + song.title;
+  if(blank >= 0) list[blank] = val; else list.push(val);
+  if(!screenerCreatedDate(cfg.montage)) cfg.montage.createdDate = fpaLocalTodayISO();
+  searchTargetPersist();
+  renderMarketingPage();
+}
+function mktScreenerRemove(i){
+  const cfg = targetGet(mktSt());
+  const p = parseMontageSong(cfg.montage.songs[i]);
+  if(!confirm('Retirer « ' + titleCaseDisplay(p.title) + ' » du Screener ?')) return;
+  cfg.montage.songs.splice(i, 1);
+  searchTargetPersist();
+  renderMarketingPage();
+}
+function mktScreenerMove(i, delta){
+  const list = targetGet(mktSt()).montage.songs;
+  // déplacement parmi les lignes non vides
+  const filled = list.map((r, k) => (r || '').trim() ? k : -1).filter(k => k >= 0);
+  const pos = filled.indexOf(i), to = filled[pos + delta];
+  if(pos < 0 || to === undefined) return;
+  [list[i], list[to]] = [list[to], list[i]];
+  searchTargetPersist();
+  renderMarketingPage();
 }
 
 /* ── Raccordements ─────────────────────────────────────────────────── */
