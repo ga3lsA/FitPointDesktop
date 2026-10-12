@@ -41708,14 +41708,49 @@ async function renderDailyProgPage(){
   const allItems = [];
   dayAggs.forEach(x => x.d.items.forEach(it => allItems.push({ title: it.title, artist: it.artist, _date: x.d.date })));
   const periodAgg = dailyProgAggregate(allItems, null);
-  const daysRows = dayAggs.map(({ d, agg }) => {
+  // Audience digitale (section « Audience digitale ») : valeur du jour quand
+  // le rapport la donne, et chiffres de la semaine (cellules fusionnées)
+  const aud = dailyProgAudienceFor(st, days.map(d => d.date));
+  const audRecOf = date => aud.recOf[date] || null;
+  const daysRows = dayAggs.map(({ d, agg }, i) => {
     const sel = d.date === dailyProgSelected;
+    let audCells = '';
+    if(aud.any){
+      const dv = aud.dayVal[d.date];
+      audCells += `<td style="padding:8px 10px;text-align:right;white-space:nowrap;border-left:2px solid var(--border)" title="Audience moyenne du jour (rapport d'audience digitale)">${dv != null ? '<b style="color:var(--navy)">' + Math.round(dv).toLocaleString('fr-FR') + '</b>' : '<span style="color:var(--muted)">—</span>'}</td>`;
+      const rec = audRecOf(d.date);
+      const prevRec = i > 0 ? audRecOf(dayAggs[i - 1].d.date) : null;
+      if(!rec) audCells += '<td colspan="4" style="padding:8px 10px;text-align:center;color:var(--muted);font-size:11px">—</td>';
+      else if(rec !== prevRec){
+        let span = 1;
+        while(i + span < dayAggs.length && audRecOf(dayAggs[i + span].d.date) === rec) span++;
+        const tip = 'Semaine du ' + formatDateFr(rec.weekStart) + (rec.weekEnd ? ' au ' + formatDateFr(rec.weekEnd) : '');
+        const c = (v, f) => `<td rowspan="${span}" title="${escHtml(tip)}" style="padding:8px 10px;text-align:right;white-space:nowrap;vertical-align:middle;background:#F7FAFD;border-left:1px solid var(--border)">${v != null && !isNaN(v) ? '<b style="color:var(--navy)">' + f(v) + '</b>' : '<span style="color:var(--muted)">—</span>'}${f === null ? '' : ''}</td>`;
+        const int = v => Math.round(v).toLocaleString('fr-FR');
+        audCells += c(rec.sessions, int) + c(rec.uniques, int) + c(rec.dureeSec, v => digitalAudienceFmtDuration(v)) + c(rec.audienceMoyenne, int);
+      }
+    }
     return `<tr onclick="dailyProgSelect('${d.date}')" style="cursor:pointer;border-top:1px solid var(--border);${sel ? 'background:var(--cyan-light);' : ''}">
       <td style="padding:8px 10px;font-weight:800;color:var(--navy);white-space:nowrap">${sel ? '▸ ' : ''}${escHtml(dailyProgDateLabel(d.date, true))}</td>
       <td style="padding:8px 10px;text-align:right;font-weight:700">${d.items.length}</td>
       ${DAILY_METRICS.map(m => dailyProgAvgCell(m, agg)).join('')}
+      ${audCells}
     </tr>`;
   }).join('');
+  const audHead = aud.any ? `<th style="padding:8px 10px;text-align:right;white-space:nowrap;border-left:2px solid var(--border)" title="Audience moyenne du jour (5h-24h), quand le rapport la détaille jour par jour">Aud. moy. jour</th>
+      <th style="padding:8px 10px;text-align:right;white-space:nowrap" title="Sessions de plus de 30 s — chiffre de la semaine">Sessions sem.</th>
+      <th style="padding:8px 10px;text-align:right;white-space:nowrap" title="Visiteurs uniques — chiffre de la semaine">Visiteurs uniq. sem.</th>
+      <th style="padding:8px 10px;text-align:right;white-space:nowrap" title="Durée d'écoute moyenne — chiffre de la semaine">Durée écoute sem.</th>
+      <th style="padding:8px 10px;text-align:right;white-space:nowrap" title="Audience moyenne 5h-24h — chiffre de la semaine">Aud. moy. sem.</th>` : '';
+  const audPeriod = aud.any ? (() => {
+    const mean = a => { const x = a.filter(v => v != null && !isNaN(v)); return x.length ? x.reduce((s, v) => s + v, 0) / x.length : null; };
+    const dvs = days.map(d => aud.dayVal[d.date]);
+    const recs = Array.from(new Set(days.map(d => audRecOf(d.date)).filter(Boolean)));
+    const int = v => v == null ? '<span style="color:var(--muted)">—</span>' : Math.round(v).toLocaleString('fr-FR');
+    const td = (h, extra) => `<td style="padding:8px 10px;text-align:right;font-weight:800;white-space:nowrap${extra || ''}">${h}</td>`;
+    return td(int(mean(dvs)), ';border-left:2px solid var(--border)') + td(int(mean(recs.map(r => r.sessions)))) + td(int(mean(recs.map(r => r.uniques))))
+      + td(mean(recs.map(r => r.dureeSec)) == null ? '—' : digitalAudienceFmtDuration(mean(recs.map(r => r.dureeSec)))) + td(int(mean(recs.map(r => r.audienceMoyenne))));
+  })() : '';
 
   // 2) Moyennes par heure du jour sélectionné
   const byHour = {};
@@ -41733,24 +41768,64 @@ async function renderDailyProgPage(){
   // 3) Programmation complète, au format des classements FPA
   const listHtml = dailyProgListHtml(day, hourAggs);
 
-  const kpis = DAILY_METRICS.map(m => `<div style="flex:1 1 120px;min-width:110px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:10px 12px">
-      <div style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">${escHtml(m.label)}${m.kind === 'rank' ? ' · rang moy.' : ''}</div>
-      <div style="font-family:var(--font-display);font-size:21px;margin-top:2px">${dailyProgFmt(Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec }), dayAgg[m.key])}</div>
-      <div style="font-size:10px;color:var(--muted)">${dayAgg[m.key + 'N']} / ${dayAgg.total} diffusions matchées</div>
+  // Indicateurs du jour (compacts, toujours en haut)
+  const kpis = DAILY_METRICS.map(m => `<div title="${escHtml(m.label + (m.kind === 'rank' ? ' — rang moyen' : ' — moyenne') + ' · ' + dayAgg[m.key + 'N'] + ' / ' + dayAgg.total + ' diffusions matchées')}" style="flex:1 1 92px;min-width:86px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:6px 10px">
+      <div style="font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(m.short)}${m.kind === 'rank' ? ' · rang' : ''}</div>
+      <div style="display:flex;align-items:baseline;gap:5px"><span style="font-family:var(--font-display);font-size:17px">${dailyProgFmt(Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec }), dayAgg[m.key])}</span><span style="font-size:9.5px;color:var(--muted)">${dayAgg[m.key + 'N']}/${dayAgg.total}</span></div>
     </div>`).join('');
+  const fmtKpi = typeof dailyFmtShareOfItems === 'function' ? (() => {
+    const sh = dailyFmtShareOfItems(day.items);
+    return `<div title="Part des diffusions par format — détail en bas de page" style="flex:2 1 220px;min-width:200px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:6px 10px">
+      <div style="font-size:9px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">🎨 Formats</div>
+      <div style="margin-top:4px">${fmtShareBarHtml(sh, { h:6, legend:'compact' })}</div>
+    </div>`;
+  })() : '';
+  // Navigation entre les journées de la vue (‹ › + liste)
+  const di = days.findIndex(d => d.date === day.date);
+  const prevD = di > 0 ? days[di - 1].date : null, nextD = di < days.length - 1 ? days[di + 1].date : null;
+  const navBtn = (d, lbl, tip) => `<button class="btn-ghost" ${d ? `onclick="dailyProgSelect('${d}')"` : 'disabled style="opacity:.35"'} title="${tip}" style="font-size:13px;padding:4px 10px;line-height:1">${lbl}</button>`;
+  const daySelect = `<select onchange="dailyProgSelect(this.value)" style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy);border:1.5px solid var(--border);border-radius:8px;padding:4px 8px;background:var(--white)">
+      ${days.slice().reverse().map(d => `<option value="${d.date}" ${d.date === day.date ? 'selected' : ''}>${escHtml(dailyProgDateLabel(d.date))}</option>`).join('')}
+    </select>`;
 
   box.innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <details id="dailyProgSourcesBox" ${dailyProgSourcesOpen ? 'open' : ''} ontoggle="dailyProgSourcesOpen=this.open" style="background:var(--white);border:1.5px solid var(--border);border-radius:12px">
+        <summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;padding:8px 12px;font-size:11.5px;font-weight:800;color:var(--navy)">
+          <span>📡 Sources & synchronisation</span>
+          <span id="dailyProgSyncStatus" style="font-size:10.5px;font-weight:600;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${dailyProgSyncStatusText()}</span>
+          <span style="font-size:10.5px;color:var(--cyan)">▾</span>
+        </summary>
+        <div style="padding:2px 12px 12px">
+          ${dailyProgSourcesHtml()}
+          ${dailyProgSyncBarHtml().replace('id="dailyProgSyncStatus"', 'id="dailyProgSyncStatus2"')}
+          <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.45">Chaque diffusion compte dans les moyennes (un titre passé 3 fois pèse 3 fois). Scores : Fit / Pot / Fam de la vague Call Out-OMT la plus proche <b>avant</b> la date diffusée ; classements digitaux et Airplay : rangs actuellement chargés dans FPA. Les chiffres « n/N » indiquent combien de diffusions ont été matchées.</div>
+        </div>
+      </details>
+
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          ${navBtn(prevD, '‹', 'Journée précédente')}${daySelect}${navBtn(nextD, '›', 'Journée suivante')}
+          <span style="font-size:11px;color:var(--muted)">${day.items.length} diffusions musicales · ${day.excluded || 0} éléments écartés</span>
+          <button onclick="dailyCheckRun()" title="Contrôle de la journée : séparation artistes, heures sous la moyenne, formats… (règles réglables)" style="margin-left:auto;font-size:11.5px;padding:6px 14px;border-radius:8px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;font-weight:800;cursor:pointer">✅ Check</button>
+          <button class="btn-ghost" onclick="dailyProgDeleteDay('${day.date}')" title="Supprimer cette journée" style="font-size:11px;padding:6px 10px;color:#dc2626">🗑</button>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">${kpis}${fmtKpi}</div>
+      </div>
+
+      ${listHtml}
+
+      ${typeof dailyFmtCardHtml === 'function' ? dailyFmtCardHtml(day, hourAggs) : ''}
+
       <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px">
-        ${dailyProgSourcesHtml()}
-        ${dailyProgSyncBarHtml()}
-        <div style="font-size:11px;color:var(--text2);margin-top:8px;line-height:1.45">Chaque diffusion compte dans les moyennes (un titre passé 3 fois pèse 3 fois). Scores : Fit / Pot / Fam de la vague Call Out-OMT la plus proche <b>avant</b> la date diffusée ; classements digitaux et Airplay : rangs actuellement chargés dans FPA. Les chiffres « n/N » indiquent combien de diffusions ont été matchées.</div>
+        <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy);margin-bottom:8px">📈 Fit, Pot et Fam Score moyens par heure</div>
+        <div style="position:relative;height:240px"><canvas id="dailyProgChart"></canvas></div>
       </div>
 
       <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden">
         <div style="padding:12px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">📅 Scores moyens par jour</div>
-          <span style="font-size:11px;color:var(--muted)">${dailyProgView ? 'Période du ' + escHtml(dailyProgDateLabel(range.from, true)) + ' au ' + escHtml(dailyProgDateLabel(range.to, true)) : '14 derniers jours'} · ${days.length} journée${days.length > 1 ? 's' : ''} · cliquez une ligne pour l'afficher</span>
+          <span style="font-size:11px;color:var(--muted)">${dailyProgView ? 'Période du ' + escHtml(dailyProgDateLabel(range.from, true)) + ' au ' + escHtml(dailyProgDateLabel(range.to, true)) : '14 derniers jours'} · ${days.length} journée${days.length > 1 ? 's' : ''} · cliquez une ligne pour l'afficher${aud.any ? '' : ' · <span title="Importez les rapports hebdomadaires dans Analyse → Audience digitale">audience digitale : aucune semaine importée pour ces jours</span>'}</span>
           <div style="margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span style="font-size:11px;font-weight:700;color:var(--muted)">Historique plus ancien :</span>
             <input id="dailyProgFrom" type="date" value="${dailyProgView ? range.from : ''}" style="font-size:12px;padding:6px 8px;border-radius:8px">
@@ -41761,49 +41836,42 @@ async function renderDailyProgPage(){
         </div>
         <div style="overflow-x:auto">
           <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead><tr style="${DAILY_TH}"><th style="padding:8px 10px;text-align:left">Jour</th><th style="padding:8px 10px;text-align:right">Titres</th>${dailyProgHeaderCells()}</tr></thead>
+            <thead><tr style="${DAILY_TH}"><th style="padding:8px 10px;text-align:left">Jour</th><th style="padding:8px 10px;text-align:right">Titres</th>${dailyProgHeaderCells()}${audHead}</tr></thead>
             <tbody>${daysRows}
-              <tr style="border-top:2px solid var(--navy);background:var(--bg)"><td style="padding:8px 10px;font-weight:800;color:var(--navy)">Période</td><td style="padding:8px 10px;text-align:right;font-weight:800">${allItems.length}</td>${DAILY_METRICS.map(m => dailyProgAvgCell(m, periodAgg)).join('')}</tr>
+              <tr style="border-top:2px solid var(--navy);background:var(--bg)"><td style="padding:8px 10px;font-weight:800;color:var(--navy)">Période</td><td style="padding:8px 10px;text-align:right;font-weight:800">${allItems.length}</td>${DAILY_METRICS.map(m => dailyProgAvgCell(m, periodAgg)).join('')}${audPeriod}</tr>
             </tbody>
           </table>
         </div>
       </div>
-
-      <div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-          <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy)">${escHtml(dailyProgDateLabel(day.date))}</div>
-          <span style="font-size:11px;color:var(--muted)">${day.items.length} diffusions musicales · ${day.excluded || 0} éléments non musicaux écartés · ${escHtml(day.fileName || '')}</span>
-          <button onclick="dailyCheckRun()" title="Contrôle de la journée : séparation artistes, heures sous la moyenne… (règles réglables)" style="margin-left:auto;font-size:11.5px;padding:6px 14px;border-radius:8px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;font-weight:800;cursor:pointer">✅ Check</button>
-          <button class="btn-ghost" onclick="dailyProgDeleteDay('${day.date}')" style="font-size:11px;padding:6px 12px;color:#dc2626">🗑 Supprimer cette journée</button>
-        </div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap">${kpis}</div>
-      </div>
-
-      ${typeof dailyFmtCardHtml === 'function' ? dailyFmtCardHtml(day, hourAggs) : ''}
-
-      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:14px">
-        <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy);margin-bottom:8px">📈 Fit, Pot et Fam Score moyens par heure</div>
-        <div style="position:relative;height:240px"><canvas id="dailyProgChart"></canvas></div>
-      </div>
-
-      <div style="background:var(--white);border:1.5px solid var(--border);border-radius:14px;overflow:hidden">
-        <div style="padding:12px 14px;font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">🕐 Scores moyens par heure</div>
-        <div style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;font-size:12px">
-            <thead><tr style="${DAILY_TH}"><th style="padding:8px 10px;text-align:left">Heure</th><th style="padding:8px 10px;text-align:right">Titres</th>${dailyProgHeaderCells()}</tr></thead>
-            <tbody>${hourRows}
-              <tr style="border-top:2px solid var(--navy);background:var(--bg)"><td style="padding:8px 10px;font-weight:800;color:var(--navy)">Journée</td><td style="padding:8px 10px;text-align:right;font-weight:800">${dayAgg.total}</td>${DAILY_METRICS.map(m => dailyProgAvgCell(m, dayAgg)).join('')}</tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      ${listHtml}
     </div>`;
 
   dailyProgDrawChart(hourAggs);
   if(dailyProgSelIdx !== null && !day.items[dailyProgSelIdx]) dailyProgSelIdx = null;
   dailyProgRenderSide();
+}
+
+/** Audience digitale des jours affichés : valeur du jour (rapport détaillé
+ *  jour par jour) et semaine d'audience couvrant chaque jour. Charge
+ *  l'historique d'audience au besoin (local, puis Drive une fois). */
+let dailyProgAudLoadAsked = false;
+function dailyProgAudienceFor(st, dates){
+  const out = { any:false, dayVal:{}, recOf:{} };
+  try{
+    if(!dailyProgAudLoadAsked && typeof digitalAudienceHistory !== 'undefined'){
+      dailyProgAudLoadAsked = true;
+      const empty = !Object.keys(digitalAudienceHistory.EUROPE2 || {}).length && !Object.keys(digitalAudienceHistory.RFM || {}).length;
+      if(empty && typeof digitalAudienceLoadLocal === 'function') digitalAudienceLoadLocal();
+      if(typeof digitalAudienceDriveLoaded !== 'undefined' && !digitalAudienceDriveLoaded && typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL && typeof digitalAudienceLoadHistoryFromDrive === 'function')
+        digitalAudienceLoadHistoryFromDrive(false).then(() => { if(dailyProgIsVisible()) renderDailyProgPage(); }).catch(() => {});
+    }
+    const recs = Object.values((digitalAudienceHistory && digitalAudienceHistory[st]) || {}).filter(r => r && r.weekStart);
+    dates.forEach(date => {
+      const rec = recs.find(r => date >= r.weekStart && date <= (r.weekEnd || dailyProgAddDays(r.weekStart, 6)));
+      if(rec){ out.recOf[date] = rec; out.any = true; }
+      recs.forEach(r => (r.daily || []).forEach(x => { if(x && x.date === date && x.value != null){ out.dayVal[date] = x.value; out.any = true; } }));
+    });
+  }catch(e){ console.warn('Programmation quotidienne — audience digitale', e); }
+  return out;
 }
 
 function dailyProgDrawChart(hourAggs){
@@ -41866,11 +41934,16 @@ function dailyProgItemMins(it){
    sélectionné (Song Metrics + Historique de diffusion). Flèches ↑ ↓ pour
    passer d'un titre à l'autre, Entrée pour ouvrir la fiche complète. */
 let dailyProgSelIdx = null;      // index dans day.items du titre sélectionné
+let dailyProgSourcesOpen = false;  // bloc « Sources & synchronisation » replié par défaut
 let dailyProgSideToken = 0;      // évite qu'un chargement asynchrone tardif écrase un titre plus récent
 
 function dailyProgListHtml(day, hourAggs){
   const gridCols = '54px 22px 24px 18px minmax(0,1fr) 40px 50px 50px';
   const fitM = DAILY_METRICS.find(m => m.key === 'fit'), potM = DAILY_METRICS.find(m => m.key === 'pot');
+  // Autres scores de l'heure (Fam, classements, Airplay) : affichés sous le bandeau
+  // horaire, seulement s'ils existent pour au moins un titre de la journée
+  const dayAggL = dailyProgAggregate(day.items, day.date);
+  const extraMetrics = DAILY_METRICS.filter(m => m.key !== 'fit' && m.key !== 'pot' && dayAggL[m.key + 'N'] > 0);
   const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:9px 12px;background:var(--white);font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);position:sticky;top:68px;z-index:10;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--cyan);box-shadow:0 3px 10px rgba(11,29,58,.08)">
       <div>Heure</div><div></div><div></div><div></div><div>Titre / Artiste</div><div style="text-align:center">Cat.</div><div style="text-align:right">Fit</div><div style="text-align:right">Pot</div>
     </div>`;
@@ -41882,6 +41955,7 @@ function dailyProgListHtml(day, hourAggs){
         <div style="grid-column:2 / 7;color:var(--muted);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${items.length} titre${items.length > 1 ? 's' : ''}${typeof dailyFmtBandHtml === 'function' ? dailyFmtBandHtml(items) : ' · moyennes de l\'heure'}${hf ? ` <span style="color:#B45309;font-weight:800">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
         <div style="text-align:right">${dailyProgFmt(fitM, agg.fit)}</div>
         <div style="text-align:right">${dailyProgFmt(potM, agg.pot)}</div>
+        ${extraMetrics.length ? `<div style="grid-column:2 / -1;display:flex;flex-wrap:wrap;gap:3px 12px;font-size:10.5px;color:var(--muted);font-weight:700">${extraMetrics.map(m => `<span title="${escHtml(m.label + ' — ' + agg[m.key + 'N'] + '/' + agg.total + ' titres matchés')}">${escHtml(m.short)} ${dailyProgFmt(Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec }), agg[m.key])}</span>`).join('')}</div>` : ''}
       </div>`;
     const rows = items.map(it => {
       const i = day.items.indexOf(it);
@@ -41905,10 +41979,9 @@ function dailyProgListHtml(day, hourAggs){
   }).join('');
   return `<div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">🎛️ Conducteur — ${escHtml(dailyProgDateLabel(day.date))}</div>
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">🎛️ Conducteur</div>
       <span style="font-size:11px;color:var(--muted)">${day.items.length} titres · cliquez un titre, puis ↑ ↓ pour naviguer · Entrée ou double-clic : fiche complète</span>
-      <button onclick="dailyCheckRun()" title="Lancer le contrôle de cette journée" style="margin-left:auto;font-size:11px;padding:6px 12px;border-radius:8px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;font-weight:800;cursor:pointer">✅ Check</button>
-      <input type="search" placeholder="Rechercher un titre, un artiste…" oninput="dailyProgFilter(this.value)" style="min-width:200px;font-size:12px;padding:7px 10px;border-radius:8px">
+      <input type="search" placeholder="Rechercher un titre, un artiste…" oninput="dailyProgFilter(this.value)" style="margin-left:auto;min-width:200px;font-size:12px;padding:7px 10px;border-radius:8px">
     </div>
     <div class="dp-split">
       <div id="dailyProgList" style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;min-width:0">${header}${body}</div>
@@ -42727,8 +42800,7 @@ async function dailyProgLoadPeriodFromInputs(){
 /* ── Affichage de l'état de synchro ────────────────────────────────── */
 function dailyProgSetSync(msg){
   dailyProgSyncMsg = msg;
-  const el = document.getElementById('dailyProgSyncStatus');
-  if(el) el.innerHTML = dailyProgSyncStatusText();
+  ['dailyProgSyncStatus','dailyProgSyncStatus2'].forEach(id => { const el = document.getElementById(id); if(el) el.innerHTML = dailyProgSyncStatusText(); });
 }
 function dailyProgSyncStatusText(){
   const parts = [];
