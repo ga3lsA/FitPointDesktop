@@ -41296,6 +41296,15 @@ window.addEventListener('message', (event) => {
 .dp-row.dp-sel .dp-title{color:var(--navy)!important}
 .dp-side{position:sticky;top:76px;max-height:calc(100vh - 92px);overflow:auto;background:var(--white);border:1.5px solid var(--border);border-radius:12px;box-shadow:0 6px 24px rgba(11,29,58,.06)}
 .dp-side-close{display:none}
+/* Cartes Song Metrics du panneau latéral : rien ne déborde, l'en-tête passe
+   à la ligne si la carte est étroite (libellé, puis évolution + valeur) */
+.dp-side{overflow-x:hidden}
+.dp-side .dp-cards > div{min-width:0;overflow:hidden}
+.dp-side .dp-cards > div > div:first-child{flex-wrap:wrap;row-gap:4px}
+.dp-side .dp-cards > div > div:first-child > span:first-child{white-space:normal!important;min-width:0;flex:1 1 120px}
+.dp-side .dp-cards > div > div:first-child > div{margin-left:auto;flex-shrink:0}
+.dp-side .dp-cards > div > div:first-child > div > span{white-space:nowrap}
+.dp-side .dp-cards svg{max-width:100%}
 .dp-hist-grid{min-width:520px;border:1px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff}
 .dp-hist-row{display:grid;align-items:stretch;border-top:1px solid #CBD5E1}
 .dp-hist-head{border-top:none;background:var(--white)}
@@ -41978,7 +41987,7 @@ function dailyProgListHtml(day, hourAggs){
     const hf = dailyCheckFlagsFor(day.date).hours[h];
     const band = `<div id="dailyHour_${h}" class="dp-band${hf ? ' dp-band-flag' : ''}" ${hf ? `title="${escHtml(hf.join('\n'))}"` : ''} style="scroll-margin-top:120px;display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:8px 12px;font-size:11px">
         <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:#fff">${String(h).padStart(2,'0')}h</div>
-        <div style="grid-column:2 / 7;color:rgba(255,255,255,.72);font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${items.length} titre${items.length > 1 ? 's' : ''}${typeof dailyFmtBandHtml === 'function' ? dailyFmtBandHtml(items) : ' · moyennes de l\'heure'}${hf ? ` <span class="dp-band-warn">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
+        <div style="grid-column:2 / 7;color:rgba(255,255,255,.72);font-weight:700;min-width:0;display:flex;flex-wrap:wrap;align-items:center;row-gap:4px">${items.length} titre${items.length > 1 ? 's' : ''}${typeof dailyFmtBandHtml === 'function' ? dailyFmtBandHtml(items) : ' · moyennes de l\'heure'}${hf ? ` <span class="dp-band-warn">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
         <div style="text-align:right">${dailyProgFmt(fitM, agg.fit)}</div>
         <div style="text-align:right">${dailyProgFmt(potM, agg.pot)}</div>
         ${extraMetrics.length ? `<div style="grid-column:2 / -1;display:flex;flex-wrap:wrap;gap:3px 12px;font-size:10.5px;color:rgba(255,255,255,.7);font-weight:700">${extraMetrics.map(m => `<span title="${escHtml(m.label + ' — ' + agg[m.key + 'N'] + '/' + agg.total + ' titres matchés')}">${escHtml(m.short)} ${dailyProgFmt(Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec }), agg[m.key])}</span>`).join('')}</div>` : ''}
@@ -42180,7 +42189,7 @@ async function dailyProgRenderSide(){
   try{
     const v = getTitleVagueSeries(title, artist);
     let fam = null; try{ fam = getTitleFamScoreSeries(title, artist); }catch(e){}
-    research = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">
+    research = `<div class="dp-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,235px),1fr));gap:8px">
       ${buildEvoCard('Pot Score Tous', '🎯', v.potTous, { color:'var(--cyan)', title, artist })}
       ${buildEvoCard('Fit Score', '📐', v.fit, { color:'#7C3AED', title, artist })}
       ${fam && fam.famTous ? buildEvoCard('Fam Score Tous', '💗', fam.famTous, { color:'#E6007E', title, artist }) : ''}
@@ -42234,7 +42243,7 @@ async function dailyProgRenderSide(){
       buildEvoCard('Spotify France', '🟢', cs.spyFR, { color:'#1DB954', invert:true, unit:'Rang', title, artist }),
       buildEvoCard('Deezer France', '🟣', cs.dzFR, { color:'#A238FF', invert:true, unit:'Rang', title, artist })
     ].join('');
-    box().innerHTML = sec('📻 Airplay & 🎧 Digital') + `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">${cards}</div>`;
+    box().innerHTML = sec('📻 Airplay & 🎧 Digital') + `<div class="dp-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,235px),1fr));gap:8px">${cards}</div>`;
   }catch(e){
     if(token === dailyProgSideToken && box()) box().innerHTML = sec('📻 Airplay & 🎧 Digital') + '<div style="font-size:12px;color:var(--muted)">Historique Airplay / digital indisponible.</div>';
   }
@@ -44506,9 +44515,14 @@ function dailyFmtCardHtml(day, hourAggs){
 function dailyFmtBandHtml(items){
   const s = dailyFmtShareOfItems(items);
   if(!s.total) return '';
-  const txt = FMT_SHARE_KEYS.filter(k => s[k] > 0).map(k => `<span style="color:${fmtDef(k).dot === '#CBD5E1' ? 'var(--muted)' : fmtDef(k).fg}">${k === 'none' ? '?' : fmtDef(k).label.charAt(0)} ${Math.round(s[k])}</span>`).join(' ');
+  const txt = FMT_SHARE_KEYS.filter(k => s[k] > 0).map(k => {
+    const d = fmtDef(k);
+    const lbl = k === 'none' ? 'Sans format' : d.label;
+    const col = k === 'none' ? 'var(--muted)' : d.fg;
+    return `<span style="display:inline-flex;align-items:center;gap:4px;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:${d.dot}"></span><span style="color:${col}">${lbl}</span> <b style="color:var(--navy)">${Math.round(s[k])} %</b></span>`;
+  }).join('');
   const tip = FMT_SHARE_KEYS.map(k => fmtDef(k).label + ' : ' + fmtPct(s[k])).join(' · ');
-  return `<span title="${escHtml('Formats de l\'heure — ' + tip)}" style="display:inline-flex;align-items:center;gap:6px;vertical-align:middle;margin-left:8px;white-space:nowrap"><span style="display:inline-block;width:64px">${fmtShareBarHtml(s, { h:6, legend:false })}</span><span style="font-size:10px;font-weight:800">${txt}<span style="color:var(--muted);font-weight:600"> %</span></span></span>`;
+  return `<span title="${escHtml('Formats de l\'heure — ' + tip)}" style="display:inline-flex;align-items:center;gap:10px;vertical-align:middle;margin-left:10px;flex-wrap:wrap;row-gap:3px"><span style="display:inline-block;width:64px">${fmtShareBarHtml(s, { h:6, legend:false })}</span><span style="display:inline-flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:10.5px;font-weight:700">${txt}</span></span>`;
 }
 
 /* ── 4. Overview : ligne « Formats » sous le baromètre santé ───────── */
