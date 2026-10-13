@@ -4317,17 +4317,22 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
      dédiée (⚙️ à côté de chaque source) — ce modal n'est qu'une vue
      centralisée en plus, pas un remplacement. -->
 <div id="modalFpaConfig" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:600;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this) closeFpaConfigModal()">
-  <div style="background:var(--white);border-radius:16px;box-shadow:0 20px 60px rgba(11,29,58,.25);width:100%;max-width:640px;max-height:90vh;overflow-y:auto;display:flex;flex-direction:column" onclick="event.stopPropagation()">
+  <div style="background:var(--white);border-radius:16px;box-shadow:0 20px 60px rgba(11,29,58,.25);width:100%;max-width:1080px;max-height:92vh;overflow-y:auto;display:flex;flex-direction:column" onclick="event.stopPropagation()">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1.5px solid var(--border);flex-shrink:0">
       <div>
-        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">⚙️ Configuration FPA — toutes les URLs</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">Pratique pour installer FPA sur un autre poste : copiez tout ici, collez sur le nouveau poste.</div>
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">⚙️ Configuration FPA</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">URLs des services et réglages d'affichage — pratique pour installer FPA sur un autre poste.</div>
       </div>
       <button onclick="closeFpaConfigModal()" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1;padding:4px">✕</button>
     </div>
-    <div style="padding:18px 22px;display:flex;flex-direction:column;gap:14px">
+    <div id="fpaCfgTabs" style="display:flex;gap:4px;padding:0 22px;border-bottom:1.5px solid var(--border);flex-shrink:0">
+      <button type="button" data-tab="urls" onclick="fpaCfgShowTab('urls')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid var(--navy);color:var(--navy);cursor:pointer;margin-bottom:-1.5px">🔗 URLs &amp; services</button>
+      <button type="button" data-tab="display" onclick="fpaCfgShowTab('display')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--muted);cursor:pointer;margin-bottom:-1.5px">🎨 Affichage des scores</button>
+    </div>
+    <div id="fpaCfgDisplaySection" style="display:none;padding:18px 22px"></div>
+    <div id="fpaCfgUrlsSection" style="padding:18px 22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:14px 22px;align-items:start">
 
-      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px">Sauvegarde &amp; suivi</div>
+      <div style="grid-column:1/-1;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px">Sauvegarde &amp; suivi</div>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Drive Sync (sauvegarde hebdomadaire)
         <input id="fpaCfgDriveSync" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
       </label>
@@ -4335,7 +4340,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <input id="fpaCfgDailySnapshot" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
       </label>
 
-      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px">Proxies Apps Script (classements &amp; playlists)</div>
+      <div style="grid-column:1/-1;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px">Proxies Apps Script (classements &amp; playlists)</div>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Proxy kworb.net (Spotify International, Playlists Spotify/Apple Music clés, Radios)
         <input id="fpaCfgKworb" type="text" placeholder="https://script.google.com/macros/s/.../exec" style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
       </label>
@@ -4367,7 +4372,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <span style="font-size:10px;color:var(--muted);font-weight:500">Payant (zylalabs.com, essai gratuit 7 jours/50 requêtes) — service tiers non officiel, voir Code_gs_Proxy_Zyla.gs pour le déploiement.</span>
       </label>
 
-      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px">Playlists clés Apple Music</div>
+      <div style="grid-column:1/-1;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:6px">Playlists clés Apple Music</div>
       <label style="display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2)">Tubes du Moment
         <input id="fpaCfgAkpTubesmoment" type="text" placeholder="https://music.apple.com/fr/playlist/..." style="padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit">
       </label>
@@ -4380,7 +4385,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 
     </div>
     <div style="display:flex;gap:8px;padding:14px 22px;border-top:1.5px solid var(--border);flex-shrink:0;justify-content:flex-end">
-      <button onclick="copyFpaConfigFromModal()" style="font-size:12px;font-weight:700;padding:9px 16px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);cursor:pointer">📋 Copier tout</button>
+      <button id="fpaCfgCopyBtn" onclick="copyFpaConfigFromModal()" style="font-size:12px;font-weight:700;padding:9px 16px;border-radius:8px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);cursor:pointer">📋 Copier tout</button>
       <button onclick="saveFpaConfigFromModal()" style="font-size:12px;font-weight:700;padding:9px 16px;border-radius:8px;border:none;background:var(--navy);color:#fff;cursor:pointer">Enregistrer</button>
     </div>
   </div>
@@ -10028,11 +10033,13 @@ function spotifyLink(artist, title){
 
 /** Couleur du Fit Score selon son niveau */
 function fitScoreColor(fp){
-  return fp>=90?'var(--green)':fp>=70?'var(--cyan)':fp>=50?'var(--orange)':fp>=30?'var(--purple)':'var(--muted)';
+  // Seuils réglables : Configuration FPA → Affichage des scores
+  return (typeof fpaScoreColor === 'function' && fpaScoreColor('fit', fp)) || 'var(--navy)';
 }
 
 /** Variantes bg/border/texte assorties au Fit Score, pour l'habillage en étiquette */
 function fitScoreStyle(fp){
+  if(typeof fpaScoreColorName === 'function'){ const n = fpaScoreColorName('fit', fp); if(n) return FPA_COLOR_STYLE[n]; }
   if(fp>=90) return {bg:'var(--green-bg)',  border:'var(--green-border)',  text:'var(--green-text)'};
   if(fp>=70) return {bg:'var(--cyan-light)',border:'var(--cyan-mid)',      text:'#007B87'};
   if(fp>=50) return {bg:'var(--orange-bg)', border:'var(--orange-border)', text:'var(--orange-text)'};
@@ -10511,6 +10518,12 @@ function formatRawVal(val, colName){
 
 function getColColor(colName, val){
   if(val === null || val === undefined) return 'var(--text)';
+  // Seuils réglables (Configuration FPA → Affichage des scores)
+  if(typeof fpaCritFromColumn === 'function'){
+    const crit = fpaCritFromColumn(colName);
+    if(crit){ const c = fpaScoreColor(crit, val); if(c) return c; }
+    return 'var(--text)';
+  }
   const n = typeof val === 'number' ? val : parseFloat(val);
   if(isNaN(n)) return 'var(--text)';
   const hu = (colName||'').toUpperCase().replace(/__\d+$/, '');
@@ -20205,11 +20218,11 @@ function analyseRowHtml(r){
     </td>
     <td style="padding:8px 10px;text-align:center">${evoIcon}</td>
     <td style="padding:8px 10px;text-align:right;font-weight:700">${r.nbDiffs}</td>
-    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${analyseFmtScore(s.potTous)}<span style="color:var(--muted);font-size:9px"> / ${analyseFmtScore(s.potP1)}</span></td>
-    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${analyseFmtScore(s.burnCOTous)}<span style="color:var(--muted);font-size:9px"> / ${analyseFmtScore(s.burnCOP1)}</span></td>
-    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${analyseFmtScore(s.famTous)}<span style="color:var(--muted);font-size:9px"> / ${analyseFmtScore(s.famP1)}</span></td>
-    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${analyseFmtScore(s.burnOMTTous)}<span style="color:var(--muted);font-size:9px"> / ${analyseFmtScore(s.burnOMTP1)}</span></td>
-    <td style="padding:8px 10px;text-align:right">${analyseFmtScore(fpa.fit)}</td>
+    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${fpaColorize('pot', s.potTous, analyseFmtScore(s.potTous))}<span style="color:var(--muted);font-size:9px"> / ${fpaColorize('pot', s.potP1, analyseFmtScore(s.potP1), false)}</span></td>
+    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${fpaColorize('burn', s.burnCOTous, analyseFmtScore(s.burnCOTous))}<span style="color:var(--muted);font-size:9px"> / ${fpaColorize('burn', s.burnCOP1, analyseFmtScore(s.burnCOP1), false)}</span></td>
+    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${fpaColorize('fam', s.famTous, analyseFmtScore(s.famTous))}<span style="color:var(--muted);font-size:9px"> / ${fpaColorize('fam', s.famP1, analyseFmtScore(s.famP1), false)}</span></td>
+    <td style="padding:8px 10px;text-align:right;white-space:nowrap">${fpaColorize('burn', s.burnOMTTous, analyseFmtScore(s.burnOMTTous))}<span style="color:var(--muted);font-size:9px"> / ${fpaColorize('burn', s.burnOMTP1, analyseFmtScore(s.burnOMTP1), false)}</span></td>
+    <td style="padding:8px 10px;text-align:right">${fpaColorize('fit', fpa.fit, analyseFmtScore(fpa.fit))}</td>
     <td style="padding:8px 10px;text-align:right">${analyseFmtScore(fpa.spu)}</td>
     <td style="padding:6px 10px" onclick="event.stopPropagation()"><input value="${escHtml(r.genre||'')}" placeholder="Genre" onchange="analyseUpdateAttr(this,'${tEsc}','${aEsc}','genre')" style="width:100px;font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border)"></td>
     <td style="padding:6px 10px" onclick="event.stopPropagation()"><input value="${escHtml(r.label||'')}" placeholder="Label" onchange="analyseUpdateAttr(this,'${tEsc}','${aEsc}','label')" style="width:110px;font-size:11px;padding:4px 6px;border-radius:6px;border:1px solid var(--border)"></td>
@@ -25331,9 +25344,10 @@ function togglePlaylistExpand(key){
  *  label (éditable), retirer. */
 const PLAYLIST_ROW_GRID = '22px 170px 210px 52px 52px 42px 36px 46px 52px 52px 48px 48px 52px 52px 68px 34px 112px 130px 24px';
 
-function playlistNumCell(val, decimals, suffix){
+function playlistNumCell(val, decimals, suffix, crit){
   if(val === null || val === undefined || val === '' || isNaN(parseFloat(val))) return '<span style="color:var(--muted)">–</span>';
-  return parseFloat(val).toFixed(decimals) + (suffix || '');
+  const txt = parseFloat(val).toFixed(decimals) + (suffix || '');
+  return crit && typeof fpaColorize === 'function' ? fpaColorize(crit, parseFloat(val), txt) : txt;
 }
 
 // ── PAQUETS — lie 2 titres d'une même catégorie : en programmation, ils
@@ -25879,7 +25893,7 @@ function buildPlaylistRow(t, metrics, row360){
     : '';
 
   const fitCell = (row360 && row360.fit !== null && row360.fit !== undefined)
-    ? `<span style="font-size:12px;font-weight:800;color:var(--navy)">${row360.fit.toFixed(0)}</span>`
+    ? `<span style="font-size:12px;font-weight:800;color:${(typeof fpaScoreColor === 'function' && fpaScoreColor('fit', row360.fit)) || 'var(--navy)'}">${row360.fit.toFixed(0)}</span>`
     : '<span style="color:var(--muted)">–</span>';
 
   const quad = row360 && row360.fpQuad ? QUAD[row360.fpQuad] : null;
@@ -25946,12 +25960,12 @@ function buildPlaylistRow(t, metrics, row360){
     <div style="padding:7px 4px;text-align:center">${fitCell}</div>
     <div style="padding:7px 4px;text-align:center">${quadCell}</div>
     <div style="padding:7px 4px;text-align:center">${diffCell}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potTous, 1)}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potP1, 1)}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnTous, 0, '%')}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnP1, 0, '%')}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incTous, 0, '%')}</div>
-    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incP1, 0, '%')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potTous, 1, '', 'pot')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.potP1, 1, '', 'pot')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnTous, 0, '%', 'burn')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.burnP1, 0, '%', 'burn')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incTous, 0, '%', 'inconnu')}</div>
+    <div style="padding:7px 4px;text-align:right;font-size:11px;font-variant-numeric:tabular-nums">${playlistNumCell(metrics.incP1, 0, '%', 'inconnu')}</div>
     <div style="padding:4px">${powerCell}</div>
     <div style="padding:4px">${callOutCell}</div>
     <div style="padding:4px">
@@ -27576,6 +27590,9 @@ function detectCurrentProfil(){
 
 // ── Appliquer la couleur d'une cellule selon les seuils ──
 function getThresholdStyle(colName, val){
+  // Remplacé par les seuils centralisés (Configuration FPA → Affichage des scores),
+  // appliqués par getColColor — plus de couleur de fond dans Datas.
+  if(typeof fpaCritFromColumn === 'function') return null;
   if(val === null || val === undefined || typeof val !== 'number') return null;
   const n = val;
   if(isNaN(n)) return null;
@@ -27613,6 +27630,8 @@ function getThresholdStyle(colName, val){
 
 // ── Modal ──
 function openThresholdsModal(){
+  // Les seuils de couleur se règlent désormais dans Configuration FPA → Affichage des scores
+  if(typeof openFpaConfigModal === 'function' && typeof fpaCfgShowTab === 'function'){ openFpaConfigModal.nextTab = 'display'; openFpaConfigModal(); return; }
   thresholdProfil = detectCurrentProfil();
   renderThresholdsGrid();
   updateThProfilButtons();
@@ -41170,6 +41189,7 @@ function openFpaConfigModal(){
   document.getElementById('fpaCfgAkpHitsfrance').value  = appleKeyPlaylistUrl('hitsfrance');
   document.getElementById('modalFpaConfig').style.display = 'flex';
   document.body.style.overflow = 'hidden';
+  if(typeof fpaColorEditorOpen === 'function'){ fpaColorEditorOpen(); fpaCfgShowTab(openFpaConfigModal.nextTab || 'urls'); openFpaConfigModal.nextTab = null; }
 }
 
 function closeFpaConfigModal(){
@@ -41203,6 +41223,7 @@ function saveFpaConfigFromModal(){
     const v = document.getElementById(inputId).value.trim();
     if(v){ setAppleKeyPlaylistUrl(id, v); appleKeyPlaylistLoaded[id] = false; }
   });
+  if(typeof fpaColorEditorSave === 'function') fpaColorEditorSave();
   showToast('✓ Configuration enregistrée', 'success');
   closeFpaConfigModal();
 }
@@ -41368,6 +41389,198 @@ window.addEventListener('message', (event) => {
 })();
 </script>
 
+<!-- ═══════════════════════════════════════════════════════════════════════
+     COULEURS DES SCORES (Configuration FPA → Affichage des scores)
+     Un seul jeu de seuils, réglable, pour colorer les scores partout dans FPA
+     (Datas, Historique, tableau Fit Score, Playlist, programmation
+     hebdomadaire et quotidienne, Marketing antenne…), hors baromètre santé.
+     Quatre couleurs seulement : rouge, orange, noir, vert.
+     Modèle d'un critère : une couleur de base (valeurs les plus basses), puis
+     des paliers « à partir de X → couleur » triés par valeur croissante.
+     Mêmes seuils pour Call Out et OMT, cible Ensemble et P1.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaScoreColorsJs">
+const FPA_COLOR_KEY = 'fpa_score_colors_v1';
+const FPA_COLORS = { vert:'#16a34a', orange:'#d97706', rouge:'#dc2626', noir:'#0B1D3A' };
+const FPA_COLOR_LABELS = { vert:'Vert', orange:'Orange', rouge:'Rouge', noir:'Noir' };
+const FPA_CRITERIA = [
+  { key:'pot',            label:'Pot Score',          pct:false, def:{ base:'rouge', steps:[{ from:95, color:'noir' }, { from:105, color:'vert' }] } },
+  { key:'fam',            label:'Fam Score',          pct:false, def:{ base:'rouge', steps:[{ from:95, color:'noir' }, { from:105, color:'vert' }] } },
+  { key:'fit',            label:'Fit Score',          pct:false, def:{ base:'rouge', steps:[{ from:50, color:'orange' }, { from:62.5, color:'vert' }] } },
+  { key:'burn',           label:'Burn',               pct:true,  def:{ base:'vert',  steps:[{ from:10, color:'noir' }, { from:20, color:'rouge' }] } },
+  { key:'aimeBeaucoup',   label:'Aime beaucoup',      pct:true,  def:{ base:'rouge', steps:[{ from:30, color:'noir' }, { from:45, color:'vert' }] } },
+  { key:'aimeAssez',      label:'Aime assez',         pct:true,  def:{ base:'noir',  steps:[] } },
+  { key:'naimePas',       label:"N'aime pas",         pct:true,  def:{ base:'vert',  steps:[{ from:10, color:'noir' }, { from:20, color:'rouge' }] } },
+  { key:'naimePasDuTout', label:"N'aime pas du tout", pct:true,  def:{ base:'vert',  steps:[{ from:5, color:'noir' }, { from:10, color:'rouge' }] } },
+  { key:'totalPos',       label:'Total Pos',          pct:true,  def:{ base:'rouge', steps:[{ from:50, color:'noir' }, { from:65, color:'vert' }] } },
+  { key:'totalNeg',       label:'Total Neg',          pct:true,  def:{ base:'vert',  steps:[{ from:15, color:'noir' }, { from:25, color:'rouge' }] } },
+  { key:'inconnu',        label:'Inconnu (Inc)',      pct:true,  def:{ base:'vert',  steps:[{ from:10, color:'noir' }, { from:20, color:'rouge' }] } }
+];
+let fpaColorCache = null;
+function fpaColorConfig(){
+  if(fpaColorCache) return fpaColorCache;
+  let saved = {};
+  try{ saved = JSON.parse(localStorage.getItem(FPA_COLOR_KEY) || '{}') || {}; }catch(e){ saved = {}; }
+  const cfg = {};
+  FPA_CRITERIA.forEach(c => {
+    const s = saved[c.key];
+    const base = s && FPA_COLORS[s.base] ? s.base : c.def.base;
+    const steps = (s && Array.isArray(s.steps) ? s.steps : c.def.steps)
+      .filter(x => x && isFinite(x.from) && FPA_COLORS[x.color]).map(x => ({ from:+x.from, color:x.color }))
+      .sort((a, b) => a.from - b.from);
+    cfg[c.key] = { base, steps };
+  });
+  return (fpaColorCache = cfg);
+}
+function fpaCrit(key){ return FPA_CRITERIA.find(c => c.key === key); }
+/** Nom de couleur (vert/orange/rouge/noir) d'une valeur pour un critère. */
+function fpaScoreColorName(key, v){
+  const c = fpaCrit(key);
+  if(!c || v === null || v === undefined || v === '') return null;
+  let n = typeof v === 'number' ? v : parseFloat(String(v).replace(',', '.'));
+  if(isNaN(n)) return null;
+  if(c.pct && Math.abs(n) <= 1 && n !== 0) n = n * 100;   // pourcentages stockés en fraction (0,14 → 14 %)
+  const cfg = fpaColorConfig()[key];
+  let col = cfg.base;
+  cfg.steps.forEach(s => { if(n >= s.from) col = s.color; });
+  return col;
+}
+function fpaScoreColor(key, v){ const n = fpaScoreColorName(key, v); return n ? FPA_COLORS[n] : null; }
+/** Habille un texte déjà formaté avec la couleur du critère. */
+function fpaColorize(key, v, html, bold){
+  const c = fpaScoreColor(key, v);
+  return c ? `<span style="color:${c};${bold === false ? '' : 'font-weight:800;'}">${html}</span>` : html;
+}
+/** Critère correspondant à un intitulé de colonne Call Out / OMT. */
+function fpaCritFromColumn(colName){
+  const h = String(colName || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/__\d+$/, '').replace(/[’']/g, "'").replace(/[_-]/g, ' ').replace(/\s+/g, ' ').trim();
+  if(!h) return null;
+  if(/N'?\s?AIME PAS DU TOUT|NAIME PAS DU TOUT|PAS DU TOUT/.test(h)) return 'naimePasDuTout';
+  if(/N'?\s?AIME PAS|NAIME PAS/.test(h)) return 'naimePas';
+  if(/AIME BEAUCOUP|AIME\+\+|\bLOVE\b|PCT LOVE/.test(h)) return 'aimeBeaucoup';
+  if(/AIME ASSEZ|AIME\+(?!\+)/.test(h)) return 'aimeAssez';
+  if(/TOTAL POS|\bPOS(ITIF)?S?\b TOTAL|^POS(ITIF)?S?$/.test(h)) return 'totalPos';
+  if(/TOTAL NEG|\bNEG(ATIF)?S?\b TOTAL|^NEG(ATIF)?S?$/.test(h)) return 'totalNeg';
+  if(/BURN/.test(h)) return 'burn';
+  if(/FIT SCORE|FIT_SCORE|^FIT$/.test(h)) return 'fit';
+  if(/FAM SCORE|FAMILIARITY/.test(h)) return 'fam';
+  if(/POT SCORE/.test(h)) return 'pot';
+  if(/^INC\b|INCONNU|UNFAMILIAR/.test(h)) return 'inconnu';
+  return null;
+}
+/* Habillage étiquette (fond doux) pour les badges Fit Score — mêmes 4 couleurs */
+const FPA_COLOR_STYLE = {
+  vert:   { bg:'var(--green-bg)',  border:'var(--green-border)',  text:'var(--green-text)' },
+  orange: { bg:'var(--orange-bg)', border:'var(--orange-border)', text:'var(--orange-text)' },
+  rouge:  { bg:'#FEE2E2',          border:'#FCA5A5',              text:'#B91C1C' },
+  noir:   { bg:'var(--bg)',        border:'var(--border)',        text:'var(--navy)' }
+};
+
+/* ── Éditeur (Configuration FPA → onglet « Affichage des scores ») ──── */
+let fpaColorDraft = null;
+function fpaColorEditorOpen(){
+  fpaColorDraft = JSON.parse(JSON.stringify(fpaColorConfig()));
+  fpaColorEditorRender();
+}
+function fpaColorSelect(val, onchange){
+  return `<select onchange="${onchange}" style="font-size:12px;font-weight:800;padding:5px 8px;border-radius:7px;border:1.5px solid var(--border);color:${FPA_COLORS[val]}">
+    ${Object.keys(FPA_COLORS).map(k => `<option value="${k}" ${k === val ? 'selected' : ''} style="color:${FPA_COLORS[k]};font-weight:800">● ${FPA_COLOR_LABELS[k]}</option>`).join('')}
+  </select>`;
+}
+function fpaColorPreview(key, cfg){
+  // bande de lecture : base puis chaque palier
+  const parts = [`<span style="color:${FPA_COLORS[cfg.base]};font-weight:800">● ${FPA_COLOR_LABELS[cfg.base]}</span>`];
+  const c = fpaCrit(key);
+  cfg.steps.slice().sort((a, b) => a.from - b.from).forEach(s => parts.push(`<span style="color:var(--muted)">≥ ${String(s.from).replace('.', ',')}${c.pct ? ' %' : ''}</span> <span style="color:${FPA_COLORS[s.color]};font-weight:800">● ${FPA_COLOR_LABELS[s.color]}</span>`));
+  return parts.join(' <span style="color:var(--border)">→</span> ');
+}
+function fpaColorEditorRender(){
+  const box = document.getElementById('fpaCfgDisplaySection');
+  if(!box || !fpaColorDraft) return;
+  box.innerHTML = `
+    <div style="font-size:11.5px;color:var(--text2);line-height:1.5;margin-bottom:12px">
+      Couleur des scores dans FPA (Datas, Historique, tableau Fit Score, Playlist, programmation hebdomadaire et quotidienne, Marketing antenne…). Mêmes seuils pour Call Out et OMT, cibles Ensemble et P1. Le baromètre santé de l'Overview garde ses propres seuils (⚙ Seuils du baromètre).<br>
+      Pour chaque critère : la couleur des valeurs les plus basses, puis autant de paliers que nécessaire — <b>« à partir de X → couleur »</b>. Les pourcentages se saisissent en % (14 pour 14 %).<br>
+      <span style="color:var(--muted)">💾 Réglages mémorisés sur ce poste (bouton « Enregistrer ») et inclus dans le fichier JSON d'export / import utilisé pour un transfert de poste.</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:10px">
+      ${FPA_CRITERIA.map(c => {
+        const cfg = fpaColorDraft[c.key];
+        const steps = cfg.steps.map((s, i) => `<div style="display:flex;align-items:center;gap:6px;margin-top:6px">
+            <span style="font-size:11px;color:var(--muted);width:78px">à partir de</span>
+            <input type="number" step="0.1" value="${s.from}" onchange="fpaColorSetStep('${c.key}',${i},'from',this.value)" style="width:84px;font-size:12px;padding:5px 7px;border-radius:7px;border:1.5px solid var(--border)">
+            <span style="font-size:11px;color:var(--muted);width:14px">${c.pct ? '%' : ''}</span>
+            ${fpaColorSelect(s.color, `fpaColorSetStep('${c.key}',${i},'color',this.value)`)}
+            <button type="button" onclick="fpaColorRemoveStep('${c.key}',${i})" title="Supprimer ce palier" style="width:26px;height:26px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer">×</button>
+          </div>`).join('');
+        return `<div style="border:1.5px solid var(--border);border-radius:12px;padding:11px 12px;background:var(--white)">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:800;color:var(--navy)">${c.label}</span>
+            <span style="font-size:10px;color:var(--muted)">${c.pct ? 'en %' : 'valeur'}</span>
+            <button type="button" onclick="fpaColorResetOne('${c.key}')" style="margin-left:auto;font-size:10.5px;padding:3px 8px;border-radius:6px;border:1.5px dashed var(--border);background:none;color:var(--muted);cursor:pointer">⟲ défaut</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:8px">
+            <span style="font-size:11px;color:var(--muted);width:78px">valeurs basses</span>
+            ${fpaColorSelect(cfg.base, `fpaColorSetBase('${c.key}',this.value)`)}
+          </div>
+          ${steps}
+          <button type="button" onclick="fpaColorAddStep('${c.key}')" style="margin-top:8px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:7px;border:1.5px solid var(--border);background:var(--bg);color:var(--navy);cursor:pointer">+ Ajouter un palier</button>
+          <div style="font-size:11px;margin-top:8px;padding-top:7px;border-top:1px solid var(--border)">${fpaColorPreview(c.key, cfg)}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;justify-content:flex-start;margin-top:12px">
+      <button type="button" onclick="fpaColorResetAll()" style="font-size:11.5px;font-weight:700;padding:7px 12px;border-radius:8px;border:1.5px dashed var(--border);background:none;color:var(--text2);cursor:pointer">⟲ Tout remettre par défaut</button>
+    </div>`;
+}
+function fpaColorSetBase(key, v){ fpaColorDraft[key].base = v; fpaColorEditorRender(); }
+function fpaColorSetStep(key, i, field, v){
+  const s = fpaColorDraft[key].steps[i]; if(!s) return;
+  if(field === 'from'){ const n = parseFloat(String(v).replace(',', '.')); if(isNaN(n)) return; s.from = n; fpaColorDraft[key].steps.sort((a, b) => a.from - b.from); }
+  else s.color = v;
+  fpaColorEditorRender();
+}
+function fpaColorAddStep(key){
+  const st = fpaColorDraft[key].steps;
+  const last = st.length ? st[st.length - 1].from : 0;
+  st.push({ from: +(last + 10).toFixed(1), color:'noir' });
+  fpaColorEditorRender();
+}
+function fpaColorRemoveStep(key, i){ fpaColorDraft[key].steps.splice(i, 1); fpaColorEditorRender(); }
+function fpaColorResetOne(key){ const c = fpaCrit(key); fpaColorDraft[key] = JSON.parse(JSON.stringify(c.def)); fpaColorEditorRender(); }
+function fpaColorResetAll(){ FPA_CRITERIA.forEach(c => { fpaColorDraft[c.key] = JSON.parse(JSON.stringify(c.def)); }); fpaColorEditorRender(); }
+/** Enregistre les seuils (appelé par le bouton Enregistrer de la Configuration FPA). */
+function fpaColorEditorSave(){
+  if(!fpaColorDraft) return;
+  try{ localStorage.setItem(FPA_COLOR_KEY, JSON.stringify(fpaColorDraft)); }catch(e){}
+  fpaColorCache = null;
+  fpaColorRefreshViews();
+}
+function fpaColorRefreshViews(){
+  const safe = f => { try{ f(); }catch(e){} };
+  safe(() => { if(typeof renderTable === 'function' && analysisResult && analysisResult.length) renderTable(); });
+  safe(() => { if(typeof renderRawDataTable === 'function') renderRawDataTable(); });
+  safe(() => { if(typeof playlistPageOpen !== 'undefined' && playlistPageOpen) renderPlaylistPage(); });
+  safe(() => { if(typeof analyseRows !== 'undefined' && analyseRows.length) renderAnalyseTableBody(); });
+  safe(() => { if(typeof dailyProgIsVisible === 'function' && dailyProgIsVisible()) renderDailyProgPage(); });
+  safe(() => { if(typeof mktTab !== 'undefined' && mktTab === 'marketing' && mktVisible()) renderMarketingPage(); });
+}
+/* Onglets de la fenêtre Configuration FPA */
+function fpaCfgShowTab(t){
+  const urls = document.getElementById('fpaCfgUrlsSection'), disp = document.getElementById('fpaCfgDisplaySection');
+  if(!urls || !disp) return;
+  urls.style.display = t === 'urls' ? 'grid' : 'none';
+  disp.style.display = t === 'display' ? 'block' : 'none';
+  document.querySelectorAll('#fpaCfgTabs [data-tab]').forEach(b => {
+    const on = b.dataset.tab === t;
+    b.style.borderBottomColor = on ? 'var(--navy)' : 'transparent';
+    b.style.color = on ? 'var(--navy)' : 'var(--muted)';
+  });
+  const copyBtn = document.getElementById('fpaCfgCopyBtn');
+  if(copyBtn) copyBtn.style.display = t === 'urls' ? '' : 'none';
+  if(t === 'display' && !fpaColorDraft) fpaColorEditorOpen();
+}
+</script>
 <!-- ═══════════════════════════════════════════════════════════════════════
      CIBLE DE RÉFÉRENCE DES ANALYSES : Ensemble ou P1
      (Europe 2 : P1 = « réguliers » ; RFM : P1 = « Fav »)
@@ -41922,13 +42135,9 @@ function dailyProgAggregate(items, dateISO){
 /* ── Couleurs (mêmes seuils que le baromètre santé) ─────────────────── */
 function dailyProgColor(key, v){
   if(v === null || v === undefined) return '';
-  let g = null, o = null;
-  if(key === 'fit'){ g = 62.5; o = 50; }
-  if(key === 'pot'){
-    try{ const t = typeof healthFpaPotThresholds === 'function' ? healthFpaPotThresholds() : null; if(t){ g = t.green; o = t.orange; } }catch(e){}
-  }
-  if(g === null) return '';
-  return v >= g ? '#16a34a' : v >= o ? '#d97706' : '#dc2626';
+  // Seuils réglables : Configuration FPA → Affichage des scores
+  if(typeof fpaScoreColor === 'function' && ['fit','pot','fam'].includes(key)) return fpaScoreColor(key, v) || '';
+  return '';
 }
 function dailyProgFmt(m, v){
   if(v === null || v === undefined || isNaN(v)) return '<span style="color:var(--muted)">—</span>';
@@ -42237,7 +42446,7 @@ function dailyProgPotFam(s){
 function dailyProgPotFamCell(potM, s){
   const pf = dailyProgPotFam(s);
   if(!pf) return dailyProgFmt(potM, null);
-  const v = dailyProgFmt(potM, pf.v);
+  const v = dailyProgFmt(pf.src === 'fam' ? Object.assign({}, potM, { key:'fam' }) : potM, pf.v);
   return pf.src === 'fam'
     ? `<span title="Fam Score (OMT) — titre gold sans Pot Score">${v}<sup style="font-size:8px;font-weight:800;color:#A3005A;margin-left:1px">F</sup></span>`
     : v;
@@ -43796,6 +44005,7 @@ function mktAverages(songs){
 function mktScoreHtml(v, kind){
   if(v === null || v === undefined || isNaN(v)) return '<span style="color:var(--muted)">—</span>';
   let col = 'var(--navy)';
+  if(typeof fpaScoreColor === 'function') return `<span style="color:${fpaScoreColor(kind, v) || 'var(--navy)'}">${v.toLocaleString('fr-FR', { maximumFractionDigits:1, minimumFractionDigits:1 })}</span>`;
   if(kind === 'fit') col = v >= 62.5 ? '#16a34a' : v >= 50 ? '#d97706' : '#dc2626';
   if(kind === 'pot' || kind === 'fam'){ try{ const t = healthFpaPotThresholds(); if(t) col = v >= t.green ? '#16a34a' : v >= t.orange ? '#d97706' : '#dc2626'; }catch(e){} }
   return `<span style="color:${col}">${v.toLocaleString('fr-FR', { maximumFractionDigits:1, minimumFractionDigits:1 })}</span>`;
