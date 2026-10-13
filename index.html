@@ -18747,6 +18747,7 @@ function renderGraphPage(){
   cardsArea.innerHTML = [
     graphCardShell('recherche', 'Recherche', 'Résultats Call Out / OMT — Pot Score, Fam Score et leurs taux de Burn, cibles Ensemble et P1.', false, true),
     graphCardShell('fit', 'Fit Score', 'Fit Score et SPU moyens pondérés de la programmation.', false, true),
+    graphCardShell('format', 'Formats', 'Part des diffusions par format (Core / Market / Border), semaine par semaine — pondérée par le nombre de diffusions de chaque titre.', false, true),
     graphCardShell('exposition', 'Exposition Musicale', 'Volume de programmation : titres différents, artistes différents, diffusions totales.', false, true),
     graphCardShell('genre', 'Genre Musical', 'Part des diffusions par genre, semaine par semaine.', false, true),
     graphCardShell('decades', 'Décennies', "Part des diffusions par décennie de sortie du titre (source : iTunes, récupérée et mise en cache automatiquement).", false, true,
@@ -18756,7 +18757,6 @@ function renderGraphPage(){
         <button onclick="analyseBackfillReleaseDatesAllArchives()" title="Recherche la date de sortie officielle (et la décennie si elle manque aussi) de TOUT titre sans date de sortie sur l'ensemble des semaines archivées — que sa décennie soit déjà connue ou non. Alimente le flag Nouvelle Production et le Délai d'adoption." style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">📅 Compléter les dates de sortie manquantes</button>
         <button onclick="analyseRecalcArchivesFromGraph()" title="Recalcule le Genre et la Décennie de toutes les semaines archivées à partir des données actuellement en cache — nécessaire pour que ce graphique et son sélecteur reflètent les décennies résolues APRÈS l'archivage de chaque semaine" style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--white);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🔁 Recalculer les statistiques archivées</button>
       </div>`),
-    graphCardShell('format', 'Formats', 'Part des diffusions par format (Core / Market / Border), semaine par semaine — pondérée par le nombre de diffusions de chaque titre.', false, true),
     graphCardShell('labels', 'Labels / Majors', 'Part de marché par label, ou regroupée par major (Sony, Universal, Warner, Indé).', true)
   ].join('');
 
@@ -25749,6 +25749,87 @@ function refreshPlaylistSuggestions(){
   if(tEl) tEl.innerHTML = titles.map(r => `<option value="${escHtml(r.title)}" label="${escHtml(titleCaseDisplay(r.artist))}">`).join('');
 }
 
+/* ── TRI DE LA PLAYLIST ────────────────────────────────────────────────
+   Par défaut (et à chaque ouverture de FPA) : par catégories, comme avant.
+   Autres tris : une seule liste, valeurs manquantes en fin de liste. */
+let playlistSortMode = 'cat';
+let playlistSortDir = 'desc';
+const PLAYLIST_SORTS = [
+  { id:'cat',    label:'Catégories' },
+  { id:'fit',    label:'Fit Score' },
+  { id:'plays',  label:'Passages' , title:'Diffusions cumulées' },
+  { id:'potTous',label:'Pot Ensemble' },
+  { id:'potP1',  label:'Pot P1' },
+  { id:'date',   label:"Date d'entrée" }
+];
+function playlistSetSort(id){
+  if(id === playlistSortMode && id !== 'cat') playlistSortDir = playlistSortDir === 'desc' ? 'asc' : 'desc';
+  else { playlistSortMode = id; playlistSortDir = 'desc'; }
+  renderPlaylistPage();
+}
+function playlistResetSort(){ playlistSortMode = 'cat'; playlistSortDir = 'desc'; renderPlaylistPage(); }
+function playlistSortBarHtml(){
+  const btn = s => {
+    const on = s.id === playlistSortMode;
+    const arrow = on && s.id !== 'cat' ? (playlistSortDir === 'desc' ? ' ↓' : ' ↑') : '';
+    return `<button onclick="playlistSetSort('${s.id}')" title="${escHtml((s.title || s.label) + (s.id === 'cat' ? ' (tri par défaut)' : ' — cliquer à nouveau pour inverser l\'ordre'))}"
+      style="font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;cursor:pointer;border:1.5px solid ${on ? 'var(--navy)' : 'var(--border)'};background:${on ? 'var(--navy)' : 'var(--white)'};color:${on ? '#fff' : 'var(--text2)'}">${escHtml(s.label)}${arrow}</button>`;
+  };
+  return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:4px 0 2px">
+    <span style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:2px">Trier par</span>
+    ${PLAYLIST_SORTS.map(btn).join('')}
+    ${playlistSortMode !== 'cat' ? `<button onclick="playlistResetSort()" style="margin-left:6px;font-size:11px;font-weight:700;padding:5px 11px;border-radius:20px;cursor:pointer;border:1.5px dashed var(--border);background:none;color:var(--cyan)">↺ Tri par défaut (catégories)</button>` : ''}
+  </div>`;
+}
+/** Valeur de tri d'un titre de la Playlist (null = inconnue). */
+function playlistSortValue(t, mode, rows360, cache){
+  const k = t.key;
+  if(!cache[k]) cache[k] = { row360: findRow360Match(rows360, t.title, t.artist), metrics: getPlaylistCallOutMetrics(t.title, t.artist) };
+  const c = cache[k];
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+  if(mode === 'fit') return c.row360 && c.row360.fit != null ? num(c.row360.fit) : null;
+  if(mode === 'potTous') return num(c.metrics.potTous);
+  if(mode === 'potP1') return num(c.metrics.potP1);
+  if(mode === 'plays'){
+    if(c.row360 && c.row360.cumPlays != null) return num(c.row360.cumPlays);
+    const d = getSongDiffusion(t.title, t.artist);
+    return d ? num(d[t.station === 'RFM' ? 'rfm' : 'europe2']) : null;
+  }
+  if(mode === 'date'){
+    const a = getSongAttributes(t.title, t.artist);
+    const v = a[t.station === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2'] || t.dateEntree || '';
+    return v ? new Date(v + 'T12:00:00').getTime() : null;
+  }
+  return null;
+}
+function playlistSortedListHtml(stationTitles, rows360){
+  const cache = {};
+  const def = PLAYLIST_SORTS.find(s => s.id === playlistSortMode) || PLAYLIST_SORTS[0];
+  const list = stationTitles.map(t => ({ t, v: playlistSortValue(t, playlistSortMode, rows360, cache) }));
+  const dir = playlistSortDir === 'desc' ? -1 : 1;
+  list.sort((a, b) => {
+    if(a.v === null && b.v === null) return (a.t.title || '').localeCompare(b.t.title || '');
+    if(a.v === null) return 1;
+    if(b.v === null) return -1;
+    return (a.v - b.v) * dir;
+  });
+  const missing = list.filter(x => x.v === null).length;
+  const rowsHtml = list.map(({ t }) => {
+    try{ return buildPlaylistRow(t, cache[t.key].metrics, cache[t.key].row360); }
+    catch(e){ console.error('Erreur d\'affichage pour', t.title, e); return ''; }
+  }).join('');
+  return `<div style="display:flex;align-items:center;gap:10px;margin:14px 0 6px">
+      <div style="font-size:15px;font-weight:800;color:#fff;background:var(--navy);border-radius:8px;padding:5px 16px">Tri : ${escHtml(def.label)} ${playlistSortDir === 'desc' ? '↓' : '↑'}</div>
+      <div style="font-size:11.5px;color:var(--navy);font-weight:700;background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:3px 12px">${list.length} titre${list.length > 1 ? 's' : ''}</div>
+      ${missing ? `<div style="font-size:11px;color:var(--muted)">${missing} sans valeur, en fin de liste</div>` : ''}
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow)">
+      ${playlistTableHeader()}
+      ${rowsHtml}
+    </div>`;
+}
+
 function buildPlaylistRow(t, metrics, row360){
   const expanded = playlistExpandedKeys.has(t.key);
   const safeId = t.key.replace(/[^a-z0-9]/gi, '-');
@@ -25932,6 +26013,11 @@ async function renderPlaylistPage(){
 
   const groups = playlistCategoryGroups(stationTitles);
   const rows360 = build360Rows();
+  // Tri autre que « Catégories » : une seule liste triée sur le critère choisi
+  if(playlistSortMode !== 'cat'){
+    listEl.innerHTML = playlistSortBarHtml() + playlistSortedListHtml(stationTitles, rows360);
+    return;
+  }
   const groupsHtml = groups.map(group => {
     const rowsHtml = playlistReorderBundles(group.items).map(t => {
       try{
@@ -25972,7 +26058,7 @@ async function renderPlaylistPage(){
         ${rowsHtml}
       </div>`;
   });
-  listEl.innerHTML = groupsHtml.join('');
+  listEl.innerHTML = playlistSortBarHtml() + groupsHtml.join('');
 
   // Pochette + digital snapshot : uniquement pour les lignes actuellement
   // ouvertes (chargement à la demande, pas pour toute la liste d'un coup).
@@ -42159,6 +42245,9 @@ async function dailyProgOpenFull(){
 function dailyProgKey(it){ return (typeof norm === 'function' ? norm(it.artist) + '|' + norm(it.title) : (it.artist + '|' + it.title).toUpperCase()); }
 function dailyProgAddDays(iso, n){ const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
 
+/** Heures de début des tranches de la grille des programmes, par station
+ *  (traits pleins de la grille d'historique). */
+const DAILY_DAYPART_BREAKS = { EUROPE2:[7, 11, 15, 18, 21], RFM:[6, 10, 12, 16, 20] };
 function dailyProgHistoryHtml(it, day, opts){
   opts = opts || {};
   const st = dailyProgStation();
@@ -42171,7 +42260,9 @@ function dailyProgHistoryHtml(it, day, opts){
   const curMins = it.time ? dailyProgItemMins(it) : -1;
   day = day || { date:'' };
   const cols = '68px repeat(24, minmax(0,1fr)) 30px';
-  const hourCls = h => 'dp-hc' + (h % 2 ? ' dp-hc-odd' : '') + (h % 6 === 0 ? ' dp-hc-6' : '');
+  // Traits pleins = changements de tranche de la grille des programmes de la station
+  const breaks = DAILY_DAYPART_BREAKS[st] || [6, 12, 18];
+  const hourCls = h => 'dp-hc' + (h % 2 ? ' dp-hc-odd' : '') + (breaks.includes(h) ? ' dp-hc-6' : '');
   // En-tête : toutes les heures
   const head = `<div class="dp-hist-row dp-hist-head" style="grid-template-columns:${cols}">
       <div></div>
