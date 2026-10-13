@@ -15136,7 +15136,7 @@ function renderSearchTargetPage(){
     const { title, artist } = parseMontageSong(song);
     return title ? analyseGetSearchScores(title, artist) : null;
   });
-  const ensembleVals = montageScores.filter(Boolean).map(s => s.potTous ?? s.famTous).filter(v => v !== null && v !== undefined);
+  const ensembleVals = montageScores.filter(Boolean).map(s => s.potTous ?? s.famTous).filter(v => v !== null && v !== undefined);   // (moyenne Ensemble et P1 affichées toutes deux)
   const p1Vals        = montageScores.filter(Boolean).map(s => s.potP1 ?? s.famP1).filter(v => v !== null && v !== undefined);
   const avg = arr => arr.length ? Math.round(arr.reduce((a,b) => a+b, 0) / arr.length) : null;
   const avgEnsemble = avg(ensembleVals), avgP1 = avg(p1Vals);
@@ -20133,8 +20133,8 @@ function analyseSortedFilteredRows(){
     switch(analyseSortKey){
       case 'rang':       return r.rang;
       case 'nbDiffs':    return r.nbDiffs || 0;
-      case 'pot':        return (r.search && r.search.potTous) ?? null;
-      case 'fam':        return (r.search && r.search.famTous) ?? null;
+      case 'pot':        return (r.search && (fpaIsP1() ? r.search.potP1 : r.search.potTous)) ?? null;
+      case 'fam':        return (r.search && (fpaIsP1() ? r.search.famP1 : r.search.famTous)) ?? null;
       case 'fit':        return (r.fpa && r.fpa.fit) ?? null;
       case 'spu':        return (r.fpa && r.fpa.spu) ?? null;
       case 'artist':     return r.artist.toLowerCase();
@@ -20266,11 +20266,12 @@ function renderAnalyseStats(){
     analyseStatCard('Titres différents', stats.nbTitres),
     analyseStatCard('Artistes différents', stats.nbArtistes, stats.nbArtistesMultiTitres ? stats.nbArtistesMultiTitres + ' avec plusieurs titres' : ''),
     analyseStatCard('Diffusions totales', stats.totalDiffs),
-    analyseStatCard('Pot Score moy.', analyseFmtScore(stats.avgPot), 'Burn CO : ' + analyseFmtScore(stats.avgBurnCO)),
-    analyseStatCard('Fam Score moy.', analyseFmtScore(stats.avgFam), 'Burn OMT : ' + analyseFmtScore(stats.avgBurnOMT)),
+    analyseStatCard('Pot Score moy.' + fpaRefSuffix(), analyseFmtScore(fpaIsP1() ? stats.avgPotP1 : stats.avgPot), 'Burn CO : ' + analyseFmtScore(fpaIsP1() ? stats.avgBurnCOP1 : stats.avgBurnCO)),
+    analyseStatCard('Fam Score moy.' + fpaRefSuffix(), analyseFmtScore(fpaIsP1() ? stats.avgFamP1 : stats.avgFam), 'Burn OMT : ' + analyseFmtScore(fpaIsP1() ? stats.avgBurnOMTP1 : stats.avgBurnOMT)),
     analyseStatCard('Fit Score moy.', analyseFmtScore(stats.avgFit), 'SPU moy. : ' + analyseFmtScore(stats.avgSpu))
   ].join('');
   if(typeof renderAnalyseFormatShare === 'function') renderAnalyseFormatShare();
+  if(typeof renderAnalyseRefTargetBar === 'function') renderAnalyseRefTargetBar();
 }
 
 const ANALYSE_GENRE_PALETTE = ['#00B8C8','#7C3AED','#E07B00','#0DA76B','#CC2222','#1E6FD9','#B05E00','#5B21B6','#0B1D3A','#F0A020','#0891B2','#94A3B8'];
@@ -23015,7 +23016,9 @@ function renderChartTable(){
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Import CSV Spotify France
       <input type="file" accept=".csv,.txt" style="display:none" onchange="handleSpotifyImport(this)">
-    </label>`;
+    </label>${(() => { const i = typeof spotifyCsvInfo === 'function' ? spotifyCsvInfo() : null;
+      return i ? `<span title="${escHtml((i.fileName ? i.fileName + ' — ' : '') + 'importé le ' + new Date(i.savedAt).toLocaleString('fr-FR'))}" style="font-size:11px;color:var(--muted)">💾 mémorisé sur ce poste${i.isWeekly ? ' (Weekly)' : ' (Daily)'}</span>
+        <button onclick="if(confirm('Retirer le classement Spotify France mémorisé sur ce poste ?')) spotifyCsvForget()" style="font-size:10.5px;padding:4px 9px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer">✕ Oublier</button>` : ''; })()}`;
 
   } else if(KWORB_COUNTRY_TABS.includes(activeChartTab)){
     // ── Spotify par pays (kworb.net) — auto-fetch quotidien, aucun import manuel ──
@@ -27440,6 +27443,8 @@ function parseSpotifyCSV(text, filename){
   spotifyData    = res.data;
   spotifyLoaded  = true;
   spotifyDateUsed = res.dateUsed;
+  // Mémorisé sur ce poste : rechargé automatiquement à la prochaine ouverture de FPA
+  if(typeof spotifyCsvPersist === 'function') spotifyCsvPersist(res, filename);
 
   // Mettre à jour spyFR dans analysisResult
   if(analysisResult && analysisResult.length){
@@ -41351,6 +41356,87 @@ window.addEventListener('message', (event) => {
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════════════════
+     CIBLE DE RÉFÉRENCE DES ANALYSES : Ensemble ou P1
+     (Europe 2 : P1 = « réguliers » ; RFM : P1 = « Fav »)
+     Détermine le Pot Score et le Fam Score utilisés par la programmation
+     hebdomadaire et quotidienne, le baromètre santé, le Check, Marketing
+     antenne / Screener. Les écrans qui montrent les deux cibles côte à côte
+     (Playlist, fiche Song Metrics) ne changent pas. Réglage par station,
+     mémorisé sur le poste.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaRefTargetJs">
+const FPA_REF_TARGET_KEY = 'fpa_ref_target_v1';
+function fpaRefStation(){ return (typeof ACTIVE_STATION !== 'undefined' && ACTIVE_STATION === 'RFM') ? 'RFM' : 'EUROPE2'; }
+function fpaRefTarget(st){
+  try{ const m = JSON.parse(localStorage.getItem(FPA_REF_TARGET_KEY) || '{}') || {}; return m[st || fpaRefStation()] === 'p1' ? 'p1' : 'tous'; }
+  catch(e){ return 'tous'; }
+}
+function fpaIsP1(st){ return fpaRefTarget(st) === 'p1'; }
+function fpaRefPot(o){ return o ? (fpaIsP1() ? o.potP1 : o.potTous) : null; }
+function fpaRefFam(o){ return o ? (fpaIsP1() ? o.famP1 : o.famTous) : null; }
+function fpaP1Label(st){ return (st || fpaRefStation()) === 'RFM' ? 'P1 (Fav)' : 'P1'; }
+/** Suffixe pour les libellés : « » en Ensemble, « · P1 » en P1. */
+function fpaRefSuffix(){ return fpaIsP1() ? ' · ' + fpaP1Label() : ''; }
+function fpaSetRefTarget(v){
+  let m = {};
+  try{ m = JSON.parse(localStorage.getItem(FPA_REF_TARGET_KEY) || '{}') || {}; }catch(e){}
+  m[fpaRefStation()] = v === 'p1' ? 'p1' : 'tous';
+  try{ localStorage.setItem(FPA_REF_TARGET_KEY, JSON.stringify(m)); }catch(e){}
+  fpaRefTargetRefresh();
+  showToast('Cible de référence : ' + (v === 'p1' ? fpaP1Label() : 'Ensemble') + ' — ' + (fpaRefStation() === 'RFM' ? 'RFM' : 'Europe 2'), 'success');
+}
+/** Petit sélecteur « Cible : Ensemble | P1 », réutilisé sur chaque page concernée. */
+function fpaRefTargetToggleHtml(dark){
+  const p1 = fpaIsP1();
+  const b = (on, v, lbl) => `<button type="button" onclick="fpaSetRefTarget('${v}')" style="font-size:10.5px;font-weight:800;padding:3px 9px;border:none;cursor:pointer;background:${on ? (dark ? '#fff' : 'var(--navy)') : 'transparent'};color:${on ? (dark ? 'var(--navy)' : '#fff') : (dark ? 'rgba(255,255,255,.75)' : 'var(--muted)')}">${lbl}</button>`;
+  return `<span title="Cible du Pot Score et du Fam Score utilisés dans les analyses (Ensemble ou ${fpaP1Label()})" style="display:inline-flex;align-items:center;gap:5px;flex-shrink:0">
+    <span style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:${dark ? 'rgba(255,255,255,.7)' : 'var(--muted)'}">Cible</span>
+    <span style="display:inline-flex;border:1.5px solid ${dark ? 'rgba(255,255,255,.3)' : 'var(--border)'};border-radius:7px;overflow:hidden">${b(!p1, 'tous', 'Ensemble')}${b(p1, 'p1', fpaP1Label())}</span>
+  </span>`;
+}
+/** Libellés des scores quotidiens (Pot / Fam) selon la cible. */
+function fpaRefApplyDailyLabels(){
+  if(typeof DAILY_METRICS === 'undefined') return;
+  const s = fpaIsP1() ? ' ' + fpaP1Label() : '';
+  DAILY_METRICS.forEach(m => {
+    if(m.key === 'pot'){ m.label = 'Pot Score' + s; m.short = 'Pot' + s; }
+    if(m.key === 'fam'){ m.label = 'Fam Score' + s; m.short = 'Fam' + s; }
+  });
+}
+function fpaRefTargetRefresh(){
+  fpaRefApplyDailyLabels();
+  try{ if(typeof dailyProgScoreMemo !== 'undefined') dailyProgScoreMemo = {}; }catch(e){}
+  try{ if(typeof dailyProgIsVisible === 'function' && dailyProgIsVisible()) renderDailyProgPage(); }catch(e){}
+  try{ if(typeof analyseRows !== 'undefined' && analyseRows.length && typeof renderAnalyseStats === 'function'){ renderAnalyseStats(); if(typeof renderAnalyseTableBody === 'function') renderAnalyseTableBody(); } }catch(e){}
+  try{ if(typeof renderAnalyseRefTargetBar === 'function') renderAnalyseRefTargetBar(); }catch(e){}
+  try{ const hb = document.getElementById('healthBarometer'); if(hb && hb.offsetParent !== null) renderHealthBarometer(); }catch(e){}
+  try{ if(typeof mktTab !== 'undefined' && mktTab === 'marketing' && mktVisible()) renderMarketingPage(); }catch(e){}
+}
+/* Barre « Cible » de la programmation hebdomadaire (au-dessus des statistiques) */
+function renderAnalyseRefTargetBar(){
+  const area = document.getElementById('analyseStatsArea');
+  if(!area || !area.parentElement) return;
+  let bar = document.getElementById('analyseRefTargetBar');
+  if(!bar){
+    bar = document.createElement('div');
+    bar.id = 'analyseRefTargetBar';
+    bar.style.cssText = 'display:flex;align-items:center;gap:10px;margin:0 0 8px;flex-wrap:wrap';
+    area.parentElement.parentElement.insertBefore(bar, area.parentElement);
+  }
+  bar.innerHTML = fpaRefTargetToggleHtml(false) + `<span style="font-size:11px;color:var(--muted)">Pot Score et Fam Score des moyennes, du tri et des analyses : cible ${fpaIsP1() ? fpaP1Label() : 'Ensemble'}</span>`;
+}
+// Bascule de station : chaque station a sa propre cible
+(function(){
+  const orig = window.toggleActiveStation;
+  if(typeof orig !== 'function') return;
+  window.toggleActiveStation = function(){
+    const r = orig.apply(this, arguments);
+    try{ fpaRefApplyDailyLabels(); renderAnalyseRefTargetBar(); }catch(e){}
+    return r;
+  };
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
      ANALYSE → PROGRAMMATION QUOTIDIENNE
      Import des conducteurs journaliers (.xls « CONDUCTEUR EUROPE 2 … »),
      nettoyage (seule la musique est conservée), matching FPA de chaque titre
@@ -41780,13 +41866,13 @@ async function dailyProgDeleteDay(date){
 /* ── Matching FPA ───────────────────────────────────────────────────── */
 function dailyProgNum(v){ const n = parseFloat(v); return isNaN(n) ? null : n; }
 function dailyScoresFor(title, artist, dateISO){
-  const key = dailyProgStation() + '|' + (typeof norm === 'function' ? norm(artist) + '|' + norm(title) : artist + '|' + title) + '|' + dateISO;
+  const key = dailyProgStation() + '|' + fpaRefTarget() + '|' + (typeof norm === 'function' ? norm(artist) + '|' + norm(title) : artist + '|' + title) + '|' + dateISO;
   if(dailyProgScoreMemo[key]) return dailyProgScoreMemo[key];
   const s = { fit:null, pot:null, fam:null, shz:null, spy:null, dz:null, ap:null };
   // Recherche (Call Out / OMT) : chiffres de la vague la plus proche AVANT la date diffusée
   try{
     const se = analyseGetSearchScores(title, artist, dateISO);
-    if(se){ s.pot = dailyProgNum(se.potTous); s.fam = dailyProgNum(se.famTous); s.fit = dailyProgNum(se.fit); }
+    if(se){ s.pot = dailyProgNum(fpaRefPot(se)); s.fam = dailyProgNum(fpaRefFam(se)); s.fit = dailyProgNum(se.fit); }
   }catch(e){}
   // Fit Score : à défaut du chiffre daté, dernier Fit Score FPA connu (corpus 360°)
   if(s.fit === null){
@@ -41867,6 +41953,7 @@ const DAILY_TH = 'font-size:10px;font-weight:800;letter-spacing:.05em;text-trans
 async function renderDailyProgPage(){
   const box = document.getElementById('analyseDailyContainer');
   if(!box) return;
+  if(typeof fpaRefApplyDailyLabels === 'function') fpaRefApplyDailyLabels();
   await dailyProgLoad();
   const st = dailyProgStation();
   const allDays = Object.values(dailyProgStore[st] || {}).sort((a, b) => a.date < b.date ? -1 : 1);
@@ -41996,7 +42083,8 @@ async function renderDailyProgPage(){
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
           ${navBtn(prevD, '‹', 'Journée précédente')}${daySelect}${navBtn(nextD, '›', 'Journée suivante')}
           <span style="font-size:11px;color:var(--muted)">${day.items.length} diffusions musicales · ${day.excluded || 0} éléments écartés${day.decro ? ' (dont ' + day.decro + ' titres de décrochage)' : ''}</span>
-          <button onclick="dailyCheckRun()" title="Contrôle de la journée : séparation artistes, heures sous la moyenne, formats… (règles réglables)" style="margin-left:auto;font-size:11.5px;padding:6px 14px;border-radius:8px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;font-weight:800;cursor:pointer">✅ Check</button>
+          ${typeof fpaRefTargetToggleHtml === 'function' ? '<span style="margin-left:auto">' + fpaRefTargetToggleHtml(false) + '</span>' : ''}
+          <button onclick="dailyCheckRun()" title="Contrôle de la journée : séparation artistes, heures sous la moyenne, formats… (règles réglables)" style="font-size:11.5px;padding:6px 14px;border-radius:8px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;font-weight:800;cursor:pointer">✅ Check</button>
           <button class="btn-ghost" onclick="dailyProgDeleteDay('${day.date}')" title="Supprimer cette journée" style="font-size:11px;padding:6px 10px;color:#dc2626">🗑</button>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">${kpis}${fmtKpi}</div>
@@ -43261,7 +43349,7 @@ const HEALTH_CRITERIA = [
     value(st){
       const w = healthLastProgWeek(st);
       if(!w) return { value:null, empty:'Aucune semaine exhaustive archivée (onglet Analyse).' };
-      const v = w.stats ? w.stats.avgPot : null;
+      const v = w.stats ? (fpaIsP1() ? w.stats.avgPotP1 : w.stats.avgPot) : null;
       if(v === null || v === undefined) return { value:null, context: healthProgContext(w), empty:'Pot Score non calculé pour la semaine ' + w.weekLabel + ' (historique Call Out absent ?).' };
       return { value:v, context: healthProgContext(w) };
     },
@@ -43418,14 +43506,15 @@ function renderHealthBarometer(){
     const thTxt = (th && isFinite(th.green) && isFinite(th.orange))
       ? 'Vert ' + cmp + ' ' + healthFmt(th.green, crit.decimals) + ' · orange ' + cmp + ' ' + healthFmt(th.orange, crit.decimals) + ' (' + (th.mode === 'manual' ? 'manuel' : 'auto') + ')'
       : 'Seuils auto indisponibles — réglables dans ⚙ Seuils';
-    const tip = crit.icon + ' ' + crit.group + ' — ' + crit.label + '\n'
+    const potLike = ['prog_pot','daily_pot'].includes(crit.id);
+    const tip = crit.icon + ' ' + crit.group + ' — ' + crit.label + (potLike ? ' (cible ' + (fpaIsP1() ? fpaP1Label() : 'Ensemble') + ')' : '') + '\n'
       + (hasVal ? healthFmt(v.value, crit.decimals) + (crit.unit ? ' ' + crit.unit : '') + ' · ' + col.label : (v.empty || 'Indisponible'))
       + (v.context ? '\n' + v.context : '') + '\n' + thTxt;
     const shortCtx = hasVal ? (v.context || '').split(' · ')[0].replace(/^Semaine du (\d{2}\/\d{2})\/\d{4}/, 'sem. $1').replace(/^Semaine /, 'S') : 'Indisponible';
     return `<div title="${escHtml(tip)}" style="min-width:0;padding:7px 9px;border-radius:9px;border:1px solid var(--border);border-left:3px solid ${col.c};background:${col.bg};cursor:default">
       <div style="display:flex;align-items:center;gap:6px;min-width:0">
         ${healthLightHtml(status)}
-        <span style="font-size:10.5px;font-weight:800;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(HEALTH_SHORT[crit.id] || crit.label)}</span>
+        <span style="font-size:10.5px;font-weight:800;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml((HEALTH_SHORT[crit.id] || crit.label) + (potLike && fpaIsP1() ? ' P1' : ''))}</span>
       </div>
       <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px;min-width:0">
         <span style="font-family:var(--font-display);font-size:17px;font-weight:800;color:${hasVal ? 'var(--navy)' : 'var(--muted)'};line-height:1.1;white-space:nowrap">${hasVal ? healthFmt(v.value, crit.decimals) : '—'}</span>
@@ -43442,7 +43531,8 @@ function renderHealthBarometer(){
         <span style="font-size:10px;font-weight:800;padding:1px 8px;border-radius:20px;background:${HEALTH_COLORS[globalStatus].c};color:#fff">${HEALTH_COLORS[globalStatus].label}</span>
         ${chip('green')}${chip('orange')}${chip('red')}${chip('none')}
       </span>
-      <button onclick="openHealthSettings()" style="margin-left:auto;flex-shrink:0;font-size:10px;font-weight:800;color:var(--cyan);background:none;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:2px 8px;cursor:pointer">⚙ Seuils</button>
+      <span style="margin-left:auto">${typeof fpaRefTargetToggleHtml === 'function' ? fpaRefTargetToggleHtml(true) : ''}</span>
+      <button onclick="openHealthSettings()" style="flex-shrink:0;font-size:10px;font-weight:800;color:var(--cyan);background:none;border:1px solid rgba(255,255,255,.25);border-radius:6px;padding:2px 8px;cursor:pointer">⚙ Seuils</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:6px">${tiles}</div>
     ${typeof healthFormatLineHtml === 'function' ? healthFormatLineHtml(st) : ''}
@@ -43655,8 +43745,8 @@ function mktLatestScores(title, artist){
     const sc = analyseGetSearchScores(title, artist);
     if(sc){
       if(sc.fit != null) out.fit = +sc.fit;
-      if(sc.potTous != null) out.pot = +sc.potTous;
-      if(sc.famTous != null) out.fam = +sc.famTous;
+      if(fpaRefPot(sc) != null) out.pot = +fpaRefPot(sc);
+      if(fpaRefFam(sc) != null) out.fam = +fpaRefFam(sc);
     }
   }catch(e){}
   if(out.fit === null){ try{ const f = analyseGetFpaScores(title, artist); if(f && f.fit != null) out.fit = +f.fit; }catch(e){} }
@@ -44052,7 +44142,8 @@ function renderMarketingPage(){
           <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1">📣 Marketing Antenne</h2>
         </div>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        ${typeof fpaRefTargetToggleHtml === 'function' ? fpaRefTargetToggleHtml(false) : ''}
         <button onclick="toggleActiveStation();renderMarketingPage()" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--navy);cursor:pointer;font-weight:700">🔁 ${escHtml(stLabel)}</button>
         <button onclick="mktAddMontage()" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--white);border:1.5px solid var(--navy);color:var(--navy);cursor:pointer;font-weight:800">+ Nouveau montage</button>
         <button onclick="mktArchiveSave()" title="Sauvegarde datée de la page (montages, titres, Screener, validité) sur Drive" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#0DA76B;border:1.5px solid #0DA76B;color:#fff;cursor:pointer;font-weight:800">💾 Sauvegarder</button>
@@ -44758,6 +44849,43 @@ function fmtAfterChange(){
     try{ const hb = document.getElementById('healthBarometer'); if(hb && hb.offsetParent !== null) renderHealthBarometer(); }catch(e){}
   }, 350);
 }
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SPOTIFY FRANCE (CSV importé à la main) : persistance sur le poste
+     Le dernier CSV importé (Daily ou Weekly) est mémorisé dans le navigateur
+     et rechargé à chaque ouverture de FPA, jusqu'au prochain import qui le
+     remplace. Propre à chaque poste (rien n'est envoyé sur Drive).
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaSpotifyCsvPersistJs">
+const SPOTIFY_CSV_KEY = 'fpa_spotify_csv_v1';
+function spotifyCsvPersist(res, filename){
+  try{
+    localStorage.setItem(SPOTIFY_CSV_KEY, JSON.stringify({
+      data: res.data, dateUsed: res.dateUsed, isWeekly: !!res.isWeekly, count: res.count,
+      fileName: filename || '', savedAt: new Date().toISOString()
+    }));
+  }catch(e){ console.warn('Spotify CSV — mémorisation impossible', e); }
+}
+function spotifyCsvRestore(){
+  let s = null;
+  try{ s = JSON.parse(localStorage.getItem(SPOTIFY_CSV_KEY) || 'null'); }catch(e){ s = null; }
+  if(!s || !s.data || !Object.keys(s.data).length || spotifyLoaded) return false;
+  spotifyData = s.data;
+  spotifyLoaded = true;
+  spotifyDateUsed = s.dateUsed || '';
+  try{ if(typeof updateSpotifyStatus === 'function') updateSpotifyStatus(); }catch(e){}
+  return true;
+}
+function spotifyCsvForget(){
+  try{ localStorage.removeItem(SPOTIFY_CSV_KEY); }catch(e){}
+  spotifyData = {}; spotifyLoaded = false; spotifyDateUsed = null;
+  try{ updateSpotifyStatus(); renderChartTable(); }catch(e){}
+  showToast('Classement Spotify France retiré de ce poste', 'success');
+}
+function spotifyCsvInfo(){
+  try{ return JSON.parse(localStorage.getItem(SPOTIFY_CSV_KEY) || 'null'); }catch(e){ return null; }
+}
+spotifyCsvRestore();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
      FPA MOBILE — adaptation automatique aux téléphones (v1)
