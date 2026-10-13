@@ -12762,7 +12762,7 @@ function getTitleVagueSeries(title, artist){
  *  on se rabat sur isP1Sheet() pour savoir à quelle cible elle appartient. */
 function getTitleFamScoreSeries(title, artist){
   const hist = histLoad().filter(v => isHistFixedRadio(v) && /\bOMT\b/i.test(v.type || ''));
-  const raw = { famTous:[], famP1:[], burnTous:[], burnP1:[] };
+  const raw = { famTous:[], famP1:[], burnTous:[], burnP1:[], fit:[] };
   const nT = norm(title||''), nA = norm(artist||'');
   const qT = simPrep(nT), qA = simPrep(nA);
   hist.forEach(v => {
@@ -12795,6 +12795,10 @@ function getTitleFamScoreSeries(title, artist){
           if(isP1Sheet(sh)) burnP1Key = burnKeys[0]; else burnTotalKey = burnKeys[0];
         }
 
+        // Fit Score calculé par FPA à l'analyse de la vague OMT (injecté dans
+        // l'archive à l'enregistrement — voir confirmSaveVague)
+        const fitKeyOmt = keys.find(k => isFitScoreLike(k));
+        if(fitKeyOmt && scores[fitKeyOmt] !== null && scores[fitKeyOmt] !== '' && !isNaN(parseFloat(scores[fitKeyOmt]))) raw.fit.push({...point, val: scores[fitKeyOmt]});
         if(famTotalKey)  raw.famTous.push({...point, val: scores[famTotalKey]});
         if(famP1Key)     raw.famP1.push({...point, val: scores[famP1Key]});
         if(burnTotalKey) raw.burnTous.push({...point, val: scores[burnTotalKey]});
@@ -12877,6 +12881,13 @@ function analyseSeriesCached(title, artist){
   return e;
 }
 
+/** Fusionne deux séries datées par vague (sans doublon de vague), triées. */
+function analyseMergeVagueSeries(a, b){
+  const seen = new Set(), out = [];
+  [].concat(a || [], b || []).forEach(p => { if(!seen.has(p.name)){ seen.add(p.name); out.push(p); } });
+  out.sort(sortVagues);
+  return out;
+}
 function analyseGetSearchScores(title, artist, referenceDate){
   const { co, omt } = analyseSeriesCached(title, artist);
   const pick = arr => { const e = analyseNearestPriorEntry(arr, referenceDate); return e ? e.val : null; };
@@ -12896,7 +12907,9 @@ function analyseGetSearchScores(title, artist, referenceDate){
     // 360°/Décision (build360Rows), CELUI-CI est nativement daté par vague,
     // donc directement exploitable par analyseNearestPriorEntry — c'est la
     // source à privilégier pour la contemporanéité avec la semaine analysée.
-    fit: pick(co.fit)
+    // Fit Score : vague Call Out OU OMT la plus proche avant la date (les golds
+    // n'ont de Fit Score que dans les vagues OMT)
+    fit: pick(analyseMergeVagueSeries(co.fit, omt.fit))
   };
 }
 
@@ -42214,6 +42227,26 @@ let dailyProgSelIdx = null;      // index dans day.items du titre sélectionné
 let dailyProgSourcesOpen = false;  // bloc « Sources & synchronisation » replié par défaut
 let dailyProgSideToken = 0;      // évite qu'un chargement asynchrone tardif écrase un titre plus récent
 
+/** Pot/Fam du conducteur : le Pot Score (Call Out) s'il existe, sinon le
+ *  Fam Score (OMT) — cas des golds, qui ne passent qu'en OMT. */
+function dailyProgPotFam(s){
+  if(s && s.pot !== null && s.pot !== undefined) return { v: s.pot, src:'pot' };
+  if(s && s.fam !== null && s.fam !== undefined) return { v: s.fam, src:'fam' };
+  return null;
+}
+function dailyProgPotFamCell(potM, s){
+  const pf = dailyProgPotFam(s);
+  if(!pf) return dailyProgFmt(potM, null);
+  const v = dailyProgFmt(potM, pf.v);
+  return pf.src === 'fam'
+    ? `<span title="Fam Score (OMT) — titre gold sans Pot Score">${v}<sup style="font-size:8px;font-weight:800;color:#A3005A;margin-left:1px">F</sup></span>`
+    : v;
+}
+function dailyProgPotFamAvg(items, date){
+  const vals = items.map(it => dailyProgPotFam(dailyScoresFor(it.title, it.artist, date))).filter(Boolean).map(x => x.v);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
 function dailyProgListHtml(day, hourAggs){
   const gridCols = '54px 22px 24px 18px minmax(0,1fr) 40px 50px 50px';
   const fitM = DAILY_METRICS.find(m => m.key === 'fit'), potM = DAILY_METRICS.find(m => m.key === 'pot');
@@ -42222,7 +42255,7 @@ function dailyProgListHtml(day, hourAggs){
   const dayAggL = dailyProgAggregate(day.items, day.date);
   const extraMetrics = DAILY_METRICS.filter(m => m.key !== 'fit' && m.key !== 'pot' && dayAggL[m.key + 'N'] > 0);
   const header = `<div style="display:grid;grid-template-columns:${gridCols};gap:4px;align-items:center;padding:9px 12px;background:var(--white);font-size:9.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--text2);position:sticky;top:68px;z-index:10;border-radius:8px 8px 0 0;border-bottom:2.5px solid var(--cyan);box-shadow:0 3px 10px rgba(11,29,58,.08)">
-      <div>Heure</div><div></div><div></div><div></div><div>Titre / Artiste</div><div style="text-align:center">Cat.</div><div style="text-align:right">Fit</div><div style="text-align:right">Pot</div>
+      <div>Heure</div><div></div><div></div><div></div><div>Titre / Artiste</div><div style="text-align:center">Cat.</div><div style="text-align:right">Fit</div><div style="text-align:right" title="Pot Score (Call Out) — à défaut, Fam Score (OMT) pour les golds, repéré par un « F »">Pot/Fam</div>
     </div>`;
   let idx = 0;
   const body = hourAggs.map(({ h, items, agg }) => {
@@ -42231,7 +42264,7 @@ function dailyProgListHtml(day, hourAggs){
         <div style="font-family:var(--font-display);font-size:15px;font-weight:800;color:#fff">${String(h).padStart(2,'0')}h</div>
         <div style="grid-column:2 / 7;color:rgba(255,255,255,.72);font-weight:700;min-width:0;display:flex;flex-wrap:wrap;align-items:center;row-gap:4px">${items.length} titre${items.length > 1 ? 's' : ''}${typeof dailyFmtBandHtml === 'function' ? dailyFmtBandHtml(items) : ' · moyennes de l\'heure'}${hf ? ` <span class="dp-band-warn">⚠ ${escHtml(hf.map(x => x.split(' :')[0]).join(' · '))}</span>` : ''}</div>
         <div style="text-align:right">${dailyProgFmt(fitM, agg.fit)}</div>
-        <div style="text-align:right">${dailyProgFmt(potM, agg.pot)}</div>
+        <div style="text-align:right" title="Moyenne Pot/Fam de l'heure (Pot Score, ou Fam Score pour les golds)">${dailyProgFmt(potM, dailyProgPotFamAvg(items, day.date))}</div>
         ${extraMetrics.length ? `<div style="grid-column:2 / -1;display:flex;flex-wrap:wrap;gap:3px 12px;font-size:10.5px;color:rgba(255,255,255,.7);font-weight:700">${extraMetrics.map(m => `<span title="${escHtml(m.label + ' — ' + agg[m.key + 'N'] + '/' + agg.total + ' titres matchés')}">${escHtml(m.short)} ${dailyProgFmt(Object.assign({}, m, { dec: m.kind === 'rank' ? 1 : m.dec }), agg[m.key])}</span>`).join('')}</div>` : ''}
       </div>`;
     const rows = items.map(it => {
@@ -42249,7 +42282,7 @@ function dailyProgListHtml(day, hourAggs){
         </div>
         <div style="text-align:center"><span title="Catégorie de rotation du conducteur${it.year ? ' · ' + escHtml(it.year) : ''}" style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:var(--bg);color:var(--text2)">${escHtml(it.cat || '—')}</span></div>
         <div style="text-align:right">${dailyProgFmt(fitM, s.fit)}</div>
-        <div style="text-align:right">${dailyProgFmt(potM, s.pot)}</div>
+        <div style="text-align:right">${dailyProgPotFamCell(potM, s)}</div>
       </div>`;
     }).join('');
     return band + rows;
@@ -44905,7 +44938,7 @@ spotifyCsvRestore();
   var PAGE_IDS = ['pageUpload','pageConfig','pageResults','pageHistory','pageDecision','pageComite','pagePlaylist','pageQuotas','pageAnalyse','pageCateg','pageRawData','pageCharts'];
 
   /* ── Libellés courts de la barre basse ─────────────────────────────── */
-  var LABELS = {homeTabBtn:'Tableau', backBtn:'Modifier', chartsTabBtn:'Classements', decisionTabBtn:'Décision',
+  var LABELS = {homeTabBtn:'FitScore', backBtn:'Modifier', chartsTabBtn:'Classements', decisionTabBtn:'Décision',
                 comiteTabBtn:'Comité', playlistTabBtn:'Playlist', datasTabBtn:'Datas', analyseTabBtn:'Analyse'};
 
   function setupChrome(){
