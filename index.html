@@ -2412,7 +2412,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="analyseTriggerImport()">📥 Importer un ou plusieurs fichiers hebdo</button>
       </div>
       <div id="dailyProgActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
-        <input type="file" id="dailyProgFileInput" accept=".xls,.xlsx" multiple style="display:none" onchange="dailyProgHandleFiles(this)">
+        <input type="file" id="dailyProgFileInput" accept=".xls,.xlsx,.pdf" multiple style="display:none" onchange="dailyProgHandleFiles(this)">
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="dailyProgTriggerImport()">📥 Importer des conducteurs quotidiens</button>
       </div>
       <div id="digitalAudienceActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
@@ -41547,20 +41547,88 @@ function dailyProgParseTable(rows){
   return { date, items, excluded };
 }
 
+/** Lecteur « conducteur PDF » (format RFM : CONDUCTEUR RFM, une page par
+ *  tranche, colonnes Heure · Artiste · Titre · Intro/Durée · Année/Catégorie).
+ *  Lecture par position du texte dans la page (pdf.js) :
+ *    • ligne qui commence par une heure HH:MM:SS avec un ARTISTE = titre musical ;
+ *    • sans artiste (habillage, pub, ETM, modules, jingles…) = écarté ;
+ *    • titres de décrochage (lignes orange, durée 00:00 entre DECRO et RACCRO SAT)
+ *      = écartés : ils ne passent pas sur l'antenne nationale. */
+const DAILY_FR_MONTHS = {janvier:1,fevrier:2,'février':2,mars:3,avril:4,mai:5,juin:6,juillet:7,aout:8,'août':8,septembre:9,octobre:10,novembre:11,decembre:12,'décembre':12};
+async function dailyProgPdfItems(arrayBuffer){
+  if(typeof pdfjsLib === 'undefined') throw new Error('lecteur PDF indisponible (connexion internet requise au chargement de FPA)');
+  if(!pdfjsLib.GlobalWorkerOptions.workerSrc) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const doc = await pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) }).promise;
+  const items = [];
+  for(let i = 1; i <= doc.numPages; i++){
+    const page = await doc.getPage(i);
+    const w = page.getViewport({ scale:1 }).width || 600;
+    const content = await page.getTextContent();
+    content.items.forEach(it => { if(it.str && it.str.trim()) items.push({ str: it.str.trim(), rx: it.transform[4] / w, y: it.transform[5], page: i }); });
+  }
+  return items;
+}
+function dailyProgParsePdfItems(items, fileName, station){
+  const head = items.filter(i => i.page === 1).map(i => i.str).join(' ').toUpperCase();
+  const fileStation = /CONDUCTEUR\s+RFM|\bRFM\b/.test(head) ? 'RFM' : /EUROPE\s*2/.test(head) ? 'EUROPE2' : null;
+  if(fileStation && fileStation !== station)
+    throw new Error('conducteur ' + dailyProgStationLabel(fileStation) + ' — basculez la station de référence sur ' + dailyProgStationLabel(fileStation) + ' pour l\'importer');
+  let date = null;
+  const dh = items.find(i => /\d{1,2}\s+[a-zéû]+\s+20\d\d/i.test(i.str));
+  if(dh){
+    const m = dh.str.match(/(\d{1,2})\s+([a-zéû]+)\s+(20\d\d)/i);
+    const mo = DAILY_FR_MONTHS[m[2].toLowerCase()];
+    if(mo) date = m[3] + '-' + String(mo).padStart(2,'0') + '-' + m[1].padStart(2,'0');
+  }
+  const byPage = {};
+  items.forEach(i => (byPage[i.page] = byPage[i.page] || []).push(i));
+  const out = [];
+  let excluded = 0, decro = 0, n = 0;
+  Object.keys(byPage).map(Number).sort((a, b) => a - b).forEach(p => {
+    const its = byPage[p];
+    its.filter(i => i.rx < 0.1 && /^\d{2}:\d{2}:\d{2}$/.test(i.str)).sort((a, b) => b.y - a.y).forEach(t => {
+      const line = its.filter(i => i !== t && Math.abs(i.y - t.y) <= 2.5);
+      const join = arr => arr.sort((a, b) => a.rx - b.rx).map(i => i.str).join(' ').replace(/\s+/g, ' ').trim();
+      const artistRaw = join(line.filter(i => i.rx >= 0.1 && i.rx < 0.4));
+      const titleRaw = join(line.filter(i => i.rx >= 0.4 && i.rx < 0.8));
+      if(!artistRaw || !titleRaw || DAILY_NON_MUSIC_RE.test(artistRaw) || DAILY_NON_MUSIC_RE.test(titleRaw)){ excluded++; return; }
+      const durIt = line.find(i => i.rx >= 0.85 && i.rx < 0.9 && /^\d{2}:\d{2}$/.test(i.str));
+      if(durIt && durIt.str === '00:00'){ excluded++; decro++; return; }   // titre de décrochage
+      const second = join(its.filter(i => i.y < t.y - 5 && i.y > t.y - 19 && i.rx >= 0.8));
+      const ym = second.match(/(?:(\d{4})\s*)?\/\s*([A-Za-z0-9-]+)/);
+      const [hh, mm] = t.str.split(':').map(Number);
+      const mins = (hh % 24) * 60 + mm;
+      out.push({ ts: ++n, mins, time: dailyProgMinsLabel(mins), hour: Math.floor(mins / 60),
+        artist: dailyProgCleanArtist(artistRaw.replace(/\s+[\/+]\s+/g, ' & ')), title: dailyProgCleanTitle(titleRaw),
+        cat: ym ? ym[2] : '', year: ym && ym[1] ? ym[1] : '' });
+    });
+  });
+  if(!out.length) return null;
+  return { date: date || dailyProgDateFromFileName(fileName), items: out, excluded, decro };
+}
+
 const DAILY_IMPORT_FORMATS = {
   EUROPE2: {
     label: 'Conducteur Europe 2 (export GSelector .xls, 2 lignes par élément)',
     parse(rows){ return dailyProgParseTwoLineConductor(rows); }
   },
   RFM: {
-    // Modèle RFM pas encore reçu : on accepte le même type de conducteur 2
-    // lignes s'il est utilisé, sinon tout tableau « une ligne par titre »
-    // avec des colonnes Heure / Artiste / Titre (Catégorie, Année facultatives).
-    label: 'Conducteur RFM (conducteur 2 lignes ou tableau Heure / Artiste / Titre)',
+    // Format principal : le PDF « CONDUCTEUR RFM » (voir dailyProgParsePdfItems).
+    // Restent acceptés un conducteur Excel 2 lignes ou un tableau Heure / Artiste / Titre.
+    label: 'Conducteur RFM en PDF (« CONDUCTEUR RFM ») — ou Excel',
     parse(rows){ return dailyProgParseTwoLineConductor(rows) || dailyProgParseTable(rows); }
   }
 };
 
+/** Conducteur Excel ou PDF, avec le lecteur de la station active. */
+async function dailyProgParseAnyFile(arrayBuffer, fileName, station){
+  const isPdf = /\.pdf$/i.test(fileName || '') || (new Uint8Array(arrayBuffer.slice(0, 4))).join(',') === '37,80,68,70';
+  if(!isPdf) return dailyProgParseWorkbook(arrayBuffer, fileName, station);
+  const res = dailyProgParsePdfItems(await dailyProgPdfItems(arrayBuffer), fileName, station);
+  if(!res) throw new Error('aucun titre musical trouvé dans ce PDF');
+  if(!res.date) throw new Error('date introuvable (ni dans le PDF, ni dans son nom)');
+  return res;
+}
 /** Lit un conducteur avec le lecteur de la station active. */
 function dailyProgParseWorkbook(arrayBuffer, fileName, station){
   const wb = XLSX.read(arrayBuffer, { type:'array' });
@@ -41591,8 +41659,8 @@ async function dailyProgHandleFiles(input){
   for(const f of files){
     try{
       const buf = await f.arrayBuffer();
-      const res = dailyProgParseWorkbook(buf, f.name, st);
-      dailyProgStore[st][res.date] = { station: st, date: res.date, fileName: f.name, importedAt: new Date().toISOString(), items: res.items, excluded: res.excluded };
+      const res = await dailyProgParseAnyFile(buf, f.name, st);
+      dailyProgStore[st][res.date] = { station: st, date: res.date, fileName: f.name, importedAt: new Date().toISOString(), items: res.items, excluded: res.excluded, decro: res.decro || 0 };
       ok.push(res.date);
     }catch(e){
       console.warn('Programmation quotidienne —', f.name, e);
@@ -41841,7 +41909,7 @@ async function renderDailyProgPage(){
       <div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
           ${navBtn(prevD, '‹', 'Journée précédente')}${daySelect}${navBtn(nextD, '›', 'Journée suivante')}
-          <span style="font-size:11px;color:var(--muted)">${day.items.length} diffusions musicales · ${day.excluded || 0} éléments écartés</span>
+          <span style="font-size:11px;color:var(--muted)">${day.items.length} diffusions musicales · ${day.excluded || 0} éléments écartés${day.decro ? ' (dont ' + day.decro + ' titres de décrochage)' : ''}</span>
           <button onclick="dailyCheckRun()" title="Contrôle de la journée : séparation artistes, heures sous la moyenne, formats… (règles réglables)" style="margin-left:auto;font-size:11.5px;padding:6px 14px;border-radius:8px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;font-weight:800;cursor:pointer">✅ Check</button>
           <button class="btn-ghost" onclick="dailyProgDeleteDay('${day.date}')" title="Supprimer cette journée" style="font-size:11px;padding:6px 10px;color:#dc2626">🗑</button>
         </div>
@@ -42336,9 +42404,11 @@ let dailyCheckFlags = { date:null, items:{}, hours:{} };
 
 /** Artistes d'une ligne : « A & B », « A X B », « A feat. B », « A, B » → [A, B] */
 function dailyCheckArtists(artist){
-  return String(artist || '').split(/\s*(?:&|,|\s[xX]\s|\bfeat\.?\s|\bft\.?\s|\bvs\.?\s|\bavec\s)\s*/i)
+  const seen = new Set();
+  return String(artist || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s|\bvs\.?\s|\bavec\s)\s*/i)
     .map(a => a.trim()).filter(Boolean)
-    .map(a => ({ key: typeof norm === 'function' ? norm(a) : a.toLowerCase(), label: a }));
+    .map(a => ({ key: typeof norm === 'function' ? norm(a) : a.toLowerCase(), label: a }))
+    .filter(a => !seen.has(a.key) && seen.add(a.key));   // « Womack & Womack » = un seul artiste
 }
 /** Minutes « continues » des diffusions (gère un conducteur qui passe minuit). */
 function dailyCheckAbsMinutes(items){
@@ -42644,6 +42714,7 @@ let dailyProgSyncStartedFor = {};         // synchro auto lancée une fois par s
 let dailyProgSyncBusy = false;
 let dailyProgSyncMsg = '';
 let dailyProgLastSync = null;
+let dailyProgLastSyncError = '';
 
 function dailyGasUrl(){ try{ return (localStorage.getItem(DAILY_GAS_URL_KEY) || '').trim(); }catch(e){ return ''; } }
 function dailyGasToken(){ try{ return (localStorage.getItem(DAILY_GAS_TOKEN_KEY) || '').trim(); }catch(e){ return ''; } }
@@ -42744,6 +42815,7 @@ function dailyProgMarkDeleted(st, date){
  *  Gmail → Drive (décodés ici puis publiés pour les autres postes). */
 async function dailyProgSyncRange(st, from, to, opts){
   opts = opts || {};
+  dailyProgLastSyncError = '';
   await dailyProgLoad();
   const local = dailyProgStore[st];
   const added = [];
@@ -42763,11 +42835,13 @@ async function dailyProgSyncRange(st, from, to, opts){
       }
     }catch(e){ console.warn('Programmation quotidienne — index Drive', e); }
   }
-  if(st === 'EUROPE2' && dailyGasUrl()){     // la règle Gmail ne concerne que les conducteurs Europe 2
+  if(dailyGasUrl()){     // relève Gmail : Europe 2 (Excel « PROG du ») et RFM (PDF « Prog », hors PROG MATINALE)
     try{
       if(opts.fetchMail){ dailyProgSetSync('📬 Relève des mails « PROG du … »…'); await dailyGasCall({ action:'fetch_now' }, 120000); }
       dailyProgSetSync('📂 Lecture du dossier Drive des conducteurs…');
-      const list = await dailyGasCall({ action:'list' });
+      const list = await dailyGasCall({ action:'list', station: st });
+      // Un script en version 1 ignore la station et renverrait les fichiers Europe 2
+      if(st !== 'EUROPE2' && list.station !== st) throw new Error('mettez à jour le script Google (version 2) pour la relève ' + dailyProgStationLabel(st));
       const deleted = (idx && idx.deleted && idx.deleted[st]) || {};
       const todo = (list.files || []).map(f => Object.assign({ guess: dailyProgGuessFileDate(f) }, f))
         .filter(f => f.guess && f.guess >= dailyProgAddDays(from, -1) && f.guess <= dailyProgAddDays(to, 1) && !local[f.guess] && !deleted[f.guess]);
@@ -42777,7 +42851,7 @@ async function dailyProgSyncRange(st, from, to, opts){
         dailyProgSetSync('📥 Décodage du conducteur ' + (i + 1) + '/' + todo.length + ' (' + f.name + ')…');
         try{
           const buf = await dailyGasDownload(f.id);
-          const res = dailyProgParseWorkbook(buf, f.name, st);
+          const res = await dailyProgParseAnyFile(buf, f.name, st);
           if(res.date < from || res.date > to || local[res.date]) continue;
           local[res.date] = { station: st, date: res.date, fileName: f.name, importedAt: new Date().toISOString(), items: res.items, excluded: res.excluded, source: 'gmail' };
           added.push(res.date); fresh.push(res.date);
@@ -42785,7 +42859,7 @@ async function dailyProgSyncRange(st, from, to, opts){
       }
       if(fresh.length){ await dailyProgSave(); dailyProgPushDays(st, fresh); }
     }catch(e){
-      if(opts.manual) showToast('Import automatique : ' + e.message, 'err');
+      dailyProgLastSyncError = 'Import automatique : ' + e.message;
       console.warn('Programmation quotidienne — script Gmail', e);
     }
   }
@@ -42805,7 +42879,8 @@ async function dailyProgAutoSync(manual){
     const today = dailyProgTodayISO(), from = dailyProgAddDays(today, -(DAILY_AUTO_DAYS - 1)), to = dailyProgAddDays(today, 7);
     const added = await dailyProgSyncRange(st, from, to, { fetchMail: !!manual, manual });
     dailyProgLastSync = new Date();
-    dailyProgSetSync(added.length ? '✓ ' + added.length + ' nouvelle(s) journée(s) synchronisée(s)' : '✓ À jour');
+    dailyProgSetSync(dailyProgLastSyncError ? '⚠ ' + dailyProgLastSyncError : (added.length ? '✓ ' + added.length + ' nouvelle(s) journée(s) synchronisée(s)' : '✓ À jour'));
+    if(dailyProgLastSyncError && manual){ showToast(dailyProgLastSyncError, 'err'); return; }
     if(added.length && !dailyProgView){ dailyProgSelected = added.sort().slice(-1)[0]; dailyProgSelIdx = null; }
     if(added.length || manual) showToast(added.length ? '✓ ' + added.length + ' journée(s) ' + dailyProgStationLabel(st) + ' récupérée(s)' : '✓ Programmation quotidienne à jour', 'success');
   }finally{
@@ -42839,7 +42914,7 @@ function dailyProgSetSync(msg){
 }
 function dailyProgSyncStatusText(){
   const parts = [];
-  parts.push(dailyGasUrl() ? '📬 Gmail : relève automatique chaque jour à 18h' : '📬 Gmail : non configuré');
+  parts.push(dailyGasUrl() ? '📬 Gmail : relève automatique chaque jour à 18h (Europe 2 + RFM)' : '📬 Gmail : non configuré');
   parts.push(dailyDriveOn() ? '☁️ Drive : historique partagé entre postes' : '☁️ Drive Sync non configuré');
   if(dailyProgSyncMsg) parts.push((dailyProgSyncBusy ? '⏳ ' : '') + escHtml(dailyProgSyncMsg));
   else if(dailyProgLastSync) parts.push('Dernière synchro ' + dailyProgLastSync.toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit' }));
@@ -42868,7 +42943,10 @@ function openDailyProgSyncSettings(){
       <button onclick="closeDailyProgSyncSettings()" aria-label="Fermer" style="background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
     </div>
     <div style="font-size:12px;color:var(--text2);line-height:1.55;margin-top:8px">
-      Chaque jour à 18h, le script Google <b>FPA_Conducteurs_Gmail</b> relève dans votre Gmail les mails dont l'objet commence par <b>« PROG du »</b> (envoyés par Pierre Edouard Le Boucher ou Mickael Bois) et range leur fichier Excel dans le dossier Drive <b>« FPA – Conducteurs Europe 2 »</b>. FPA y récupère ensuite les nouvelles journées et les partage entre tous vos postes via Drive Sync.
+      Chaque jour à 18h, le script Google <b>FPA_Conducteurs_Gmail</b> (version 2) relève dans votre Gmail :<br>
+      • <b>Europe 2</b> — objet « PROG du … », envoyé par Pierre Edouard Le Boucher ou Mickael Bois, fichier Excel → dossier Drive « FPA – Conducteurs Europe 2 » ;<br>
+      • <b>RFM</b> — objet contenant « Prog » <i>sauf « PROG MATINALE »</i> (tranche 6h-10h, ignorée), envoyé par Laure Colleter et/ou Laurent Norbec, fichier PDF → dossier Drive « FPA – Conducteurs RFM ».<br>
+      FPA y récupère ensuite les nouvelles journées de la station active et les partage entre tous vos postes via Drive Sync.
     </div>
     <ol style="font-size:11.5px;color:var(--text2);line-height:1.6;margin:10px 0 0 18px;padding:0">
       <li>Sur <b>script.google.com</b>, créez un projet et collez le fichier <b>FPA_Conducteurs_Gmail.gs</b>.</li>
@@ -42899,9 +42977,14 @@ async function dailyGasTest(){
   if(out) out.innerHTML = '<span style="color:var(--muted)">⏳ Test en cours…</span>';
   try{
     const r = await dailyGasCall({ action:'ping' }, 20000);
-    const l = await dailyGasCall({ action:'list' }, 30000);
+    const l = await dailyGasCall({ action:'list', station:'EUROPE2' }, 30000);
     const last = r.lastRun ? ' · dernière relève Gmail : ' + new Date(r.lastRun.at).toLocaleString('fr-FR') : '';
-    if(out) out.innerHTML = `<span style="color:#15803d;font-weight:800">✓ Connexion réussie</span> — ${(l.files || []).length} conducteur(s) dans le dossier Drive${escHtml(last)}`;
+    let rfmTxt = '';
+    if((r.version || 1) >= 2){
+      const lr = await dailyGasCall({ action:'list', station:'RFM' }, 30000);
+      rfmTxt = ' · RFM : ' + (lr.files || []).length + ' conducteur(s)';
+    } else rfmTxt = ' · ⚠ script en version 1 : mettez-le à jour pour la relève RFM';
+    if(out) out.innerHTML = `<span style="color:#15803d;font-weight:800">✓ Connexion réussie</span> — Europe 2 : ${(l.files || []).length} conducteur(s)${escHtml(rfmTxt)}${escHtml(last)}`;
   }catch(e){
     if(out) out.innerHTML = `<span style="color:#dc2626;font-weight:800">✗ ${escHtml(e.message)}</span>`;
   }
