@@ -4316,6 +4316,22 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
      Chaque URL reste par ailleurs éditable individuellement depuis sa page
      dédiée (⚙️ à côté de chaque source) — ce modal n'est qu'une vue
      centralisée en plus, pas un remplacement. -->
+<style id="fpaCfgCss">
+/* ── Configuration FPA : lisibilité de l'onglet URLs ───────────────── */
+#fpaCfgUrlsSection{gap:10px 18px!important;background:var(--bg);padding:18px 22px 22px!important}
+#fpaCfgUrlsSection > .cfg-sec{grid-column:1/-1;display:flex;align-items:center;gap:10px;margin:10px 0 2px!important;padding:9px 14px!important;border-radius:10px;font-size:11.5px!important;letter-spacing:.09em!important;color:#fff!important;background:var(--sec-c);box-shadow:0 2px 8px rgba(11,29,58,.08)}
+#fpaCfgUrlsSection > .cfg-sec:first-child{margin-top:0!important}
+#fpaCfgUrlsSection > .cfg-sec .cfg-sec-count{margin-left:auto;font-size:10.5px;font-weight:800;letter-spacing:0;background:rgba(255,255,255,.22);padding:2px 9px;border-radius:20px;text-transform:none}
+#fpaCfgUrlsSection > label.cfg-field{position:relative;background:var(--white);border:1.5px solid var(--border);border-left:4px solid var(--sec-c);border-radius:10px;padding:10px 12px 11px 14px!important;gap:6px!important;font-size:12.5px!important;font-weight:800!important;color:var(--navy)!important;transition:box-shadow .15s}
+#fpaCfgUrlsSection > label.cfg-field.cfg-alt{background:#F7F9FC}
+#fpaCfgUrlsSection > label.cfg-field:focus-within{box-shadow:0 0 0 3px rgba(0,184,200,.18);border-color:var(--cyan)}
+#fpaCfgUrlsSection > label.cfg-field input{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace!important;font-size:11.5px!important;font-weight:500!important;color:var(--text2)!important;background:var(--bg)!important;border:1.5px solid var(--border)!important;border-radius:7px!important;padding:7px 10px!important}
+#fpaCfgUrlsSection > label.cfg-field input:focus{background:var(--white)!important;color:var(--navy)!important;outline:none}
+#fpaCfgUrlsSection > label.cfg-field > span:not(.cfg-lbl){font-size:10.5px!important;font-weight:500!important;line-height:1.45;color:var(--muted)!important}
+#fpaCfgUrlsSection > label.cfg-field::after{content:"○ à renseigner";position:absolute;top:10px;right:12px;font-size:10px;font-weight:800;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:1px 8px;border-radius:20px}
+#fpaCfgUrlsSection > label.cfg-field.cfg-ok::after{content:"✓ configuré";color:#1E7A3C;background:#E6F6EC;border-color:#A8DDB9}
+#fpaCfgUrlsSection > label.cfg-field .cfg-lbl{padding-right:104px;line-height:1.3;font-size:13px!important;font-weight:800!important;color:var(--navy)!important}
+</style>
 <div id="modalFpaConfig" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:600;align-items:center;justify-content:center;padding:24px" onclick="if(event.target===this) closeFpaConfigModal()">
   <div style="background:var(--white);border-radius:16px;box-shadow:0 20px 60px rgba(11,29,58,.25);width:100%;max-width:1080px;max-height:92vh;overflow-y:auto;display:flex;flex-direction:column" onclick="event.stopPropagation()">
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1.5px solid var(--border);flex-shrink:0">
@@ -10365,6 +10381,21 @@ function splitMultiCibleSheet(s){
   return results;
 }
 
+/** Vague archivée correspondant au fichier actuellement chargé : même fichier
+ *  source (vagues enregistrées depuis ce correctif), vague rechargée depuis
+ *  l'historique (même nom), ou à défaut une vague contenant exactement les
+ *  mêmes titres que l'onglet analysé (vagues plus anciennes). */
+function rawDataFindArchivedVague(){
+  const hist = histLoad() || [];
+  let v = hist.find(x => x.sourceFile && x.sourceFile === sourceFileName) || hist.find(x => x.name === sourceFileName);
+  if(v) return v;
+  if(!fileRows || !fileRows.length) return null;
+  const key = r => norm(String(r.TITRE || r.TITLE || r.Titre || r.titre || r.t || '')) + '|' + norm(String(r.ARTISTE || r.ARTIST || r.Artiste || r.artiste || r.a || ''));
+  const first = key(fileRows[0]), last = key(fileRows[fileRows.length - 1]);
+  return hist.find(x => (x.sheets || []).some(sh => (sh.rows || []).length === fileRows.length
+    && sh.rows.length && (norm(sh.rows[0].t || '') + '|' + norm(sh.rows[0].a || '')) === first
+    && (norm(sh.rows[sh.rows.length - 1].t || '') + '|' + norm(sh.rows[sh.rows.length - 1].a || '')) === last)) || null;
+}
 function buildRawDataSheets(){
   rawDataAllSheets = [];
   // Priorité : données importées directement dans la page Données
@@ -10391,6 +10422,30 @@ function buildRawDataSheets(){
         }
       }
     });
+  }
+  // Après un rechargement de FPA, seuls les titres de l'onglet analysé sont
+  // restaurés (fileRows) : on retrouve TOUS les onglets du fichier soit dans
+  // le fichier encore en attente sur l'accueil, soit dans la vague archivée
+  // depuis ce fichier (Datas → Enregistrer la vague).
+  if(rawDataAllSheets.length === 0 && fileRows && fileRows.length > 0){
+    try{
+      const pend = homePendingFiles && homePendingFiles[currentAnalysisKind()];
+      if(pend && pend.sourceFileName === sourceFileName && Array.isArray(pend.validSheets) && pend.validSheets.length){
+        pend.validSheets.forEach(s => {
+          if(!(s.parsed && s.parsed.rows && s.parsed.rows.length)) return;
+          const split = splitMultiCibleSheet(s);
+          if(split) split.forEach(e => rawDataAllSheets.push(e));
+          else rawDataAllSheets.push({ name: s.name, cible: s.parsed.cible || s.name, headers: s.parsed.headers, rows: s.parsed.rows });
+        });
+      }
+      if(!rawDataAllSheets.length){
+        const v = rawDataFindArchivedVague();
+        if(v){
+          const sheets = rebuildSheetsFromVague(v).filter(s => s.rows.length > 0);
+          if(sheets.length) rawDataAllSheets = sheets;
+        }
+      }
+    }catch(e){ console.warn('Datas — récupération des onglets', e); rawDataAllSheets = []; }
   }
   if(rawDataAllSheets.length === 0 && fileRows && fileRows.length > 0){
     rawDataAllSheets = [{
@@ -11242,6 +11297,7 @@ function confirmSaveVague(){
     date,
     num  : num || null,
     savedAt : new Date().toISOString(),
+    sourceFile: sourceFileName || '',   // fichier d'origine : Datas retrouve tous ses onglets après rechargement
     sheets  : rawDataAllSheets.map(s => ({
       sheetName : s.name,
       cible     : s.cible,
@@ -41404,8 +41460,9 @@ const FPA_COLOR_KEY = 'fpa_score_colors_v1';
 const FPA_COLORS = { vert:'#16a34a', orange:'#d97706', rouge:'#dc2626', noir:'#0B1D3A' };
 const FPA_COLOR_LABELS = { vert:'Vert', orange:'Orange', rouge:'Rouge', noir:'Noir' };
 const FPA_CRITERIA = [
-  { key:'pot',            label:'Pot Score',          pct:false, def:{ base:'rouge', steps:[{ from:95, color:'noir' }, { from:105, color:'vert' }] } },
-  { key:'fam',            label:'Fam Score',          pct:false, def:{ base:'rouge', steps:[{ from:95, color:'noir' }, { from:105, color:'vert' }] } },
+  // Échelle 0-100 des fichiers Call Out / OMT
+  { key:'pot',            label:'Pot Score',          pct:false, def:{ base:'rouge', steps:[{ from:50, color:'orange' }, { from:60, color:'noir' }, { from:70, color:'vert' }] } },
+  { key:'fam',            label:'Fam Score',          pct:false, def:{ base:'rouge', steps:[{ from:50, color:'orange' }, { from:60, color:'noir' }, { from:70, color:'vert' }] } },
   { key:'fit',            label:'Fit Score',          pct:false, def:{ base:'rouge', steps:[{ from:50, color:'orange' }, { from:62.5, color:'vert' }] } },
   { key:'burn',           label:'Burn',               pct:true,  def:{ base:'vert',  steps:[{ from:10, color:'noir' }, { from:20, color:'rouge' }] } },
   { key:'aimeBeaucoup',   label:'Aime beaucoup',      pct:true,  def:{ base:'rouge', steps:[{ from:30, color:'noir' }, { from:45, color:'vert' }] } },
@@ -41421,6 +41478,14 @@ function fpaColorConfig(){
   if(fpaColorCache) return fpaColorCache;
   let saved = {};
   try{ saved = JSON.parse(localStorage.getItem(FPA_COLOR_KEY) || '{}') || {}; }catch(e){ saved = {}; }
+  // Anciens réglages par défaut Pot/Fam (95 / 105, échelle « indice 100 ») :
+  // inadaptés aux scores 0-100 — remplacés par les nouveaux défauts s'ils
+  // n'ont jamais été modifiés.
+  ['pot','fam'].forEach(k => {
+    const s = saved[k];
+    if(s && s.base === 'rouge' && Array.isArray(s.steps) && s.steps.length === 2
+       && +s.steps[0].from === 95 && s.steps[0].color === 'noir' && +s.steps[1].from === 105 && s.steps[1].color === 'vert') delete saved[k];
+  });
   const cfg = {};
   FPA_CRITERIA.forEach(c => {
     const s = saved[c.key];
@@ -41565,6 +41630,49 @@ function fpaColorRefreshViews(){
   safe(() => { if(typeof dailyProgIsVisible === 'function' && dailyProgIsVisible()) renderDailyProgPage(); });
   safe(() => { if(typeof mktTab !== 'undefined' && mktTab === 'marketing' && mktVisible()) renderMarketingPage(); });
 }
+/* Habillage de l'onglet URLs : sections colorées, champs en cartes
+   alternées, pastille « configuré / à renseigner » mise à jour en direct. */
+const FPA_CFG_SEC_COLORS = ['linear-gradient(90deg,#0B1D3A,#16325C)', 'linear-gradient(90deg,#00A3B4,#00B8C8)', 'linear-gradient(90deg,#B0005F,#E6007E)', 'linear-gradient(90deg,#5B21B6,#7C3AED)'];
+const FPA_CFG_SEC_SOLID  = ['#0B1D3A', '#00B8C8', '#E6007E', '#7C3AED'];
+function fpaCfgDecorate(){
+  const box = document.getElementById('fpaCfgUrlsSection');
+  if(!box) return;
+  let sec = -1, n = 0, secEl = null, counts = [];
+  Array.from(box.children).forEach(el => {
+    if(el.tagName === 'DIV' && /grid-column:1\/-1/.test(el.getAttribute('style') || '')){
+      sec++; n = 0; secEl = el;
+      el.classList.add('cfg-sec');
+      el.style.setProperty('--sec-c', FPA_CFG_SEC_COLORS[sec % FPA_CFG_SEC_COLORS.length]);
+      counts[sec] = { el, ok:0, tot:0 };
+      return;
+    }
+    if(el.tagName === 'LABEL'){
+      el.classList.add('cfg-field');
+      el.classList.toggle('cfg-alt', n % 2 === 1); n++;
+      el.style.setProperty('--sec-c', FPA_CFG_SEC_SOLID[Math.max(0, sec) % FPA_CFG_SEC_SOLID.length]);
+      // le libellé (premier nœud texte) dans un span pour laisser la place à la pastille
+      const first = el.firstChild;
+      if(first && first.nodeType === 3 && first.textContent.trim()){
+        const s = document.createElement('span'); s.className = 'cfg-lbl'; s.textContent = first.textContent.trim();
+        s.style.cssText = 'font-size:12.5px;font-weight:800;color:var(--navy)';
+        el.replaceChild(s, first);
+      }
+      const inp = el.querySelector('input');
+      if(inp){
+        const upd = () => el.classList.toggle('cfg-ok', !!inp.value.trim());
+        upd();
+        if(!inp._cfgBound){ inp._cfgBound = true; inp.addEventListener('input', () => { upd(); fpaCfgDecorate(); }); }
+        if(counts[sec]){ counts[sec].tot++; if(inp.value.trim()) counts[sec].ok++; }
+      }
+    }
+  });
+  counts.forEach(c => {
+    if(!c) return;
+    let badge = c.el.querySelector('.cfg-sec-count');
+    if(!badge){ badge = document.createElement('span'); badge.className = 'cfg-sec-count'; c.el.appendChild(badge); }
+    badge.textContent = c.ok + ' / ' + c.tot + ' configuré' + (c.ok > 1 ? 's' : '');
+  });
+}
 /* Onglets de la fenêtre Configuration FPA */
 function fpaCfgShowTab(t){
   const urls = document.getElementById('fpaCfgUrlsSection'), disp = document.getElementById('fpaCfgDisplaySection');
@@ -41579,6 +41687,7 @@ function fpaCfgShowTab(t){
   const copyBtn = document.getElementById('fpaCfgCopyBtn');
   if(copyBtn) copyBtn.style.display = t === 'urls' ? '' : 'none';
   if(t === 'display' && !fpaColorDraft) fpaColorEditorOpen();
+  if(t === 'urls') fpaCfgDecorate();
 }
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
