@@ -3168,12 +3168,6 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             Importer
             <input type="file" accept=".xlsx,.xls,.xlsm" style="display:none" onchange="handleRawDataImport(this.files[0]);this.value=''">
           </label>
-          <button onclick="openThresholdsModal()" title="Régler les seuils de couleur"
-            style="display:flex;align-items:center;gap:6px;background:var(--white);border:1.5px solid var(--border);border-radius:9px;padding:8px 15px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;transition:all .15s"
-            onmouseenter="this.style.borderColor='var(--cyan)';this.style.color='var(--navy)';this.style.boxShadow='0 0 0 3px rgba(0,184,200,.1)'" onmouseleave="this.style.borderColor='var(--border)';this.style.color='var(--text2)';this.style.boxShadow='none'">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07M8.46 8.46a5 5 0 0 0 0 7.07"/></svg>
-            Seuils
-          </button>
           <button id="rawDataSaveBtn" onclick="openSaveModal()" style="display:flex;align-items:center;gap:7px;background:var(--navy);color:#fff;border:none;border-radius:9px;padding:8px 18px;font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;box-shadow:0 2px 8px rgba(11,29,58,.18)"
             onmouseenter="this.style.background='var(--cyan)';this.style.boxShadow='0 4px 12px rgba(0,184,200,.3)'" onmouseleave="this.style.background='var(--navy)';this.style.boxShadow='0 2px 8px rgba(11,29,58,.18)'">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
@@ -4344,8 +4338,12 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <div id="fpaCfgTabs" style="display:flex;gap:4px;padding:0 22px;border-bottom:1.5px solid var(--border);flex-shrink:0">
       <button type="button" data-tab="urls" onclick="fpaCfgShowTab('urls')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid var(--navy);color:var(--navy);cursor:pointer;margin-bottom:-1.5px">🔗 URLs &amp; services</button>
       <button type="button" data-tab="display" onclick="fpaCfgShowTab('display')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--muted);cursor:pointer;margin-bottom:-1.5px">🎨 Affichage des scores</button>
+      <button type="button" data-tab="drive" onclick="fpaCfgShowTab('drive')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--muted);cursor:pointer;margin-bottom:-1.5px">☁️ Drive</button>
+      <button type="button" data-tab="imports" onclick="fpaCfgShowTab('imports')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--muted);cursor:pointer;margin-bottom:-1.5px">📥 Imports</button>
     </div>
     <div id="fpaCfgDisplaySection" style="display:none;padding:18px 22px"></div>
+    <div id="fpaCfgDriveSection" style="display:none;padding:18px 22px;background:var(--bg)"></div>
+    <div id="fpaCfgImportsSection" style="display:none;padding:18px 22px;background:var(--bg)"></div>
     <div id="fpaCfgUrlsSection" style="padding:18px 22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:14px 22px;align-items:start">
 
       <div style="grid-column:1/-1;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px">Sauvegarde &amp; suivi</div>
@@ -4414,7 +4412,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 <!-- PIED DE PAGE ─────────────────────────────────────────────────────────── -->
 <div style="text-align:center;padding:14px 20px 20px;color:var(--border);font-size:10px;letter-spacing:.03em;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">
   <span id="fpaVersionLabel" style="cursor:help"></span>
-  <button onclick="openFpaConfigModal()" title="Configuration — toutes les URLs (Drive, proxies, Daily Snapshot...)" style="background:none;border:none;color:var(--border);cursor:pointer;font-size:12px;padding:2px 4px;opacity:.6" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='.6'">⚙️</button>
+  <button onclick="openFpaConfigModal()" title="Configuration FPA — URLs, affichage des scores, Drive, imports" style="background:none;border:none;color:var(--border);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;opacity:.75;vertical-align:middle;transition:transform .2s,opacity .15s" onmouseenter="this.style.opacity='1';this.style.transform='rotate(45deg)'" onmouseleave="this.style.opacity='.75';this.style.transform=''">⚙️</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -11229,8 +11227,22 @@ async function bulkImportFiles(fileList){
         }))
       };
 
+      snapshot.sourceFile = file.name.replace(/\.[^/.]+$/, '');
       const existingIdx = history.findIndex(v => v.name === name);
-      if(existingIdx !== -1){ history.splice(existingIdx, 1, snapshot); replaced++; }
+      if(existingIdx !== -1){
+        // Ré-import d'une vague déjà archivée : on conserve le Fit Score calculé
+        // lors de son analyse (il n'existe pas dans le fichier Excel d'origine)
+        const fitByTitle = {};
+        (history[existingIdx].sheets || []).forEach(sh => (sh.rows || []).forEach(r => {
+          const f = r.scores && Object.keys(r.scores).find(k => isFitScoreLike(k));
+          if(f && r.scores[f] !== null && r.scores[f] !== '') fitByTitle[norm(r.t || '') + '|||' + norm(r.a || '')] = r.scores[f];
+        }));
+        if(Object.keys(fitByTitle).length) snapshot.sheets.forEach(sh => sh.rows.forEach(r => {
+          const v = fitByTitle[norm(r.t || '') + '|||' + norm(r.a || '')];
+          if(v !== undefined && !Object.keys(r.scores || {}).some(k => isFitScoreLike(k))) (r.scores = r.scores || {})['Fit Score'] = v;
+        }));
+        history.splice(existingIdx, 1, snapshot); replaced++;
+      }
       else { history.unshift(snapshot); added++; }
 
     }catch(e){
@@ -27646,9 +27658,10 @@ function detectCurrentProfil(){
 
 // ── Appliquer la couleur d'une cellule selon les seuils ──
 function getThresholdStyle(colName, val){
-  // Remplacé par les seuils centralisés (Configuration FPA → Affichage des scores),
-  // appliqués par getColColor — plus de couleur de fond dans Datas.
-  if(typeof fpaCritFromColumn === 'function') return null;
+  // Désactivé : l'ancien réglage « Seuils » propre à Datas est remplacé par les
+  // seuils centralisés (Configuration FPA → Affichage des scores), appliqués
+  // par getColColor — plus de couleur de fond dans Datas.
+  return null;
   if(val === null || val === undefined || typeof val !== 'number') return null;
   const n = val;
   if(isNaN(n)) return null;
@@ -41249,6 +41262,7 @@ function openFpaConfigModal(){
 }
 
 function closeFpaConfigModal(){
+  if(typeof fpaCfgDriveRestore === 'function') fpaCfgDriveRestore();
   document.getElementById('modalFpaConfig').style.display = 'none';
   document.body.style.overflow = '';
 }
@@ -41675,10 +41689,12 @@ function fpaCfgDecorate(){
 }
 /* Onglets de la fenêtre Configuration FPA */
 function fpaCfgShowTab(t){
-  const urls = document.getElementById('fpaCfgUrlsSection'), disp = document.getElementById('fpaCfgDisplaySection');
-  if(!urls || !disp) return;
-  urls.style.display = t === 'urls' ? 'grid' : 'none';
-  disp.style.display = t === 'display' ? 'block' : 'none';
+  const sec = { urls:'fpaCfgUrlsSection', display:'fpaCfgDisplaySection', drive:'fpaCfgDriveSection', imports:'fpaCfgImportsSection' };
+  if(!document.getElementById('fpaCfgUrlsSection')) return;
+  Object.entries(sec).forEach(([k, id]) => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = k === t ? (k === 'urls' ? 'grid' : 'block') : 'none';
+  });
   document.querySelectorAll('#fpaCfgTabs [data-tab]').forEach(b => {
     const on = b.dataset.tab === t;
     b.style.borderBottomColor = on ? 'var(--navy)' : 'transparent';
@@ -41688,6 +41704,8 @@ function fpaCfgShowTab(t){
   if(copyBtn) copyBtn.style.display = t === 'urls' ? '' : 'none';
   if(t === 'display' && !fpaColorDraft) fpaColorEditorOpen();
   if(t === 'urls') fpaCfgDecorate();
+  if(typeof fpaCfgDriveShow === 'function'){ if(t === 'drive') fpaCfgDriveShow(); else fpaCfgDriveRestore(); }
+  if(t === 'imports' && typeof fpaCfgImportsRender === 'function') fpaCfgImportsRender();
 }
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
@@ -45238,6 +45256,128 @@ function spotifyCsvInfo(){
   try{ return JSON.parse(localStorage.getItem(SPOTIFY_CSV_KEY) || 'null'); }catch(e){ return null; }
 }
 spotifyCsvRestore();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CONFIGURATION FPA : onglets « Drive » et « Imports »
+     • Drive : le panneau Drive Sync habituel (celui du tableau Fit Score) est
+       déplacé dans la fenêtre le temps de l'affichage, puis remis à sa place —
+       mêmes boutons, mêmes fonctions, un seul panneau.
+     • Imports : tous les imports de FPA regroupés ; chaque bouton appelle la
+       fonction d'import habituelle (les boutons restent aussi sur leurs pages).
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaCfgTabsJs">
+let fpaCfgDriveHome = null, fpaCfgDriveWasOpen = false;
+function fpaCfgDriveShow(){
+  const box = document.getElementById('fpaCfgDriveSection');
+  const panel = document.getElementById('driveSyncPanel');
+  if(!box || !panel) return;
+  if(typeof isAdmin === 'function' && !isAdmin()){
+    box.innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12.5px">🔒 Le panneau Drive est réservé au profil administrateur.</div>';
+    return;
+  }
+  if(!fpaCfgDriveHome){
+    fpaCfgDriveHome = document.createComment('driveSyncPanel-home');
+    fpaCfgDriveWasOpen = panel.style.display === 'block';
+    panel.parentNode.insertBefore(fpaCfgDriveHome, panel);
+  }
+  box.innerHTML = `<div style="font-size:11.5px;color:var(--text2);margin-bottom:10px">Le même panneau Drive que sur le tableau Fit Score : sauvegarde de la semaine, archivage en masse, restauration… ${typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL ? '' : '<b style="color:#B45309">⚠ URL Drive Sync non renseignée (onglet URLs & services).</b>'}</div>`;
+  box.appendChild(panel);
+  panel.style.display = 'block';
+  try{ renderDriveSyncPanel(); }catch(e){ console.warn('Drive — rendu du panneau', e); }
+}
+function fpaCfgDriveRestore(){
+  const panel = document.getElementById('driveSyncPanel');
+  if(!fpaCfgDriveHome || !panel) return;
+  fpaCfgDriveHome.parentNode.insertBefore(panel, fpaCfgDriveHome);
+  fpaCfgDriveHome.remove();
+  fpaCfgDriveHome = null;
+  panel.style.display = fpaCfgDriveWasOpen ? 'block' : 'none';
+}
+
+/* ── Catalogue des imports ─────────────────────────────────────────── */
+/* run(input) : appelle la fonction d'import habituelle avec le champ fichier.
+   leave : true quand l'import ouvre une page de résultats (on ferme la fenêtre). */
+function fpaImportCatalog(){
+  const st = (typeof ACTIVE_STATION !== 'undefined' && ACTIVE_STATION === 'RFM') ? 'RFM' : 'Europe 2';
+  const ap = (typeof AIRPLAY_TYPES !== 'undefined' ? AIRPLAY_TYPES : []);
+  return [
+    { group:'🔬 Recherche musicale', color:'#0B1D3A', items:[
+      { icon:'📋', label:'Call Out — charger', hint:'Fichier Excel Call Out (en attente sur l\'accueil)', accept:'.xlsx,.xls', run:i => homeLoadFile(i, 'callout', true) },
+      { icon:'⚡', label:'Call Out — charger et calculer', hint:'Calcule le Fit Score et ouvre les résultats', accept:'.xlsx,.xls', leave:true, run:i => homeLoadFile(i, 'callout', false) },
+      { icon:'🎙️', label:'OMT — charger', hint:'Fichier Excel OMT', accept:'.xlsx,.xls', run:i => homeLoadFile(i, 'omt', true) },
+      { icon:'⚡', label:'OMT — charger et calculer', hint:'Calcule le Fit Score et ouvre les résultats', accept:'.xlsx,.xls', leave:true, run:i => homeLoadFile(i, 'omt', false) },
+      { icon:'🧮', label:'Données individuelles (matrice répondants)', hint:'Excel / CSV — facultatif', accept:'.xlsx,.xls,.csv', run:i => handleRawMatrixFile({ target:i }) },
+      { icon:'💫', label:'Habs(R) — signature émotionnelle', hint:'Scores Habs(R)', accept:'.xlsx,.xls', run:i => handleHabsImport(i) },
+      { icon:'🗂️', label:'Datas — fichier brut', hint:'Ouvre le fichier dans Datas', accept:'.xlsx,.xls,.xlsm', leave:true, run:i => { goHome(); toggleRawDataPage(); handleRawDataImport(i.files[0]); } },
+      { icon:'📚', label:'Import / ré-indexation en masse', hint:'Plusieurs vagues Call Out / OMT d\'un coup — station ' + st, accept:'.xls,.xlsx', multiple:true, run:i => bulkImportFiles(i.files) },
+      { icon:'🗄️', label:'Historique des vagues (JSON)', hint:'Restauration d\'un export d\'historique', accept:'.json', run:i => importHistoryJSON(i.files[0]) }
+    ]},
+    { group:'📊 Programmation & audience', color:'#00A3B4', items:[
+      { icon:'📊', label:'Programmation hebdomadaire', hint:'Fichier(s) « Zoom média » exhaustif 7j/24h — station ' + st, accept:'.xlsx,.xls', multiple:true, run:i => analyseHandleFiles(i) },
+      { icon:'🗓️', label:'Programmation quotidienne (conducteurs)', hint:'Europe 2 : Excel · RFM : PDF — station ' + st, accept:'.xls,.xlsx,.pdf', multiple:true, run:i => dailyProgHandleFiles(i) },
+      { icon:'🎧', label:'Audience digitale', hint:'Rapports PDF hebdomadaires', accept:'.pdf', multiple:true, run:i => digitalAudienceHandleFiles(i) },
+      { icon:'📡', label:'Médiamétrie', hint:'PDF Médiamétrie', accept:'.pdf', multiple:true, run:i => marcheHandleImportFiles(i.files) }
+    ]},
+    { group:'📻 Airplay (Yacast)', color:'#7C3AED', items:[
+      ...ap.map(t => ({ icon:'📻', label:'Airplay validé — ' + t.label, hint:'Top 200 Yacast hebdomadaire', accept:'.xlsx,.xls', run:i => handleAirplayImportTyped(i.files[0], t.key) })),
+      ...ap.map(t => ({ icon:'🔴', label:'Airplay Live — ' + t.label, hint:'Semaine en cours', accept:'.xlsx,.xls', run:i => handleLiveImportTyped(i.files[0], t.key) })),
+      { icon:'📦', label:'Archiver plusieurs Airplay sur Drive', hint:'Plusieurs semaines d\'un coup', accept:'.xlsx,.xls', multiple:true, run:async i => { if(typeof fpaCfgImportViaDrivePanel === 'function') await fpaCfgImportViaDrivePanel('airplay', i.files); } }
+    ]},
+    { group:'🎧 Classements streaming', color:'#16a34a', items:[
+      { icon:'🟢', label:'Spotify France (CSV)', hint:'Daily ou Weekly — mémorisé sur ce poste', accept:'.csv,.txt', run:i => handleSpotifyImport(i) },
+      { icon:'📦', label:'Archiver plusieurs Spotify sur Drive', hint:'Plusieurs CSV d\'un coup, datés et classés', accept:'.csv', multiple:true, run:async i => { if(typeof archiveSpotifyFilesToDrive === 'function') await archiveSpotifyFilesToDrive(Array.from(i.files)); } },
+      { icon:'🔵', label:'Shazam France (CSV)', hint:'Si le proxy Shazam est indisponible', accept:'.csv,.txt', run:i => { handleShazamCSVImport(i.files[0], 'fr'); try{ renderChartTable(); }catch(e){} } },
+      { icon:'🌍', label:'Shazam Monde (CSV)', hint:'Si le proxy Shazam est indisponible', accept:'.csv,.txt', run:i => { handleShazamCSVImport(i.files[0], 'ww'); try{ renderChartTable(); }catch(e){} } }
+    ]},
+    { group:'🎵 Playlist & réglages', color:'#E6007E', items:[
+      { icon:'🏷️', label:'Playlist — Label / Date d\'entrée', hint:'Excel Artiste, Titre, Label, Date entrée — station ' + st, accept:'.xlsx,.xls', run:i => handlePlaylistAttributesImport(i) },
+      { icon:'⚙️', label:'Réglages FPA (transfert de poste)', hint:'Fichier JSON exporté depuis un autre poste — FPA se recharge', accept:'.json', run:i => importFpaSettingsJSON(i) }
+    ]}
+  ];
+}
+function fpaCfgImportsRender(){
+  const box = document.getElementById('fpaCfgImportsSection');
+  if(!box) return;
+  const cat = fpaImportCatalog();
+  window.__fpaImportCat = cat;
+  box.innerHTML = `<div style="font-size:11.5px;color:var(--text2);margin-bottom:12px;line-height:1.5">Tous les imports de FPA au même endroit — ils restent aussi disponibles sur leurs pages habituelles. Les imports liés à une station s'appliquent à la station active (<b>${typeof ACTIVE_STATION !== 'undefined' && ACTIVE_STATION === 'RFM' ? 'RFM' : 'Europe 2'}</b>).</div>
+    ${cat.map((g, gi) => `<div style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:10px;background:${g.color};color:#fff;font-size:11.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase">${g.group}<span style="margin-left:auto;font-size:10.5px;letter-spacing:0;text-transform:none;background:rgba(255,255,255,.22);padding:2px 9px;border-radius:20px">${g.items.length} import${g.items.length > 1 ? 's' : ''}</span></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:8px;margin-top:8px">
+        ${g.items.map((it, ii) => `<label style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:${ii % 2 ? '#F7F9FC' : 'var(--white)'};border:1.5px solid var(--border);border-left:4px solid ${g.color};border-radius:10px;cursor:pointer;transition:box-shadow .15s" onmouseenter="this.style.boxShadow='0 4px 14px rgba(11,29,58,.1)'" onmouseleave="this.style.boxShadow=''">
+          <span style="font-size:18px;flex-shrink:0">${it.icon}</span>
+          <span style="min-width:0;flex:1"><span style="display:block;font-size:12.5px;font-weight:800;color:var(--navy)">${escHtml(it.label)}</span><span style="display:block;font-size:10.5px;color:var(--muted);margin-top:1px">${escHtml(it.hint)}</span></span>
+          <span style="flex-shrink:0;font-size:11px;font-weight:800;color:${g.color};background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:5px 10px">📥 Importer</span>
+          <input type="file" accept="${it.accept}" ${it.multiple ? 'multiple' : ''} style="display:none" onchange="fpaCfgRunImport(${gi},${ii},this)">
+        </label>`).join('')}
+      </div>
+    </div>`).join('')}`;
+}
+async function fpaCfgRunImport(gi, ii, input){
+  const it = (window.__fpaImportCat || fpaImportCatalog())[gi].items[ii];
+  if(!input.files || !input.files.length) return;
+  try{
+    if(it.leave) closeFpaConfigModal();
+    await it.run(input);
+  }catch(e){
+    showToast('Import impossible : ' + (e.message || e), 'err');
+    console.error('Import « ' + it.label + ' »', e);
+  }finally{
+    setTimeout(() => { try{ input.value = ''; }catch(e){} }, 1500);
+  }
+}
+/* « Archiver plusieurs Airplay » : réutilise le champ du panneau Drive */
+async function fpaCfgImportViaDrivePanel(kind, files){
+  const panel = document.getElementById('driveSyncPanel');
+  if(panel && !panel.innerHTML.trim()) try{ renderDriveSyncPanel(); }catch(e){}
+  const lbl = [...(panel ? panel.querySelectorAll('label') : [])].find(l => /Archiver plusieurs Airplay/i.test(l.textContent));
+  const inp = lbl && lbl.querySelector('input[type=file]');
+  if(!inp){ showToast('Ouvrez l\'onglet Drive pour cet archivage', 'err'); return; }
+  const dt = new DataTransfer();
+  Array.from(files).forEach(f => dt.items.add(f));
+  inp.files = dt.files;
+  inp.dispatchEvent(new Event('change'));
+}
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
      FPA MOBILE — adaptation automatique aux téléphones (v1)
