@@ -16018,7 +16018,8 @@ function interimExportMobilePng(periodId){
     if(ac === null && pda === null) return null;
     const pAC = interimResolveMetric(prevWave, r.matchSlugs, 'AC'), pPDA = interimResolveMetric(prevWave, r.matchSlugs, 'PDA');
     const nAC = interimResolveMetric(yearWave, r.matchSlugs, 'AC'), nPDA = interimResolveMetric(yearWave, r.matchSlugs, 'PDA');
-    return { label: r.label, ac, pda, nAC: typeof nAC === 'number' ? nAC : null, nPDA: typeof nPDA === 'number' ? nPDA : null,
+    const dn = (v, n) => (v !== null && typeof n === 'number') ? Math.round((v - n) * 10) / 10 : null;
+    return { label: r.label, ac, pda, nAC: dn(ac, nAC), nPDA: dn(pda, nPDA),
       dAC: (ac !== null && typeof pAC === 'number') ? Math.round((ac - pAC) * 10) / 10 : null,
       dPDA: (pda !== null && typeof pPDA === 'number') ? Math.round((pda - pPDA) * 10) / 10 : null };
   }).filter(Boolean);
@@ -16041,36 +16042,70 @@ function interimExportMobilePng(periodId){
   c.font = `700 44px ${FONT}`; c.fillText(period.label, M, 192);
   const dates = (w.dateStart || w.dateEnd) ? ' · ' + (w.dateStart ? mediaDateToFr(w.dateStart) : '?') + ' → ' + (w.dateEnd ? mediaDateToFr(w.dateEnd) : '?') : '';
   c.fillStyle = 'rgba(255,255,255,.78)'; c.font = `600 32px ${FONT}`; c.fillText(w.label + ' (' + (wi + 1) + '/' + waves.length + ')' + dates, M, 256);
-  // En-têtes de colonnes
-  const X = { radio: M, ac: 560, nac: 710, pda: 880, npda: 1024 };
-  let y = 370;
-  c.fillStyle = MUTED; c.font = `800 26px ${FONT}`;
-  c.textAlign = 'left'; c.fillText('RADIO', X.radio, y);
-  c.textAlign = 'right'; c.fillText('AC %', X.ac, y); c.fillText('N-1', X.nac, y); c.fillText('PDA %', X.pda, y); c.fillText('N-1', X.npda, y);
-  y += 22;
-  const avail = H - y - 40;
-  const rowH = Math.max(52, Math.min(92, Math.floor(avail / Math.max(1, list.length))));
-  const big = Math.min(38, Math.round(rowH * 0.42)), small = Math.min(26, Math.round(rowH * 0.3));
+  // ── Tableau ──
+  const L = M - 24, R = W - M + 24;                // bords du tableau
+  const COL = { ac: [380, 712], pda: [712, R] };   // blocs AC % / PDA %
+  let y = 350;
+  // En-tête de tableau
+  c.fillStyle = '#DCE3EE'; roundRect(c, L, y, R - L, 70, 14, true);
+  c.fillStyle = NAVY; c.font = `800 28px ${FONT}`; c.textAlign = 'left';
+  c.fillText('Radio', L + 24, y + 45);
+  c.textAlign = 'center';
+  c.fillText('AC %', (COL.ac[0] + COL.ac[1]) / 2, y + 45);
+  c.fillText('PDA %', (COL.pda[0] + COL.pda[1]) / 2, y + 45);
+  y += 82;
+  const avail = H - y - 50;
+  const rowH = Math.max(78, Math.min(132, Math.floor(avail / Math.max(1, list.length))));
+  const big = Math.min(46, Math.round(rowH * 0.36)), chip = Math.min(24, Math.max(17, Math.round(rowH * 0.19)));
+  const chipH = Math.round(chip * 1.45), gap = Math.round(chip * 0.35);
+  const drawChip = (tag, d, x, cy) => {
+    const col = d === null ? MUTED : d > 0 ? GREEN : d < 0 ? RED : MUTED;
+    const bg = d === null ? '#EEF1F5' : d > 0 ? '#E3F5EA' : d < 0 ? '#FDE8E8' : '#EEF1F5';
+    const txt = d === null ? '–' : fmtD(d);
+    c.font = `800 ${chip}px ${FONT}`;
+    const tw = c.measureText(tag).width, vw = c.measureText(txt).width;
+    const wTot = tw + vw + chip * 1.6;
+    c.fillStyle = bg; roundRect(c, x, cy - chipH / 2, wTot, chipH, chipH / 2, true);
+    c.textAlign = 'left';
+    c.fillStyle = '#5B6B84'; c.fillText(tag, x + chip * 0.55, cy + chip * 0.36);
+    c.fillStyle = col; c.fillText(txt, x + chip * 1.05 + tw, cy + chip * 0.36);
+  };
   list.forEach((r, i) => {
     const top = y + i * rowH;
-    c.fillStyle = i % 2 ? '#FFFFFF' : '#F7F9FC';
-    c.fillRect(M - 20, top, W - 2 * (M - 20), rowH - 4);
-    const hasD = r.dAC !== null || r.dPDA !== null;
-    const mid = top + rowH / 2 + big * 0.35 - (hasD ? small * 0.45 : 0);
-    c.textAlign = 'left'; c.fillStyle = NAVY; c.font = `700 ${big}px ${FONT}`;
-    let name = r.label; while(c.measureText(name).width > 400 && name.length > 4) name = name.slice(0, -2) + '…';
-    c.fillText(name, X.radio, top + rowH / 2 + big * 0.35);
-    c.textAlign = 'right';
-    c.fillStyle = TEXT; c.font = `800 ${big}px ${FONT}`; c.fillText(fmt(r.ac), X.ac, mid); c.fillText(fmt(r.pda), X.pda, mid);
-    // Valeurs N-1 (même vague l'an dernier)
-    c.fillStyle = MUTED; c.font = `700 ${Math.round(big * 0.8)}px ${FONT}`;
-    c.fillText(fmt(r.nAC), X.nac, mid); c.fillText(fmt(r.nPDA), X.npda, mid);
-    // Écart avec la vague officielle précédente, sous la valeur
-    if(hasD){
-      c.font = `800 ${small}px ${FONT}`;
-      [[r.dAC, X.ac], [r.dPDA, X.pda]].forEach(([d, x]) => { if(d === null) return; c.fillStyle = d > 0 ? GREEN : d < 0 ? RED : MUTED; c.fillText(fmtD(d) + ' V-1', x, mid + small + 4); });
-    }
+    // Fond gris alterné, angles arrondis aux extrémités du tableau
+    c.fillStyle = i % 2 ? '#FFFFFF' : '#EDF1F6';
+    c.fillRect(L, top, R - L, rowH);
+    // Séparateurs
+    c.fillStyle = '#D5DCE7';
+    c.fillRect(L, top + rowH - 1, R - L, 1);
+    c.fillRect(COL.ac[0], top + 12, 2, rowH - 24);
+    c.fillRect(COL.pda[0], top + 12, 2, rowH - 24);
+    const cy = top + rowH / 2;
+    // Radio
+    c.textAlign = 'left'; c.fillStyle = NAVY; c.font = `800 ${Math.round(big * 0.82)}px ${FONT}`;
+    let name = r.label; while(c.measureText(name).width > COL.ac[0] - L - 40 && name.length > 4) name = name.slice(0, -2) + '…';
+    c.fillText(name, L + 24, cy + big * 0.28);
+    // Blocs AC / PDA : valeur + variations V-1 et N-1
+    [[r.ac, r.dAC, r.nAC, COL.ac], [r.pda, r.dPDA, r.nPDA, COL.pda]].forEach(([v, dv, dn, [x0, x1]]) => {
+      c.textAlign = 'right'; c.fillStyle = TEXT; c.font = `800 ${big}px ${FONT}`;
+      const vx = x0 + 124;
+      c.fillText(fmt(v), vx, cy + big * 0.35);
+      const chx = vx + 20;
+      drawChip('V-1', dv, chx, cy - chipH / 2 - gap / 2);
+      drawChip('N-1', dn, chx, cy + chipH / 2 + gap / 2);
+    });
   });
+  // Contour arrondi du bloc de lignes
+  c.strokeStyle = '#D5DCE7'; c.lineWidth = 2;
+  roundRect(c, L, y, R - L, rowH * list.length, 14, false, true);
+  function roundRect(ctx, x, yy, w2, h2, r2, fill, stroke){
+    ctx.beginPath();
+    ctx.moveTo(x + r2, yy); ctx.lineTo(x + w2 - r2, yy); ctx.quadraticCurveTo(x + w2, yy, x + w2, yy + r2);
+    ctx.lineTo(x + w2, yy + h2 - r2); ctx.quadraticCurveTo(x + w2, yy + h2, x + w2 - r2, yy + h2);
+    ctx.lineTo(x + r2, yy + h2); ctx.quadraticCurveTo(x, yy + h2, x, yy + h2 - r2);
+    ctx.lineTo(x, yy + r2); ctx.quadraticCurveTo(x, yy, x + r2, yy); ctx.closePath();
+    if(fill) ctx.fill(); if(stroke) ctx.stroke();
+  }
   cv.toBlob(blob => {
     if(!blob){ showToast('Image impossible à générer', 'err'); return; }
     const a = document.createElement('a');
