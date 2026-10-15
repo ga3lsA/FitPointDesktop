@@ -3582,11 +3582,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     <!-- Panneau Live (sous-onglet du groupe Airplay) -->
     <div id="inoutChartsPanel" style="display:none">
       <div style="margin-bottom:14px">
-        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Suivi en cours de semaine · Top 50 de chaque radio</div>
+        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Suivi en cours de semaine · Top 40 de chaque radio</div>
         <h2 style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--navy);line-height:1.15">⇅ Entrées / Sorties</h2>
         <div style="font-size:12px;color:var(--text2);line-height:1.6;margin-top:6px;max-width:900px">
-          <strong style="color:#1a8a4a">Entrée</strong> : titre absent du classement de la radio la dernière semaine complète, entré directement dans son top 50 dans le Live.
-          <strong style="color:#c0392b">Sortie</strong> : titre du top 50 de la radio la dernière semaine complète, absent de son classement dans le Live.
+          <strong style="color:#1a8a4a">Entrée</strong> : titre absent du classement de la radio la dernière semaine complète, entré directement dans son top 40 dans le Live.
+          <strong style="color:#c0392b">Sortie</strong> : titre du top 40 de la radio la dernière semaine complète, absent de son classement dans le Live.
           Sorties à gauche, entrées à droite ; dans chaque colonne, les titres concernés par le plus de radios sont en haut.
         </div>
         <div id="inoutPeriods" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
@@ -9408,7 +9408,7 @@ function liveGetRankValue(radioKey, entry, rankMaps){
 /** Cellule de comparaison de rang pour une radio donnée : valeur Live +
  *  variation par rapport à la dernière semaine complète (rang uniquement). */
 /** Taille du top pris en compte pour les mentions NEW / OUT par radio. */
-const LIVE_TOP_N = 50;
+const LIVE_TOP_N = 40;   // top 40 : au-delà, des golds sans intérêt pour les entrées/sorties
 function liveInTop(v){ return v !== null && v !== undefined && v <= LIVE_TOP_N; }
 
 /** Cellule de comparaison de rang : valeur Live + variation par rapport à
@@ -43035,32 +43035,79 @@ function dailyCheckFmtSeqRule(fmt){
 
 function dailyCheckHourRule(key, label){
   return {
-    id: 'hour_' + key, label: 'Heure sous la moyenne du jour — ' + label, icon: key === 'fit' ? '🎯' : key === 'pot' ? '📋' : '💗',
-    description: 'Alerte quand le ' + label + ' moyen d\'une heure est inférieur à la moyenne de la journée (moins la tolérance).',
+    id: 'hour_' + key, label: 'Heure éloignée de la moyenne du jour — ' + label, icon: key === 'fit' ? '🎯' : key === 'pot' ? '📋' : '💗',
+    description: 'Alerte quand le ' + label + ' moyen d\'une heure s\'écarte de plus de X % de la moyenne de la journée, au-dessus comme en dessous.',
     params: [
-      { id:'tolerance', label:'Tolérance (points sous la moyenne)', def:0, step:0.5, min:0 },
+      { id:'pct', label:'Écart minimum (% de la moyenne du jour)', def:10, step:1, min:1 },
       { id:'minMatched', label:'Titres matchés minimum dans l\'heure', def:2, step:1, min:1 }
     ],
     run(day, p){
       const dayAgg = dailyProgAggregate(day.items, day.date);
       const ref = dayAgg[key];
-      if(ref === null) return { alerts:[], note:'Aucun ' + label + ' disponible pour cette journée.' };
+      if(ref === null || !ref) return { alerts:[], note:'Aucun ' + label + ' disponible pour cette journée.' };
       const byH = {}, order = [];
       day.items.forEach((it, i) => { if(!byH[it.hour]){ byH[it.hour] = []; order.push(it.hour); } byH[it.hour].push(i); });
+      const fmt = v => v.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 });
       const alerts = [];
       order.forEach(h => {
         const agg = dailyProgAggregate(byH[h].map(i => day.items[i]), day.date);
         if(agg[key] === null || agg[key + 'N'] < p.minMatched) return;
-        if(agg[key] < ref - p.tolerance){
-          const fmt = v => v.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 });
-          alerts.push({ hour: h, items: [], text: String(h).padStart(2,'0') + 'h : ' + label + ' ' + fmt(agg[key]) + ' (journée ' + fmt(ref) + ', ' + fmt(agg[key] - ref) + ') · ' + agg[key + 'N'] + '/' + agg.total + ' titres matchés' });
-        }
+        const dev = (agg[key] - ref) / ref * 100;
+        if(Math.abs(dev) > p.pct)
+          alerts.push({ hour: h, items: [], text: String(h).padStart(2,'0') + 'h : ' + label + ' ' + fmt(agg[key]) + ' — ' + (dev > 0 ? '+' : '') + fmt(dev) + ' % par rapport à la journée (' + fmt(ref) + ') · ' + agg[key + 'N'] + '/' + agg.total + ' titres matchés' });
       });
-      return { alerts, note: 'Moyenne de la journée : ' + ref.toLocaleString('fr-FR', { maximumFractionDigits:1 }) };
+      return { alerts, note: 'Moyenne de la journée : ' + fmt(ref) + ' · alerte au-delà de ±' + p.pct + ' %' };
     }
   };
 }
+/** Suites de titres consécutifs d'un même format (≥ min titres d'affilée). */
+function dailyCheckFmtRunRule(fmt, min){
+  const L = dailyCheckFmtLabel(fmt);
+  return {
+    id:'fmt_run_' + fmt, label:'Enchaînement de ' + L, icon:'⛓️',
+    description:'Alerte quand ' + min + ' titres ' + L + ' (ou plus) passent à la suite, sans autre titre entre eux.',
+    params: [ { id:'min', label:'Titres ' + L + ' consécutifs déclenchant l\'alerte', def:min, step:1, min:2 } ],
+    run(day, p){
+      const f = dailyCheckFormats(day);
+      if(!f.some(Boolean)) return { alerts:[], note:'Aucun format renseigné sur cette journée.' };
+      const M = Math.max(2, Math.round(p.min));
+      const alerts = [];
+      let start = -1;
+      for(let i = 0; i <= f.length; i++){
+        if(i < f.length && f[i] === fmt){ if(start < 0) start = i; continue; }
+        if(start >= 0 && i - start >= M){
+          const idx = []; for(let k = start; k < i; k++) idx.push(k);
+          const a = day.items[start], b = day.items[i - 1];
+          alerts.push({ items: idx, hour: a.hour, text: a.time + ' → ' + b.time + ' : ' + idx.length + ' ' + L + ' à la suite — ' + idx.map(k => day.items[k].time + ' « ' + titleCaseDisplay(day.items[k].title) + ' »').join(', ') });
+        }
+        start = -1;
+      }
+      return { alerts };
+    }
+  };
+}
+
 const DAILY_CHECK_RULES = [
+  dailyCheckFmtRunRule('market', 3),
+  dailyCheckFmtRunRule('border', 2),
+  {
+    id:'fmt_adj_mb', label:'Market et Border à la suite', icon:'🔀',
+    description:'Alerte quand un titre Market est immédiatement suivi d\'un titre Border, ou l\'inverse.',
+    params: [],
+    run(day){
+      const f = dailyCheckFormats(day);
+      if(!f.some(Boolean)) return { alerts:[], note:'Aucun format renseigné sur cette journée.' };
+      const alerts = [];
+      for(let i = 0; i + 1 < day.items.length; i++){
+        const a = f[i], b = f[i + 1];
+        if((a === 'market' && b === 'border') || (a === 'border' && b === 'market')){
+          const x = day.items[i], y = day.items[i + 1];
+          alerts.push({ items:[i, i + 1], hour: y.hour, text: x.time + ' « ' + titleCaseDisplay(x.title) + ' » (' + FMT_VALUES[a].label + ') → ' + y.time + ' « ' + titleCaseDisplay(y.title) + ' » (' + FMT_VALUES[b].label + ')' });
+        }
+      }
+      return { alerts };
+    }
+  },
   {
     id:'artist_sep', label:'Séparation artiste', icon:'👥',
     description:'Alerte quand un même artiste (y compris en featuring ou en duo) revient avant le délai minimum.',
@@ -43089,27 +43136,7 @@ const DAILY_CHECK_RULES = [
   dailyCheckHourRule('pot', 'Pot Score'),
   dailyCheckHourRule('fam', 'Fam Score'),
   dailyCheckFmtHourRule('market'),
-  dailyCheckFmtHourRule('border'),
-  dailyCheckFmtSeqRule('market'),
-  dailyCheckFmtSeqRule('border'),
-  {
-    id:'fmt_adj_mb', label:'Market et Border à la suite', icon:'🔀',
-    description:'Alerte quand un titre Market est immédiatement suivi d\'un titre Border, ou l\'inverse.',
-    params: [],
-    run(day){
-      const f = dailyCheckFormats(day);
-      if(!f.some(Boolean)) return { alerts:[], note:'Aucun format renseigné sur cette journée.' };
-      const alerts = [];
-      for(let i = 0; i + 1 < day.items.length; i++){
-        const a = f[i], b = f[i + 1];
-        if((a === 'market' && b === 'border') || (a === 'border' && b === 'market')){
-          const x = day.items[i], y = day.items[i + 1];
-          alerts.push({ items:[i, i + 1], hour: y.hour, text: x.time + ' « ' + titleCaseDisplay(x.title) + ' » (' + FMT_VALUES[a].label + ') → ' + y.time + ' « ' + titleCaseDisplay(y.title) + ' » (' + FMT_VALUES[b].label + ')' });
-        }
-      }
-      return { alerts };
-    }
-  }
+  dailyCheckFmtHourRule('border')
 ];
 
 function dailyCheckLoadSettings(){
@@ -43146,7 +43173,7 @@ function dailyCheckRun(){
   const flags = { date: day.date, items:{}, hours:{} };
   results.forEach(r => r.alerts.forEach(a => {
     if(a.items && a.items.length) a.items.forEach(i => (flags.items[i] = flags.items[i] || []).push(r.rule.label + ' : ' + a.text));
-    else if(a.hour !== undefined) (flags.hours[a.hour] = flags.hours[a.hour] || []).push(r.rule.label.replace(/^Heure (sous|au-dessus de) la moyenne( du jour)? — /, '') + ' : ' + a.text);
+    else if(a.hour !== undefined) (flags.hours[a.hour] = flags.hours[a.hour] || []).push(r.rule.label.replace(/^Heure (sous|au-dessus de|éloignée de) la moyenne( du jour)? — /, '') + ' : ' + a.text);
   }));
   dailyCheckFlags = flags;
   renderDailyProgPage().then(() => dailyCheckShowReport(day, results));
