@@ -40243,6 +40243,16 @@ async function saveCurrentChartsWeek(customDateStr, onProgress) {
   const friday = new Date(date + 'T12:00:00');
   const label  = 'Semaine du ' + friday.toLocaleDateString('fr-FR', {day:'2-digit', month:'short', year:'numeric'});
 
+  // Contrôle avant sauvegarde : classements non chargés ou pas à jour →
+  // fenêtre de confirmation (mettre à jour / sauvegarder quand même / annuler)
+  if(typeof chartsSaveReadiness === 'function'){
+    const issues = chartsSaveReadiness(customDateStr ? null : new Date());
+    if(issues.length){
+      const choice = await chartsSaveConfirm(issues, label);
+      if(choice !== 'save'){ if(choice === 'update') chartsSaveGoUpdate(); return; }
+    }
+  }
+
   // Si une entrée existe déjà pour cette semaine, avertir avant d'écraser —
   // particulièrement important en reconstitution manuelle d'historique, pour ne
   // pas remplacer par erreur une semaine déjà enregistrée avec des données live.
@@ -45404,6 +45414,107 @@ async function fpaCfgImportViaDrivePanel(kind, files){
   Array.from(files).forEach(f => dt.items.add(f));
   inp.files = dt.files;
   inp.dispatchEvent(new Event('change'));
+}
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     DRIVE — CONTRÔLE AVANT SAUVEGARDE DE LA SEMAINE
+     Liste les classements non chargés (ou indisponibles) et ceux dont la date
+     est trop ancienne, et propose : mettre à jour / sauvegarder quand même.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaChartsSaveCheckJs">
+const CHARTS_STALE_DAYS = 8;   // au-delà : « pas à jour »
+const FR_MONTHS_LOOSE = { janv:1, janvier:1, fevr:2, fevrier:2, mars:3, avr:4, avril:4, mai:5, juin:6, juil:7, juillet:7, aout:8, sept:9, septembre:9, oct:10, octobre:10, nov:11, novembre:11, dec:12, decembre:12 };
+/** Dernière date lisible dans un libellé (« 2026-10-12 », « 12/10/2026 »,
+ *  « 12 octobre 2026 », « Semaine du 2 au 8 oct. 2026 »…). */
+function chartsParseDateLoose(s){
+  if(!s) return null;
+  const str = String(s);
+  let m = str.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if(m) return new Date(+m[1], +m[2] - 1, +m[3], 12);
+  m = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if(m) return new Date(+m[3], +m[2] - 1, +m[1], 12);
+  const n = str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const all = [...n.matchAll(/(\d{1,2})\s+([a-z]+)\.?\s+(\d{4})/g)];
+  for(let i = all.length - 1; i >= 0; i--){
+    const mo = FR_MONTHS_LOOSE[all[i][2]];
+    if(mo) return new Date(+all[i][3], mo - 1, +all[i][1], 12);
+  }
+  return null;
+}
+/** Problèmes de fraîcheur des classements avant une sauvegarde Drive.
+ *  ref : date de référence (null = reconstitution manuelle : seuls les
+ *  classements absents sont signalés). */
+function chartsSaveReadiness(ref){
+  const g = (fn, dflt) => { try{ return fn(); }catch(e){ return dflt; } };
+  const srcs = [
+    { icon:'📻', label:'Airplay (Yacast)',          loaded: g(() => airplayLoaded, false),                 date: g(() => airplayPeriod, null), noStale:true },
+    { icon:'🔵', label:'Shazam France',             loaded: g(() => chartsLoaded.fr, false),               date: g(() => shazamDateUsed, null) },
+    { icon:'🌍', label:'Shazam Monde',              loaded: g(() => chartsLoaded.ww, false),               date: g(() => shazamDateUsed, null) },
+    { icon:'🟢', label:'Spotify France (CSV)',      loaded: g(() => spotifyLoaded, false),                 date: g(() => spotifyDateUsed, null) },
+    { icon:'🇬🇧', label:'Spotify UK',               loaded: g(() => kworbSpotifyState.gb.loaded, false),   date: g(() => kworbSpotifyState.gb.dateUsed, null) },
+    { icon:'🇧🇪', label:'Spotify Belgique',         loaded: g(() => kworbSpotifyState.be.loaded, false),   date: g(() => kworbSpotifyState.be.dateUsed, null) },
+    { icon:'🇸🇪', label:'Spotify Suède',            loaded: g(() => kworbSpotifyState.se.loaded, false),   date: g(() => kworbSpotifyState.se.dateUsed, null) },
+    { icon:'🇳🇱', label:'Spotify Pays-Bas',         loaded: g(() => kworbSpotifyState.nl.loaded, false),   date: g(() => kworbSpotifyState.nl.dateUsed, null) },
+    { icon:'🟣', label:'Deezer Top France',         loaded: g(() => deezerLoaded, false),                  date: g(() => deezerDateUsed, null) },
+    { icon:'🚀', label:'Futurs Hits (Deezer)',      loaded: g(() => futursHitsLoaded, false),              date: g(() => futursHitsDateUsed, null) },
+    { icon:'🍎', label:'Apple Music France',        loaded: g(() => appleMusicState.fr.loaded, false),     date: g(() => appleMusicState.fr.dateUsed, null) },
+    { icon:'🍎', label:'Apple Music US',            loaded: g(() => appleMusicState.us.loaded, false),     date: g(() => appleMusicState.us.dateUsed, null) },
+    { icon:'🇺🇸', label:'Billboard Hot 100',        loaded: g(() => billboardLoaded, false),               date: g(() => billboardDateUsed, null) },
+    { icon:'🌐', label:'Billboard Global 200',      loaded: g(() => billboardGlobalLoaded, false),         date: g(() => billboardGlobalDateUsed, null) },
+    { icon:'▶️', label:'YouTube',                   loaded: g(() => kworbYoutubeLoaded, false),            date: g(() => kworbYoutubeDateUsed, null) }
+  ];
+  const issues = [];
+  srcs.forEach(s => {
+    const hasData = s.loaded;
+    if(!hasData){ issues.push(Object.assign({ status:'absent', detail:'non chargé ou indisponible' }, s)); return; }
+    if(!ref || s.noStale) return;
+    const d = chartsParseDateLoose(s.date);
+    if(!d) return;
+    const age = Math.floor((ref - d) / 86400000);
+    if(age > CHARTS_STALE_DAYS) issues.push(Object.assign({ status:'stale', detail:'daté du ' + d.toLocaleDateString('fr-FR') + ' — il y a ' + age + ' jours' }, s));
+  });
+  issues.total = srcs.length;
+  return issues;
+}
+/** Fenêtre de confirmation. Résout 'save' | 'update' | 'cancel'. */
+function chartsSaveConfirm(issues, label){
+  return new Promise(resolve => {
+    const old = document.getElementById('chartsSaveCheckModal'); if(old) old.remove();
+    const ov = document.createElement('div');
+    ov.id = 'chartsSaveCheckModal';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:1300;display:flex;align-items:center;justify-content:center;padding:20px';
+    const absent = issues.filter(i => i.status === 'absent'), stale = issues.filter(i => i.status === 'stale');
+    const ok = (issues.total || 0) - issues.length;
+    const row = (i, col, bg) => `<div style="display:flex;align-items:center;gap:10px;padding:8px 11px;border-radius:9px;background:${bg};border:1px solid var(--border)">
+        <span style="font-size:16px">${i.icon}</span><span style="font-size:12.5px;font-weight:800;color:var(--navy);flex:1">${escHtml(i.label)}</span>
+        <span style="font-size:11px;font-weight:700;color:${col}">${escHtml(i.detail)}</span></div>`;
+    ov.innerHTML = `<div style="background:var(--white);border-radius:16px;width:100%;max-width:620px;max-height:90vh;overflow:auto;padding:22px;box-shadow:0 20px 60px rgba(11,29,58,.35)">
+      <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy)">⚠ Avant de sauvegarder la ${escHtml(label.toLowerCase())}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5">${issues.length} classement${issues.length > 1 ? 's' : ''} sur ${issues.total} ${issues.length > 1 ? 'ne sont' : 'n\'est'} pas prêt${issues.length > 1 ? 's' : ''}. Une sauvegarde maintenant enregistrerait la semaine <b>sans ${issues.length > 1 ? 'ces données' : 'cette donnée'}</b>${ok ? ' (' + ok + ' classement' + (ok > 1 ? 's' : '') + ' à jour)' : ''}.</div>
+      ${absent.length ? `<div style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#B91C1C;margin:14px 0 6px">Non chargés / indisponibles (${absent.length})</div><div style="display:flex;flex-direction:column;gap:5px">${absent.map(i => row(i, '#B91C1C', '#FEF2F2')).join('')}</div>` : ''}
+      ${stale.length ? `<div style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#B45309;margin:14px 0 6px">Pas à jour — plus de ${CHARTS_STALE_DAYS} jours (${stale.length})</div><div style="display:flex;flex-direction:column;gap:5px">${stale.map(i => row(i, '#B45309', '#FFFBEB')).join('')}</div>` : ''}
+      <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:18px">
+        <button data-c="cancel" style="font-size:12px;font-weight:700;padding:9px 14px;border-radius:9px;border:1.5px solid var(--border);background:var(--white);color:var(--text2);cursor:pointer">Annuler</button>
+        <button data-c="save" style="font-size:12px;font-weight:800;padding:9px 14px;border-radius:9px;border:1.5px solid #F59E0B;background:#FFFBEB;color:#B45309;cursor:pointer">💾 Sauvegarder quand même</button>
+        <button data-c="update" style="font-size:12px;font-weight:800;padding:9px 16px;border-radius:9px;border:none;background:var(--navy);color:#fff;cursor:pointer">🔄 Mettre à jour les classements</button>
+      </div>
+    </div>`;
+    ov.addEventListener('click', e => {
+      const b = e.target.closest('[data-c]');
+      if(!b && e.target !== ov) return;
+      const c = b ? b.dataset.c : 'cancel';
+      ov.remove();
+      resolve(c);
+    });
+    document.body.appendChild(ov);
+  });
+}
+/** « Mettre à jour » : ouvre Classements et lance « Tout charger ». */
+function chartsSaveGoUpdate(){
+  try{ if(typeof closeFpaConfigModal === 'function') closeFpaConfigModal(); }catch(e){}
+  try{ goHome(); toggleChartsPage(); }catch(e){}
+  try{ if(typeof loadAllCharts === 'function') loadAllCharts(); }catch(e){}
+  showToast('Mise à jour des classements lancée — relancez la sauvegarde une fois terminée', 'success');
 }
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
