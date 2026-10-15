@@ -15937,6 +15937,7 @@ function renderInterimPage(){
       <span style="font-size:12px;font-weight:700;white-space:nowrap">${mediaWaveTypePill(period)}${escHtml(period.label)}</span>
       <span style="margin-left:auto"></span>
       ${detailToggle}
+      ${hasWaves ? `<button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="interimExportMobilePng('${period.id}')" title="Image PNG format mobile des derniers chiffres de cette vague">📱 PNG</button>` : ''}
       <button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="interimRemovePeriod('${period.id}')" title="Supprimer cette vague">🗑</button>
     </div>`;
 
@@ -15994,6 +15995,98 @@ function interimQuinzaineValue(waves, wi, radioKey, metric){
   if(!(own > 0)) return null;
   const q = (cur * C1 - prev * C0) / own;
   return { value: Math.round(q * 10) / 10, cur, prev, curWeeks: C1, prevWeeks: C0, ownWeeks: own, assumed };
+}
+/** Image PNG format mobile (1080 × 1920) des chiffres du dernier
+ *  intermédiaire saisi d'une vague : AC % et PDA % par radio, valeur de
+ *  quinzaine entre parenthèses, évolution vs vague officielle précédente. */
+function interimExportMobilePng(periodId){
+  const period = (interimHistory.periods || []).find(p => p.id === periodId);
+  if(!period || !(period.waves || []).length){ showToast('Aucune quinzaine dans cette vague', 'err'); return; }
+  const waves = period.waves;
+  const radios = interimGetAllRadios();
+  const num = v => { if(v === null || v === undefined || v === '') return null; const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+  // Dernier intermédiaire contenant au moins un chiffre
+  let wi = -1;
+  for(let i = waves.length - 1; i >= 0; i--){ const w = waves[i]; if(w.radios && Object.values(w.radios).some(v => num(v.AC) !== null || num(v.PDA) !== null)){ wi = i; break; } }
+  if(wi < 0){ showToast('Aucun chiffre saisi dans cette vague', 'err'); return; }
+  const w = waves[wi];
+  const prevWave = interimFindPrevChronoWave(period.waveType, period.year);
+  const rows = radios.map(r => {
+    const v = (w.radios && w.radios[r.key]) || {};
+    const ac = num(v.AC), pda = num(v.PDA);
+    if(ac === null && pda === null) return null;
+    const qAC = interimQuinzaineValue(waves, wi, r.key, 'AC'), qPDA = interimQuinzaineValue(waves, wi, r.key, 'PDA');
+    const pAC = interimResolveMetric(prevWave, r.matchSlugs, 'AC'), pPDA = interimResolveMetric(prevWave, r.matchSlugs, 'PDA');
+    return { label: r.label, priority: !!r.priority, ac, pda, qAC: qAC ? qAC.value : null, qPDA: qPDA ? qPDA.value : null,
+      dAC: (ac !== null && typeof pAC === 'number') ? Math.round((ac - pAC) * 10) / 10 : null,
+      dPDA: (pda !== null && typeof pPDA === 'number') ? Math.round((pda - pPDA) * 10) / 10 : null };
+  }).filter(Boolean);
+  // Ordre alphabétique, sans mise en avant d'aucune radio
+  const list = rows.slice().sort((a, b) => a.label.localeCompare(b.label, 'fr', { sensitivity:'base', numeric:true }));
+
+  const W = 1080, H = 1920, M = 56;
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const c = cv.getContext('2d');
+  const FONT = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+  const NAVY = '#0B1D3A', CYAN = '#00B8C8', MUTED = '#7A8BA6', TEXT = '#1E2838', VIOLET = '#7C3AED', GREEN = '#16a34a', RED = '#dc2626';
+  const fmt = v => v === null || v === undefined ? '–' : v.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 });
+  const fmtD = d => d === null ? '' : (d > 0 ? '▲ +' : d < 0 ? '▼ ' : '= ') + (d === 0 ? '0,0' : d.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 }));
+  // Fond + bandeau
+  c.fillStyle = '#F2F5FA'; c.fillRect(0, 0, W, H);
+  const grd = c.createLinearGradient(0, 0, W, 0); grd.addColorStop(0, NAVY); grd.addColorStop(1, '#16325C');
+  c.fillStyle = grd; c.fillRect(0, 0, W, 330);
+  c.fillStyle = CYAN; c.fillRect(0, 330, W, 8);
+  c.fillStyle = CYAN; c.font = `800 30px ${FONT}`; c.fillText('FIT POINT ANALYZER · MÉDIAMÉTRIE', M, 82);
+  c.fillStyle = '#fff'; c.font = `800 64px ${FONT}`; c.fillText('Intermédiaires', M, 160);
+  c.font = `700 44px ${FONT}`; c.fillText(period.label, M, 222);
+  const dates = (w.dateStart || w.dateEnd) ? ' · ' + (w.dateStart ? mediaDateToFr(w.dateStart) : '?') + ' → ' + (w.dateEnd ? mediaDateToFr(w.dateEnd) : '?') : '';
+  c.fillStyle = 'rgba(255,255,255,.78)'; c.font = `600 32px ${FONT}`; c.fillText(w.label + ' (' + (wi + 1) + '/' + waves.length + ')' + dates, M, 280);
+  // En-têtes de colonnes
+  const X = { radio: M, ac: 560, dac: 700, pda: 880, dpda: 1024 };
+  let y = 400;
+  c.fillStyle = MUTED; c.font = `800 26px ${FONT}`;
+  c.textAlign = 'left'; c.fillText('RADIO', X.radio, y);
+  c.textAlign = 'right'; c.fillText('AC %', X.ac, y); c.fillText('vs V-1', X.dac, y); c.fillText('PDA %', X.pda, y); c.fillText('vs V-1', X.dpda, y);
+  y += 22;
+  const avail = H - y - 170;
+  const rowH = Math.max(52, Math.min(92, Math.floor(avail / Math.max(1, list.length))));
+  const big = Math.min(38, Math.round(rowH * 0.42)), small = Math.min(26, Math.round(rowH * 0.3));
+  list.forEach((r, i) => {
+    const top = y + i * rowH;
+    c.fillStyle = i % 2 ? '#FFFFFF' : '#F7F9FC';
+    c.fillRect(M - 20, top, W - 2 * (M - 20), rowH - 4);
+    const hasQ = r.qAC !== null || r.qPDA !== null;
+    const mid = top + rowH / 2 + big * 0.35 - (hasQ ? small * 0.45 : 0);
+    c.textAlign = 'left'; c.fillStyle = NAVY; c.font = `700 ${big}px ${FONT}`;
+    let name = r.label; while(c.measureText(name).width > 400 && name.length > 4) name = name.slice(0, -2) + '…';
+    c.fillText(name, X.radio, mid + (hasQ ? small * 0.45 : 0));
+    c.textAlign = 'right';
+    c.fillStyle = TEXT; c.font = `800 ${big}px ${FONT}`; c.fillText(fmt(r.ac), X.ac, mid); c.fillText(fmt(r.pda), X.pda, mid);
+    if(hasQ){
+      c.fillStyle = VIOLET; c.font = `italic 800 ${small}px ${FONT}`;
+      if(r.qAC !== null) c.fillText('(' + fmt(r.qAC) + ')', X.ac, mid + small + 4);
+      if(r.qPDA !== null) c.fillText('(' + fmt(r.qPDA) + ')', X.pda, mid + small + 4);
+    }
+    c.font = `800 ${small}px ${FONT}`;
+    [[r.dAC, X.dac], [r.dPDA, X.dpda]].forEach(([d, x]) => { if(d === null) return; c.fillStyle = d > 0 ? GREEN : d < 0 ? RED : MUTED; c.fillText(fmtD(d), x, mid); });
+  });
+  // Légende
+  const ly = H - 120;
+  c.textAlign = 'left'; c.fillStyle = MUTED; c.font = `600 24px ${FONT}`;
+  c.fillStyle = VIOLET; c.font = `italic 800 24px ${FONT}`; c.fillText('(x,x)', M, ly);
+  c.fillStyle = MUTED; c.font = `600 24px ${FONT}`;
+  c.fillText('valeur de quinzaine · chiffres en moyenne cumulée depuis le début de vague', M + 78, ly);
+  c.fillText('vs V-1 : écart en points avec ' + (prevWave ? prevWave.label : 'la vague officielle précédente'), M, ly + 36);
+  c.fillText('Lundi-Vendredi · généré le ' + new Date().toLocaleDateString('fr-FR'), M, ly + 72);
+  cv.toBlob(blob => {
+    if(!blob){ showToast('Image impossible à générer', 'err'); return; }
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = ('Intermediaires_' + period.label + '_' + w.label).replace(/[^\w\-]+/g, '_') + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    showToast('✓ Image mobile générée — ' + period.label + ' · ' + w.label, 'success');
+  }, 'image/png');
 }
 /** Tableau d'une vague Intermédiaires concurrence : une ligne par radio, un
  *  groupe de 2 colonnes (AC/PDA) par quinzaine. Chaque valeur saisie compare
