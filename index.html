@@ -15962,6 +15962,39 @@ function interimTogglePeriodExpand(periodId){
   renderInterimPage();
 }
 
+/** Valeur de quinzaine : les chiffres intermédiaires saisis sont des moyennes
+ *  CUMULÉES depuis le début de la vague (ex. 1,9 sur 4 semaines, puis 2,0 sur
+ *  6 semaines). Le chiffre propre à la dernière période se déduit en pondérant
+ *  par le nombre de semaines :  q = (V_k·C_k − V_{k-1}·C_{k-1}) / (C_k − C_{k-1}).
+ *  Semaines lues dans les dates saisies (cumulées si toutes les quinzaines
+ *  partent du même jour, consécutives sinon) ; à défaut 4 puis 2 semaines. */
+function interimWeeksOf(w){
+  const d = s => { if(!s) return null; const t = new Date(String(s).slice(0, 10) + 'T12:00:00'); return isNaN(t) ? null : t; };
+  const a = d(w && w.dateStart), b = d(w && w.dateEnd);
+  if(!a || !b || b < a) return null;
+  return Math.max(1, Math.round(((b - a) / 86400000 + 1) / 7));
+}
+function interimQuinzaineValue(waves, wi, radioKey, metric){
+  if(wi < 1) return null;
+  const num = v => { if(v === null || v === undefined || v === '') return null; const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+  const val = w => num(w && w.radios && w.radios[radioKey] ? w.radios[radioKey][metric] : null);
+  const cur = val(waves[wi]), prev = val(waves[wi - 1]);
+  if(cur === null || prev === null) return null;
+  // Semaines cumulées à chaque intermédiaire
+  const durs = waves.slice(0, wi + 1).map(interimWeeksOf);
+  let cum = [], assumed = false;
+  const sameStart = waves.slice(0, wi + 1).every(w => w.dateStart && w.dateStart === waves[0].dateStart);
+  if(durs.every(x => x) && sameStart && wi > 0){
+    cum = durs;                                         // dates cumulées (même début de vague)
+  } else {
+    let s = 0;
+    cum = durs.map((x, i) => { if(!x){ assumed = true; x = i === 0 ? 4 : 2; } s += x; return s; });
+  }
+  const C1 = cum[wi], C0 = cum[wi - 1], own = C1 - C0;
+  if(!(own > 0)) return null;
+  const q = (cur * C1 - prev * C0) / own;
+  return { value: Math.round(q * 10) / 10, cur, prev, curWeeks: C1, prevWeeks: C0, ownWeeks: own, assumed };
+}
 /** Tableau d'une vague Intermédiaires concurrence : une ligne par radio, un
  *  groupe de 2 colonnes (AC/PDA) par quinzaine. Chaque valeur saisie compare
  *  automatiquement cette radio à la dernière vague officielle connue
@@ -15990,13 +16023,15 @@ function interimWaveDetailTableHtml(period, radios){
   // Europe 2 / RFM / Europe 1 (voir INTERIM_RADIO_WHITELIST, priority:true)
   // groupées en haut avec un fond distinct, séparées du reste par un trait.
   const rows = radios.map((r, idx) => {
-    const cells = waves.map(w => {
+    const cells = waves.map((w, wi) => {
       const v = (w.radios && w.radios[r.key]) || { AC:null, PDA:null };
       return ['AC','PDA'].map(metric => {
+        const qz = interimQuinzaineValue(waves, wi, r.key, metric);
         const prevVal = interimResolveMetric(prevChronoWave, r.matchSlugs, metric);
         const yearVal = interimResolveMetric(prevYearWave, r.matchSlugs, metric);
         return `<td style="padding:5px 8px;text-align:center;border-left:${metric==='AC'?'1.5px solid var(--border)':'none'}">
-        <input type="text" inputmode="decimal" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:48px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border);text-align:center" onchange="interimUpdateRadioMetric('${period.id}','${w.id}','${r.key}','${metric}',this.value)">
+        <input type="text" inputmode="decimal" data-ik="${period.id}|${w.id}|${r.key}|${metric}" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:48px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border);text-align:center" onchange="interimUpdateRadioMetric('${period.id}','${w.id}','${r.key}','${metric}',this.value)">
+        ${qz ? `<div title="${escHtml('Valeur de quinzaine — chiffre propre aux ' + qz.ownWeeks + ' dernière(s) semaine(s), déduit des moyennes cumulées : (' + qz.cur + ' × ' + qz.curWeeks + ' sem. − ' + qz.prev + ' × ' + qz.prevWeeks + ' sem.) ÷ ' + qz.ownWeeks + ' sem.' + (qz.assumed ? ' — durées supposées (4 sem. puis 2 sem.) faute de dates saisies' : ''))}" style="margin-top:3px;font-size:10.5px;font-weight:800;color:#7C3AED;font-style:italic;white-space:nowrap">(${qz.value.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 })})</div>` : ''}
         <div style="display:flex;flex-direction:column;gap:1px;margin-top:3px;align-items:center">${interimEvolutionBadge(v[metric], prevVal, prevChronoWave?prevChronoWave.label:'', 'V-1')}${interimEvolutionBadge(v[metric], yearVal, prevYearWave?prevYearWave.label:'', 'N-1')}</div>
       </td>`;
       }).join('');
@@ -16006,7 +16041,8 @@ function interimWaveDetailTableHtml(period, radios){
     return `<tr style="${rowStyle}"><td style="padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap">${escHtml(r.label)}</td>${cells}</tr>`;
   }).join('');
 
-  return `<div style="overflow-x:auto">
+  return `<div style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.5"><span style="font-weight:800;color:#7C3AED;font-style:italic">(x,x) Valeur de quinzaine</span> — chaque chiffre saisi est une moyenne cumulée depuis le début de la vague ; FPA en déduit le chiffre propre à la dernière période, pondéré par le nombre de semaines (dates des quinzaines, ou à défaut 4 semaines puis 2 semaines). Rien à calculer pour le premier intermédiaire.</div>
+  <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;min-width:600px">
       <thead>
         <tr><th style="padding:7px 10px;text-align:left"></th>${waveHeaders}</tr>
@@ -16497,6 +16533,13 @@ function interimUpdateRadioMetric(periodId, waveId, slug, metric, value){
   wave.radios[slug][metric] = (n==null || isNaN(n)) ? null : n;
   interimSaveLocal();
   if(DRIVE_SYNC_URL) interimSaveToDrive();
+  // Rafraîchit le tableau (valeurs de quinzaine, évolutions) en gardant le
+  // curseur dans le champ où l'utilisateur est passé (Tab / clic)
+  setTimeout(() => {
+    const a = document.activeElement, key = a && a.dataset ? a.dataset.ik : null;
+    renderInterimPage();
+    if(key){ const n = document.querySelector('[data-ik="' + key + '"]'); if(n){ n.focus(); try{ n.select(); }catch(e){} } }
+  }, 0);
 }
 
 /** Même logique/habillage visuel que mediaEvolutionBadge, mais comparant une
