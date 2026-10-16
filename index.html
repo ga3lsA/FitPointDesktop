@@ -16150,16 +16150,21 @@ function interimWaveDetailTableHtml(period, radios){
         const qz = interimQuinzaineValue(waves, wi, r.key, metric);
         const prevVal = interimResolveMetric(prevChronoWave, r.matchSlugs, metric);
         const yearVal = interimResolveMetric(prevYearWave, r.matchSlugs, metric);
-        return `<td style="padding:5px 8px;text-align:center;border-left:${metric==='AC'?'1.5px solid var(--border)':'none'}">
-        <input type="text" inputmode="decimal" data-ik="${period.id}|${w.id}|${r.key}|${metric}" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:48px;font-size:11.5px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border);text-align:center" onchange="interimUpdateRadioMetric('${period.id}','${w.id}','${r.key}','${metric}',this.value)">
-        ${qz ? `<div title="${escHtml('Valeur de quinzaine — chiffre propre aux ' + qz.ownWeeks + ' dernière(s) semaine(s), déduit des moyennes cumulées : (' + qz.cur + ' × ' + qz.curWeeks + ' sem. − ' + qz.prev + ' × ' + qz.prevWeeks + ' sem.) ÷ ' + qz.ownWeeks + ' sem.' + (qz.assumed ? ' — durées supposées (4 sem. puis 2 sem.) faute de dates saisies' : ''))}" style="margin-top:3px;font-size:10.5px;font-weight:800;color:#7C3AED;font-style:italic;white-space:nowrap">(${qz.value.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 })})</div>` : ''}
-        <div style="display:flex;flex-direction:column;gap:1px;margin-top:3px;align-items:center">${interimEvolutionBadge(v[metric], prevVal, prevChronoWave?prevChronoWave.label:'', 'V-1')}${interimEvolutionBadge(v[metric], yearVal, prevYearWave?prevYearWave.label:'', 'N-1')}</div>
+        return `<td style="padding:3px 8px;vertical-align:middle;border-left:${metric==='AC'?'1.5px solid var(--border)':'none'}">
+        <div style="display:grid;grid-template-columns:64px 176px;align-items:center;justify-content:center;column-gap:10px">
+        <input type="text" inputmode="decimal" data-ik="${period.id}|${w.id}|${r.key}|${metric}" value="${v[metric]==null?'':v[metric]}" placeholder="–" style="width:64px;box-sizing:border-box;font-size:16px;font-weight:800;color:var(--navy);padding:2px 6px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);text-align:center;font-variant-numeric:tabular-nums" onchange="interimUpdateRadioMetric('${period.id}','${w.id}','${r.key}','${metric}',this.value)">
+        <div style="display:flex;flex-direction:column;align-items:flex-start;gap:1px;line-height:1.15;text-align:left">
+        ${qz ? `<div title="${escHtml('Valeur de quinzaine — chiffre propre aux ' + qz.ownWeeks + ' dernière(s) semaine(s), déduit des moyennes cumulées : (' + qz.cur + ' × ' + qz.curWeeks + ' sem. − ' + qz.prev + ' × ' + qz.prevWeeks + ' sem.) ÷ ' + qz.ownWeeks + ' sem.' + (qz.assumed ? ' — durées supposées (4 sem. puis 2 sem.) faute de dates saisies' : ''))}" style="font-size:10.5px;font-weight:800;color:#7C3AED;font-style:italic;white-space:nowrap;line-height:1.2">(${qz.value.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 })})</div>` : ''}
+        <div style="display:grid;grid-template-columns:88px 88px;align-items:center">${interimEvolutionBadge(v[metric], prevVal, prevChronoWave?prevChronoWave.label:'', 'V-1')}${interimEvolutionBadge(v[metric], yearVal, prevYearWave?prevYearWave.label:'', 'N-1')}</div>
+        </div>
+        </div>
       </td>`;
       }).join('');
     }).join('');
     const isLastPriority = r.priority && !(radios[idx+1] && radios[idx+1].priority);
-    const rowStyle = (r.priority ? 'background:var(--cyan-light);' : '') + (isLastPriority ? 'border-bottom:2.5px solid var(--cyan-mid);' : '');
-    return `<tr style="${rowStyle}"><td style="padding:7px 10px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap">${escHtml(r.label)}</td>${cells}</tr>`;
+    // Fonds gris alternés (radios de référence en cyan clair), interligne resserré
+    const rowStyle = (r.priority ? 'background:var(--cyan-light);' : (idx % 2 ? 'background:var(--white);' : 'background:#EEF2F7;')) + 'border-bottom:1px solid #DFE5EE;' + (isLastPriority ? 'border-bottom:2.5px solid var(--cyan-mid);' : '');
+    return `<tr style="${rowStyle}"><td style="padding:3px 12px;font-size:12.5px;font-weight:800;color:var(--navy);white-space:nowrap">${escHtml(r.label)}</td>${cells}</tr>`;
   }).join('');
 
   return `<div style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.5"><span style="font-weight:800;color:#7C3AED;font-style:italic">(x,x) Valeur de quinzaine</span> — chaque chiffre saisi est une moyenne cumulée depuis le début de la vague ; FPA en déduit le chiffre propre à la dernière période, pondéré par le nombre de semaines (dates des quinzaines, ou à défaut 4 semaines puis 2 semaines). Rien à calculer pour le premier intermédiaire.</div>
