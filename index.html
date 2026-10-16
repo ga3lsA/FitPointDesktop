@@ -16121,6 +16121,24 @@ function interimExportMobilePng(periodId){
  *  automatiquement cette radio à la dernière vague officielle connue
  *  d'Historique Marché (V-1) et à la même vague l'an dernier (N-1) — jamais
  *  à une autre quinzaine intermédiaire. */
+const INTERIM_SORTS = [
+  { k:'default', l:'Ordre habituel' }, { k:'alpha', l:'Radio A→Z' },
+  { k:'ac', l:'AC %' }, { k:'dvac', l:'Évol. V-1 AC' }, { k:'dnac', l:'Évol. N-1 AC' },
+  { k:'pda', l:'PDA %' }, { k:'dvpda', l:'Évol. V-1 PDA' }, { k:'dnpda', l:'Évol. N-1 PDA' }
+];
+function interimSetSort(k){
+  if(interimUI.sortKey === k && k !== 'default') interimUI.sortDir = interimUI.sortDir === 'desc' ? 'asc' : 'desc';
+  else { interimUI.sortKey = k; interimUI.sortDir = k === 'alpha' ? 'asc' : 'desc'; }
+  renderInterimPage();
+}
+function interimSortBarHtml(){
+  const cur = interimUI.sortKey || 'default';
+  return `<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:8px">
+    <span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:3px">Trier par</span>
+    ${INTERIM_SORTS.map(s => { const on = s.k === cur; const ar = on && s.k !== 'default' ? (s.k === 'alpha' ? (interimUI.sortDir === 'asc' ? ' ↑' : ' ↓') : (interimUI.sortDir === 'desc' ? ' ↓' : ' ↑')) : '';
+      return `<button onclick="interimSetSort('${s.k}')" title="${s.k === 'default' ? 'Europe 2, RFM, Europe 1 en tête' : 'Dernière quinzaine saisie — cliquer à nouveau pour inverser'}" style="font-size:10.5px;font-weight:800;padding:4px 10px;border-radius:20px;cursor:pointer;border:1.5px solid ${on ? 'var(--navy)' : 'var(--border)'};background:${on ? 'var(--navy)' : 'var(--white)'};color:${on ? '#fff' : 'var(--text2)'}">${s.l}${ar}</button>`; }).join('')}
+  </div>`;
+}
 function interimWaveDetailTableHtml(period, radios){
   const waves = period.waves || [];
   if(!waves.length) return '<div style="font-size:12px;color:var(--muted);padding:8px">Aucune quinzaine pour cette vague — cliquez sur "+ Ajouter une quinzaine".</div>';
@@ -16141,6 +16159,29 @@ function interimWaveDetailTableHtml(period, radios){
     </th>`).join('');
   const subHeaders = waves.map(() => `<th style="padding:5px 8px;font-size:9.5px;color:var(--muted);text-align:center;border-left:1.5px solid var(--border)">AC %</th><th style="padding:5px 8px;font-size:9.5px;color:var(--muted);text-align:center">PDA %</th>`).join('');
 
+  // Tri (barre « Trier par ») : sur la dernière quinzaine saisie de la vague
+  const sortKey = interimUI.sortKey || 'default';
+  if(sortKey !== 'default'){
+    const num = v => { if(v === null || v === undefined || v === '') return null; const n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? null : n; };
+    let lw = null;
+    for(let i = waves.length - 1; i >= 0 && !lw; i--){ if(waves[i].radios && Object.values(waves[i].radios).some(v => num(v.AC) !== null || num(v.PDA) !== null)) lw = waves[i]; }
+    const metric = /pda/i.test(sortKey) ? 'PDA' : 'AC';
+    const key = r => {
+      if(sortKey === 'alpha') return r.label;
+      const cur = lw && lw.radios && lw.radios[r.key] ? num(lw.radios[r.key][metric]) : null;
+      if(sortKey === 'ac' || sortKey === 'pda') return cur;
+      const ref = interimResolveMetric(/^dv/.test(sortKey) ? prevChronoWave : prevYearWave, r.matchSlugs, metric);
+      return (cur !== null && typeof ref === 'number') ? cur - ref : null;
+    };
+    const dir = interimUI.sortDir === 'asc' ? 1 : -1;
+    radios = radios.slice().sort((a, b) => {
+      const av = key(a), bv = key(b);
+      if(av === null && bv === null) return 0;
+      if(av === null) return 1; if(bv === null) return -1;
+      if(typeof av === 'string') return av.localeCompare(bv, 'fr', { sensitivity:'base' }) * dir * -1;
+      return (av - bv) * dir;
+    });
+  }
   // Europe 2 / RFM / Europe 1 (voir INTERIM_RADIO_WHITELIST, priority:true)
   // groupées en haut avec un fond distinct, séparées du reste par un trait.
   const rows = radios.map((r, idx) => {
@@ -16161,13 +16202,13 @@ function interimWaveDetailTableHtml(period, radios){
       </td>`;
       }).join('');
     }).join('');
-    const isLastPriority = r.priority && !(radios[idx+1] && radios[idx+1].priority);
+    const isLastPriority = sortKey === 'default' && r.priority && !(radios[idx+1] && radios[idx+1].priority);
     // Fonds gris alternés (radios de référence en cyan clair), interligne resserré
-    const rowStyle = (r.priority ? 'background:var(--cyan-light);' : (idx % 2 ? 'background:var(--white);' : 'background:#EEF2F7;')) + 'border-bottom:1px solid #DFE5EE;' + (isLastPriority ? 'border-bottom:2.5px solid var(--cyan-mid);' : '');
+    const rowStyle = (r.priority && sortKey === 'default' ? 'background:var(--cyan-light);' : (idx % 2 ? 'background:var(--white);' : 'background:#EEF2F7;')) + 'border-bottom:1px solid #DFE5EE;' + (isLastPriority ? 'border-bottom:2.5px solid var(--cyan-mid);' : '');
     return `<tr style="${rowStyle}"><td style="padding:3px 12px;font-size:12.5px;font-weight:800;color:var(--navy);white-space:nowrap">${escHtml(r.label)}</td>${cells}</tr>`;
   }).join('');
 
-  return `<div style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.5"><span style="font-weight:800;color:#7C3AED;font-style:italic">(x,x) Valeur de quinzaine</span> — chaque chiffre saisi est une moyenne cumulée depuis le début de la vague ; FPA en déduit le chiffre propre à la dernière période, pondéré par le nombre de semaines (dates des quinzaines, ou à défaut 4 semaines puis 2 semaines). Rien à calculer pour le premier intermédiaire.</div>
+  return `${interimSortBarHtml()}<div style="font-size:11px;color:var(--text2);margin-bottom:8px;line-height:1.5"><span style="font-weight:800;color:#7C3AED;font-style:italic">(x,x) Valeur de quinzaine</span> — chaque chiffre saisi est une moyenne cumulée depuis le début de la vague ; FPA en déduit le chiffre propre à la dernière période, pondéré par le nombre de semaines (dates des quinzaines, ou à défaut 4 semaines puis 2 semaines). Rien à calculer pour le premier intermédiaire.</div>
   <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;min-width:600px">
       <thead>
@@ -16295,7 +16336,7 @@ let marcheHistory   = { waves:{} };
 let marcheAliasMap  = { 'france-bleu':'ici', 'virgin-radio':'europe-2' }; // rebrandings connus (France Bleu → ici, janv. 2025 ; Virgin Radio → Europe 2)
 let marcheDriveLoaded = false;
 let marcheInnerTabState = 'pdf';
-let marcheUI = { waveId:null, period:'LV', category:'station', search:'', sortBy:'ac' };
+let marcheUI = { waveId:null, period:'LV', category:'station', search:'', sortBy:'ac', sortField:'ac', sortKind:'val', sortDir:'desc' };
 let marcheImportQueue = []; // [{ fileName, waveType, year, label, gridRows:[...], warnings:[] }]
 let mediaInnerTab = 'live';
 
@@ -16482,7 +16523,7 @@ const INTERIM_LOCAL_KEY = 'fpa_interim_concurrence_v1';
 const INTERIM_DRIVE_KEY = 'interim_concurrence';
 let interimHistory = { periods: [] };
 let interimDriveLoaded = false;
-let interimUI = { expandedPeriods: new Set() };
+let interimUI = { expandedPeriods: new Set(), sortKey:'default', sortDir:'desc' };
 
 function interimLoadLocal(){
   try{
@@ -17506,6 +17547,11 @@ function marcheRadioLabelColor(label){
   return 'var(--navy)';
 }
 
+function marcheSetSort(field, kind){
+  if(marcheUI.sortField === field && (field === 'radio' || marcheUI.sortKind === kind)) marcheUI.sortDir = marcheUI.sortDir === 'desc' ? 'asc' : 'desc';
+  else { marcheUI.sortField = field; marcheUI.sortKind = kind; marcheUI.sortDir = field === 'radio' ? 'asc' : 'desc'; }
+  renderMarchePage();
+}
 function marcheTableHtml(){
   const w = marcheHistory.waves[marcheUI.waveId];
   const prevChrono = marcheFindPrevChrono(marcheUI.waveId);
@@ -17518,29 +17564,47 @@ function marcheTableHtml(){
     const q = mediaSlugify(marcheUI.search).replace(/-/g, '');
     rows = rows.filter(r => mediaSlugify(r.ent.label).replace(/-/g, '').includes(q));
   }
+  // Tri : radio (alphabétique), ou AC / PDA / DEA — valeur, Δ vague, Δ N-1
+  const sk = r => {
+    if(marcheUI.sortField === 'radio') return r.ent.label;
+    const cur = (r.ent[period] || {})[marcheUI.sortField];
+    if(marcheUI.sortKind === 'val') return cur ?? null;
+    const other = marcheUI.sortKind === 'dv' ? prevChrono : prevYear;
+    const o = other && other.entities[r.slug] ? (other.entities[r.slug][period] || {})[marcheUI.sortField] : null;
+    return (cur != null && o != null) ? cur - o : null;
+  };
+  const dir = marcheUI.sortDir === 'asc' ? 1 : -1;
   rows.sort((a,b) => {
-    const av = (a.ent[period]||{}).ac, bv = (b.ent[period]||{}).ac;
+    const av = sk(a), bv = sk(b);
     if(av==null && bv==null) return 0;
     if(av==null) return 1; if(bv==null) return -1;
-    return bv-av;
+    if(typeof av === 'string') return av.localeCompare(bv, 'fr', { sensitivity:'base' }) * (marcheUI.sortDir === 'asc' ? 1 : -1);
+    return (av - bv) * dir;
   });
   if(!rows.length){
     return `<div style="padding:30px;text-align:center;color:var(--muted);font-size:12.5px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">Aucune radio dans cette catégorie pour ${w.label} (${period==='LV'?'Lundi-Vendredi':'Samedi-Dimanche'}).</div>`;
   }
   const groupHead = (title) => `<th colspan="3" style="padding:4px 10px;text-align:center;border-left:2px solid var(--border);border-bottom:1px solid var(--border)">${title}</th>`;
-  const subHead = (isFirst) => `
-      <th style="padding:3px 4px 5px 14px;text-align:left;font-weight:400;${isFirst?'border-left:2px solid var(--border)':''}">Valeur</th>
-      <th style="padding:3px 4px 5px;text-align:left;font-weight:400" title="Évolution vs vague précédente${prevChrono?' ('+escHtml(prevChrono.label)+')':''}">Δ Vague</th>
-      <th style="padding:3px 10px 5px 4px;text-align:left;font-weight:400" title="Évolution vs même période N-1${prevYear?' ('+escHtml(prevYear.label)+')':''}">Δ N-1</th>`;
-  return `<div style="overflow-x:auto">
+  // En-têtes cliquables : un clic trie (décroissant), un second inverse l'ordre
+  const sortTh = (field, kind, label, extra, tip) => {
+    const on = marcheUI.sortField === field && (field === 'radio' || marcheUI.sortKind === kind);
+    const arrow = on ? (marcheUI.sortDir === 'desc' ? ' ↓' : ' ↑') : '';
+    return `<th onclick="marcheSetSort('${field}','${kind}')" title="${escHtml((tip || '') + ' — cliquer pour trier')}" style="cursor:pointer;user-select:none;${extra};${on ? 'color:var(--navy);font-weight:800;' : 'font-weight:400;'}">${label}${arrow}</th>`;
+  };
+  const subHead = (field, isFirst) => `
+      ${sortTh(field, 'val', 'Valeur', 'padding:3px 4px 5px 14px;text-align:left;' + (isFirst ? 'border-left:2px solid var(--border)' : ''), 'Valeur')}
+      ${sortTh(field, 'dv', 'Δ Vague', 'padding:3px 4px 5px;text-align:left', 'Évolution vs vague précédente' + (prevChrono ? ' (' + prevChrono.label + ')' : ''))}
+      ${sortTh(field, 'dn', 'Δ N-1', 'padding:3px 10px 5px 4px;text-align:left', 'Évolution vs même période N-1' + (prevYear ? ' (' + prevYear.label + ')' : ''))}`;
+  return `<div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">↕ Cliquez sur un en-tête — Radio, Valeur, Δ Vague ou Δ N-1 de l'AC, de la PDA ou de la DEA — pour trier ; un second clic inverse l'ordre.</div>
+  <div style="overflow-x:auto">
   <table style="width:100%;border-collapse:collapse;font-size:12px">
     <thead>
       <tr style="text-align:left;color:var(--text2);font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em">
-        <th rowspan="2" style="padding:6px 10px;vertical-align:bottom;border-bottom:1.5px solid var(--border)">Radio</th>
+        <th rowspan="2" onclick="marcheSetSort('radio','val')" title="Trier par nom de radio" style="cursor:pointer;user-select:none;padding:6px 10px;vertical-align:bottom;border-bottom:1.5px solid var(--border)">Radio${marcheUI.sortField === 'radio' ? (marcheUI.sortDir === 'asc' ? ' ↑' : ' ↓') : ''}</th>
         ${groupHead('AC %')}${groupHead('PDA %')}${groupHead('DEA')}
       </tr>
       <tr style="text-align:right;color:var(--muted);font-size:9px;text-transform:none;border-bottom:1.5px solid var(--border)">
-        ${subHead(true)}${subHead(false)}${subHead(false)}
+        ${subHead('ac', true)}${subHead('pda', true)}${subHead('dea', true)}
       </tr>
     </thead>
     <tbody>
