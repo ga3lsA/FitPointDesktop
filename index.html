@@ -22046,6 +22046,7 @@ async function openTevByInfo(info){
       ${typeof formatBadgeHtml === 'function' ? formatBadgeHtml(title, artist, 'lg') : ''}
     </div>
     ${typeof marketingBadgesHtml === 'function' ? marketingBadgesHtml(title, artist) : ''}
+    <div id="tevSpotifyStreams" style="grid-column:1/-1"></div>
     <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date d'entrée Europe 2
       <input type="date" value="${songAttrs.dateEntreeEurope2 || ''}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','dateEntreeEurope2',this.value)"
         style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
@@ -22133,6 +22134,7 @@ async function openTevByInfo(info){
   catch(e){ console.warn('Fiche — historique de diffusion', e); }
 
   document.getElementById('tevBody').innerHTML = sections.join('');
+  if(typeof kworbStreamsRenderInto === 'function') kworbStreamsRenderInto('tevSpotifyStreams', title, artist);
   updateTevNavUI();
   mbUpdateTevBadge();
 }
@@ -24710,7 +24712,7 @@ function buildDiffusionAttrField(label, diffEntry, field){
   const at  = diffEntry ? diffEntry[field + 'At'] : '';
   const display = (val !== null && val !== undefined)
     ? `<strong style="color:var(--navy)">${val}</strong>${at ? ' <span style="color:var(--muted);font-weight:600">— au ' + formatDateFr(at) + '</span>' : ''}`
-    : `<span style="color:var(--muted)">— (aucun import avec colonne Diffusion pour l'instant)</span>`;
+    : `<span style="color:var(--muted)" title="Aucun import avec colonne Diffusion pour l'instant">—</span>`;
   return `<label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">${escHtml(label)}
       <div style="margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;background:var(--bg);min-height:19px;display:flex;align-items:center" title="Alimenté automatiquement depuis la colonne Diffusion des imports Call Out/OMT">${display}</div>
     </label>`;
@@ -45749,6 +45751,285 @@ function chartsSaveGoUpdate(){
   try{ if(typeof loadAllCharts === 'function') loadAllCharts(); }catch(e){}
   showToast('Mise à jour des classements lancée — relancez la sauvegarde une fois terminée', 'success');
 }
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STREAMS SPOTIFY (source unique : kworb.net)
+     • kworb publie, pour chaque artiste, la liste de ses titres avec le total
+       de streams Spotify (monde, depuis la sortie) et les streams du dernier
+       jour (page artist/<id>_songs.html, « Last updated »).
+     • L'identifiant Spotify de l'artiste est trouvé dans les pages kworb
+       (classement des artistes, auditeurs mensuels, Top France quotidien/
+       hebdo) ; à défaut, association manuelle (lien kworb ou Spotify).
+     • FPA garde un relevé daté par titre (total + quotidien) : c'est ce qui
+       donne l'évolution quotidienne, les streams de la semaine et
+       l'évolution hebdomadaire. Relevés partagés entre postes via Drive Sync.
+     • Relevé automatique une fois par jour des titres de la Playlist.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaKworbStreamsJs">
+const KWS_HIST_KEY = 'fpa_spotify_streams_v1';
+const KWS_INDEX_KEY = 'fpa_kworb_artist_index_v1';
+const KWS_MAP_KEY = 'fpa_kworb_artist_map_v1';
+const KWS_DRIVE_KEY = 'spotify_streams_hist';
+const KWS_KEEP_DAYS = 45;
+const kwsSongsCache = {};          // artistId → { date, songs[], fetchedAt } (session)
+let kwsIndexPromise = null;
+let kwsDriveTimer = null, kwsDriveLoaded = false;
+
+function kwsLoad(key, dflt){ try{ return JSON.parse(localStorage.getItem(key) || 'null') || dflt; }catch(e){ return dflt; } }
+function kwsSave(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch(e){ console.warn('Streams — stockage', e); } }
+function kwsNum(s){ const n = parseInt(String(s || '').replace(/[^\d]/g, ''), 10); return isNaN(n) ? null : n; }
+function kwsIso(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function kwsAddDays(iso, n){ const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return kwsIso(d); }
+function kwsFetch(url, parser){ return fetchKworbPage(url, html => { try{ return parser(html); }catch(e){ return null; } }); }
+
+/* ── Index « nom d'artiste → identifiant Spotify » (pages kworb) ───── */
+function kwsParseArtistLinks(html){
+  const out = {};
+  const re = /href="(?:[^"]*\/)?artist\/([A-Za-z0-9]{22})(?:_songs|_albums)?\.html"[^>]*>([^<]+)</g;
+  let m;
+  while((m = re.exec(html))){
+    const name = m[2].replace(/&amp;/g, '&').replace(/&#39;|&apos;/g, "'").replace(/&quot;/g, '"').trim();
+    const k = norm(name);
+    if(k && !out[k]) out[k] = m[1];
+  }
+  return Object.keys(out).length ? out : null;
+}
+async function kwsArtistIndex(force){
+  const cached = kwsLoad(KWS_INDEX_KEY, null);
+  if(!force && cached && cached.at && (Date.now() - cached.at) < 7 * 86400000 && Object.keys(cached.map || {}).length) return cached.map;
+  if(kwsIndexPromise) return kwsIndexPromise;
+  kwsIndexPromise = (async () => {
+    const pages = ['https://kworb.net/spotify/artists.html', 'https://kworb.net/spotify/listeners.html',
+      'https://kworb.net/spotify/country/fr_daily.html', 'https://kworb.net/spotify/country/fr_weekly.html'];
+    const map = Object.assign({}, (cached && cached.map) || {});
+    for(const u of pages){
+      const r = await kwsFetch(u, kwsParseArtistLinks);
+      if(r) Object.assign(map, r);
+    }
+    if(Object.keys(map).length) kwsSave(KWS_INDEX_KEY, { at: Date.now(), map });
+    kwsIndexPromise = null;
+    return map;
+  })();
+  return kwsIndexPromise;
+}
+/** Identifiant(s) Spotify des artistes d'un titre (« A & B », « A X B »…). */
+async function kwsArtistIds(artist){
+  const manual = kwsLoad(KWS_MAP_KEY, {});
+  const parts = String(artist || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s|\bvs\.?\s|\bet\s)\s*/i).map(s => s.trim()).filter(Boolean);
+  const keys = [norm(artist || '')].concat(parts.map(norm));
+  const ids = [];
+  keys.forEach(k => { if(manual[k] && !ids.includes(manual[k])) ids.push(manual[k]); });
+  if(ids.length) return ids;
+  const idx = await kwsArtistIndex(false);
+  keys.forEach(k => { if(idx && idx[k] && !ids.includes(idx[k])) ids.push(idx[k]); });
+  return ids;
+}
+
+/* ── Page « titres » d'un artiste ──────────────────────────────────── */
+function kwsParseSongs(html){
+  const um = html.match(/Last updated:\s*(\d{4})\/(\d{2})\/(\d{2})/i);
+  const date = um ? um[1] + '-' + um[2] + '-' + um[3] : kwsIso(new Date());
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const songs = [];
+  doc.querySelectorAll('tr').forEach(tr => {
+    const a = tr.querySelector('a[href*="track/"]');
+    if(!a) return;
+    const idm = (a.getAttribute('href') || '').match(/track\/([A-Za-z0-9]{22})/);
+    const tds = tr.querySelectorAll('td');
+    if(!idm || tds.length < 2) return;
+    const nums = Array.from(tds).slice(1).map(td => kwsNum(td.textContent));
+    songs.push({ id: idm[1], title: a.textContent.trim(), feat: /^\s*\*/.test(tds[0].textContent), total: nums[0], daily: nums[1] ?? null });
+  });
+  return songs.length ? { date, songs } : null;
+}
+async function kwsArtistSongs(artistId){
+  const c = kwsSongsCache[artistId];
+  if(c && (Date.now() - c.fetchedAt) < 6 * 3600000) return c;
+  const r = await kwsFetch('https://kworb.net/spotify/artist/' + artistId + '_songs.html', kwsParseSongs);
+  if(r){ r.fetchedAt = Date.now(); r.artistId = artistId; kwsSongsCache[artistId] = r; }
+  return r;
+}
+/** Titre kworb correspondant (titre identique ou très proche ; à égalité,
+ *  la version la plus écoutée — exclut « Live », « Remix »… sauf s'ils sont
+ *  dans le titre FPA). */
+function kwsMatchSong(songs, title){
+  const nT = norm(String(title || '').replace(/\(feat[^)]*\)/i, ''));
+  const vers = /\b(live|ao vivo|remix|acoustic|acoustique|version|edit|instrumental|karaoke|sped up|slowed)\b/i;
+  const allowVers = vers.test(title || '');
+  let best = null, bestS = 0;
+  songs.forEach(s => {
+    const sT = norm(String(s.title || '').replace(/\s*[-–]\s*(live|ao vivo).*$/i, '').replace(/\(feat[^)]*\)|\(with[^)]*\)/ig, ''));
+    let sc = sT === nT ? 1 : similarity(nT, sT);
+    if(!allowVers && vers.test(s.title)) sc -= 0.2;
+    if(sc > bestS + 1e-9 || (Math.abs(sc - bestS) < 1e-9 && best && (s.total || 0) > (best.total || 0))){ best = s; bestS = sc; }
+  });
+  return bestS >= 0.85 ? best : null;
+}
+
+/* ── Relevés datés (historique) ────────────────────────────────────── */
+function kwsHist(){ return kwsLoad(KWS_HIST_KEY, {}); }
+function kwsRecord(song, date, title, artist){
+  const h = kwsHist();
+  const e = h[song.id] || (h[song.id] = { t: title, a: artist, snaps:{} });
+  e.t = title; e.a = artist;
+  e.snaps[date] = { tot: song.total, day: song.daily };
+  const keep = kwsAddDays(date, -KWS_KEEP_DAYS);
+  Object.keys(e.snaps).forEach(d => { if(d < keep) delete e.snaps[d]; });
+  kwsSave(KWS_HIST_KEY, h);
+  kwsDriveSchedule();
+  return e;
+}
+/** Chiffres et évolutions à partir des relevés. */
+function kwsMetrics(e, date){
+  const s = e.snaps, cur = s[date];
+  if(!cur) return null;
+  const at = d => s[d] || null;
+  const prevDay = at(kwsAddDays(date, -1));
+  // Semaine : total(J) − total(J−7) ; à défaut, relevé le plus proche (5 à 9 jours) ramené à 7 jours
+  const nearest = (from, lo, hi) => { for(let k = lo; k <= hi; k++){ const v = at(kwsAddDays(from, -k)); if(v && v.tot != null) return { v, k }; } return null; };
+  const w0 = nearest(date, 7, 7) || nearest(date, 5, 9);
+  const weekly = (w0 && cur.tot != null) ? Math.round((cur.tot - w0.v.tot) * 7 / w0.k) : null;
+  let weeklyPrev = null;
+  if(w0){
+    const d1 = kwsAddDays(date, -w0.k), w1 = nearest(d1, 7, 7) || nearest(d1, 5, 9);
+    if(w1 && w0.v.tot != null) weeklyPrev = Math.round((w0.v.tot - w1.v.tot) * 7 / w1.k);
+  }
+  return {
+    total: cur.tot, daily: cur.day,
+    dailyPrev: prevDay ? prevDay.day : null,
+    weekly, weeklyEstimated: weekly === null && cur.day != null ? cur.day * 7 : null,
+    weeklyPrev, days: Object.keys(s).length, date
+  };
+}
+
+/** Streams d'un titre FPA : retrouve l'artiste et le titre sur kworb,
+ *  enregistre le relevé du jour et renvoie chiffres + évolutions. */
+async function kworbStreamsFor(title, artist){
+  const ids = await kwsArtistIds(artist);
+  if(!ids.length) return { status:'noartist' };
+  let fetched = 0;
+  for(const id of ids){
+    const page = await kwsArtistSongs(id);
+    if(!page) continue;
+    fetched++;
+    const song = kwsMatchSong(page.songs, title);
+    if(!song) continue;
+    const e = kwsRecord(song, page.date, title, artist);
+    return Object.assign({ status:'ok', trackId: song.id, artistId: id, kworbTitle: song.title, url: 'https://kworb.net/spotify/artist/' + id + '_songs.html' }, kwsMetrics(e, page.date));
+  }
+  return { status: fetched ? 'notrack' : 'error', error: fetched ? '' : 'page kworb de l\'artiste inaccessible (proxy kworb)', artistIds: ids };
+}
+
+/* ── Drive Sync des relevés (fusion par date, tous postes) ─────────── */
+function kwsDriveOn(){ return typeof DRIVE_SYNC_URL !== 'undefined' && !!DRIVE_SYNC_URL && typeof driveCall === 'function'; }
+function kwsMerge(a, b){
+  const out = JSON.parse(JSON.stringify(a || {}));
+  Object.entries(b || {}).forEach(([id, e]) => {
+    if(!out[id]) out[id] = e;
+    else Object.assign(out[id].snaps, e.snaps || {}, out[id].snaps);
+  });
+  return out;
+}
+async function kwsDrivePull(){
+  if(kwsDriveLoaded || !kwsDriveOn()) return;
+  kwsDriveLoaded = true;
+  try{ const r = await driveCall('load', KWS_DRIVE_KEY); if(r && r.data) kwsSave(KWS_HIST_KEY, kwsMerge(kwsHist(), JSON.parse(r.data))); }catch(e){}
+}
+function kwsDriveSchedule(){
+  if(!kwsDriveOn()) return;
+  clearTimeout(kwsDriveTimer);
+  kwsDriveTimer = setTimeout(async () => {
+    try{
+      let remote = null;
+      try{ const r = await driveCall('load', KWS_DRIVE_KEY); remote = r && r.data ? JSON.parse(r.data) : null; }catch(e){}
+      const merged = kwsMerge(kwsHist(), remote);
+      kwsSave(KWS_HIST_KEY, merged);
+      await driveCall('save', KWS_DRIVE_KEY, JSON.stringify(merged));
+    }catch(e){ console.warn('Streams — Drive', e); }
+  }, 8000);
+}
+
+/* ── Affichage dans Song Attributs ─────────────────────────────────── */
+function kwsFmt(n){ return n === null || n === undefined ? '—' : Math.round(n).toLocaleString('fr-FR'); }
+function kwsEvo(cur, prev, label){
+  if(cur === null || cur === undefined || prev === null || prev === undefined || !prev) return `<span style="font-size:10.5px;color:var(--muted)" title="Évolution disponible dès que FPA aura un relevé ${label}">${label} : —</span>`;
+  const pct = (cur - prev) / prev * 100;
+  const col = pct > 0.05 ? '#16a34a' : pct < -0.05 ? '#dc2626' : 'var(--muted)';
+  const ar = pct > 0.05 ? '▲' : pct < -0.05 ? '▼' : '=';
+  return `<span style="font-size:10.5px;font-weight:800;color:${col}" title="${escHtml(kwsFmt(prev) + ' ' + label)}">${ar} ${pct > 0 ? '+' : ''}${pct.toLocaleString('fr-FR', { maximumFractionDigits:1, minimumFractionDigits:1 })} % ${label}</span>`;
+}
+function kwsTile(label, value, sub, hint){
+  return `<div style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;min-width:0" ${hint ? `title="${escHtml(hint)}"` : ''}>
+    <div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">${label}</div>
+    <div style="font-family:var(--font-display);font-size:19px;font-weight:800;color:var(--navy);margin-top:2px;white-space:nowrap">${value}</div>
+    <div style="margin-top:2px">${sub || ''}</div>
+  </div>`;
+}
+async function kworbStreamsRenderInto(elId, title, artist){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  el.innerHTML = `<div style="font-size:11.5px;color:var(--muted)">⏳ Streams Spotify : recherche sur kworb…</div>`;
+  await kwsDrivePull();
+  let r;
+  try{ r = await kworbStreamsFor(title, artist); }catch(e){ r = { status:'error', error: e.message }; }
+  if(!document.getElementById(elId)) return;
+  const head = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">🎧 Streams Spotify (monde)</span>
+      ${r.status === 'ok' ? `<span style="font-size:10px;color:var(--muted)">kworb · données du ${escHtml(formatDateFr(r.date))}${r.kworbTitle && norm(r.kworbTitle) !== norm(title) ? ' · « ' + escHtml(r.kworbTitle) + ' »' : ''}</span>
+        <a href="${r.url}" target="_blank" rel="noopener" style="margin-left:auto;font-size:10px;color:var(--cyan)">kworb ↗</a>` : ''}
+    </div>`;
+  const assoc = `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
+      <input id="${elId}_map" placeholder="Lien kworb ou Spotify de l'artiste" style="flex:1;min-width:200px;font-size:11px;padding:6px 9px;border-radius:7px;border:1.5px solid var(--border)">
+      <button class="btn-ghost" onclick="kworbStreamsAssociate('${elId}','${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" style="font-size:11px;padding:6px 10px">Associer</button>
+    </div>`;
+  if(r.status === 'noartist' || r.status === 'notrack' || r.status === 'error'){
+    const msg = r.status === 'noartist' ? 'Artiste introuvable sur kworb (ou proxy kworb indisponible).'
+      : r.status === 'notrack' ? 'Titre introuvable parmi les titres de l\'artiste sur kworb.' : 'Erreur : ' + escHtml(r.error || '');
+    el.innerHTML = head + `<div style="font-size:11.5px;color:var(--text2)">${msg} Collez le lien kworb (…/artist/…_songs.html) ou Spotify (open.spotify.com/artist/…) de l'artiste pour l'associer.</div>` + assoc;
+    return;
+  }
+  const weeklyVal = r.weekly !== null ? kwsFmt(r.weekly) : (r.weeklyEstimated !== null ? '≈ ' + kwsFmt(r.weeklyEstimated) : '—');
+  const weeklySub = r.weekly !== null ? kwsEvo(r.weekly, r.weeklyPrev, 'vs sem. préc.')
+    : `<span style="font-size:10.5px;color:var(--muted)">estimation (7 × quotidien) — réel dès 7 jours de relevés</span>`;
+  el.innerHTML = head + `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+      ${kwsTile('Total depuis la sortie', kwsFmt(r.total), '', 'Streams Spotify cumulés, tous pays')}
+      ${kwsTile('Quotidien', kwsFmt(r.daily), kwsEvo(r.daily, r.dailyPrev, 'vs veille'), 'Streams du ' + formatDateFr(r.date))}
+      ${kwsTile('Hebdomadaire', weeklyVal, weeklySub, 'Streams des 7 derniers jours (écart des totaux relevés)')}
+    </div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px">${r.days} relevé${r.days > 1 ? 's' : ''} enregistré${r.days > 1 ? 's' : ''} pour ce titre — FPA relève les titres de la Playlist une fois par jour.</div>`;
+}
+/** Association manuelle : lien kworb (…/artist/ID…) ou Spotify (…/artist/ID). */
+function kworbStreamsAssociate(elId, title, artist){
+  const v = (document.getElementById(elId + '_map') || {}).value || '';
+  const m = v.match(/artist\/([A-Za-z0-9]{22})/);
+  if(!m){ showToast('Lien non reconnu — attendu : kworb.net/spotify/artist/… ou open.spotify.com/artist/…', 'err'); return; }
+  const map = kwsLoad(KWS_MAP_KEY, {});
+  const first = String(artist || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s)\s*/i)[0];
+  map[norm(artist || '')] = m[1];
+  if(first) map[norm(first)] = m[1];
+  kwsSave(KWS_MAP_KEY, map);
+  showToast('✓ Artiste associé — recherche des streams…', 'success');
+  kworbStreamsRenderInto(elId, title, artist);
+}
+
+/* ── Relevé quotidien automatique des titres de la Playlist ────────── */
+async function kworbStreamsDailySweep(){
+  if(typeof KWORB_APPS_SCRIPT_PROXY_URL === 'undefined' || !KWORB_APPS_SCRIPT_PROXY_URL) return;   // sans proxy perso : pas de balayage
+  const today = kwsIso(new Date());
+  if(localStorage.getItem('fpa_kws_sweep_day') === today) return;
+  localStorage.setItem('fpa_kws_sweep_day', today);
+  await kwsDrivePull();
+  let list = [];
+  try{ list = (playlistTitles || []).map(t => ({ title: t.title, artist: t.artist })); }catch(e){}
+  const seen = new Set();
+  for(const t of list){
+    const k = norm(t.title) + '|' + norm(t.artist);
+    if(seen.has(k)) continue; seen.add(k);
+    try{ await kworbStreamsFor(t.title, t.artist); }catch(e){}
+    await new Promise(r => setTimeout(r, 400));
+  }
+}
+setTimeout(() => { kworbStreamsDailySweep().catch(() => {}); }, 25000);
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
      FPA MOBILE — adaptation automatique aux téléphones (v1)
