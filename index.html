@@ -15732,6 +15732,37 @@ function mediaUpdateWaveDate(periodId, waveId, bound, value){
   if(DRIVE_SYNC_URL) mediaSaveToDrive();
   renderMediaPage();
 }
+function mediaToggleSubCibles(stKey){
+  if(!mediaUI.showSubCibles) mediaUI.showSubCibles = {};
+  mediaUI.showSubCibles[stKey] = !mediaUI.showSubCibles[stKey];
+  renderMediaPage();
+}
+/** Contexte d'une quinzaine : période (début / fin) + texte libre (activité
+ *  de l'antenne, opérations musicales majeures). Enregistré avec la vague. */
+function mediaContextCellHtml(period, wave){
+  const c = wave.context || {};
+  const base = `'${period.id}','${wave.id}'`;
+  const inp = 'font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border);background:var(--white);color:var(--navy)';
+  return `<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap">
+      <span style="font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">Du</span>
+      <input type="date" value="${escHtml(c.from || '')}" onchange="mediaUpdateWaveContext(${base},'from',this.value)" style="${inp}">
+      <span style="font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">au</span>
+      <input type="date" value="${escHtml(c.to || '')}" onchange="mediaUpdateWaveContext(${base},'to',this.value)" style="${inp}">
+    </div>
+    <textarea rows="2" placeholder="Activité de l'antenne, opérations musicales majeures…" onchange="mediaUpdateWaveContext(${base},'text',this.value)"
+      style="width:100%;box-sizing:border-box;resize:vertical;min-height:44px;font-size:11.5px;line-height:1.4;padding:6px 8px;border-radius:7px;border:1.5px solid var(--border);font-family:inherit;color:var(--navy);background:var(--white)">${escHtml(c.text || '')}</textarea>`;
+}
+function mediaUpdateWaveContext(periodId, waveId, field, value){
+  const stKey = mediaUI.station;
+  const period = mediaHistory[stKey].periods.find(p => p.id === periodId);
+  if(!period) return;
+  const wave = period.waves.find(w => w.id === waveId);
+  if(!wave) return;
+  wave.context = Object.assign({ from:'', to:'', text:'' }, wave.context || {});
+  wave.context[field] = field === 'text' ? String(value || '').trim() : (value || '');
+  mediaSaveLocal();
+  if(DRIVE_SYNC_URL) mediaSaveToDrive();
+}
 function mediaToggleCible(cibleKey){
   const stKey = mediaUI.station;
   if(!mediaUI.collapsed[stKey]) mediaUI.collapsed[stKey] = new Set();
@@ -15787,6 +15818,14 @@ function mediaWaveDetailTableHtml(stKey, period, cibles, collapsed){
   // l'équivalent sur le résultat définitif publié).
   const prevChrono = mediaFindPrevChrono(stKey, period);
   const prevYear = mediaFindSameTypePrevYear(stKey, period);
+  // Sous-cibles repliables : par défaut seule la cible Ensemble est affichée,
+  // suivie du live hebdo et du contexte (voir mediaToggleSubCibles)
+  const allCibles = cibles;
+  const ensemble = allCibles.find(c => /ensemble/i.test((c.label || '') + ' ' + (c.key || ''))) || allCibles[0];
+  if(!mediaUI.showSubCibles) mediaUI.showSubCibles = {};
+  const showSubs = !!mediaUI.showSubCibles[stKey];
+  cibles = showSubs || !ensemble ? allCibles : [ensemble];
+  const subCount = allCibles.length - (ensemble ? 1 : 0);
 
   const rows = period.waves.map(wave => {
     let cibleCells = '';
@@ -15805,7 +15844,8 @@ function mediaWaveDetailTableHtml(stKey, period, cibles, collapsed){
       <td style="padding:5px"><input type="text" inputmode="numeric" placeholder="jj/mm/aaaa" maxlength="10" value="${mediaDateToFr(wave.dateStart)}" style="font-size:12px;padding:5px 7px;width:88px;border-radius:6px;border:1.5px solid var(--border)" oninput="mediaMaskDateInput(this)" onchange="mediaCommitWaveDate(this,'${period.id}','${wave.id}','start')"></td>
       <td style="padding:5px"><input type="text" inputmode="numeric" placeholder="jj/mm/aaaa" maxlength="10" value="${mediaDateToFr(wave.dateEnd)}" style="font-size:12px;padding:5px 7px;width:88px;border-radius:6px;border:1.5px solid var(--border)" oninput="mediaMaskDateInput(this)" onchange="mediaCommitWaveDate(this,'${period.id}','${wave.id}','end')"></td>
       ${cibleCells}
-      <td style="padding:7px 10px">${mediaLiveCellHtml(stKey, wave)}</td>
+      <td style="padding:7px 10px;vertical-align:top">${mediaLiveCellHtml(stKey, wave)}</td>
+      <td style="padding:6px 8px;vertical-align:top;min-width:270px">${mediaContextCellHtml(period, wave)}</td>
       <td style="padding:7px 10px;text-align:center"><button class="btn-ghost" style="font-size:10px;padding:4px 8px" onclick="mediaRemoveWave('${stKey}','${period.id}','${wave.id}')" title="Supprimer cette quinzaine">🗑</button></td>
     </tr>`;
   }).join('');
@@ -15817,14 +15857,17 @@ function mediaWaveDetailTableHtml(stKey, period, cibles, collapsed){
   const cibleSubHead = cibles.map(c => collapsed.has(c.key) ? `<th></th>` : `<th style="padding:5px;font-size:9px;color:var(--muted)">AC</th><th style="padding:5px;font-size:9px;color:var(--muted)">PDA</th><th style="padding:5px;font-size:9px;color:var(--muted)">DEA</th>`).join('');
 
   return `
-    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Détail par quinzaine (intermédiaire Médiamétrie). Saisissez les dates de la quinzaine pour calculer automatiquement l'audience live hebdomadaire moyenne sur la période correspondante. Cliquez sur l'en-tête d'une cible pour la replier/déplier.</div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <span style="font-size:11px;color:var(--muted);flex:1;min-width:260px">Détail par quinzaine (intermédiaire Médiamétrie). Saisissez les dates de la quinzaine pour calculer automatiquement l'audience live hebdomadaire moyenne sur la période correspondante.</span>
+      ${subCount > 0 ? `<button class="btn-ghost" onclick="mediaToggleSubCibles('${stKey}')" style="font-size:11px;font-weight:800;padding:6px 12px">${showSubs ? '▾ Replier les sous-cibles' : '▸ Afficher les sous-cibles (' + subCount + ')'}</button>` : ''}
+    </div>
     <div style="overflow-x:auto">
     <table style="width:100%;border-collapse:collapse;min-width:600px;background:var(--white);border-radius:10px;border:1.5px solid var(--border)">
       <thead>
-        <tr style="background:var(--bg)"><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Quinzaine</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date début</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date fin</th>${cibleHeadGroup}<th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Live hebdo moy.</th><th rowspan="2"></th></tr>
+        <tr style="background:var(--bg)"><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Quinzaine</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date début</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Date fin</th>${cibleHeadGroup}<th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Live hebdo moy.</th><th rowspan="2" style="padding:7px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Contexte — activité antenne, opérations musicales</th><th rowspan="2"></th></tr>
         <tr style="background:var(--bg)">${cibleSubHead}</tr>
       </thead>
-      <tbody>${rows || `<tr><td colspan="${3+cibles.length*3+2}" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune quinzaine — ajoutez-en une ci-dessous</td></tr>`}</tbody>
+      <tbody>${rows || `<tr><td colspan="${3+cibles.length*3+3}" style="padding:14px;text-align:center;color:var(--muted);font-size:12px">Aucune quinzaine — ajoutez-en une ci-dessous</td></tr>`}</tbody>
     </table>
     </div>`;
 }
@@ -22040,21 +22083,67 @@ async function openTevByInfo(info){
     <span style="font-size:9px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);white-space:nowrap">🏷️ Song Attributs</span>
     <div style="flex:1;height:3px;background:linear-gradient(90deg,var(--border) 0%,var(--cyan) 50%,var(--border) 100%);border-radius:2px"></div>
   </div>`);
-  sections.push(`<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
+  let tevDiffMerged = null;
+  sections.push(`<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px">
+    ${(() => {
+      // Même repli que sur la Playlist et la page Fit Score (voir
+      // buildPlaylistRow / rowDiffValue) : le titre tel qu'ajouté à la
+      // Playlist (ou tel que saisi ailleurs) peut différer légèrement, texte
+      // pour texte, de celui du fichier Call Out importé — getSongDiffusion()
+      // seule (clé exacte titre+artiste) ne le retrouve alors pas, alors que
+      // row360 (déjà calculé plus haut) le retrouve par similarité. On fusionne
+      // les deux pour la station active avant d'afficher les deux champs.
+      const diffEntry = getSongDiffusion(title, artist);
+      const merged = tevDiffMerged = diffEntry ? { ...diffEntry } : { europe2:null, europe2At:'', rfm:null, rfmAt:'' };
+      const activeField = ACTIVE_STATION === 'RFM' ? 'rfm' : 'europe2';
+      if(row360 && row360.cumPlays != null && merged[activeField] == null){
+        merged[activeField] = row360.cumPlays;
+        // Persiste cette correspondance floue sous l'orthographe EXACTE de ce
+        // titre (celle utilisée ici, Playlist/Comité/etc.) pour que ce soit
+        // une correspondance directe la prochaine fois, sans dépendre à
+        // nouveau de row360 — et pour que cette variante entre dans la
+        // synchro Drive au même titre que celles vues à l'import.
+        const dKey = comiteKey(title, artist);
+        if(!songDiffusions[dKey]) songDiffusions[dKey] = { europe2:null, europe2At:'', europe2Wave:'', rfm:null, rfmAt:'', rfmWave:'' };
+        songDiffusions[dKey][activeField] = row360.cumPlays;
+        if(!songDiffusions[dKey][activeField + 'At']) songDiffusions[dKey][activeField + 'At'] = new Date().toISOString().slice(0, 10);
+        songDiffusionsSaveToStorage();
+        if(typeof songDiffusionsSyncToDrive === 'function') songDiffusionsSyncToDrive();
+      }
+      return '';
+    })()}
+    <div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--navy)">📻 Radio</span><div style="flex:1;height:1.5px;background:var(--border)"></div></div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+      <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--navy)">📻 Europe 2</div>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date d'entrée en playlist
+      <input type="date" value="${songAttrs.dateEntreeEurope2 || ''}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','dateEntreeEurope2',this.value)"
+        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+    </label>
+        ${buildDiffusionAttrField('Passages cumulés', tevDiffMerged, 'europe2')}
+      </div>
+      <div style="background:var(--bg);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:10px">
+        <div style="font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--navy)">📻 RFM</div>
+    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date d'entrée en playlist
+      <input type="date" value="${songAttrs.dateEntreeRFM || ''}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','dateEntreeRFM',this.value)"
+        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
+    </label>
+        ${buildDiffusionAttrField('Passages cumulés', tevDiffMerged, 'rfm')}
+      </div>
+    </div>
+  </div>
+  <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--navy)">🎧 Streams</span><div style="flex:1;height:1.5px;background:var(--border)"></div></div>
+    <div id="tevSpotifyStreams"></div>
+  </div>
+  <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--navy)">🗂️ Datas</span><div style="flex:1;height:1.5px;background:var(--border)"></div></div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px">
     <div style="grid-column:1/-1;display:flex;align-items:center;gap:10px">
       <span style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Format</span>
       ${typeof formatBadgeHtml === 'function' ? formatBadgeHtml(title, artist, 'lg') : ''}
     </div>
     ${typeof marketingBadgesHtml === 'function' ? marketingBadgesHtml(title, artist) : ''}
-    <div id="tevSpotifyStreams" style="grid-column:1/-1"></div>
-    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date d'entrée Europe 2
-      <input type="date" value="${songAttrs.dateEntreeEurope2 || ''}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','dateEntreeEurope2',this.value)"
-        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
-    </label>
-    <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Date d'entrée RFM
-      <input type="date" value="${songAttrs.dateEntreeRFM || ''}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','dateEntreeRFM',this.value)"
-        style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
-    </label>
     <label style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">Label
       <input type="text" placeholder="ex. Polydor" value="${escHtml(songAttrs.label || '')}" onchange="updateSongAttribute('${jsAttrEscape(title)}','${jsAttrEscape(artist)}','label',this.value)"
         style="display:block;width:100%;margin-top:5px;padding:7px 9px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit;color:var(--navy);background:var(--bg)">
@@ -22096,36 +22185,9 @@ async function openTevByInfo(info){
           style="flex-shrink:0;padding:0 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--white);color:var(--muted);cursor:pointer;font-size:13px">🔍</button>
       </div>
     </label>
-    ${(() => {
-      // Même repli que sur la Playlist et la page Fit Score (voir
-      // buildPlaylistRow / rowDiffValue) : le titre tel qu'ajouté à la
-      // Playlist (ou tel que saisi ailleurs) peut différer légèrement, texte
-      // pour texte, de celui du fichier Call Out importé — getSongDiffusion()
-      // seule (clé exacte titre+artiste) ne le retrouve alors pas, alors que
-      // row360 (déjà calculé plus haut) le retrouve par similarité. On fusionne
-      // les deux pour la station active avant d'afficher les deux champs.
-      const diffEntry = getSongDiffusion(title, artist);
-      const merged = diffEntry ? { ...diffEntry } : { europe2:null, europe2At:'', rfm:null, rfmAt:'' };
-      const activeField = ACTIVE_STATION === 'RFM' ? 'rfm' : 'europe2';
-      if(row360 && row360.cumPlays != null && merged[activeField] == null){
-        merged[activeField] = row360.cumPlays;
-        // Persiste cette correspondance floue sous l'orthographe EXACTE de ce
-        // titre (celle utilisée ici, Playlist/Comité/etc.) pour que ce soit
-        // une correspondance directe la prochaine fois, sans dépendre à
-        // nouveau de row360 — et pour que cette variante entre dans la
-        // synchro Drive au même titre que celles vues à l'import.
-        const dKey = comiteKey(title, artist);
-        if(!songDiffusions[dKey]) songDiffusions[dKey] = { europe2:null, europe2At:'', europe2Wave:'', rfm:null, rfmAt:'', rfmWave:'' };
-        songDiffusions[dKey][activeField] = row360.cumPlays;
-        if(!songDiffusions[dKey][activeField + 'At']) songDiffusions[dKey][activeField + 'At'] = new Date().toISOString().slice(0, 10);
-        songDiffusionsSaveToStorage();
-        if(typeof songDiffusionsSyncToDrive === 'function') songDiffusionsSyncToDrive();
-      }
-      return buildDiffusionAttrField('Diffusions cumulées Europe 2', merged, 'europe2')
-           + buildDiffusionAttrField('Diffusions cumulées RFM', merged, 'rfm');
-    })()}
     <div style="grid-column:1/-1">
       <span id="tevMbBadge" onclick="mbShowStatusToast()" title="Enrichissement ISRC + date de sortie (MusicBrainz) — cliquer pour le détail" style="display:inline-flex;align-items:center;font-size:10px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 9px;white-space:nowrap;cursor:pointer"></span>
+    </div>
     </div>
   </div>`);
 
@@ -45968,41 +46030,45 @@ function kwsTile(label, value, sub, hint){
 async function kworbStreamsRenderInto(elId, title, artist){
   const el = document.getElementById(elId);
   if(!el) return;
-  el.innerHTML = `<div style="font-size:11.5px;color:var(--muted)">⏳ Streams Spotify : recherche sur kworb…</div>`;
+  const logo = typeof LOGO_SPOTIFY !== 'undefined' ? `<img src="${LOGO_SPOTIFY}" alt="Spotify" style="height:15px;width:15px;border-radius:50%;flex-shrink:0">` : '';
+  const headHtml = date => `<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap">
+      ${logo}<span style="font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--navy)">Streams Spotify (monde)</span>
+      ${date ? `<span style="font-size:10px;color:var(--muted)">relevé du ${escHtml(formatDateFr(date))}</span>` : ''}
+    </div>`;
+  const tiles = (r) => {
+    const ok = r && r.status === 'ok';
+    const weeklyVal = !ok ? '—' : (r.weekly !== null ? kwsFmt(r.weekly) : (r.weeklyEstimated !== null ? '≈ ' + kwsFmt(r.weeklyEstimated) : '—'));
+    const weeklySub = !ok ? '' : (r.weekly !== null ? kwsEvo(r.weekly, r.weeklyPrev, 'vs sem. préc.')
+      : `<span style="font-size:10.5px;color:var(--muted)">estimation (7 × quotidien)</span>`);
+    return `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+      ${kwsTile('Total depuis la sortie', ok ? kwsFmt(r.total) : '—', '', 'Streams Spotify cumulés, tous pays')}
+      ${kwsTile('Quotidien', ok ? kwsFmt(r.daily) : '—', ok ? kwsEvo(r.daily, r.dailyPrev, 'vs veille') : '', ok ? 'Streams du ' + formatDateFr(r.date) : '')}
+      ${kwsTile('Hebdomadaire', weeklyVal, weeklySub, 'Streams des 7 derniers jours')}
+    </div>`;
+  };
+  el.innerHTML = headHtml(null) + tiles(null);
   await kwsDrivePull();
   let r;
-  try{ r = await kworbStreamsFor(title, artist); }catch(e){ r = { status:'error', error: e.message }; }
+  try{ r = await kworbStreamsFor(title, artist); }catch(e){ r = { status:'error' }; }
   if(!document.getElementById(elId)) return;
-  const head = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
-      <span style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)">🎧 Streams Spotify (monde)</span>
-      ${r.status === 'ok' ? `<span style="font-size:10px;color:var(--muted)">kworb · données du ${escHtml(formatDateFr(r.date))}${r.kworbTitle && norm(r.kworbTitle) !== norm(title) ? ' · « ' + escHtml(r.kworbTitle) + ' »' : ''}</span>
-        <a href="${r.url}" target="_blank" rel="noopener" style="margin-left:auto;font-size:10px;color:var(--cyan)">kworb ↗</a>` : ''}
+  if(!r || r.status !== 'ok'){
+    // Pas de chiffres : cases vides « — », et un lien discret pour associer l'artiste
+    el.innerHTML = headHtml(null) + tiles(null) + `<div style="margin-top:6px">
+      <a href="javascript:void(0)" onclick="this.nextElementSibling.style.display='flex';this.style.display='none'" style="font-size:10.5px;color:var(--muted)">🔗 Associer l'artiste Spotify</a>
+      <div style="display:none;gap:6px;align-items:center;flex-wrap:wrap">
+        <input id="${elId}_map" placeholder="Lien Spotify de l'artiste (open.spotify.com/artist/…)" style="flex:1;min-width:220px;font-size:11px;padding:6px 9px;border-radius:7px;border:1.5px solid var(--border)">
+        <button class="btn-ghost" onclick="kworbStreamsAssociate('${elId}','${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" style="font-size:11px;padding:6px 10px">Associer</button>
+      </div>
     </div>`;
-  const assoc = `<div style="display:flex;gap:6px;align-items:center;margin-top:8px;flex-wrap:wrap">
-      <input id="${elId}_map" placeholder="Lien kworb ou Spotify de l'artiste" style="flex:1;min-width:200px;font-size:11px;padding:6px 9px;border-radius:7px;border:1.5px solid var(--border)">
-      <button class="btn-ghost" onclick="kworbStreamsAssociate('${elId}','${jsAttrEscape(title)}','${jsAttrEscape(artist)}')" style="font-size:11px;padding:6px 10px">Associer</button>
-    </div>`;
-  if(r.status === 'noartist' || r.status === 'notrack' || r.status === 'error'){
-    const msg = r.status === 'noartist' ? 'Artiste introuvable sur kworb (ou proxy kworb indisponible).'
-      : r.status === 'notrack' ? 'Titre introuvable parmi les titres de l\'artiste sur kworb.' : 'Erreur : ' + escHtml(r.error || '');
-    el.innerHTML = head + `<div style="font-size:11.5px;color:var(--text2)">${msg} Collez le lien kworb (…/artist/…_songs.html) ou Spotify (open.spotify.com/artist/…) de l'artiste pour l'associer.</div>` + assoc;
     return;
   }
-  const weeklyVal = r.weekly !== null ? kwsFmt(r.weekly) : (r.weeklyEstimated !== null ? '≈ ' + kwsFmt(r.weeklyEstimated) : '—');
-  const weeklySub = r.weekly !== null ? kwsEvo(r.weekly, r.weeklyPrev, 'vs sem. préc.')
-    : `<span style="font-size:10.5px;color:var(--muted)">estimation (7 × quotidien) — réel dès 7 jours de relevés</span>`;
-  el.innerHTML = head + `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
-      ${kwsTile('Total depuis la sortie', kwsFmt(r.total), '', 'Streams Spotify cumulés, tous pays')}
-      ${kwsTile('Quotidien', kwsFmt(r.daily), kwsEvo(r.daily, r.dailyPrev, 'vs veille'), 'Streams du ' + formatDateFr(r.date))}
-      ${kwsTile('Hebdomadaire', weeklyVal, weeklySub, 'Streams des 7 derniers jours (écart des totaux relevés)')}
-    </div>
-    <div style="font-size:10px;color:var(--muted);margin-top:6px">${r.days} relevé${r.days > 1 ? 's' : ''} enregistré${r.days > 1 ? 's' : ''} pour ce titre — FPA relève les titres de la Playlist une fois par jour.</div>`;
+  el.innerHTML = headHtml(r.date) + tiles(r);
 }
 /** Association manuelle : lien kworb (…/artist/ID…) ou Spotify (…/artist/ID). */
 function kworbStreamsAssociate(elId, title, artist){
   const v = (document.getElementById(elId + '_map') || {}).value || '';
   const m = v.match(/artist\/([A-Za-z0-9]{22})/);
-  if(!m){ showToast('Lien non reconnu — attendu : kworb.net/spotify/artist/… ou open.spotify.com/artist/…', 'err'); return; }
+  if(!m){ showToast('Lien non reconnu — attendu : open.spotify.com/artist/…', 'err'); return; }
   const map = kwsLoad(KWS_MAP_KEY, {});
   const first = String(artist || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s)\s*/i)[0];
   map[norm(artist || '')] = m[1];
