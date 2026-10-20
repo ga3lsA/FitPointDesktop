@@ -44383,6 +44383,10 @@ function healthSettingsResetAll(){
 const MKT_LOCAL_KEY = 'fpa_marketing_antenne_v1';
 const MKT_DRIVE_KEY = 'marketing_antenne';
 const MKT_SLOTS = 3;
+/** Types de montage : « Promo Musique » (3 titres) ou montage 1 titre — le
+ *  nom reste libre dans les deux cas. */
+function mktSlotsOf(m){ return m && m.slots === 1 ? 1 : 3; }
+function mktTypeLabel(m){ return mktSlotsOf(m) === 1 ? 'Montage 1 titre' : 'Promo Musique · 3 titres'; }
 let mktData = mktLoadLocal();
 let mktTab = 'playlist';
 let mktDriveLoaded = false;
@@ -44637,12 +44641,16 @@ function mktSetCreated(id, value){
   m.createdDate = value || '';
   mktSave();
 }
-function mktAddMontage(){
+function mktAddMontage(slots){
   const d = mktGet();
-  const m = { id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name: 'Montage ' + (d.montages.length + 1), songs: [null, null, null], createdAt: new Date().toISOString(), createdDate: fpaLocalTodayISO(), updatedAt: new Date().toISOString() };
+  const n = slots === 1 ? 1 : 3;
+  const sameType = d.montages.filter(x => mktSlotsOf(x) === n).length;
+  const m = { id: 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), slots: n,
+    name: (n === 1 ? 'Montage 1 titre ' : 'Promo Musique ') + (sameType + 1), songs: Array(n).fill(null),
+    createdAt: new Date().toISOString(), createdDate: fpaLocalTodayISO(), updatedAt: new Date().toISOString() };
   d.montages.push(m);
   mktSave(); renderMarketingPage();
-  setTimeout(() => { const n = document.querySelector('[data-mname="' + m.id + '"]'); if(n){ n.focus(); n.select(); } }, 40);
+  setTimeout(() => { const el = document.querySelector('[data-mname="' + m.id + '"]'); if(el){ el.focus(); el.select(); } }, 40);
 }
 function mktRename(id, name){
   const m = mktFind(id); if(!m) return;
@@ -44664,8 +44672,8 @@ function mktMove(id, delta){
 }
 function mktSetSlot(id, slot, song){
   const m = mktFind(id); if(!m) return;
-  while(m.songs.length < MKT_SLOTS) m.songs.push(null);
-  if(song && m.songs.some((s, i) => i !== slot && s && mktSame(s, song))){ showToast('Ce titre est déjà dans ce montage — choisissez 3 titres différents', 'err'); return; }
+  while(m.songs.length < mktSlotsOf(m)) m.songs.push(null);
+  if(song && m.songs.some((s, i) => i !== slot && s && mktSame(s, song))){ showToast('Ce titre est déjà dans ce montage — choisissez des titres différents', 'err'); return; }
   m.songs[slot] = song || null;
   m.updatedAt = new Date().toISOString();
   mktSave(); renderMarketingPage();
@@ -44678,8 +44686,8 @@ function mktSetSlot(id, slot, song){
 function mktAssign(poolIdx, id){
   const t = mktGet().pool[poolIdx], m = mktFind(id);
   if(!t || !m) return;
-  const slot = m.songs.findIndex(s => !s);
-  if(slot < 0){ showToast('« ' + (m.name || 'Montage') + ' » a déjà ses 3 titres', 'err'); renderMarketingPage(); return; }
+  const slot = m.songs.slice(0, mktSlotsOf(m)).findIndex(s => !s);
+  if(slot < 0){ showToast('« ' + (m.name || 'Montage') + ' » est complet', 'err'); renderMarketingPage(); return; }
   mktSetSlot(id, slot, { title: t.title, artist: t.artist, key: t.key });
 }
 function mktUnassign(poolIdx, id){
@@ -44789,7 +44797,7 @@ function renderMarketingPage(){
       ${mktScoresCells(t.title, t.artist)}
       <div style="min-width:0;display:flex;flex-wrap:wrap;align-items:center">
         ${ms.map(m => `<span class="mkt-chip">${escHtml(m.name || 'Sans nom')}<button onclick="mktUnassign(${i},'${m.id}')" title="Retirer de ce montage">×</button></span>`).join('')}
-        ${free.length ? `<select onchange="if(this.value) mktAssign(${i}, this.value)" style="font-size:11px;padding:4px 6px;border-radius:7px;max-width:180px"><option value="">+ Affecter à un montage…</option>${free.map(m => `<option value="${m.id}" ${m.songs.every(Boolean) ? 'disabled' : ''}>${escHtml(m.name || 'Sans nom')}${m.songs.every(Boolean) ? ' (complet)' : ''}</option>`).join('')}</select>` : (d.montages.length ? '' : '<span style="font-size:11px;color:var(--muted)">Créez un montage pour l\'affecter</span>')}
+        ${free.length ? `<select onchange="if(this.value) mktAssign(${i}, this.value)" style="font-size:11px;padding:4px 6px;border-radius:7px;max-width:180px"><option value="">+ Affecter à un montage…</option>${free.map(m => `<option value="${m.id}" ${m.songs.slice(0, mktSlotsOf(m)).every(Boolean) ? 'disabled' : ''}>${escHtml(m.name || 'Sans nom')}${m.songs.slice(0, mktSlotsOf(m)).every(Boolean) ? ' (complet)' : ''}</option>`).join('')}</select>` : (d.montages.length ? '' : '<span style="font-size:11px;color:var(--muted)">Créez un montage pour l\'affecter</span>')}
       </div>
       <button class="mkt-x" onclick="mktRemovePool(${i})" title="Retirer de la liste Marketing antenne">×</button>
     </div>`;
@@ -44810,9 +44818,10 @@ function renderMarketingPage(){
   // 3) Montages
   const slotCols = '16px 18px minmax(0,1fr) 40px 40px 40px 22px';
   const cards = d.montages.map((m, mi) => {
-    while(m.songs.length < MKT_SLOTS) m.songs.push(null);
-    const filled = m.songs.filter(Boolean).length;
-    const slots = m.songs.slice(0, MKT_SLOTS).map((s, i) => s
+    const NS = mktSlotsOf(m);
+    while(m.songs.length < NS) m.songs.push(null);
+    const filled = m.songs.slice(0, NS).filter(Boolean).length;
+    const slots = m.songs.slice(0, NS).map((s, i) => s
       ? `<div class="mkt-row fpa-row" style="grid-template-columns:${slotCols};padding:6px 4px">
           <div style="color:var(--muted);font-weight:700">${i + 1}</div>${fpaMatchBadgeHtml(s.title, s.artist)}${mktTitleCell(s.title, s.artist)}${mktScoresCells(s.title, s.artist)}
           <button class="mkt-x" onclick="mktSetSlot('${m.id}',${i},null)" title="Retirer ce titre du montage">×</button></div>`
@@ -44820,18 +44829,19 @@ function renderMarketingPage(){
           <div style="color:var(--muted);font-weight:700">${i + 1}</div>
           <div class="mkt-ac-wrap"><input class="mkt-ac-in" data-target="${m.id}" data-slot="${i}" placeholder="Titre ou artiste…" oninput="mktAcInput(this)" onkeydown="mktAcKey(event,this)" onblur="mktAcBlur(this)" autocomplete="off"><div class="mkt-ac"></div></div>
         </div>`).join('');
-    return `<div class="mkt-card" style="padding:12px;display:flex;flex-direction:column">
+    return `<div class="mkt-card" style="padding:12px;display:flex;flex-direction:column;border-top:4px solid ${NS === 1 ? '#7C3AED' : '#E6007E'}">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:${NS === 1 ? '#7C3AED' : '#E6007E'};margin:-2px 0 2px 6px">${mktTypeLabel(m)}</div>
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
         <input data-mname="${m.id}" value="${escHtml(m.name || '')}" onchange="mktRename('${m.id}', this.value)" onkeydown="if(event.key==='Enter') this.blur()" title="Nom du montage"
           style="flex:1;min-width:0;font-family:var(--font-display);font-size:14px;font-weight:800;color:var(--navy);border:1.5px solid transparent;border-radius:7px;padding:4px 6px;background:transparent" onfocus="this.style.borderColor='var(--cyan)';this.style.background='var(--white)'" onblur="this.style.borderColor='transparent';this.style.background='transparent'">
-        <span style="font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:${filled === MKT_SLOTS ? '#E6F6EC' : 'var(--bg)'};color:${filled === MKT_SLOTS ? '#1E7A3C' : 'var(--muted)'}">${filled}/${MKT_SLOTS}</span>
+        <span style="font-size:10.5px;font-weight:800;padding:2px 8px;border-radius:20px;background:${filled === NS ? '#E6F6EC' : 'var(--bg)'};color:${filled === NS ? '#1E7A3C' : 'var(--muted)'}">${filled}/${NS}</span>
         <button class="mkt-x" onclick="mktMove('${m.id}',-1)" title="Monter" ${mi === 0 ? 'disabled style="opacity:.35"' : ''}>↑</button>
         <button class="mkt-x" onclick="mktMove('${m.id}',1)" title="Descendre" ${mi === d.montages.length - 1 ? 'disabled style="opacity:.35"' : ''}>↓</button>
         <button class="mkt-x" onclick="mktDeleteMontage('${m.id}')" title="Supprimer ce montage">🗑</button>
       </div>
       <div class="mkt-row" style="grid-template-columns:${slotCols};${MKT_H};padding:2px 4px 3px;border-top:none"><div></div><div></div><div></div><div style="text-align:right">Fit</div><div style="text-align:right">Pot</div><div style="text-align:right">Fam</div><div></div></div>
       ${slots}
-      ${mktAvgRow(m.songs.slice(0, MKT_SLOTS), slotCols, '<div></div><div></div><div style="font-weight:800;color:var(--navy)">Moyenne</div>')}
+      ${NS > 1 ? mktAvgRow(m.songs.slice(0, NS), slotCols, '<div></div><div></div><div style="font-weight:800;color:var(--navy)">Moyenne</div>') : ''}
       <label style="display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:var(--muted);margin-top:auto;padding-top:8px">Créé le
         <input type="date" value="${escHtml(mktCreatedDate(m))}" onchange="mktSetCreated('${m.id}', this.value)" style="font-size:10.5px;padding:3px 5px;border-radius:6px;border:1.5px solid var(--border);color:var(--text2)"></label>
     </div>`;
@@ -44849,7 +44859,9 @@ function renderMarketingPage(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         ${typeof fpaRefTargetToggleHtml === 'function' ? fpaRefTargetToggleHtml(false) : ''}
         <button onclick="toggleActiveStation();renderMarketingPage()" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--navy);cursor:pointer;font-weight:700">🔁 ${escHtml(stLabel)}</button>
-        <button onclick="mktAddMontage()" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--white);border:1.5px solid var(--navy);color:var(--navy);cursor:pointer;font-weight:800">+ Nouveau montage</button>
+        <button onclick="mktAddMontage(3)" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--white);border:1.5px solid #E6007E;color:#B0005F;cursor:pointer;font-weight:800">+ Promo Musique (3 titres)</button>
+        <button onclick="mktAddMontage(1)" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--white);border:1.5px solid #7C3AED;color:#5B21B6;cursor:pointer;font-weight:800">+ Montage 1 titre</button>
+        <button onclick="mktReportOpen()" title="Compte rendu PDF : montages actuels, créés et supprimés depuis une sauvegarde" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--navy);cursor:pointer;font-weight:800">📋 Compte rendu</button>
         <button onclick="mktArchiveSave()" title="Sauvegarde datée de la page (montages, titres, Screener, validité) sur Drive" style="font-size:11px;padding:6px 12px;border-radius:7px;background:#0DA76B;border:1.5px solid #0DA76B;color:#fff;cursor:pointer;font-weight:800">💾 Sauvegarder</button>
         <button onclick="mktArchiveOpen()" title="Consulter / restaurer les sauvegardes hebdomadaires" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--bg);border:1.5px solid var(--border);color:var(--navy);cursor:pointer;font-weight:700">🗄 Archives</button>
         <button onclick="exportMarketingPDF()" title="Exporte tous les montages (sans le Screener)" style="font-size:11px;padding:6px 12px;border-radius:7px;background:var(--navy);border:1.5px solid var(--navy);color:#fff;cursor:pointer;font-weight:800">📄 Export PDF</button>
@@ -44861,10 +44873,10 @@ function renderMarketingPage(){
     </div>
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
       <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">🎚️ Montages musicaux</div>
-      <span style="font-size:11px;color:var(--muted)">${d.montages.length} montage${d.montages.length > 1 ? 's' : ''} · 3 titres chacun · tapez un titre ou un artiste pour être guidé</span>
+      <span style="font-size:11px;color:var(--muted)">${d.montages.length} montage${d.montages.length > 1 ? 's' : ''} · Promo Musique (3 titres) ou montage 1 titre · tapez un titre ou un artiste pour être guidé</span>
     </div>
     ${d.montages.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px">${cards}</div>`
-      : `<div class="mkt-card" style="padding:26px;text-align:center;color:var(--muted);font-size:12.5px">Aucun montage pour ${escHtml(stLabel)}. <button class="btn-primary" onclick="mktAddMontage()" style="margin-left:8px;font-size:12px;padding:8px 14px">+ Créer un montage</button></div>`}`;
+      : `<div class="mkt-card" style="padding:26px;text-align:center;color:var(--muted);font-size:12.5px">Aucun montage pour ${escHtml(stLabel)}. <button class="btn-primary" onclick="mktAddMontage(3)" style="margin-left:8px;font-size:12px;padding:8px 14px">+ Créer un montage</button></div>`}`;
 }
 
 /* ── Export PDF : « Mise à jour du marketing antenne » ─────────────── */
@@ -44899,14 +44911,15 @@ async function exportMarketingPDF(snapshot){
     doc.text('Marketing antenne — Fit Point Analyzer', ML, PH - 8);
     doc.text('Page ' + page, PW - MR, PH - 8, { align:'right' });
   }
-  const BH = 9 + MKT_SLOTS * 8 + 3;
   header();
   for(let i = 0; i < d.montages.length; i += 2){
+    const BH = 9 + Math.max(mktSlotsOf(d.montages[i]), d.montages[i + 1] ? mktSlotsOf(d.montages[i + 1]) : 1) * 8 + 3;
     if(y + BH > PH - 16){ footer(); doc.addPage(); page++; header(); }
     [d.montages[i], d.montages[i + 1]].forEach((m, c) => {
       if(!m) return;
       const x = ML + c * (BW + GAP);
-      doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.roundedRect(x, y, BW, BH, 2, 2, 'S');
+      const BHm = 9 + mktSlotsOf(m) * 8 + 3;
+      doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.roundedRect(x, y, BW, BHm, 2, 2, 'S');
       doc.setFillColor(...NAVY); doc.roundedRect(x, y, BW, 9, 2, 2, 'F'); doc.rect(x, y + 5, BW, 4, 'F');
       doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(255,255,255);
       const cdate = mktCreatedDate(m);
@@ -44916,7 +44929,8 @@ async function exportMarketingPDF(snapshot){
       if(cTxt) doc.text(cTxt, x + BW - 4, y + 6, { align:'right' });
       doc.setFont('helvetica','bold'); doc.setFontSize(10.5);
       doc.text(truncateForPdf(doc, m.name || 'Sans nom', BW - 10 - cW), x + 4, y + 6.1);
-      for(let k = 0; k < MKT_SLOTS; k++){
+      const NSm = mktSlotsOf(m);
+      for(let k = 0; k < NSm; k++){
         const s = m.songs[k];
         const ly = y + 9 + k * 8 + 5.6;
         doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...PINK);
@@ -44936,7 +44950,7 @@ async function exportMarketingPDF(snapshot){
         } else {
           doc.setFont('helvetica','italic'); doc.setTextColor(...MUTED); doc.text('—', x + 9, ly);
         }
-        if(k < MKT_SLOTS - 1){ doc.setDrawColor(...LINE); doc.line(x + 3, y + 9 + (k + 1) * 8 + 1.5, x + BW - 3, y + 9 + (k + 1) * 8 + 1.5); }
+        if(k < NSm - 1){ doc.setDrawColor(...LINE); doc.line(x + 3, y + 9 + (k + 1) * 8 + 1.5, x + BW - 3, y + 9 + (k + 1) * 8 + 1.5); }
       }
     });
     y += BH + GAP;
@@ -44944,6 +44958,120 @@ async function exportMarketingPDF(snapshot){
   footer();
   doc.save('Marketing_antenne_' + stLabel.replace(/\s+/g, '_') + '_' + (snapshot ? snapshot.date : new Date().toISOString().slice(0, 10)) + '.pdf');
   showToast('✓ PDF Marketing antenne exporté', 'success');
+}
+
+/* ── Compte rendu PDF : actuels / créés / supprimés ────────────────── */
+async function mktReportOpen(){
+  const st = mktSt();
+  const old = document.getElementById('mktReportModal'); if(old) old.remove();
+  const ov = document.createElement('div');
+  ov.id = 'mktReportModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,29,58,.5);z-index:600;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('click', e => { if(e.target === ov) ov.remove(); });
+  ov.innerHTML = `<div style="background:var(--white);border-radius:16px;width:100%;max-width:520px;padding:22px;box-shadow:0 20px 60px rgba(11,29,58,.3)">
+    <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy)">📋 Compte rendu des montages</div>
+    <div id="mktReportBody" style="font-size:12px;color:var(--muted);margin-top:10px">⏳ Chargement des sauvegardes…</div>
+  </div>`;
+  document.body.appendChild(ov);
+  const list = await mktArchiveList(st);
+  const body = document.getElementById('mktReportBody');
+  if(!body) return;
+  const today = mktTodayISO();
+  const def = list.find(e => e.date < today) || list[0];
+  body.innerHTML = `<div style="font-size:12px;color:var(--text2);line-height:1.5;margin-bottom:12px">Le compte rendu liste les montages <b>actuels</b>, ceux <b>créés</b> et ceux <b>supprimés</b> depuis la sauvegarde choisie ci-dessous (en principe celle de la semaine précédente — bouton « 💾 Sauvegarder » de la page).</div>
+    <label style="display:block;font-size:11px;font-weight:800;color:var(--muted)">Comparer avec la sauvegarde du
+      <select id="mktReportRef" style="display:block;width:100%;margin-top:5px;font-size:12.5px;padding:8px 10px;border-radius:8px">
+        ${list.map(e => `<option value="${e.date}" ${def && e.date === def.date ? 'selected' : ''}>${escHtml(formatDateFr(e.date))} — ${e.n || 0} montage${(e.n || 0) > 1 ? 's' : ''}</option>`).join('')}
+        <option value="" ${list.length ? '' : 'selected'}>Aucune (tous les montages actuels comptent comme créés)</option>
+      </select></label>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+      <button class="btn-ghost" onclick="document.getElementById('mktReportModal').remove()" style="font-size:12px;padding:9px 14px">Annuler</button>
+      <button class="btn-primary" onclick="mktReportGenerate(document.getElementById('mktReportRef').value)" style="font-size:12px;padding:9px 16px;border-radius:9px">📄 Générer le PDF</button>
+    </div>`;
+}
+function mktSongsSig(m){ return (m.songs || []).slice(0, mktSlotsOf(m)).map(s => s ? norm(s.title || '') + '|' + norm(s.artist || '') : '').join('#'); }
+async function mktReportGenerate(refDate){
+  if(typeof window.jspdf === 'undefined'){ showToast('Bibliothèque PDF non chargée — vérifiez la connexion internet', 'err'); return; }
+  const st = mktSt(), d = mktGet(st);
+  const stLabel = (typeof STATION_LABELS !== 'undefined' && STATION_LABELS[st]) || st;
+  const ref = refDate ? await mktArchiveLoad(st, refDate) : null;
+  const refM = (ref && ref.montages) || [];
+  const findRef = m => refM.find(r => r.id && r.id === m.id) || refM.find(r => !r.id && norm(r.name || '') === norm(m.name || ''));
+  const findCur = r => d.montages.find(m => m.id && m.id === r.id) || d.montages.find(m => norm(m.name || '') === norm(r.name || '') && !refM.some(x => x.id === m.id));
+  const created = d.montages.filter(m => !findRef(m));
+  const deleted = refM.filter(r => !findCur(r));
+  const changed = new Set(d.montages.filter(m => { const r = findRef(m); return r && (mktSongsSig(r) !== mktSongsSig(m) || norm(r.name || '') !== norm(m.name || '')); }).map(m => m.id));
+  const m0 = document.getElementById('mktReportModal'); if(m0) m0.remove();
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const PW = 210, PH = 297, ML = 16, MR = 16, CW = PW - ML - MR;
+  const NAVY = [11,29,58], TEXT = [30,40,56], MUTED = [110,122,142], PINK = [230,0,126], GREEN = [22,163,74], RED = [220,38,38], VIOLET = [124,58,237], LINE = [221,227,236];
+  let y = 0, page = 1;
+  const dateStr = new Date().toLocaleDateString('fr-FR', { day:'2-digit', month:'long', year:'numeric' });
+  const header = () => {
+    y = 14;
+    try{ if(st === 'EUROPE2') doc.addImage(LOGO_EUROPE2_PDF, 'PNG', ML, y, 32, 12.6); else doc.addImage(LOGO_RFM_PDF, 'PNG', ML, y, 25, 12.8); }catch(e){}
+    doc.setFont('helvetica','bold'); doc.setFontSize(17); doc.setTextColor(...NAVY);
+    doc.text('Compte rendu — Marketing antenne', ML + 40, y + 7.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...MUTED);
+    doc.text(truncateForPdf(doc, stLabel + ' — ' + dateStr + (ref ? ' — comparé à la sauvegarde du ' + formatDateFr(refDate) : ' — sans sauvegarde de référence'), CW - 40), ML + 40, y + 14);
+    doc.setDrawColor(...PINK); doc.setLineWidth(0.8); doc.line(ML, y + 19, PW - MR, y + 19);
+    y += 27;
+  };
+  const footer = () => { doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...MUTED); doc.text('Marketing antenne — compte rendu', ML, PH - 8); doc.text('Page ' + page, PW - MR, PH - 8, { align:'right' }); };
+  const ensure = hNeed => { if(y + hNeed > PH - 16){ footer(); doc.addPage(); page++; header(); } };
+  // Synthèse
+  doc.setFont('helvetica','bold'); doc.setFontSize(11);
+  header();
+  [[d.montages.length, 'montage' + (d.montages.length > 1 ? 's' : '') + ' actuel' + (d.montages.length > 1 ? 's' : ''), NAVY], [created.length, 'créé' + (created.length > 1 ? 's' : ''), GREEN], [deleted.length, 'supprimé' + (deleted.length > 1 ? 's' : ''), RED]].forEach(([n, lbl, col], i) => {
+    const bx = ML + i * (CW / 3), bw = CW / 3 - 4;
+    doc.setDrawColor(...LINE); doc.setFillColor(247, 249, 252); doc.roundedRect(bx, y, bw, 16, 2, 2, 'FD');
+    doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(...col); doc.text(String(n), bx + 5, y + 10.5);
+    doc.setFont('helvetica','normal'); doc.setFontSize(9.5); doc.setTextColor(...TEXT); doc.text(lbl, bx + 5 + doc.getTextWidth(String(n)) * 1.7 + 3, y + 10);
+  });
+  y += 24;
+  const section = (title, col, items, opts) => {
+    ensure(16);
+    doc.setFillColor(...col); doc.roundedRect(ML, y, CW, 8, 1.5, 1.5, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(255,255,255);
+    doc.text(title + ' (' + items.length + ')', ML + 4, y + 5.6);
+    y += 11;
+    if(!items.length){ doc.setFont('helvetica','italic'); doc.setFontSize(9.5); doc.setTextColor(...MUTED); doc.text('Aucun', ML + 4, y + 3); y += 9; return; }
+    items.forEach(m => {
+      const n = mktSlotsOf(m), hBlock = 7 + n * 5.6 + 3;
+      ensure(hBlock);
+      doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...NAVY);
+      doc.text(truncateForPdf(doc, m.name || 'Sans nom', CW * 0.6), ML + 2, y + 4.5);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...(n === 1 ? VIOLET : PINK));
+      const meta = (n === 1 ? 'Montage 1 titre' : 'Promo Musique') + (mktCreatedDate(m) ? ' · créé le ' + formatDateFr(mktCreatedDate(m)) : '') + (opts && opts.changed && opts.changed.has(m.id) ? ' · modifié depuis la sauvegarde' : '');
+      doc.text(meta, PW - MR, y + 4.5, { align:'right' });
+      y += 7;
+      for(let k = 0; k < n; k++){
+        const s = (m.songs || [])[k];
+        doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...col);
+        doc.text(String(k + 1), ML + 4, y + 3.8);
+        if(s){
+          doc.setTextColor(...TEXT);
+          const art = truncateForPdf(doc, pdfArtistCase(s.artist || ''), CW * 0.42);
+          doc.text(art, ML + 10, y + 3.8);
+          doc.setFont('helvetica','normal');
+          const tx = ML + 10 + doc.getTextWidth(art) + 2.5;
+          doc.text(truncateForPdf(doc, '— ' + titleCaseDisplay(s.title || ''), PW - MR - tx), tx, y + 3.8);
+        } else { doc.setFont('helvetica','italic'); doc.setTextColor(...MUTED); doc.text('—', ML + 10, y + 3.8); }
+        y += 5.6;
+      }
+      doc.setDrawColor(...LINE); doc.setLineWidth(0.3); doc.line(ML, y + 1, PW - MR, y + 1);
+      y += 3;
+    });
+    y += 4;
+  };
+  section('Montages créés', GREEN, created);
+  section('Montages supprimés', RED, deleted);
+  section('Montages actuels', NAVY, d.montages, { changed });
+  footer();
+  doc.save('Compte_rendu_marketing_antenne_' + stLabel.replace(/\s+/g, '_') + '_' + mktTodayISO() + '.pdf');
+  showToast('✓ Compte rendu généré — ' + created.length + ' créé(s), ' + deleted.length + ' supprimé(s)', 'success');
 }
 
 /* ── Validité + sauvegardes hebdomadaires datées ───────────────────── */
@@ -44974,7 +45102,7 @@ async function mktArchiveSave(){
   const snap = {
     station: st, date, savedAt: new Date().toISOString(),
     validity: Object.assign({}, d.validity),
-    montages: d.montages.map(m => Object.assign({}, m, { createdDate: mktCreatedDate(m), songs: m.songs.slice(0, MKT_SLOTS).map(withScores), averages: mktAverages(m.songs.slice(0, MKT_SLOTS)) })),
+    montages: d.montages.map(m => Object.assign({}, m, { createdDate: mktCreatedDate(m), slots: mktSlotsOf(m), songs: m.songs.slice(0, mktSlotsOf(m)).map(withScores), averages: mktAverages(m.songs.slice(0, mktSlotsOf(m))) })),
     pool: d.pool.map(withScores),
     screener, screenerAverages: mktAverages(screener),
     screenerCreatedDate: (() => { try{ return screenerCreatedDate(targetGet(st).montage); }catch(e){ return ''; } })()
@@ -45086,7 +45214,7 @@ async function mktArchiveRestore(date){
   if(!confirm('Remplacer les montages et la liste de titres actuels par la sauvegarde du ' + formatDateFr(date) + ' ? (Le Screener n\'est pas modifié.)')) return;
   const strip = s => s ? { title: s.title, artist: s.artist, key: s.key || comiteKey(s.title, s.artist) } : null;
   const d = mktGet(st);
-  d.montages = (snap.montages || []).map(m => ({ id: m.id, name: m.name, songs: (m.songs || []).map(strip), createdAt: m.createdAt, createdDate: m.createdDate || (m.createdAt || '').slice(0, 10), updatedAt: new Date().toISOString() }));
+  d.montages = (snap.montages || []).map(m => ({ id: m.id, name: m.name, slots: mktSlotsOf(m), songs: (m.songs || []).slice(0, mktSlotsOf(m)).map(strip), createdAt: m.createdAt, createdDate: m.createdDate || (m.createdAt || '').slice(0, 10), updatedAt: new Date().toISOString() }));
   d.pool = (snap.pool || []).map(s => Object.assign(strip(s), { addedAt: s.addedAt || snap.savedAt }));
   d.validity = Object.assign({ from:'', to:'' }, snap.validity);
   mktSave();
