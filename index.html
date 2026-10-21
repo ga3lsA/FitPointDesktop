@@ -10863,6 +10863,96 @@ function idbGetAllEntries(){
 // quotidien des quotas (IndexedDB). Balayage générique par préfixe/store
 // plutôt que liste figée de clés, pour rester valable si de nouvelles clés
 // sont ajoutées plus tard sans avoir à mettre cette fonction à jour.
+/** Contenu du fichier de migration (réglages localStorage fpa_* + IndexedDB). */
+async function buildFpaSettingsBundle(){
+  const localStorageDump = {};
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith('fpa_')) localStorageDump[k] = localStorage.getItem(k);
+  }
+  let indexedDBDump = {};
+  try{ const { keys, vals } = await idbGetAllEntries(); keys.forEach((k, i) => { indexedDBDump[k] = vals[i]; }); }catch(e){}
+  const bundle = { fpaExportVersion: 1, exportedAt: new Date().toISOString(), localStorage: localStorageDump, indexedDB: indexedDBDump };
+  return { json: JSON.stringify(bundle, null, 2), nLS: Object.keys(localStorageDump).length, nIDB: Object.keys(indexedDBDump).length,
+    name: 'fpa_migration_' + new Date().toISOString().slice(0,10) + '.json' };
+}
+/* ── Fenêtre d'export : Drive (dossier « FPA Install » par défaut) et/ou poste ── */
+const FPA_INSTALL_FOLDER_KEY = 'fpa_install_folder';
+function exportFpaSettingsOpen(){
+  if(!requireAdmin()) return;
+  const old = document.getElementById('fpaExportModal'); if(old) old.remove();
+  const gas = typeof dailyGasUrl === 'function' ? dailyGasUrl() : '';
+  const folder = 'FPA Install';   // chemin par défaut, modifiable à chaque export
+  const ov = document.createElement('div');
+  ov.id = 'fpaExportModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,29,58,.55);z-index:1300;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('click', e => { if(e.target === ov) ov.remove(); });
+  const opt = (id, checked, icon, title, body, disabled) => `<label style="display:flex;gap:11px;align-items:flex-start;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;background:${disabled ? 'var(--bg)' : 'var(--white)'};cursor:${disabled ? 'not-allowed' : 'pointer'};opacity:${disabled ? '.65' : '1'}">
+      <input type="checkbox" id="${id}" ${checked ? 'checked' : ''} ${disabled ? 'disabled' : ''} style="width:17px;height:17px;margin-top:2px;accent-color:var(--navy)">
+      <span style="flex:1;min-width:0"><span style="display:block;font-size:13px;font-weight:800;color:var(--navy)">${icon} ${title}</span>${body}</span>
+    </label>`;
+  ov.innerHTML = `<div style="background:var(--white);border-radius:16px;width:100%;max-width:560px;padding:22px;box-shadow:0 20px 60px rgba(11,29,58,.35)">
+    <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--navy)">💾 Exporter les réglages FPA</div>
+    <div style="font-size:12px;color:var(--text2);margin:6px 0 14px;line-height:1.5">Fichier de migration vers un autre poste (URLs, réglages, Playlist, Comité, historique des vagues…). Choisissez où l'enregistrer — les deux à la fois si vous le souhaitez.</div>
+    <div style="display:flex;flex-direction:column;gap:9px">
+      ${opt('fpaExpDrive', !!gas, '☁️', 'Mon Google Drive', `<span style="display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap"><span style="font-size:11px;color:var(--muted)">Mon Drive /</span>
+          <input id="fpaExpFolder" value="${escHtml(folder)}" ${gas ? '' : 'disabled'} style="flex:1;min-width:160px;font-size:12px;padding:6px 9px;border-radius:7px;border:1.5px solid var(--border);font-weight:700;color:var(--navy)"></span>
+          <span style="display:block;font-size:10.5px;color:var(--muted);margin-top:4px">${gas ? 'Dossier créé automatiquement s\'il n\'existe pas · sous-dossier possible : « FPA Install/Archives »' : '⚠ Nécessite le script Google « FPA_Conducteurs_Gmail » (version 3) — Configuration FPA → Import automatique'}</span>`, !gas)}
+      ${opt('fpaExpLocal', !gas, '💻', 'Ce poste (téléchargement)', `<span style="display:block;font-size:10.5px;color:var(--muted);margin-top:3px">Le navigateur enregistre le fichier dans vos Téléchargements — ou vous demande où le placer, selon ses réglages.</span>`, false)}
+    </div>
+    <div id="fpaExpStatus" style="font-size:12px;margin-top:12px;min-height:16px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:10px">
+      <button class="btn-ghost" onclick="document.getElementById('fpaExportModal').remove()" style="font-size:12px;padding:9px 14px">Annuler</button>
+      <button class="btn-primary" id="fpaExpGo" onclick="exportFpaSettingsRun()" style="font-size:12px;padding:9px 16px;border-radius:9px">💾 Enregistrer</button>
+    </div>
+  </div>`;
+  document.body.appendChild(ov);
+}
+async function exportFpaSettingsRun(){
+  const toDrive = (document.getElementById('fpaExpDrive') || {}).checked;
+  const toLocal = (document.getElementById('fpaExpLocal') || {}).checked;
+  const status = document.getElementById('fpaExpStatus'), btn = document.getElementById('fpaExpGo');
+  if(!toDrive && !toLocal){ status.innerHTML = '<span style="color:#dc2626;font-weight:700">Choisissez au moins une destination.</span>'; return; }
+  const folder = ((document.getElementById('fpaExpFolder') || {}).value || 'FPA Install').trim().replace(/^\/+|\/+$/g, '') || 'FPA Install';
+  btn.disabled = true;
+  status.innerHTML = '<span style="color:var(--muted)">⏳ Préparation du fichier…</span>';
+  const b = await buildFpaSettingsBundle();
+  const done = [];
+  if(toLocal){
+    const blob = new Blob([b.json], { type:'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = b.name;
+    document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    done.push('💻 téléchargé sur ce poste');
+  }
+  if(toDrive){
+    try{
+      status.innerHTML = '<span style="color:var(--muted)">⏳ Envoi sur votre Drive (' + escHtml(folder) + ')…</span>';
+      const ping = await dailyGasCall({ action:'ping' }, 20000);
+      if((ping.version || 1) < 3) throw new Error('mettez à jour le script Google « FPA_Conducteurs_Gmail » (version 3)');
+      const tok = typeof dailyGasToken === 'function' ? dailyGasToken() : '';
+      // Envoi en POST (le fichier peut peser plusieurs Mo) — réponse opaque,
+      // vérifiée ensuite par la liste du dossier
+      await fetch(dailyGasUrl(), { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action:'save_install_file', token: tok, folder, name: b.name, content: b.json }) });
+      let found = null;
+      for(let i = 0; i < 6 && !found; i++){
+        await new Promise(r => setTimeout(r, i ? 2000 : 1200));
+        const l = await dailyGasCall({ action:'install_list', folder }, 20000);
+        found = (l.files || []).find(f => f.name === b.name && (Date.now() - new Date(f.updated).getTime()) < 10 * 60000);
+      }
+      if(!found) throw new Error('fichier non retrouvé dans le dossier après l\'envoi');
+      done.push('☁️ enregistré dans Mon Drive / ' + folder);
+    }catch(e){
+      status.innerHTML = '<span style="color:#dc2626;font-weight:700">☁️ Drive : ' + escHtml(e.message || String(e)) + '</span>' + (done.length ? '<br><span style="color:#15803d">' + done.join(' · ') + '</span>' : '');
+      btn.disabled = false;
+      return;
+    }
+  }
+  status.innerHTML = '<span style="color:#15803d;font-weight:800">✓ ' + escHtml(b.name) + ' — ' + done.join(' · ') + '</span>';
+  showToast('✓ Export terminé — ' + b.nLS + ' réglage(s) + ' + b.nIDB + ' entrée(s) IndexedDB', 'success');
+  setTimeout(() => { const m = document.getElementById('fpaExportModal'); if(m) m.remove(); }, 2500);
+}
 async function exportFpaSettingsJSON(){
   if(!requireAdmin()) return;
   const localStorageDump = {};
@@ -41426,7 +41516,7 @@ function renderDriveSyncPanel() {
           <div style="font-size:10px;color:var(--muted);margin-top:3px;max-width:420px;line-height:1.5">Exporte en un fichier tout ce qui est propre à ce navigateur : URLs des backends, Comité/Playlist/Veille, Playlists Spotify clés, sound codes, Habs(R), Song Attributs (dates d'entrée, label, genre, décennie), historique des vagues et des quotas, <strong>apprentissage Prédiction</strong> (feedback, statuts artiste, paramètres). Ne couvre pas le Drive Sync lui-même (déjà côté serveur, indépendant du poste).</div>
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0">
-          <button onclick="exportFpaSettingsJSON()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700">⬇ Tout exporter</button>
+          <button onclick="exportFpaSettingsOpen()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700">⬇ Tout exporter</button>
           <label style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--white);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700">
             ⬆ Tout importer
             <input type="file" accept=".json" style="display:none" onchange="importFpaSettingsJSON(this)">
