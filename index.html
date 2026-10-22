@@ -10876,6 +10876,18 @@ async function buildFpaSettingsBundle(){
   return { json: JSON.stringify(bundle, null, 2), nLS: Object.keys(localStorageDump).length, nIDB: Object.keys(indexedDBDump).length,
     name: 'fpa_migration_' + new Date().toISOString().slice(0,10) + '.json' };
 }
+/* Compression gzip (navigateur) → base64, et décompression à l'import */
+async function fpaGzipBase64(text){
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
+  const buf = new Uint8Array(await new Response(stream).arrayBuffer());
+  let bin = '';
+  for(let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+  return btoa(bin);
+}
+async function fpaGunzipToText(arrayBuffer){
+  const stream = new Blob([arrayBuffer]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return await new Response(stream).text();
+}
 /* ── Fenêtre d'export : Drive (dossier « FPA Install » par défaut) et/ou poste ── */
 const FPA_INSTALL_FOLDER_KEY = 'fpa_install_folder';
 function exportFpaSettingsOpen(){
@@ -10927,23 +10939,30 @@ async function exportFpaSettingsRun(){
   }
   if(toDrive){
     try{
-      // Version compacte (sans indentation) pour l'envoi : 2 à 3 fois plus légère
-      const content = JSON.stringify(JSON.parse(b.json));
+      // Envoi compressé : JSON compact puis gzip, encodé en base64 (le fichier
+      // de migration peut peser des dizaines de Mo — trop pour un seul envoi
+      // vers Google Apps Script). Enregistré sur Drive en .json.gz.
+      status.innerHTML = '<span style="color:var(--muted)">⏳ Compression du fichier…</span>';
+      const compact = JSON.stringify(JSON.parse(b.json));
+      const content = await fpaGzipBase64(compact);
+      const gzName = b.name + '.gz';
       const sizeMo = (content.length / 1048576).toLocaleString('fr-FR', { maximumFractionDigits:1 });
+      const rawMo = (compact.length / 1048576).toLocaleString('fr-FR', { maximumFractionDigits:1 });
+      if(content.length > 45 * 1048576) throw new Error('fichier trop volumineux même compressé (' + sizeMo + ' Mo) — utilisez l\'enregistrement sur ce poste');
       status.innerHTML = '<span style="color:var(--muted)">⏳ Envoi sur votre Drive (' + escHtml(folder) + ') — ' + sizeMo + ' Mo…</span>';
       const ping = await dailyGasCall({ action:'ping' }, 20000);
-      if((ping.version || 1) < 3) throw new Error('mettez à jour le script Google « FPA_Conducteurs_Gmail » (version 3)');
+      if((ping.version || 1) < 3 || (ping.build || 0) < 32) throw new Error('mettez à jour le script Google « FPA_Conducteurs_Gmail » (version 3.2) puis publiez une nouvelle version du déploiement');
       const tok = typeof dailyGasToken === 'function' ? dailyGasToken() : '';
       const uploadId = 'u' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
       // Envoi en POST — la réponse n'est pas lisible par le navigateur : le
       // script publie son compte rendu (install_status), lu juste après
       await fetch(dailyGasUrl(), { method:'POST', mode:'no-cors', headers:{ 'Content-Type':'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action:'save_install_file', token: tok, folder, name: b.name, uploadId, content }) });
+        body: JSON.stringify({ action:'save_install_file', token: tok, folder, name: gzName, uploadId, encoding:'gzip-base64', content }) });
       let result = null, statusSupported = true;
       const t0 = Date.now();
       while(!result && Date.now() - t0 < 120000){
         await new Promise(r => setTimeout(r, 2500));
-        status.innerHTML = '<span style="color:var(--muted)">⏳ Enregistrement sur votre Drive (' + escHtml(folder) + ') — ' + sizeMo + ' Mo · ' + Math.round((Date.now() - t0) / 1000) + ' s…</span>';
+        status.innerHTML = '<span style="color:var(--muted)">⏳ Enregistrement sur votre Drive (' + escHtml(folder) + ') — ' + rawMo + ' Mo compressés en ' + sizeMo + ' Mo · ' + Math.round((Date.now() - t0) / 1000) + ' s…</span>';
         if(statusSupported){
           try{
             const s = await dailyGasCall({ action:'install_status' }, 20000);
@@ -10959,11 +10978,11 @@ async function exportFpaSettingsRun(){
           }
         }
         const l = await dailyGasCall({ action:'install_list', folder }, 20000);
-        const f = (l.files || []).find(x => x.name === b.name && (Date.now() - new Date(x.updated).getTime()) < 15 * 60000);
+        const f = (l.files || []).find(x => x.name === gzName && (Date.now() - new Date(x.updated).getTime()) < 15 * 60000);
         if(f) result = f;
       }
-      if(!result) throw new Error('aucune confirmation du script Google après 2 minutes — fichier de ' + sizeMo + ' Mo. Vérifiez le dossier « ' + folder + ' » de votre Drive ; si le fichier n\'y est pas, mettez à jour le script (version 3.1) et réessayez.');
-      done.push('☁️ enregistré dans Mon Drive / ' + folder);
+      if(!result) throw new Error('aucune confirmation du script Google après 2 minutes (fichier compressé de ' + sizeMo + ' Mo). Vérifiez que le script est en version 3.2 avec une nouvelle version de déploiement publiée.');
+      done.push('☁️ enregistré dans Mon Drive / ' + folder + ' (' + gzName + ', ' + sizeMo + ' Mo)');
     }catch(e){
       status.innerHTML = '<span style="color:#dc2626;font-weight:700">☁️ Drive : ' + escHtml(e.message || String(e)) + '</span>' + (done.length ? '<br><span style="color:#15803d">' + done.join(' · ') + '</span>' : '');
       btn.disabled = false;
@@ -11010,7 +11029,10 @@ function importFpaSettingsJSON(input){
   const reader = new FileReader();
   reader.onload = async function(ev){
     try{
-      const bundle = JSON.parse(ev.target.result);
+      // Fichier .json, ou .json.gz enregistré sur Drive (compressé)
+      const bytes = new Uint8Array(ev.target.result);
+      const text = (bytes[0] === 0x1f && bytes[1] === 0x8b) ? await fpaGunzipToText(ev.target.result) : new TextDecoder('utf-8').decode(bytes);
+      const bundle = JSON.parse(text);
       if(!bundle || (!bundle.localStorage && !bundle.indexedDB)){
         showToast('❌ Fichier de migration non reconnu', 'err');
         return;
@@ -11032,7 +11054,7 @@ function importFpaSettingsJSON(input){
       console.error(err);
     }
   };
-  reader.readAsText(file);
+  reader.readAsArrayBuffer(file);
   input.value = '';
 }
 
@@ -41540,7 +41562,7 @@ function renderDriveSyncPanel() {
           <button onclick="exportFpaSettingsOpen()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--navy);color:#fff;border:none;cursor:pointer;font-weight:700">⬇ Tout exporter</button>
           <label style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--white);border:1.5px solid var(--border);color:var(--text2);cursor:pointer;font-weight:700">
             ⬆ Tout importer
-            <input type="file" accept=".json" style="display:none" onchange="importFpaSettingsJSON(this)">
+            <input type="file" accept=".json,.gz,application/json,application/gzip" style="display:none" onchange="importFpaSettingsJSON(this)">
           </label>
         </div>
       </div>
@@ -45904,7 +45926,7 @@ function fpaImportCatalog(){
     ]},
     { group:'🎵 Playlist & réglages', color:'#E6007E', items:[
       { icon:'🏷️', label:'Playlist — Label / Date d\'entrée', hint:'Excel Artiste, Titre, Label, Date entrée — station ' + st, accept:'.xlsx,.xls', run:i => handlePlaylistAttributesImport(i) },
-      { icon:'⚙️', label:'Réglages FPA (transfert de poste)', hint:'Fichier JSON exporté depuis un autre poste — FPA se recharge', accept:'.json', run:i => importFpaSettingsJSON(i) }
+      { icon:'⚙️', label:'Réglages FPA (transfert de poste)', hint:'Fichier .json ou .json.gz (Drive) exporté depuis un autre poste — FPA se recharge', accept:'.json,.gz', run:i => importFpaSettingsJSON(i) }
     ]}
   ];
 }
