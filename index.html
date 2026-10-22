@@ -26358,6 +26358,275 @@ function playlistSortedListHtml(stationTitles, rows360){
     </div>`;
 }
 
+/* ── NOMBRE DE TITRES IDÉAL PAR CATÉGORIE ─────────────────────────────
+   Saisi à côté du nombre réel de chaque catégorie, par station ; l'écart
+   est signalé (vert = atteint, orange = au-dessus, rouge = en dessous).
+   Mémorisé sur le poste et partagé via Drive Sync. */
+const PL_CAT_TARGETS_KEY = 'fpa_playlist_cat_targets_v1';
+let plCatTargetsDriveLoaded = false, plCatTargetsTimer = null;
+function plCatTargetsAll(){ try{ return JSON.parse(localStorage.getItem(PL_CAT_TARGETS_KEY) || '{}') || {}; }catch(e){ return {}; } }
+function plCatStation(){ return (typeof ACTIVE_STATION !== 'undefined' && ACTIVE_STATION === 'RFM') ? 'RFM' : 'EUROPE2'; }
+function getPlaylistCatTarget(cat){ const a = plCatTargetsAll(); const v = a[plCatStation()] && a[plCatStation()][String(cat).toUpperCase().trim()]; return (v === undefined || v === null || v === '') ? null : +v; }
+function setPlaylistCatTarget(cat, value){
+  const a = plCatTargetsAll(), st = plCatStation(), k = String(cat).toUpperCase().trim();
+  a[st] = a[st] || {};
+  const n = parseInt(String(value).trim(), 10);
+  if(isNaN(n) || n < 0) delete a[st][k]; else a[st][k] = n;
+  a.savedAt = new Date().toISOString();
+  try{ localStorage.setItem(PL_CAT_TARGETS_KEY, JSON.stringify(a)); }catch(e){}
+  if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+    clearTimeout(plCatTargetsTimer);
+    plCatTargetsTimer = setTimeout(() => { driveCall('save', 'playlist_cat_targets', JSON.stringify(plCatTargetsAll())).catch(() => {}); }, 1500);
+  }
+  renderPlaylistPage();
+}
+async function plCatTargetsLoadDrive(){
+  if(plCatTargetsDriveLoaded || typeof DRIVE_SYNC_URL === 'undefined' || !DRIVE_SYNC_URL) return;
+  plCatTargetsDriveLoaded = true;
+  try{
+    const r = await driveCall('load', 'playlist_cat_targets');
+    const remote = r && r.data ? JSON.parse(r.data) : null;
+    if(remote && (remote.savedAt || '') > (plCatTargetsAll().savedAt || '')){
+      localStorage.setItem(PL_CAT_TARGETS_KEY, JSON.stringify(remote));
+      if(playlistPageOpen) renderPlaylistPage();
+    }
+  }catch(e){}
+}
+/** Nombre de titres d'une catégorie — un paquet (2 titres liés) compte pour
+ *  une seule position. */
+function playlistCatPositions(items){
+  const bundles = new Set();
+  let n = 0;
+  items.forEach(t => { if(t.bundleId){ if(!bundles.has(t.bundleId)){ bundles.add(t.bundleId); n++; } } else n++; });
+  return { n, bundles: bundles.size };
+}
+/** Pastille « N titres » colorée selon la consigne Titre/Cat. (vert = atteint,
+ *  orange = au-dessus, rouge = en dessous), suivie du champ de consigne. */
+function playlistCatCountHtml(cat, items, editable){
+  const { n, bundles } = playlistCatPositions(items);
+  const t = editable ? getPlaylistCatTarget(cat) : null;
+  let col = 'var(--navy)', bg = 'var(--bg)', bd = 'var(--border)', tip = '';
+  if(t !== null){
+    const d = n - t;
+    if(d === 0){ col = '#1E7A3C'; bg = '#E6F6EC'; bd = '#A8DDB9'; tip = 'Consigne atteinte'; }
+    else if(d > 0){ col = '#B45309'; bg = '#FFFBEB'; bd = '#FCD34D'; tip = d + ' titre' + (d > 1 ? 's' : '') + ' au-dessus de la consigne (' + t + ')'; }
+    else { col = '#B91C1C'; bg = '#FEF2F2'; bd = '#FCA5A5'; tip = (-d) + ' titre' + (d < -1 ? 's' : '') + ' en dessous de la consigne (' + t + ')'; }
+  }
+  if(bundles) tip = (tip ? tip + ' · ' : '') + bundles + ' paquet' + (bundles > 1 ? 's' : '') + ' compté' + (bundles > 1 ? 's' : '') + ' pour un titre chacun';
+  const pill = `<div ${tip ? `title="${escHtml(tip)}"` : ''} style="font-size:11.5px;color:${col};font-weight:800;background:${bg};border:1.5px solid ${bd};border-radius:20px;padding:3px 12px;white-space:nowrap">${n} titre${n > 1 ? 's' : ''}</div>`;
+  if(!editable) return pill;
+  plCatTargetsLoadDrive();
+  return pill + `<label onclick="event.stopPropagation()" title="Nombre de titres souhaité dans cette catégorie (un paquet compte pour un titre)" style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--muted);white-space:nowrap">
+      Titre/Cat.
+      <input type="number" min="0" step="1" value="${t === null ? '' : t}" placeholder="—" onchange="setPlaylistCatTarget('${jsAttrEscape(cat)}', this.value)" onkeydown="if(event.key==='Enter') this.blur()"
+        style="width:52px;font-size:12px;font-weight:800;color:var(--navy);text-align:center;padding:3px 5px;border-radius:8px;border:1.5px solid var(--border);background:var(--white)">
+    </label>`;
+}
+
+/* ── MOYENNES PAR CATÉGORIE + HISTORIQUE HEBDOMADAIRE ──────────────────
+   Sous chaque catégorie : moyenne des scores de ses titres (Fit, Pot
+   Ensemble / P1, Burn Ensemble / P1, Inconnu Ensemble / P1). Chaque semaine
+   (lundi → dimanche), la dernière moyenne calculée est conservée ; un
+   tableau en bas de page compare les semaines, pour les catégories choisies.
+   Historique sur le poste + Drive Sync. */
+const PL_CAT_METRICS = [
+  { k:'fit',      l:'Fit',        crit:'fit',     pct:false },
+  { k:'potTous',  l:'Pot Ens.',   crit:'pot',     pct:false },
+  { k:'potP1',    l:'Pot P1',     crit:'pot',     pct:false },
+  { k:'burnTous', l:'Burn Ens.',  crit:'burn',    pct:true  },
+  { k:'burnP1',   l:'Burn P1',    crit:'burn',    pct:true  },
+  { k:'incTous',  l:'Inc. Ens.',  crit:'inconnu', pct:true  },
+  { k:'incP1',    l:'Inc. P1',    crit:'inconnu', pct:true  }
+];
+const PL_CAT_HIST_KEY = 'fpa_playlist_cat_hist_v1', PL_CAT_SEL_KEY = 'fpa_playlist_cat_hist_sel_v1';
+let plCatHistDriveLoaded = false, plCatHistTimer = null, plCatHistShowAll = false;
+function plCatAvgNew(){ const a = {}; PL_CAT_METRICS.forEach(m => a[m.k] = []); return a; }
+function plCatAvgAdd(acc, metrics, row360){
+  const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
+  const vals = { fit: row360 && row360.fit != null ? num(row360.fit) : null,
+    potTous: num(metrics && metrics.potTous), potP1: num(metrics && metrics.potP1),
+    burnTous: num(metrics && metrics.burnTous), burnP1: num(metrics && metrics.burnP1),
+    incTous: num(metrics && metrics.incTous), incP1: num(metrics && metrics.incP1) };
+  PL_CAT_METRICS.forEach(m => { if(vals[m.k] !== null) acc[m.k].push(vals[m.k]); });
+}
+function plCatAvgResult(acc, total){
+  const r = { n: total };
+  PL_CAT_METRICS.forEach(m => { const a = acc[m.k]; r[m.k] = a.length ? Math.round(a.reduce((x, y) => x + y, 0) / a.length * 10) / 10 : null; r[m.k + 'N'] = a.length; });
+  return r;
+}
+function plCatFmt(m, v){ return v === null || v === undefined ? '—' : v.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 }) + (m.pct ? ' %' : ''); }
+function plCatAvgStripHtml(r){
+  if(!r || !r.n) return '';
+  const chip = m => {
+    const v = r[m.k];
+    const val = v === null ? '<span style="color:var(--muted)">—</span>' : (typeof fpaColorize === 'function' ? fpaColorize(m.crit, v, plCatFmt(m, v)) : plCatFmt(m, v));
+    return `<span title="${escHtml(m.l + ' moyen — ' + r[m.k + 'N'] + '/' + r.n + ' titre(s) avec une valeur')}" style="display:inline-flex;align-items:baseline;gap:5px;padding:3px 10px;border-radius:8px;background:var(--white);border:1px solid var(--border);font-size:12px;white-space:nowrap"><span style="font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${m.l}</span><b>${val}</b></span>`;
+  };
+  return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:0 0 7px 2px">
+    <span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-right:2px">Moyenne</span>
+    ${PL_CAT_METRICS.map(chip).join('')}
+  </div>`;
+}
+function plCatWeekKey(d){ d = d || new Date(); const x = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12); const wd = (x.getDay() + 6) % 7; x.setDate(x.getDate() - wd); return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2,'0') + '-' + String(x.getDate()).padStart(2,'0'); }
+// Historique en mémoire + IndexedDB (le localStorage peut être saturé sur
+// un poste très chargé) ; copie localStorage tentée en plus.
+let plCatHistCache = null, plCatHistIdbLoaded = false;
+function plCatHistAll(){
+  if(!plCatHistCache){ try{ plCatHistCache = JSON.parse(localStorage.getItem(PL_CAT_HIST_KEY) || '{}') || {}; }catch(e){ plCatHistCache = {}; } }
+  if(!plCatHistIdbLoaded && typeof idbGet === 'function'){
+    plCatHistIdbLoaded = true;
+    idbGet(PL_CAT_HIST_KEY).then(v => {
+      if(v && typeof v === 'object'){
+        const before = JSON.stringify(plCatHistCache);
+        plCatHistCache = plCatHistMerge(plCatHistCache, v);
+        if(JSON.stringify(plCatHistCache) !== before && typeof playlistPageOpen !== 'undefined' && playlistPageOpen) renderPlaylistPage();
+      }
+    }).catch(() => {});
+  }
+  return plCatHistCache;
+}
+function plCatHistSave(all){
+  plCatHistCache = all;
+  try{ if(typeof idbSet === 'function') idbSet(PL_CAT_HIST_KEY, all).catch(() => {}); }catch(e){}
+  try{ localStorage.setItem(PL_CAT_HIST_KEY, JSON.stringify(all)); }catch(e){}
+  if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+    clearTimeout(plCatHistTimer);
+    plCatHistTimer = setTimeout(async () => {
+      try{
+        let remote = null;
+        try{ const r = await driveCall('load', 'playlist_cat_hist'); remote = r && r.data ? JSON.parse(r.data) : null; }catch(e){}
+        const merged = plCatHistMerge(plCatHistAll(), remote);
+        plCatHistCache = merged;
+        try{ if(typeof idbSet === 'function') idbSet(PL_CAT_HIST_KEY, merged).catch(() => {}); }catch(e){}
+        await driveCall('save', 'playlist_cat_hist', JSON.stringify(merged));
+      }catch(e){}
+    }, 4000);
+  }
+}
+/** Fusion de deux historiques : semaine par semaine, la plus récemment mise à jour gagne. */
+function plCatHistMerge(a, b){
+  const out = JSON.parse(JSON.stringify(a || {}));
+  Object.entries(b || {}).forEach(([st, weeks]) => {
+    out[st] = out[st] || {};
+    Object.entries(weeks || {}).forEach(([w, e]) => { if(!out[st][w] || (e.at || '') > (out[st][w].at || '')) out[st][w] = e; });
+  });
+  return out;
+}
+async function plCatHistLoadDrive(){
+  if(plCatHistDriveLoaded || typeof DRIVE_SYNC_URL === 'undefined' || !DRIVE_SYNC_URL) return;
+  plCatHistDriveLoaded = true;
+  try{
+    const r = await driveCall('load', 'playlist_cat_hist');
+    if(r && r.data){
+      const merged = plCatHistMerge(plCatHistAll(), JSON.parse(r.data));
+      if(JSON.stringify(merged) !== JSON.stringify(plCatHistCache)){
+        plCatHistCache = merged;
+        try{ if(typeof idbSet === 'function') idbSet(PL_CAT_HIST_KEY, merged).catch(() => {}); }catch(e){}
+        if(playlistPageOpen) renderPlaylistPage();
+      }
+    }
+  }catch(e){}
+}
+/** Enregistre les moyennes de la semaine en cours (écrasées tant que la
+ *  semaine n'est pas terminée — la dernière valeur de la semaine est gardée). */
+function plCatHistRecord(byCat){
+  if(!byCat || !Object.keys(byCat).length) return;
+  const all = plCatHistAll(), st = plCatStation(), wk = plCatWeekKey();
+  all[st] = all[st] || {};
+  const prev = all[st][wk];
+  const sig = JSON.stringify(byCat);
+  if(prev && JSON.stringify(prev.cats) === sig) return;
+  all[st][wk] = { cats: byCat, at: new Date().toISOString() };
+  plCatHistSave(all);
+}
+let plCatSelMem = {};   // sélection en mémoire (si le localStorage est saturé)
+function plCatHistSelected(available){
+  let sel = plCatSelMem[plCatStation()] || null;
+  if(!sel){ try{ const m = JSON.parse(localStorage.getItem(PL_CAT_SEL_KEY) || '{}'); sel = m[plCatStation()] || null; }catch(e){} }
+  return Array.isArray(sel) ? sel : available.slice();
+}
+function plCatHistToggleCat(cat){
+  const order = PLAYLIST_CATEGORY_ORDER[ACTIVE_STATION] || [];
+  let m = {};
+  try{ m = JSON.parse(localStorage.getItem(PL_CAT_SEL_KEY) || '{}') || {}; }catch(e){}
+  const avail = Array.from(new Set(plCatHistAvailable().concat(Object.keys((plCatHistAll()[plCatStation()] || {})[plCatWeekKey()] ? plCatHistAll()[plCatStation()][plCatWeekKey()].cats : {})).concat(playlistCategoryGroups(playlistTitles.filter(t => t.station === ACTIVE_STATION)).map(g => g.cat).filter(c => c !== 'Non classé'))));
+  let sel = plCatSelMem[plCatStation()] || (Array.isArray(m[plCatStation()]) ? m[plCatStation()] : avail.slice());
+  sel = sel.includes(cat) ? sel.filter(c => c !== cat) : sel.concat(cat);
+  sel.sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+  m[plCatStation()] = sel;
+  plCatSelMem[plCatStation()] = sel;
+  try{ localStorage.setItem(PL_CAT_SEL_KEY, JSON.stringify(m)); }catch(e){}
+  renderPlaylistPage();
+}
+function plCatHistAvailable(){
+  const weeks = plCatHistAll()[plCatStation()] || {};
+  const set = new Set();
+  Object.values(weeks).forEach(w => Object.keys(w.cats || {}).forEach(c => set.add(c)));
+  const order = PLAYLIST_CATEGORY_ORDER[ACTIVE_STATION] || [];
+  return Array.from(set).sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+}
+function plCatHistTableHtml(currentCats, currentByCat){
+  plCatHistLoadDrive();
+  const weeksObj = Object.assign({}, plCatHistAll()[plCatStation()] || {});
+  if(currentByCat && Object.keys(currentByCat).length) weeksObj[plCatWeekKey()] = { cats: currentByCat, at: new Date().toISOString() };
+  const weeks = Object.keys(weeksObj).sort().reverse();
+  if(!weeks.length){
+    return `<div style="margin-top:30px;padding:16px;background:var(--white);border:1.5px solid var(--border);border-radius:14px">
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">📈 Évolution des moyennes par catégorie</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:6px">Classez des titres dans des catégories (P1, A1, H1…) : leurs moyennes seront suivies ici semaine après semaine.</div>
+    </div>`;
+  }
+  const order = PLAYLIST_CATEGORY_ORDER[ACTIVE_STATION] || [];
+  const availSet = new Set(plCatHistAvailable().concat(currentCats || []));
+  const avail = Array.from(availSet).sort((a, b) => (order.indexOf(a) + 1 || 99) - (order.indexOf(b) + 1 || 99));
+  const sel = plCatHistSelected(avail).filter(c => avail.includes(c));
+  const shown = plCatHistShowAll ? weeks : weeks.slice(0, 10);
+  const wkLabel = w => { const d = new Date(w + 'T12:00:00'), e = new Date(d); e.setDate(e.getDate() + 6); return 'Sem. du ' + d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }) + ' au ' + e.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'2-digit' }); };
+  const delta = (cur, prev, m) => {
+    if(cur === null || cur === undefined || prev === null || prev === undefined) return '';
+    const d = Math.round((cur - prev) * 10) / 10;
+    if(!d) return '<div style="font-size:9.5px;color:var(--muted)">= 0,0</div>';
+    // Burn / Inconnu : une baisse est une bonne nouvelle
+    const good = m.k.startsWith('burn') || m.k.startsWith('inc') ? d < 0 : d > 0;
+    return `<div style="font-size:9.5px;font-weight:800;color:${good ? '#16a34a' : '#dc2626'}">${d > 0 ? '▲ +' : '▼ '}${d.toLocaleString('fr-FR', { minimumFractionDigits:1, maximumFractionDigits:1 })}</div>`;
+  };
+  const tables = sel.map(cat => {
+    const color = PLAYLIST_CAT_COLORS[cat] || PLAYLIST_CAT_DEFAULT_COLOR;
+    const rows = shown.map((w, i) => {
+      const e = (weeksObj[w].cats || {})[cat];
+      const prevW = weeks[weeks.indexOf(w) + 1];
+      const p = prevW ? (weeksObj[prevW].cats || {})[cat] : null;
+      return `<tr style="background:${i % 2 ? 'var(--white)' : '#F4F6FA'};border-top:1px solid var(--border)">
+        <td style="padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--navy);white-space:nowrap">${wkLabel(w)}${w === plCatWeekKey() ? ' <span style="font-size:9.5px;color:var(--cyan);font-weight:800">en cours</span>' : ''}</td>
+        <td style="padding:5px 8px;text-align:center;font-size:11.5px;color:var(--text2)">${e ? e.n : '—'}</td>
+        ${PL_CAT_METRICS.map(m => { const v = e ? e[m.k] : null; return `<td style="padding:5px 8px;text-align:right;font-size:12px;font-weight:800;white-space:nowrap">${v === null || v === undefined ? '<span style="color:var(--muted);font-weight:400">—</span>' : (typeof fpaColorize === 'function' ? fpaColorize(m.crit, v, plCatFmt(m, v)) : plCatFmt(m, v))}${delta(v, p ? p[m.k] : null, m)}</td>`; }).join('')}
+      </tr>`;
+    }).join('');
+    return `<div style="margin-top:12px">
+      <div style="display:inline-block;font-size:13px;font-weight:800;color:#1e2838;background:rgb(${color.join(',')});border-radius:7px;padding:3px 12px;margin-bottom:5px">${escHtml(cat)}</div>
+      <div style="overflow-x:auto;border:1.5px solid var(--border);border-radius:10px;background:var(--white)">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:var(--bg)"><th style="padding:6px 10px;text-align:left;font-size:9.5px;color:var(--muted);text-transform:uppercase">Semaine</th><th style="padding:6px 8px;font-size:9.5px;color:var(--muted);text-transform:uppercase">Titres</th>${PL_CAT_METRICS.map(m => `<th style="padding:6px 8px;text-align:right;font-size:9.5px;color:var(--muted);text-transform:uppercase;white-space:nowrap">${m.l}</th>`).join('')}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-top:30px;padding:16px;background:var(--white);border:1.5px solid var(--border);border-radius:14px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">📈 Évolution des moyennes par catégorie</div>
+      <span style="font-size:11px;color:var(--muted)">une ligne par semaine (lundi → dimanche) · écart vs semaine précédente · ${weeks.length} semaine${weeks.length > 1 ? 's' : ''} enregistrée${weeks.length > 1 ? 's' : ''}</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px">
+      <span style="font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Catégories</span>
+      ${avail.map(c => { const on = sel.includes(c); const color = PLAYLIST_CAT_COLORS[c] || PLAYLIST_CAT_DEFAULT_COLOR;
+        return `<button onclick="plCatHistToggleCat('${jsAttrEscape(c)}')" style="font-size:11px;font-weight:800;padding:4px 11px;border-radius:20px;cursor:pointer;border:1.5px solid ${on ? '#1e2838' : 'var(--border)'};background:${on ? 'rgb(' + color.join(',') + ')' : 'var(--white)'};color:${on ? '#1e2838' : 'var(--muted)'}">${on ? '✓ ' : ''}${escHtml(c)}</button>`; }).join('')}
+    </div>
+    ${sel.length ? tables : '<div style="font-size:12px;color:var(--muted);margin-top:10px">Sélectionnez au moins une catégorie.</div>'}
+    ${weeks.length > 10 ? `<button class="btn-ghost" onclick="plCatHistShowAll=!plCatHistShowAll;renderPlaylistPage()" style="margin-top:10px;font-size:11px;padding:5px 12px">${plCatHistShowAll ? '▴ Replier (10 dernières semaines)' : '▾ Afficher les ' + (weeks.length - 10) + ' semaines plus anciennes'}</button>` : ''}
+  </div>`;
+}
+
 function buildPlaylistRow(t, metrics, row360){
   const expanded = playlistExpandedKeys.has(t.key);
   const safeId = t.key.replace(/[^a-z0-9]/gi, '-');
@@ -26546,11 +26815,14 @@ async function renderPlaylistPage(){
     listEl.innerHTML = playlistSortBarHtml() + playlistSortedListHtml(stationTitles, rows360);
     return;
   }
+  const catAvgsByCat = {};
   const groupsHtml = groups.map(group => {
+    const avgAcc = plCatAvgNew();
     const rowsHtml = playlistReorderBundles(group.items).map(t => {
       try{
         const metrics = getPlaylistCallOutMetrics(t.title, t.artist);
         const row360  = findRow360Match(rows360, t.title, t.artist);
+        plCatAvgAdd(avgAcc, metrics, row360);
         return buildPlaylistRow(t, metrics, row360);
       }catch(e){
         console.error('Erreur d\'affichage pour', t.title, t.artist, e);
@@ -26559,6 +26831,8 @@ async function renderPlaylistPage(){
     }).join('');
     const catColor = PLAYLIST_CAT_COLORS[(group.cat||'').toUpperCase().trim()] || PLAYLIST_CAT_DEFAULT_COLOR;
     const catBg = `rgb(${catColor.join(',')})`;
+    const catAvgs = plCatAvgResult(avgAcc, group.items.length);
+    if(group.cat !== 'Non classé') catAvgsByCat[String(group.cat).toUpperCase().trim()] = catAvgs;
     // Badge de catégorie cliquable (sauf "Non classé", qui n'est de toute
     // façon jamais exporté) : bascule l'inclusion de cette catégorie dans le
     // PDF/Excel exporté sans la retirer de l'affichage de l'app — utile pour
@@ -26574,10 +26848,11 @@ async function renderPlaylistPage(){
         <div ${catClickable ? `onclick="togglePlaylistExportCat('${jsAttrEscape(group.cat)}')"` : ''}
           title="${catClickable ? (excluded ? 'Exclue du PDF/Excel exporté — cliquer pour la réintégrer' : 'Cliquer pour exclure cette catégorie du PDF/Excel exporté') : ''}"
           style="font-size:15px;font-weight:800;color:#1e2838;background:${catBg};border-radius:8px;padding:5px 16px;letter-spacing:.02em;${catClickable?'cursor:pointer;':''}${excluded?'opacity:.45;text-decoration:line-through':''}">${escHtml(group.cat)}</div>
-        <div style="font-size:11.5px;color:var(--navy);font-weight:700;background:var(--bg);border:1.5px solid var(--border);border-radius:20px;padding:3px 12px">${group.items.length} titre${group.items.length>1?'s':''}</div>
+        ${playlistCatCountHtml(group.cat, group.items, catClickable)}
         ${excludedBadge}
         <div style="flex:1;height:1px;background:var(--border)"></div>
       </div>
+      ${plCatAvgStripHtml(catAvgs)}
       <div ondragover="event.preventDefault();this.style.outline='2px dashed var(--cyan)';this.style.outlineOffset='-2px'"
         ondragleave="this.style.outline='none'"
         ondrop="this.style.outline='none';playlistDropOnCategory(event,'${jsAttrEscape(group.cat)}')"
@@ -26586,7 +26861,9 @@ async function renderPlaylistPage(){
         ${rowsHtml}
       </div>`;
   });
-  listEl.innerHTML = playlistSortBarHtml() + groupsHtml.join('');
+  // Moyennes de la semaine enregistrées (historique par catégorie)
+  try{ plCatHistRecord(catAvgsByCat); }catch(e){ console.warn('Moyennes par catégorie', e); }
+  listEl.innerHTML = playlistSortBarHtml() + groupsHtml.join('') + plCatHistTableHtml(Object.keys(catAvgsByCat), catAvgsByCat);
 
   // Pochette + digital snapshot : uniquement pour les lignes actuellement
   // ouvertes (chargement à la demande, pas pour toute la liste d'un coup).
