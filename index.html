@@ -46971,6 +46971,74 @@ async function geniusRenderInto(elId, title, artist){
   el.innerHTML = head + tiles(pvNow, w) + `<div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:4px 0 2px">Pages vues par jour</div>` + genSparkHtml(e.pv);
 }
 
+
+/* ── Overview : 3 cartes Genius ────────────────────────────────────── */
+function genLatestPv(id){
+  const e = genHist && genHist.songs[id]; if(!e) return null;
+  const d = Object.keys(e.pv || {}).sort().pop();
+  return d ? e.pv[d] : null;
+}
+function genEvoLabel(w){ if(!w) return ''; const pct = w.base ? w.gain / w.base * 100 : null; return (pct !== null ? (pct >= 0 ? '+' : '') + pct.toLocaleString('fr-FR', { maximumFractionDigits:1 }) + ' %' : '') + (w.partial ? ' (' + w.days + ' j)' : ''); }
+let genOvDayCache = null;
+if(typeof OVERVIEW_WIDGETS !== 'undefined'){
+  OVERVIEW_WIDGETS.push(
+    { id:'genius_playlist', icon:'📝', label:'Genius · Playlist', go: () => { genUI.view = 'mine'; overviewGoChart('genius'); },
+      async getAsync(){
+        await genHistLoad();
+        const list = (playlistTitles || []).filter(t => t.station === ACTIVE_STATION);
+        if(!list.length) return { empty:'Playlist vide.' };
+        const songs = Object.entries(genHist.songs);
+        const rows = [];
+        list.forEach(t => {
+          const nT = norm(t.title || ''), fa = norm(String(t.artist || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s)\s*/i)[0] || '');
+          const m = songs.find(([id, e]) => norm(e.t || '') === nT && (!fa || norm(e.a || '').includes(fa)));
+          if(!m) return;
+          const pv = genLatestPv(m[0]), w = genWeekGain(m[0], pv);
+          rows.push({ title: t.title, artist: t.artist, pv, w });
+        });
+        if(!rows.length) return { empty:'Aucun relevé Genius des titres de la Playlist — Classements → Genius → « Relever mes titres ».' };
+        rows.sort((a, b) => ((b.w ? b.w.gain : -Infinity) - (a.w ? a.w.gain : -Infinity)) || (b.pv || 0) - (a.pv || 0));
+        return { rows: rows.slice(0, 5).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist,
+          value: r.w ? (r.w.gain >= 0 ? '+' : '') + genFmt(r.w.gain) : genFmt(r.pv), color: r.w && r.w.gain > 0 ? '#16a34a' : 'var(--navy)',
+          valueTitle: r.w ? 'Pages vues gagnées sur 7 jours — ' + genEvoLabel(r.w) + ' · total ' + genFmt(r.pv) : 'Pages vues totales' })),
+          note: 'Pages vues Genius gagnées sur 7 jours · ' + rows.length + ' titre(s) relevé(s)' };
+      } },
+    { id:'genius_day', icon:'📝', label:'Genius · Top du jour', go: () => { genUI.view = 'chart'; genUI.period = 'day'; genUI.genre = 'all'; genUI.items = []; overviewGoChart('genius'); },
+      async getAsync(){
+        if(typeof dailyGasUrl !== 'function' || !dailyGasUrl()) return { empty:'Script Google non configuré (Configuration FPA → Import automatique).' };
+        if(!genOvDayCache || Date.now() - genOvDayCache.at > 10 * 60000){
+          await genHistLoad();
+          const r = await genCall('/api/songs/chart', { time_period:'day', chart_genre:'all', per_page: 50, page: 1 });
+          const items = (r.chart_items || []).map(genSongFrom).filter(Boolean);
+          const ranks = {};
+          items.forEach((s, i) => { ranks[s.id] = i + 1; genRecordSong(s); });
+          (genHist.charts['all|day'] = genHist.charts['all|day'] || {})[genToday()] = ranks;
+          genHistSave();
+          genOvDayCache = { at: Date.now(), items };
+        }
+        const items = genOvDayCache.items;
+        if(!items.length) return { empty:'Classement Genius indisponible.' };
+        return { rows: items.slice(0, 5).map((s, i) => ({ rank: i + 1, title: s.title, artist: s.artist, value: genFmt(s.pv), valueTitle:'Pages vues totales' })),
+          note: 'Classement Genius du jour · tous genres · monde' };
+      } },
+    { id:'genius_evo', icon:'🚀', label:'Genius · Plus fortes progressions', go: () => { genUI.view = 'chart'; overviewGoChart('genius'); },
+      async getAsync(){
+        await genHistLoad();
+        const rows = [];
+        Object.entries(genHist.songs).forEach(([id, e]) => {
+          const pv = genLatestPv(id), w = genWeekGain(id, pv);
+          if(!w || !w.base || w.base < 10000 || w.gain <= 0) return;      // assez de lectures pour un signal fiable
+          rows.push({ title: e.t, artist: e.a, pv, w, pct: w.gain / w.base * 100 });
+        });
+        if(!rows.length) return { empty:'Pas encore assez de relevés — l\'évolution sur 7 jours se construit chaque jour.' };
+        rows.sort((a, b) => b.pct - a.pct);
+        return { rows: rows.slice(0, 5).map((r, i) => ({ rank: i + 1, title: r.title, artist: r.artist, value: genEvoLabel(r.w), color:'#16a34a',
+          valueTitle: '+' + genFmt(r.w.gain) + ' pages vues sur 7 jours · total ' + genFmt(r.pv) })),
+          note: 'Progression des pages vues sur 7 jours (titres de plus de 10 000 pages vues)' };
+      } }
+  );
+}
+
 /* ── Intégration à la page Classements ─────────────────────────────── */
 (function(){
   // Bouton « Genius » dans la barre des groupes, après YouTube
