@@ -22268,6 +22268,7 @@ async function openTevByInfo(info){
   <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--navy)">🎧 Streams</span><div style="flex:1;height:1.5px;background:var(--border)"></div></div>
     <div id="tevSpotifyStreams"></div>
+    <div id="tevGenius" style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)"></div>
   </div>
   <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:10px">
     <div style="display:flex;align-items:center;gap:8px;margin:2px 0 10px"><span style="font-size:11px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--navy)">🗂️ Datas</span><div style="flex:1;height:1.5px;background:var(--border)"></div></div>
@@ -22330,6 +22331,7 @@ async function openTevByInfo(info){
 
   document.getElementById('tevBody').innerHTML = sections.join('');
   if(typeof kworbStreamsRenderInto === 'function') kworbStreamsRenderInto('tevSpotifyStreams', title, artist);
+  if(typeof geniusRenderInto === 'function') geniusRenderInto('tevGenius', title, artist);
   updateTevNavUI();
   mbUpdateTevBadge();
 }
@@ -46828,8 +46830,8 @@ async function genLoadMine(){
 function genEvoHtml(w){
   if(!w) return '<span style="color:var(--muted);font-size:11px" title="Évolution disponible après un deuxième relevé (un par jour)">—</span>';
   const pct = w.base ? w.gain / w.base * 100 : null;
-  return `<div style="font-weight:800;color:${w.gain > 0 ? '#16a34a' : 'var(--muted)'}">+${genFmt(w.gain)}</div>
-    <div style="font-size:10px;color:var(--muted)">${pct !== null ? '+' + pct.toLocaleString('fr-FR', { maximumFractionDigits:1 }) + ' %' : ''}${w.partial ? ' · sur ' + w.days + ' j' : ''}</div>`;
+  return `<div style="font-weight:800;color:${w.gain > 0 ? '#16a34a' : 'var(--muted)'}">${w.gain >= 0 ? '+' : ''}${genFmt(w.gain)}</div>
+    <div style="font-size:10px;color:var(--muted)">${pct !== null ? (pct >= 0 ? '+' : '') + pct.toLocaleString('fr-FR', { maximumFractionDigits:1 }) + ' %' : ''}${w.partial ? ' · sur ' + w.days + ' j' : ''}</div>`;
 }
 function genRankEvo(id, rank){
   const p = genPrevRank(id);
@@ -46903,6 +46905,71 @@ function renderGeniusPanel(quick){
 function genSetView(v){ genUI.view = v; renderGeniusPanel(); if(v === 'mine' && !genUI.mine.length && !genUI.mineLoading) genHistLoad(); }
 function genSetPeriod(p){ genUI.period = p; genLoadChart(); }
 function genSetGenre(g){ genUI.genre = g; genLoadChart(); }
+
+
+/* ── Fiche Song Metrics : pages vues Genius + courbe ───────────────── */
+/** Retrouve le titre Genius : d'abord dans les relevés déjà faits, sinon
+ *  par une recherche (qui enregistre le relevé du jour). */
+async function genFindSong(title, artist){
+  await genHistLoad();
+  const nT = norm(title || ''), nA = norm(artist || '');
+  const firstA = norm(String(artist || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s)\s*/i)[0] || '');
+  const known = Object.entries(genHist.songs).find(([id, e]) => norm(e.t || '') === nT && (norm(e.a || '').includes(firstA) || nA.includes(norm(e.a || '').split(' ')[0] || '~')));
+  const today = genToday();
+  if(known && known[1].pv[today] != null) return { id: +known[0], title: known[1].t, artist: known[1].a, pv: known[1].pv[today], fromHist: true };
+  if(typeof dailyGasUrl !== 'function' || !dailyGasUrl()) return known ? { id: +known[0], title: known[1].t, artist: known[1].a, pv: null, fromHist: true } : null;
+  const r = await genCall('/api/search/song', { q: title + ' ' + artist, per_page: 5 });
+  const hits = ((r.sections || [])[0] || {}).hits || [];
+  const cands = hits.map(x => genSongFrom(x)).filter(Boolean);
+  const best = cands.find(c => norm(c.title) === nT && norm(c.artist).includes(firstA)) || cands.find(c => norm(c.title) === nT) || cands.find(c => similarity(norm(c.title), nT) >= 0.85) || null;
+  if(best){ genRecordSong(best); genHistSave(); }
+  return best;
+}
+/** Courbe SVG : pages vues par jour (écart entre deux relevés ramené à 1 jour). */
+function genSparkHtml(pvMap){
+  const days = Object.keys(pvMap || {}).sort();
+  const pts = [];
+  for(let i = 1; i < days.length; i++){
+    const gap = Math.max(1, Math.round((new Date(days[i] + 'T12:00:00') - new Date(days[i - 1] + 'T12:00:00')) / 86400000));
+    const v = (pvMap[days[i]] - pvMap[days[i - 1]]) / gap;
+    if(isFinite(v) && v >= 0) pts.push({ d: days[i], v });
+  }
+  if(pts.length < 2) return `<div style="font-size:11px;color:var(--muted);padding:8px 0">Courbe disponible après quelques jours de relevés (${days.length} relevé${days.length > 1 ? 's' : ''} pour l'instant).</div>`;
+  const W = 560, H = 120, PL = 46, PR = 10, PT = 10, PB = 22;
+  const max = Math.max(...pts.map(p => p.v)) || 1;
+  const x = i => PL + i * (W - PL - PR) / (pts.length - 1);
+  const y = v => PT + (H - PT - PB) * (1 - v / max);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ',' + y(p.v).toFixed(1)).join(' ');
+  const area = line + ` L${x(pts.length - 1).toFixed(1)},${(H - PB).toFixed(1)} L${PL},${(H - PB).toFixed(1)} Z`;
+  const fmtD = d => { const t = new Date(d + 'T12:00:00'); return t.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit' }); };
+  const ticks = [0, 0.5, 1].map(f => `<text x="${PL - 6}" y="${(y(max * f) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#7A8BA6">${genFmt(max * f)}</text><line x1="${PL}" x2="${W - PR}" y1="${y(max * f).toFixed(1)}" y2="${y(max * f).toFixed(1)}" stroke="#E3E8F0" stroke-width="1"/>`).join('');
+  const lbls = [0, Math.floor((pts.length - 1) / 2), pts.length - 1].filter((v, i, a) => a.indexOf(v) === i)
+    .map(i => `<text x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === pts.length - 1 ? 'end' : 'middle'}" font-size="9" fill="#7A8BA6">${fmtD(pts[i].d)}</text>`).join('');
+  const dots = pts.map((p, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="2.6" fill="#E2B500"><title>${fmtD(p.d)} : ${genFmt(p.v)} pages vues / jour</title></circle>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:130px;display:block">${ticks}
+    <path d="${area}" fill="rgba(226,181,0,.15)"/><path d="${line}" fill="none" stroke="#E2B500" stroke-width="2.2" stroke-linejoin="round"/>${dots}${lbls}</svg>`;
+}
+async function geniusRenderInto(elId, title, artist){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const head = `<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:3px;background:#FFFF64;color:#000;font-size:9px;font-weight:900">G</span>
+      <span style="font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--navy)">Genius — pages vues des paroles (monde)</span>
+    </div>`;
+  const tiles = (pv, w) => `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px">
+      ${kwsTile('Pages vues (total)', genFmt(pv), '', 'Pages vues cumulées de la page paroles sur Genius')}
+      ${kwsTile('+ 7 jours', w ? (w.gain >= 0 ? '+' : '') + genFmt(w.gain) : '—', w ? `<span style="font-size:10.5px;color:var(--muted)">${w.base ? (w.gain >= 0 ? '+' : '') + (w.gain / w.base * 100).toLocaleString('fr-FR', { maximumFractionDigits:1 }) + ' %' : ''}${w.partial ? ' · sur ' + w.days + ' j' : ''}</span>` : '', 'Pages vues gagnées sur la semaine')}
+    </div>`;
+  el.innerHTML = head + tiles(null, null);
+  let s = null;
+  try{ s = await genFindSong(title, artist); }catch(e){ s = null; }
+  if(!document.getElementById(elId)) return;
+  if(!s){ el.innerHTML = head + tiles(null, null); return; }
+  const e = genHist.songs[s.id] || { pv:{} };
+  const pvNow = s.pv != null ? s.pv : (() => { const d = Object.keys(e.pv).sort().pop(); return d ? e.pv[d] : null; })();
+  const w = genWeekGain(s.id, pvNow);
+  el.innerHTML = head + tiles(pvNow, w) + `<div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:4px 0 2px">Pages vues par jour</div>` + genSparkHtml(e.pv);
+}
 
 /* ── Intégration à la page Classements ─────────────────────────────── */
 (function(){
