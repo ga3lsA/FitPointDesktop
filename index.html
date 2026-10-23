@@ -27023,6 +27023,20 @@ function fitPdfFontSize(doc, text, maxWidth, startSize, minSize){
   return size;
 }
 
+/** Listes complémentaires des exports Playlist (PDF / Excel) :
+ *  « Entrées » = titres dont l'ancienne catégorie est NEW (ils restent aussi
+ *  dans leur catégorie) ; « Sorties » = titres dont la catégorie est OUT. */
+function playlistExportExtraGroups(stationTitles){
+  const up = v => String(v || '').toUpperCase().trim();
+  const entries = stationTitles.filter(t => up(t.ancienneCategorie) === 'NEW' && up(t.categorie) !== 'OUT');
+  const outs = stationTitles.filter(t => up(t.categorie) === 'OUT');
+  const order = PLAYLIST_CATEGORY_ORDER[ACTIVE_STATION] || [];
+  entries.sort((a, b) => (order.indexOf(up(a.categorie)) + 1 || 99) - (order.indexOf(up(b.categorie)) + 1 || 99));
+  const out = [];
+  if(entries.length) out.push({ cat:'ENTRÉES', title:'Entrées', color:[22, 163, 74], items: entries });
+  if(outs.length) out.push({ cat:'SORTIES', title:'Sorties', color:[220, 38, 38], items: outs });
+  return out;
+}
 async function exportPlaylistPDF(){
   if(typeof window.jspdf === 'undefined'){
     showToast('Bibliothèque PDF non chargée — vérifiez la connexion internet', 'err');
@@ -27078,7 +27092,12 @@ async function exportPlaylistPDF(){
   // Catégories cliquées en "exclues" (voir togglePlaylistExportCat) retirées
   // du PDF ici uniquement — elles restent visibles et éditables dans l'app.
   const groups = allGroups.filter(g => !isPlaylistCatExcludedFromExport(g.cat));
-  const totalRows = groups.reduce((n, g) => n + g.items.length, 0);
+  // Listes « Entrées » (ancienne catégorie NEW) et « Sorties » (catégorie
+  // OUT) ajoutées après les catégories — les entrées restent aussi dans leur
+  // catégorie habituelle.
+  const extraGroups = playlistExportExtraGroups(stationTitles);
+  const printGroups = groups.concat(extraGroups);
+  const totalRows = printGroups.reduce((n, g) => n + g.items.length + (g.title ? 2 : 0), 0);
   if(!totalRows){
     showToast(allGroups.length
       ? 'Toutes les catégories de la Playlist ' + STATION_LABELS[ACTIVE_STATION] + ' sont exclues du PDF — cliquez sur un badge de catégorie pour la réintégrer'
@@ -27090,7 +27109,7 @@ async function exportPlaylistPDF(){
   // de laisser les catégories s'enchaîner de façon presque continue.
   const GROUP_GAP = 4;
   const SAFETY_MARGIN = 6; // absorbe les marges de sécurité de checkPageBreak (voir plus bas) pour un calcul de rowH légèrement plus prudent
-  const overhead = TOP_MARGIN + HEADER_LOGO_H + COLBAND_H + COLBAND_GAP + FOOTER_RESERVE + SAFETY_MARGIN + (groups.length * GROUP_GAP);
+  const overhead = TOP_MARGIN + HEADER_LOGO_H + COLBAND_H + COLBAND_GAP + FOOTER_RESERVE + SAFETY_MARGIN + (printGroups.length * GROUP_GAP);
   const availableForRows = PH - overhead;
   // Gabarit compact fixe (~5.4mm/ligne, comme le modèle de référence) ; ne
   // rétrécit que si totalRows est trop nombreux pour ce gabarit sur une page.
@@ -27195,9 +27214,20 @@ async function exportPlaylistPDF(){
 
   addPageHeader();
 
-  groups.forEach(group => {
-    checkPageBreak(rowH * 2);
+  printGroups.forEach(group => {
+    checkPageBreak(rowH * (group.title ? 4 : 2));
     y += GROUP_GAP;
+    if(group.title){
+      // Bandeau de liste (Entrées / Sorties)
+      const bandH = Math.max(5, rowH + 1);
+      doc.setFillColor(...group.color);
+      doc.roundedRect(ML, y, CW, bandH, 1.2, 1.2, 'F');
+      doc.setFont('Inter','bold');
+      doc.setFontSize(Math.max(7, fontMain + 0.5));
+      doc.setTextColor(255, 255, 255);
+      doc.text(group.title.toUpperCase() + '  (' + group.items.length + ')', ML + 3, y + bandH / 2, { baseline:'middle' });
+      y += bandH + 1;
+    }
     group.items.forEach((t, idx) => {
       checkPageBreak(rowH + 1);
       const cat = (t.categorie || '').toUpperCase().trim();
@@ -27398,7 +27428,19 @@ async function exportPlaylistExcel(){
   const BORDER_ALL = { top: THIN_GREY, bottom: THIN_GREY, left: THIN_GREY, right: THIN_GREY };
 
   let rIdx = 6;
-  groups.forEach(group => {
+  // Listes « Entrées » / « Sorties » ajoutées après les catégories
+  const printGroups = groups.concat(playlistExportExtraGroups(stationTitles));
+  printGroups.forEach(group => {
+    if(group.title){
+      const hr = ws.getRow(rIdx);
+      hr.getCell(1).value = group.title.toUpperCase() + '  (' + group.items.length + ')';
+      ws.mergeCells(rIdx, 1, rIdx, LAST_COL);
+      hr.getCell(1).font = { name: 'Arial', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+      hr.getCell(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rgbToArgb(group.color) } };
+      hr.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+      hr.height = 20;
+      rIdx++;
+    }
     // Paquets : le second titre d'une paire liée (voir playlistFindPartner/
     // bundleId) n'affiche pas de numéro propre — même convention que les
     // classeurs produits manuellement (voir le fichier de référence fourni).
@@ -46634,6 +46676,265 @@ async function kworbStreamsDailySweep(){
   }
 }
 setTimeout(() => { kworbStreamsDailySweep().catch(() => {}); }, 25000);
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     CLASSEMENTS → GENIUS (pages vues des paroles)
+     Signal faible : les titres dont les paroles sont de plus en plus lues.
+     • Top Genius (classement public de genius.com : jour / semaine / mois,
+       par genre) avec pages vues cumulées.
+     • Mes titres : pages vues Genius des titres de la Playlist.
+     • Évolution sur une semaine : FPA garde un relevé quotidien (pages vues
+       par titre, rang par classement) — IndexedDB + Drive Sync.
+     Données relayées par le script Google « FPA_Conducteurs_Gmail » (v3.3).
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaGeniusJs">
+const GEN_HIST_KEY = 'fpa_genius_hist_v1';
+const GEN_GENRES = [['all','Tous genres'],['rap','Rap'],['pop','Pop'],['rb','R&B'],['rock','Rock'],['country','Country']];
+const GEN_PERIODS = [['day','Jour'],['week','Semaine'],['month','Mois']];
+let genUI = { view:'chart', genre:'all', period:'week', loading:false, error:'', items:[], mine:[], mineLoading:false };
+let genHist = null, genHistLoaded = false, genHistTimer = null;
+
+function genToday(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function genAddDays(iso, n){ const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function genFmt(n){ return n === null || n === undefined ? '—' : Math.round(n).toLocaleString('fr-FR'); }
+
+/* ── Historique (pages vues par titre, rangs par classement) ───────── */
+async function genHistLoad(){
+  if(genHistLoaded) return genHist;
+  genHistLoaded = true;
+  genHist = { songs:{}, charts:{} };
+  try{ const v = await idbGet(GEN_HIST_KEY); if(v && v.songs) genHist = v; }catch(e){}
+  if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+    try{ const r = await driveCall('load', 'genius_hist'); if(r && r.data) genHist = genHistMerge(genHist, JSON.parse(r.data)); }catch(e){}
+  }
+  return genHist;
+}
+function genHistMerge(a, b){
+  const out = JSON.parse(JSON.stringify(a || { songs:{}, charts:{} }));
+  out.songs = out.songs || {}; out.charts = out.charts || {};
+  Object.entries((b && b.songs) || {}).forEach(([id, e]) => { if(!out.songs[id]) out.songs[id] = e; else Object.assign(out.songs[id].pv, e.pv || {}, out.songs[id].pv); });
+  Object.entries((b && b.charts) || {}).forEach(([k, days]) => { out.charts[k] = Object.assign({}, days || {}, out.charts[k] || {}); });
+  return out;
+}
+function genHistSave(){
+  // Ne garder que 120 jours
+  const keep = genAddDays(genToday(), -120);
+  Object.values(genHist.songs).forEach(e => Object.keys(e.pv || {}).forEach(d => { if(d < keep) delete e.pv[d]; }));
+  Object.values(genHist.charts).forEach(days => Object.keys(days).forEach(d => { if(d < keep) delete days[d]; }));
+  try{ idbSet(GEN_HIST_KEY, genHist).catch(() => {}); }catch(e){}
+  if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+    clearTimeout(genHistTimer);
+    genHistTimer = setTimeout(async () => {
+      try{
+        let remote = null;
+        try{ const r = await driveCall('load', 'genius_hist'); remote = r && r.data ? JSON.parse(r.data) : null; }catch(e){}
+        genHist = genHistMerge(genHist, remote);
+        await driveCall('save', 'genius_hist', JSON.stringify(genHist));
+      }catch(e){}
+    }, 6000);
+  }
+}
+function genRecordSong(s){
+  if(!s || !s.id || s.pv == null) return;
+  const e = genHist.songs[s.id] || (genHist.songs[s.id] = { t: s.title, a: s.artist, pv:{} });
+  e.t = s.title; e.a = s.artist; e.pv[genToday()] = s.pv;
+}
+/** Pages vues gagnées sur ~7 jours (relevé le plus proche entre 5 et 9 jours,
+ *  ramené à 7 jours) ; à défaut, gain depuis le plus ancien relevé disponible. */
+function genWeekGain(id, pvNow){
+  const e = genHist.songs[id];
+  if(!e || pvNow == null) return null;
+  const t = genToday();
+  for(const k of [7,6,8,5,9]){
+    const v = e.pv[genAddDays(t, -k)];
+    if(v != null) return { gain: Math.round((pvNow - v) * 7 / k), days: 7, partial:false, base: v };
+  }
+  const older = Object.keys(e.pv).filter(d => d < t).sort();
+  if(older.length){ const d0 = older[0]; const days = Math.round((new Date(t + 'T12:00:00') - new Date(d0 + 'T12:00:00')) / 86400000); return { gain: pvNow - e.pv[d0], days, partial:true, base: e.pv[d0] }; }
+  return null;
+}
+function genChartKey(){ return genUI.genre + '|' + genUI.period; }
+function genPrevRank(id){
+  const days = genHist.charts[genChartKey()] || {};
+  const t = genToday();
+  for(const k of [7,6,8,5,9]){ const d = days[genAddDays(t, -k)]; if(d) return { rank: d[id] || null, found: true }; }
+  return { rank: null, found: false };
+}
+
+/* ── Appels Genius via le script Google ────────────────────────────── */
+async function genCall(path, params){
+  if(typeof dailyGasUrl !== 'function' || !dailyGasUrl()) throw new Error('script Google non configuré (Configuration FPA → Import automatique)');
+  const q = { action:'genius', path };
+  Object.entries(params || {}).forEach(([k, v]) => { q['q_' + k] = v; });
+  const r = await dailyGasCall(q, 40000);
+  if(!r || !r.data) throw new Error('réponse Genius vide — script à jour (v3.3) ?');
+  return r.data;
+}
+function genSongFrom(item){
+  const s = item && (item.item || item.result || item);
+  if(!s || !s.id) return null;
+  return { id: s.id, title: s.title || '', artist: s.artist_names || (s.primary_artist && s.primary_artist.name) || '', url: s.url || '',
+    pv: s.stats && s.stats.pageviews != null ? +s.stats.pageviews : null, hot: !!(s.stats && s.stats.hot),
+    img: s.song_art_image_thumbnail_url || s.header_image_thumbnail_url || '', released: s.release_date_for_display || '' };
+}
+async function genLoadChart(){
+  genUI.loading = true; genUI.error = ''; renderGeniusPanel();
+  try{
+    await genHistLoad();
+    const page1 = await genCall('/api/songs/chart', { time_period: genUI.period, chart_genre: genUI.genre, per_page: 50, page: 1 });
+    let items = (page1.chart_items || []).map(genSongFrom).filter(Boolean);
+    if(page1.next_page){
+      try{ const p2 = await genCall('/api/songs/chart', { time_period: genUI.period, chart_genre: genUI.genre, per_page: 50, page: 2 }); items = items.concat((p2.chart_items || []).map(genSongFrom).filter(Boolean)); }catch(e){}
+    }
+    genUI.items = items;
+    // Relevé du jour : pages vues + rangs
+    const ranks = {};
+    items.forEach((s, i) => { ranks[s.id] = i + 1; genRecordSong(s); });
+    (genHist.charts[genChartKey()] = genHist.charts[genChartKey()] || {})[genToday()] = ranks;
+    genHistSave();
+  }catch(e){ genUI.error = e.message || String(e); }
+  genUI.loading = false;
+  renderGeniusPanel();
+}
+/** Pages vues Genius des titres de la Playlist (recherche titre + artiste). */
+async function genLoadMine(){
+  genUI.mineLoading = true; genUI.error = ''; renderGeniusPanel();
+  try{
+    await genHistLoad();
+    const list = (playlistTitles || []).filter(t => t.station === ACTIVE_STATION);
+    const out = [];
+    for(let i = 0; i < list.length; i++){
+      const t = list[i];
+      genUI.mineProgress = (i + 1) + '/' + list.length; renderGeniusPanel(true);
+      try{
+        const r = await genCall('/api/search/song', { q: t.title + ' ' + t.artist, per_page: 5 });
+        const hits = ((r.sections || [])[0] || {}).hits || [];
+        const cands = hits.map(h => genSongFrom(h)).filter(Boolean);
+        const nT = norm(t.title || '');
+        const best = cands.find(c => norm(c.title) === nT) || cands.find(c => similarity(norm(c.title), nT) >= 0.8) || null;
+        if(best){ genRecordSong(best); out.push(Object.assign({ fpaTitle: t.title, fpaArtist: t.artist, cat: t.categorie || '' }, best)); }
+        else out.push({ fpaTitle: t.title, fpaArtist: t.artist, cat: t.categorie || '', id: null });
+      }catch(e){ out.push({ fpaTitle: t.title, fpaArtist: t.artist, cat: t.categorie || '', id: null, err: e.message }); }
+      await new Promise(r => setTimeout(r, 250));
+    }
+    genUI.mine = out;
+    genHistSave();
+  }catch(e){ genUI.error = e.message || String(e); }
+  genUI.mineLoading = false;
+  renderGeniusPanel();
+}
+
+/* ── Rendu ─────────────────────────────────────────────────────────── */
+function genEvoHtml(w){
+  if(!w) return '<span style="color:var(--muted);font-size:11px" title="Évolution disponible après un deuxième relevé (un par jour)">—</span>';
+  const pct = w.base ? w.gain / w.base * 100 : null;
+  return `<div style="font-weight:800;color:${w.gain > 0 ? '#16a34a' : 'var(--muted)'}">+${genFmt(w.gain)}</div>
+    <div style="font-size:10px;color:var(--muted)">${pct !== null ? '+' + pct.toLocaleString('fr-FR', { maximumFractionDigits:1 }) + ' %' : ''}${w.partial ? ' · sur ' + w.days + ' j' : ''}</div>`;
+}
+function genRankEvo(id, rank){
+  const p = genPrevRank(id);
+  if(!p.found) return '<span style="color:var(--muted);font-size:10.5px">—</span>';
+  if(!p.rank) return '<span style="font-size:10.5px;font-weight:800;color:#7C3AED">NEW</span>';
+  const d = p.rank - rank;
+  if(!d) return '<span style="font-size:10.5px;color:var(--muted)">=</span>';
+  return `<span style="font-size:10.5px;font-weight:800;color:${d > 0 ? '#16a34a' : '#dc2626'}">${d > 0 ? '▲' : '▼'} ${Math.abs(d)}</span>`;
+}
+function genRowTitle(s){
+  return `<div style="display:flex;align-items:center;gap:10px;min-width:0">
+      ${s.img ? `<img src="${escHtml(s.img)}" alt="" style="width:34px;height:34px;border-radius:6px;object-fit:cover;flex-shrink:0">` : ''}
+      <div style="min-width:0">
+        <div class="tev-clickable" onclick="openTevByInfo({title:'${jsAttrEscape(s.title)}',artist:'${jsAttrEscape(s.artist)}'})" style="font-size:13px;font-weight:800;color:var(--navy);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.title)}${s.hot ? ' <span title="Tendance sur Genius">🔥</span>' : ''}</div>
+        <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(s.artist)}${s.released ? ' · ' + escHtml(s.released) : ''}</div>
+      </div>
+    </div>`;
+}
+function renderGeniusPanel(quick){
+  const panel = document.getElementById('geniusChartsPanel');
+  if(!panel) return;
+  const sel = (arr, cur, fn) => arr.map(([k, l]) => `<button onclick="${fn}('${k}')" style="font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;cursor:pointer;border:1.5px solid ${k === cur ? 'var(--navy)' : 'var(--border)'};background:${k === cur ? 'var(--navy)' : 'var(--white)'};color:${k === cur ? '#fff' : 'var(--text2)'}">${l}</button>`).join('');
+  const head = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy)">📝 Genius</div>
+      <span style="font-size:12px;color:var(--muted)">titres dont les paroles sont les plus lues — évolution sur 7 jours</span>
+      <span style="margin-left:auto;display:inline-flex;gap:6px">${sel([['chart','Top Genius'],['mine','Mes titres (Playlist)']], genUI.view, 'genSetView')}</span>
+    </div>`;
+  let body = '';
+  if(genUI.view === 'chart'){
+    const ctrl = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${sel(GEN_PERIODS, genUI.period, 'genSetPeriod')}<span style="width:10px"></span>${sel(GEN_GENRES, genUI.genre, 'genSetGenre')}
+        <button class="btn-ghost" onclick="genLoadChart()" style="margin-left:auto;font-size:11px;padding:5px 11px">🔄 Actualiser</button>
+      </div>`;
+    if(genUI.loading) body = ctrl + '<div style="padding:30px;text-align:center;color:var(--muted)">⏳ Chargement du classement Genius…</div>';
+    else if(genUI.error) body = ctrl + `<div style="padding:16px;color:#B91C1C;font-size:12.5px">⚠ ${escHtml(genUI.error)}</div>`;
+    else if(!genUI.items.length) body = ctrl + '<div style="padding:30px;text-align:center;color:var(--muted)">Aucune donnée — cliquez sur « Actualiser ».</div>';
+    else {
+      const rows = genUI.items.map((s, i) => `<tr style="background:${i % 2 ? 'var(--white)' : '#F4F6FA'};border-top:1px solid var(--border)">
+          <td style="padding:7px 10px;font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy);text-align:center">${i + 1}</td>
+          <td style="padding:7px 6px;text-align:center">${genRankEvo(s.id, i + 1)}</td>
+          <td style="padding:7px 10px;max-width:420px">${genRowTitle(s)}</td>
+          <td style="padding:7px 10px;text-align:right;font-weight:800;color:var(--navy);white-space:nowrap">${genFmt(s.pv)}</td>
+          <td style="padding:7px 10px;text-align:right;white-space:nowrap">${genEvoHtml(genWeekGain(s.id, s.pv))}</td>
+        </tr>`).join('');
+      body = ctrl + `<div style="overflow-x:auto;border:1.5px solid var(--border);border-radius:12px;background:var(--white)"><table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--bg)">${['#','Évol.','Titre / Artiste','Pages vues (total)','+ 7 jours'].map((h, i) => `<th style="padding:8px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:${i >= 3 ? 'right' : i === 2 ? 'left' : 'center'}">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    }
+  } else {
+    const ctrl = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--text2)">Pages vues Genius des titres de la Playlist ${escHtml(STATION_LABELS[ACTIVE_STATION] || '')}, triées par progression sur 7 jours.</span>
+        <button class="btn-ghost" onclick="genLoadMine()" ${genUI.mineLoading ? 'disabled' : ''} style="margin-left:auto;font-size:11px;padding:5px 11px">${genUI.mineLoading ? '⏳ ' + (genUI.mineProgress || '') : '🔄 Relever mes titres'}</button>
+      </div>`;
+    if(!genUI.mine.length) body = ctrl + `<div style="padding:30px;text-align:center;color:var(--muted)">${genUI.mineLoading ? '⏳ Recherche des titres sur Genius…' : 'Cliquez sur « Relever mes titres » (une recherche par titre de la Playlist).'}</div>`;
+    else {
+      const list = genUI.mine.slice().map(s => Object.assign({ w: s.id ? genWeekGain(s.id, s.pv) : null }, s))
+        .sort((a, b) => (b.w ? b.w.gain : -1) - (a.w ? a.w.gain : -1) || (b.pv || 0) - (a.pv || 0));
+      const rows = list.map((s, i) => `<tr style="background:${i % 2 ? 'var(--white)' : '#F4F6FA'};border-top:1px solid var(--border)">
+          <td style="padding:7px 10px;max-width:420px">${s.id ? genRowTitle(s) : `<div style="font-size:13px;font-weight:800;color:var(--navy)">${escHtml(titleCaseDisplay(s.fpaTitle))}</div><div style="font-size:11px;color:var(--muted)">${escHtml(titleCaseDisplay(s.fpaArtist))} · introuvable sur Genius</div>`}</td>
+          <td style="padding:7px 8px;text-align:center"><span style="font-size:10.5px;font-weight:800;color:var(--text2)">${escHtml(s.cat || '')}</span></td>
+          <td style="padding:7px 10px;text-align:right;font-weight:800;color:var(--navy);white-space:nowrap">${genFmt(s.pv)}</td>
+          <td style="padding:7px 10px;text-align:right;white-space:nowrap">${genEvoHtml(s.w)}</td>
+        </tr>`).join('');
+      body = ctrl + `<div style="overflow-x:auto;border:1.5px solid var(--border);border-radius:12px;background:var(--white)"><table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--bg)">${['Titre / Artiste','Cat.','Pages vues (total)','+ 7 jours'].map((h, i) => `<th style="padding:8px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:${i >= 2 ? 'right' : i === 1 ? 'center' : 'left'}">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows}</tbody></table></div>`;
+    }
+  }
+  panel.innerHTML = head + body + `<div style="font-size:10.5px;color:var(--muted);margin-top:8px">Pages vues cumulées tous pays. L'évolution sur 7 jours repose sur les relevés quotidiens de FPA (un par jour, à l'ouverture de cette page) : complète au bout d'une semaine, partielle avant (« sur N j »).</div>`;
+}
+function genSetView(v){ genUI.view = v; renderGeniusPanel(); if(v === 'mine' && !genUI.mine.length && !genUI.mineLoading) genHistLoad(); }
+function genSetPeriod(p){ genUI.period = p; genLoadChart(); }
+function genSetGenre(g){ genUI.genre = g; genLoadChart(); }
+
+/* ── Intégration à la page Classements ─────────────────────────────── */
+(function(){
+  // Bouton « Genius » dans la barre des groupes, après YouTube
+  const yt = document.getElementById('chartYoutubeGroup');
+  if(yt && !document.getElementById('chartGeniusGroup')){
+    const sep = document.createElement('div'); sep.style.cssText = 'width:1px;height:18px;background:var(--border);margin-right:4px;flex-shrink:0';
+    const g = document.createElement('div');
+    g.className = 'dec-group'; g.id = 'chartGeniusGroup';
+    g.style.cssText = 'margin-right:4px;display:flex;align-items:stretch;height:28px;border-radius:7px;background:#FFF9DB;box-shadow:0 0 0 1px #F2D35B;opacity:.7;flex-shrink:0';
+    g.innerHTML = `<button id="chartGroupBtnGenius" onclick="switchChartTab('genius')" style="height:28px;padding:0 10px;border:none;background:transparent;color:var(--navy);cursor:pointer;font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:5px;border-radius:7px;white-space:nowrap">📝 Genius</button>`;
+    yt.parentNode.insertBefore(sep, yt.nextSibling);
+    sep.parentNode.insertBefore(g, sep.nextSibling);
+  }
+  const inout = document.getElementById('inoutChartsPanel');
+  if(inout && !document.getElementById('geniusChartsPanel')){
+    const p = document.createElement('div'); p.id = 'geniusChartsPanel'; p.style.display = 'none';
+    inout.parentNode.insertBefore(p, inout.nextSibling);
+  }
+  const orig = window.renderChartTable;
+  if(typeof orig !== 'function') return;
+  window.renderChartTable = function(){
+    const panel = document.getElementById('geniusChartsPanel');
+    const grp = document.getElementById('chartGeniusGroup');
+    if(grp){ const on = activeChartTab === 'genius'; grp.style.opacity = on ? '1' : '.7'; grp.style.boxShadow = on ? '0 0 0 2px #E2B500' : '0 0 0 1px #F2D35B'; }
+    if(activeChartTab !== 'genius'){ if(panel) panel.style.display = 'none'; return orig.apply(this, arguments); }
+    ['chartStandardHeader','chartEmptyMsg','chartTableHeader','chartTableBody','embChartsPanel','liveChartsPanel','inoutChartsPanel'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = 'none'; });
+    const cc = document.getElementById('chartCount'); if(cc) cc.style.display = 'none';
+    if(panel){ panel.style.display = 'block'; renderGeniusPanel(); }
+    if(!genUI.items.length && !genUI.loading && !genUI.error) genLoadChart();
+  };
+})();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
      FPA MOBILE — adaptation automatique aux téléphones (v1)
