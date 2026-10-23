@@ -40689,6 +40689,21 @@ async function driveCallJSONPWithRetry(params, timeoutMs, retries = 2) {
   throw lastErr;
 }
 
+
+/** Synchro Drive des historiques « de fond » (Genius, streams Spotify) :
+ *  au plus une fois par jour et par clé, réduite aux 30 derniers jours, et
+ *  jamais au-delà de 200 Ko — pour ne pas saturer le quota du script Drive
+ *  Sync (la copie complète reste sur le poste). */
+async function driveBgSave(key, data, trimFn){
+  const day = new Date().toISOString().slice(0, 10);
+  const flag = 'fpa_drive_bg_' + key;
+  try{ if(localStorage.getItem(flag) === day) return; }catch(e){}
+  let payload = JSON.stringify(trimFn ? trimFn(JSON.parse(JSON.stringify(data))) : data);
+  if(payload.length > 200000){ console.warn('[FPA] Synchro Drive « ' + key + ' » ignorée : ' + Math.round(payload.length / 1024) + ' Ko (copie locale conservée)'); return; }
+  await driveCall('save', key, payload);
+  try{ localStorage.setItem(flag, day); }catch(e){}
+}
+let _driveSaveQueue = Promise.resolve();
 async function driveCall(action, key, payload, onProgress) {
   if (!DRIVE_SYNC_URL) throw new Error('URL Drive Sync non configurée');
 
@@ -40697,11 +40712,12 @@ async function driveCall(action, key, payload, onProgress) {
 
   if (key && _driveSaveInFlight[key]) return _driveSaveInFlight[key];
 
-  const doSave = (async () => {
-    // Compresser (base64 UTF-8) + découper en chunks de 1500 chars (valeur
-    // d'origine, éprouvée pour les classements — la synchro des vagues
-    // OMT/Call Out, qui posait problème avec des chunks plus gros, a été
-    // retirée).
+  // Les envois passent UN PAR UN (file d'attente) : chaque envoi stocke ses
+  // morceaux dans le quota de 500 Ko du script Drive Sync ; plusieurs envois
+  // simultanés (historiques Genius, streams… + sauvegarde de la semaine)
+  // pouvaient le saturer — d'où « aucun chunk reçu ».
+  const upload = async () => {
+    // Compresser (base64 UTF-8) + découper en chunks de 1500 chars
     const b64   = compress(payload);
     const CHUNK = 1500;
     const total = Math.ceil(b64.length / CHUNK);
@@ -40711,7 +40727,20 @@ async function driveCall(action, key, payload, onProgress) {
       if(onProgress) onProgress(i + 1, total);
     }
     return driveCallJSONPWithRetry({ action: 'save_finalize', key, total });
-  })();
+  };
+  const doSave = (_driveSaveQueue = _driveSaveQueue.catch(() => {}).then(async () => {
+    try{
+      return await upload();
+    }catch(e){
+      // Morceaux perdus (quota saturé, envoi interrompu) : on purge les
+      // morceaux orphelins puis on recommence une fois l'envoi complet.
+      if(/chunk|quota|propri|storage|stockage/i.test(String(e && e.message || e))){
+        try{ await driveCallJSONPWithRetry({ action: 'cleanup_chunks' }); }catch(e2){}
+        return await upload();
+      }
+      throw e;
+    }
+  }));
 
   if (key) {
     _driveSaveInFlight[key] = doSave;
@@ -46592,7 +46621,7 @@ function kwsDriveSchedule(){
       try{ const r = await driveCall('load', KWS_DRIVE_KEY); remote = r && r.data ? JSON.parse(r.data) : null; }catch(e){}
       const merged = kwsMerge(kwsHist(), remote);
       kwsSave(KWS_HIST_KEY, merged);
-      await driveCall('save', KWS_DRIVE_KEY, JSON.stringify(merged));
+      await driveBgSave(KWS_DRIVE_KEY, merged, m => { const keep = kwsAddDays(kwsIso(new Date()), -30); Object.values(m).forEach(e => Object.keys(e.snaps || {}).forEach(d => { if(d < keep) delete e.snaps[d]; })); return m; });
     }catch(e){ console.warn('Streams — Drive', e); }
   }, 8000);
 }
@@ -46735,7 +46764,13 @@ function genHistSave(){
         let remote = null;
         try{ const r = await driveCall('load', 'genius_hist'); remote = r && r.data ? JSON.parse(r.data) : null; }catch(e){}
         genHist = genHistMerge(genHist, remote);
-        await driveCall('save', 'genius_hist', JSON.stringify(genHist));
+        await driveBgSave('genius_hist', genHist, m => {
+          const keep = genAddDays(genToday(), -30), old = genAddDays(genToday(), -7);
+          const out = { songs:{}, charts:{} };
+          Object.entries(m.songs || {}).forEach(([id, e]) => { const pv = {}; Object.keys(e.pv || {}).forEach(d => { if(d >= keep) pv[d] = e.pv[d]; }); const ds = Object.keys(pv); if(ds.length >= 2 || ds.some(d => d >= old)) out.songs[id] = { t:e.t, a:e.a, pv }; });
+          Object.entries(m.charts || {}).forEach(([k, days]) => { out.charts[k] = {}; Object.keys(days).forEach(d => { if(d >= keep) out.charts[k][d] = days[d]; }); });
+          return out;
+        });
       }catch(e){}
     }, 6000);
   }
