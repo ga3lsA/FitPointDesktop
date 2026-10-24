@@ -3863,10 +3863,10 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </div>
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-          <div style="font-size:14px;font-weight:800;color:#fff">📅 Veille — plus fortes progressions</div>
-          <button onclick="goToDailyOverviewPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Vue d'ensemble →</button>
+          <div style="font-size:14px;font-weight:800;color:#fff">📡 Radar Digital — entrées</div>
+          <button onclick="goToRadarPage()" style="background:none;border:1.5px solid rgba(255,255,255,.25);color:rgba(255,255,255,.75);border-radius:7px;padding:5px 12px;font-size:10.5px;font-weight:700;cursor:pointer">Ouvrir le radar →</button>
         </div>
-        <div id="homeDailyOverviewSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
+        <div id="homeRdgSummary"><div style="padding:6px 2px;color:rgba(255,255,255,.45);font-size:12px">Chargement…</div></div>
       </div>
       <div>
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -25566,22 +25566,17 @@ function buildSnapshotSpotifyBlock(series, title, artist){
     let delta = '';
     if(has && prev !== null && prev !== undefined){
       const d = prev - val;
-      delta = d > 0 ? `<span style="font-size:10px;font-weight:800;color:var(--green-text)">▲ ${d}</span>` : d < 0 ? `<span style="font-size:10px;font-weight:800;color:#CC2222">▼ ${Math.abs(d)}</span>` : `<span style="font-size:10px;font-weight:700;color:var(--muted)">=</span>`;
+      delta = d > 0 ? `<span style="font-size:8px;font-weight:800;color:var(--green-text)">▲${d}</span>` : d < 0 ? `<span style="font-size:8px;font-weight:800;color:#CC2222">▼${Math.abs(d)}</span>` : `<span style="font-size:8px;font-weight:700;color:var(--muted)">≈</span>`;
     } else if(has && prev === null && note !== 'nodelta') delta = '';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:${has ? '#EAF8EF' : 'var(--bg)'};border:1.5px solid ${has ? '#9FE0B5' : 'var(--border)'};border-radius:10px;min-width:170px;flex:1">
-      <img src="${LOGO_SPOTIFY}" alt="Spotify" style="width:30px;height:30px;object-fit:contain;flex-shrink:0;transform:scale(1.35)">
-      <div style="min-width:0;flex:1">
-        <div style="font-size:11px;font-weight:800;color:var(--navy);white-space:nowrap">${label}</div>
-        <div style="font-size:9.5px;color:var(--muted);white-space:nowrap">${sub}</div>
-      </div>
-      <div style="text-align:right">
-        <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:${has ? '#1DB954' : 'var(--border)'}">${has ? '#' + val : '–'}</div>
-        ${delta}
-      </div>
+    // Même gabarit que les badges « Playlists Spotify » (fond vert conservé)
+    return `<div title="${escHtml(label + ' — ' + sub)}" style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;background:${has ? '#EAF8EF' : 'var(--bg)'};border:1px solid ${has ? '#9FE0B5' : 'var(--border)'};border-radius:8px;min-width:50px">
+      <span style="display:flex;align-items:center;gap:4px;font-size:9px;font-weight:800;color:var(--navy);white-space:nowrap">${logoImg(LOGO_SPOTIFY, 'Spotify', 11)} ${label}</span>
+      <span style="font-size:13px;font-weight:800;color:${has ? '#1DB954' : 'var(--border)'}">${has ? '#' + val : '–'}</span>
+      ${delta || '<span style="font-size:8px;color:var(--border)">·</span>'}
     </div>`;
   };
   const html = `<div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.05em;color:#1DB954;margin-bottom:6px">${logoImg(LOGO_SPOTIFY, 'Spotify', 16)} SPOTIFY</div>
-    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">
       ${card('Daily France', 'classement du jour', daily, null)}
       ${card(weeklyIsWeekly ? 'Weekly France' : 'France (CSV)', weeklyIsWeekly ? 'classement de la semaine' : 'classement importé', weekly, weeklyPrev)}
       ${card('Top 50 Monde', top50Tracked ? 'playlist mondiale' : 'playlist non suivie', top50, top50Prev)}
@@ -29048,11 +29043,11 @@ const OVERVIEW_WIDGETS = [
       if(!p) return { empty:'Playlist « Futur Hits » non suivie.' };
       return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP) } : { empty:'Non chargée.' }; },
     load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && !keyPlaylistFreshToday(p) ? refreshKeyPlaylist(p.id, { auto: true }) : null; } },
-  { id:'spynmf', get logo(){ return LOGO_SPOTIFY; }, icon:'🎵', label:'New Music Friday', playlist: /new[\s-]*music[\s-]*friday/i,
+  { id:'spynmf', get logo(){ return LOGO_SPOTIFY; }, icon:'🎵', label:'Spotify · New Music Friday', playlist: /new[\s-]*music[\s-]*friday/i,
     go(){ const p = overviewFindKeyPlaylist(this.playlist); overviewGoChart(p ? 'kp_' + p.id : 'keyplaylists'); },
     get(){ const p = overviewFindKeyPlaylist(this.playlist);
-      if(!p) return { empty:'Playlist « New Music Friday » non suivie.' };
-      return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP), note: p.label } : { empty:'Non chargée.' }; },
+      if(!p) return { empty:'Playlist non suivie — ajoutez « New Music Friday » (lien Spotify de la playlist) dans Classements → Playlists Spotify.' };
+      return p.tracks && p.tracks.length ? { rows: p.tracks.slice().sort((a, b) => a.rank - b.rank).slice(0, OVERVIEW_TOP), note: p.label + (p.fetchedAt ? ' · ' + new Date(p.fetchedAt).toLocaleDateString('fr-FR') : '') } : { empty:'⏳ Chargement de la playlist… (si rien ne s\'affiche, ouvrez-la dans Classements → Playlists Spotify)' }; },
     load(){ const p = overviewFindKeyPlaylist(this.playlist); return p && !keyPlaylistFreshToday(p) ? refreshKeyPlaylist(p.id, { auto: true }) : null; } },
   { id:'shzfr', get logo(){ return LOGO_SHAZAM; }, icon:'🔵', label:'Shazam France', go: () => overviewGoChart('shzfr'),
     get(){ return chartsLoaded.fr ? { rows: overviewFromChart(chartsData.fr), note: shazamDateUsed || '' } : { empty:'Non chargé.' }; },
@@ -29111,7 +29106,7 @@ function overviewBodyHtml(res){
     <div class="fpa-row" style="display:flex;align-items:center;gap:8px;padding:5px 0;${i ? 'border-top:1px solid var(--border)' : ''}">
       <div style="width:22px;flex-shrink:0;font-size:11px;font-weight:800;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums">${r.rank != null ? r.rank : '•'}</div>
       <div style="min-width:0;flex:1">
-        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title || '', r.artist || '')}" title="Voir l'évolution complète de ce titre" style="font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.title || ''))}</div>
+        <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title || '', r.artist || '')}" title="Voir l'évolution complète de ce titre" style="font-size:12px;font-weight:700;color:var(--navy);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.badge ? r.badge + ' ' : ''}${escHtml(titleCaseDisplay(r.title || ''))}</div>
         <div style="font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(r.artist || ''))}</div>
       </div>
       <span class="ov-rocket" data-ovkey="${escHtml(overviewTitleKey(r.title, r.artist))}" style="display:none;flex-shrink:0;font-size:13px;cursor:default"></span>
@@ -38534,7 +38529,7 @@ async function renderRadarPage(){
           <img src="" alt="" style="width:100%;height:100%;object-fit:cover;display:block">
         </div>
         <div style="min-width:0">
-          <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:2px">${escHtml(titleCaseDisplay(r.title||''))}</div>
+          <div onclick="openTitleEvolutionModal(this)" data-evotitle="${evoAttr(r.title || '', r.artist || '')}" title="Ouvrir la fiche Song Metrics" style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:2px;cursor:pointer;text-decoration:underline;text-decoration-color:rgba(11,29,58,.25);text-underline-offset:3px">${escHtml(titleCaseDisplay(r.title||''))}</div>
           <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${escHtml(titleCaseDisplay(r.artist||''))}</div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">${badges}</div>
         </div>
@@ -47507,7 +47502,7 @@ async function geniusRenderInto(elId, title, artist){
     const orig = w.getAsync; w._langWrapped = true;
     w.getAsync = async function(){
       const r = await orig.apply(this, arguments);
-      if(r && r.rows) r.rows.forEach(row => { const l = genLangOf({ title: row.title, artist: row.artist }); if(l) row.title = (l === 'fr' ? '🇫🇷 ' : '🌍 ') + row.title; });
+      if(r && r.rows) r.rows.forEach(row => { const l = genLangOf({ title: row.title, artist: row.artist }); if(l) row.badge = l === 'fr' ? '🇫🇷' : '🌍'; });
       return r;
     };
   });
@@ -47895,6 +47890,227 @@ function dlyFicheFill(d){
 })();
 </script>
 <style>@media (max-width: 900px){ .dly-2col{ grid-template-columns:1fr !important; } }</style>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     RADAR DIGITAL — entrées dans les tops digitaux vs la semaine précédente
+     Complète le Radar Général (momentum radio + digital). Un titre « entre »
+     quand il figure dans le top N d'une source alors qu'il n'y était pas il
+     y a une semaine. Seuils réglables par source. FPA garde un relevé
+     quotidien du top 50 de chaque source (IndexedDB + Drive, au plus une
+     fois par jour) ; les sources hebdomadaires archivées sur Drive (Shazam,
+     Spotify CSV, Deezer Futurs Hits) servent aussi de référence.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaRadarDigitalJs">
+const RDG_HIST_KEY = 'fpa_radar_digital_hist_v1', RDG_CFG_KEY = 'fpa_radar_digital_cfg_v1';
+const RDG_KP = rx => { try{ return keyPlaylists.find(p => rx.test(p.label || '')) || null; }catch(e){ return null; } };
+const RDG_FROM_KP = p => { const m = {}; ((p && p.tracks) || []).forEach(t => { if(t && t.rank) m[t.rank] = { t: t.title, a: t.artist }; }); return Object.keys(m).length ? m : null; };
+const RDG_SOURCES = [
+  { id:'shzFR',    label:'Shazam France',          short:'Shazam FR',      logo:() => LOGO_SHAZAM,  def:20, week:'shzFR', cur:() => (chartsLoaded.fr ? chartsData.fr : null) },
+  { id:'shzWW',    label:'Shazam Monde',           short:'Shazam Monde',   logo:() => LOGO_SHAZAM,  def:20, week:'shzWW', cur:() => (chartsLoaded.ww ? chartsData.ww : null) },
+  { id:'spDaily',  label:'Spotify Daily France',   short:'Spotify Daily',  logo:() => LOGO_SPOTIFY, def:20, cur:() => (kworbSpotifyState.fr && kworbSpotifyState.fr.loaded ? kworbSpotifyState.fr.data : null) },
+  { id:'spWeekly', label:'Spotify Weekly France',  short:'Spotify Weekly', logo:() => LOGO_SPOTIFY, def:20, week:'spotify', cur:() => (spotifyLoaded ? spotifyData : null) },
+  { id:'kpFutur',  label:'Spotify Futur Hits',     short:'Futur Hits',     logo:() => LOGO_SPOTIFY, def:10, cur:() => RDG_FROM_KP(RDG_KP(/futur/i)), needKp:/futur/i },
+  { id:'kpRadar',  label:'Spotify Radar',          short:'Radar',          logo:() => LOGO_SPOTIFY, def:10, cur:() => RDG_FROM_KP(RDG_KP(/radar/i)), needKp:/radar/i },
+  { id:'kpViral',  label:'Spotify Viral Hits',     short:'Viral Hits',     logo:() => LOGO_SPOTIFY, def:10, cur:() => RDG_FROM_KP(RDG_KP(/viral/i)), needKp:/viral/i },
+  { id:'dzFutur',  label:'Deezer Futurs Hits',     short:'Deezer Futurs',  logo:() => LOGO_DEEZER,  def:10, week:'fh', cur:() => (futursHitsLoaded ? futursHitsData : null) }
+];
+let rdgHist = null, rdgHistLoaded = false, rdgShowCfg = false, rdgLastResult = null;
+function rdgToday(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function rdgAddDays(iso, n){ const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+function rdgCfg(){
+  let c = {}; try{ c = JSON.parse(localStorage.getItem(RDG_CFG_KEY) || '{}') || {}; }catch(e){}
+  const out = {};
+  RDG_SOURCES.forEach(s => { const v = c[s.id] || {}; out[s.id] = { on: v.on !== false, n: Math.max(1, Math.min(50, parseInt(v.n, 10) || s.def)) }; });
+  return out;
+}
+function rdgSetCfg(id, field, value){
+  const c = rdgCfg(); c[id][field] = field === 'on' ? !!value : Math.max(1, Math.min(50, parseInt(value, 10) || c[id].n));
+  try{ localStorage.setItem(RDG_CFG_KEY, JSON.stringify(c)); }catch(e){}
+  renderRadarDigital();
+}
+/** Top 50 normalisé : [[titre, artiste, rang], …] trié par rang. */
+function rdgTop(map){
+  if(!map) return null;
+  return Object.entries(map).map(([r, e]) => [e && (e.t || e.title) || '', e && (e.a || e.artist) || '', parseInt(r, 10)])
+    .filter(x => x[0] && x[2] >= 1 && x[2] <= 50).sort((a, b) => a[2] - b[2]);
+}
+let rdgHistPromise = null;
+function rdgHistLoad(){
+  if(rdgHistPromise) return rdgHistPromise;
+  rdgHistPromise = (async () => {
+    let hist = {};
+    try{ const v = await idbGet(RDG_HIST_KEY); if(v) hist = v; }catch(e){}
+    if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+      try{ const r = await driveCall('load', 'radar_digital_hist'); if(r && r.data){ const remote = JSON.parse(r.data); Object.entries(remote || {}).forEach(([src, days]) => { hist[src] = Object.assign({}, days, hist[src] || {}); }); } }catch(e){}
+    }
+    rdgHist = hist; rdgHistLoaded = true;
+    return rdgHist;
+  })();
+  return rdgHistPromise;
+}
+/** Relevé du jour (top 50 de chaque source chargée). */
+function rdgRecordToday(){
+  const day = rdgToday(), keep = rdgAddDays(day, -30);
+  let changed = false;
+  RDG_SOURCES.forEach(s => {
+    let top = null; try{ top = rdgTop(s.cur()); }catch(e){}
+    if(!top || !top.length) return;
+    const h = rdgHist[s.id] || (rdgHist[s.id] = {});
+    if(JSON.stringify(h[day]) !== JSON.stringify(top)){ h[day] = top; changed = true; }
+    Object.keys(h).forEach(d => { if(d < keep) delete h[d]; });
+  });
+  if(changed){
+    try{ idbSet(RDG_HIST_KEY, rdgHist).catch(() => {}); }catch(e){}
+    if(typeof driveBgSave === 'function' && typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+      driveBgSave('radar_digital_hist', rdgHist, m => { const k = rdgAddDays(day, -14), o = {}; Object.entries(m).forEach(([s, days]) => { o[s] = {}; Object.keys(days).forEach(d => { if(d >= k) o[s][d] = days[d]; }); }); return o; }).catch(() => {});
+    }
+  }
+}
+/** Référence « semaine précédente » d'une source : relevé à J-7 (ou entre
+ *  J-5 et J-9), sinon semaine archivée sur Drive pour les sources hebdo. */
+async function rdgReference(s){
+  const day = rdgToday(), h = rdgHist[s.id] || {};
+  for(const k of [7,6,8,5,9]){ const d = rdgAddDays(day, -k); if(h[d]) return { date:d, top:h[d] }; }
+  if(s.week && typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+    try{
+      if(!chartsHistoryLoaded) await loadChartsIndex();
+      const lim = rdgAddDays(day, -5);
+      const w = (chartsHistoryIndex || []).find(x => x.date <= lim);
+      if(w){ const e = await loadChartsWeek(w.date); const top = e && rdgTop(e[s.week]); if(top && top.length) return { date:w.date, top }; }
+    }catch(e){}
+  }
+  return null;
+}
+async function rdgCompute(){
+  await rdgHistLoad();
+  rdgRecordToday();
+  const cfg = rdgCfg(), titles = {}, status = [];
+  for(const s of RDG_SOURCES){
+    const c = cfg[s.id];
+    if(!c.on){ status.push({ s, state:'off' }); continue; }
+    let cur = null; try{ cur = rdgTop(s.cur()); }catch(e){}
+    if(!cur || !cur.length){ status.push({ s, state: s.needKp && !RDG_KP(s.needKp) ? 'notracked' : 'notloaded' }); continue; }
+    const ref = await rdgReference(s);
+    if(!ref){ status.push({ s, state:'noref' }); continue; }
+    const refKeys = new Set(ref.top.filter(x => x[2] <= c.n).map(x => norm(x[0]) + '|' + norm(x[1])));
+    const refTitles = new Set(ref.top.filter(x => x[2] <= c.n).map(x => norm(x[0])));
+    let n = 0;
+    cur.filter(x => x[2] <= c.n).forEach(([t, a, r]) => {
+      const k = norm(t) + '|' + norm(a);
+      if(refKeys.has(k) || refTitles.has(norm(t))) return;
+      n++;
+      const tk = norm(t) + '|' + norm(String(a).split(/\s*(?:&|,|\/|\s[xX]\s|\bfeat\.?\s|\bft\.?\s)\s*/i)[0] || '');
+      const e = titles[tk] || (titles[tk] = { t, a, hits:[] });
+      e.hits.push({ s, rank:r });
+    });
+    status.push({ s, state:'ok', n, refDate: ref.date, top: c.n });
+  }
+  const list = Object.values(titles).sort((x, y) => y.hits.length - x.hits.length || Math.min(...x.hits.map(h => h.rank)) - Math.min(...y.hits.map(h => h.rank)));
+  rdgLastResult = { list, status, cfg };
+  return rdgLastResult;
+}
+function rdgInPlaylist(t, a){
+  try{ const nT = norm(t); return (playlistTitles || []).some(p => p.station === ACTIVE_STATION && norm(p.title || '') === nT); }catch(e){ return false; }
+}
+async function renderRadarDigital(){
+  const box = document.getElementById('rdgPanel');
+  if(!box) return;
+  box.innerHTML = rdgHeaderHtml() + '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">⏳ Recherche des entrées…</div>';
+  const R = await rdgCompute();
+  const cfgHtml = rdgShowCfg ? `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:800;color:var(--navy);margin-bottom:8px">Seuils — un titre « entre » quand il apparaît dans le top N alors qu'il n'y était pas la semaine précédente</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 14px">
+        ${RDG_SOURCES.map(s => { const c = R.cfg[s.id]; return `<label style="display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text2)">
+          <input type="checkbox" ${c.on ? 'checked' : ''} onchange="rdgSetCfg('${s.id}','on',this.checked)">
+          ${logoImg(s.logo(), s.label, 13)} <span style="flex:1">${s.label}</span>
+          top <input type="number" min="1" max="50" value="${c.n}" onchange="rdgSetCfg('${s.id}','n',this.value)" style="width:48px;font-size:11.5px;font-weight:800;padding:3px 5px;border-radius:6px;border:1.5px solid var(--border);text-align:center"></label>`; }).join('')}
+      </div></div>` : '';
+  const stateTxt = st => st.state === 'ok' ? `<b style="color:${st.n ? '#16a34a' : 'var(--muted)'}">${st.n}</b> <span style="color:var(--muted)">· top ${st.top} · réf. ${formatDateFr(st.refDate)}</span>`
+    : st.state === 'off' ? '<span style="color:var(--muted)">désactivé</span>'
+    : st.state === 'notracked' ? '<span style="color:#B45309">playlist non suivie</span>'
+    : st.state === 'notloaded' ? '<span style="color:#B45309">non chargé</span>'
+    : '<span style="color:var(--muted)">référence dans quelques jours</span>';
+  const statusHtml = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 12px;font-size:11px;margin-bottom:12px">
+    ${R.status.map(st => `<div style="display:flex;align-items:center;gap:6px">${logoImg(st.s.logo(), st.s.label, 12)} <span style="font-weight:700;color:var(--text2)">${st.s.short}</span> ${stateTxt(st)}</div>`).join('')}</div>`;
+  const rows = R.list.map((e, i) => `<div style="display:flex;align-items:flex-start;gap:10px;padding:9px 12px;background:${i % 2 ? 'var(--white)' : '#F4F6FA'};border-top:1px solid var(--border)">
+      <div style="width:22px;text-align:center;font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy)">${i + 1}</div>
+      <div style="flex:1;min-width:0">
+        <div onclick="openTevByInfo({title:'${jsAttrEscape(e.t)}',artist:'${jsAttrEscape(e.a)}'})" title="Ouvrir la fiche Song Metrics" style="font-size:13px;font-weight:800;color:var(--navy);cursor:pointer;text-decoration:underline;text-decoration-color:rgba(11,29,58,.25);text-underline-offset:3px">${escHtml(titleCaseDisplay(e.t))}${rdgInPlaylist(e.t, e.a) ? ' <span title="Déjà dans la Playlist" style="font-size:10px;font-weight:800;color:var(--cyan)">● Playlist</span>' : ''}</div>
+        <div style="font-size:11px;color:var(--muted)">${escHtml(titleCaseDisplay(e.a))}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:5px">${e.hits.map(h => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:800;color:var(--navy);background:#EAF8EF;border:1px solid #9FE0B5;border-radius:20px;padding:2px 8px">${logoImg(h.s.logo(), h.s.label, 11)} ${h.s.short} <span style="color:#16a34a">#${h.rank}</span></span>`).join('')}</div>
+      </div>
+      <div title="Nombre de tops où le titre entre" style="font-size:11px;font-weight:800;color:${e.hits.length > 1 ? '#16a34a' : 'var(--muted)'};white-space:nowrap">${e.hits.length} entrée${e.hits.length > 1 ? 's' : ''}</div>
+    </div>`).join('');
+  box.innerHTML = rdgHeaderHtml() + cfgHtml + statusHtml + (R.list.length
+    ? `<div style="border:1.5px solid var(--border);border-radius:12px;overflow:hidden;background:var(--white)">${rows}</div>`
+    : `<div style="padding:20px;text-align:center;color:var(--muted);font-size:12px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px">Aucune entrée détectée pour l'instant.${R.status.some(s => s.state === 'noref') ? ' Certaines sources n\'ont pas encore de relevé datant d\'une semaine : la comparaison sera disponible dans quelques jours.' : ''}</div>`);
+}
+function rdgHeaderHtml(){
+  return `<div style="display:flex;align-items:flex-start;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <div style="width:4px;height:40px;background:linear-gradient(180deg,#1DB954 0%,rgba(29,185,84,.25) 100%);border-radius:4px;flex-shrink:0"></div>
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:3px">Entrées digitales</div>
+        <h2 style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy);line-height:1.1;margin:0">📡 Radar Digital</h2>
+        <div style="font-size:11.5px;color:var(--text2);margin-top:4px">Titres qui entrent dans les tops Shazam, Spotify et Deezer alors qu'ils en étaient absents la semaine précédente.</div>
+      </div>
+      <button class="btn-ghost" onclick="rdgShowCfg=!rdgShowCfg;renderRadarDigital()" style="font-size:11px;padding:6px 12px">⚙ Seuils</button>
+    </div>`;
+}
+
+/* ── Intégration : page Radar (deux moitiés) + accueil ─────────────── */
+(function(){
+  const pane = document.getElementById('decPaneRadar');
+  if(pane && !document.getElementById('rdgPanel')){
+    const grid = document.createElement('div');
+    grid.className = 'rdg-grid';
+    const left = document.createElement('div'); left.id = 'radarGenCol'; left.style.cssText = 'min-width:0;overflow-x:auto';
+    while(pane.firstChild) left.appendChild(pane.firstChild);
+    const right = document.createElement('div'); right.id = 'rdgPanel'; right.style.cssText = 'min-width:0;padding-left:20px;border-left:2px solid var(--border)';
+    grid.appendChild(left); grid.appendChild(right); pane.appendChild(grid);
+    // Renommage : Radar Général
+    left.querySelectorAll('h2').forEach(h => { if(/Radar — titres en forte progression/.test(h.textContent)) h.childNodes.forEach(n => { if(n.nodeType === 3) n.textContent = n.textContent.replace('Radar — titres en forte progression', 'Radar Général — momentum radio + digital'); }); });
+  }
+  const orig = window.renderRadarPage;
+  if(typeof orig === 'function'){
+    window.renderRadarPage = async function(){ const r = await orig.apply(this, arguments); try{ renderRadarDigital(); }catch(e){} return r; };
+  }
+  // Accueil : renommage et carte « Radar Digital »
+  const sum = document.getElementById('homeRadarSummary');
+  if(sum){
+    const card = sum.parentElement;
+    const ttl = card.querySelector('div[style*="font-size:14px"]');
+    if(ttl && /Radar — titres en forte progression/.test(ttl.textContent)) ttl.textContent = '🎯 Radar Général — momentum';
+  }
+  const origHome = window.renderHomeRadarSummary;
+  if(typeof origHome === 'function'){
+    window.renderHomeRadarSummary = async function(){ const r = await origHome.apply(this, arguments); try{ renderHomeRdgSummary(); }catch(e){} return r; };
+  }
+})();
+if(typeof OVERVIEW_WIDGETS !== 'undefined' && !OVERVIEW_WIDGETS.some(w => w.id === 'radar_digital')){
+  OVERVIEW_WIDGETS.push({ id:'radar_digital', icon:'📡', label:'Radar Digital · entrées', go: () => { try{ goToRadarPage(); }catch(e){} },
+    async getAsync(){
+      const R = await rdgCompute();
+      if(!R.list.length) return { empty: R.status.some(s => s.state === 'ok') ? 'Aucune entrée cette semaine.' : 'Pas encore de comparaison — chargez les classements (Shazam, Spotify, Deezer, playlists).' };
+      return { rows: R.list.slice(0, 5).map((e, i) => ({ rank: i + 1, title: e.t, artist: e.a, value: e.hits.length + '×', color: e.hits.length > 1 ? '#16a34a' : 'var(--navy)',
+        valueTitle: e.hits.map(h => h.s.short + ' #' + h.rank).join(' · ') })),
+        note: 'Entrées dans les tops digitaux vs semaine précédente' };
+    } });
+}
+async function renderHomeRdgSummary(){
+  const el = document.getElementById('homeRdgSummary');
+  if(!el) return;
+  let R; try{ R = await rdgCompute(); }catch(e){ R = null; }
+  if(!R || !R.list.length){ el.innerHTML = `<div style="padding:6px 2px;color:rgba(255,255,255,.55);font-size:12px">${R && R.status.some(s => s.state === 'ok') ? 'Aucune entrée cette semaine.' : 'Chargez les classements (Shazam, Spotify, Deezer, playlists) — la comparaison se construit jour après jour.'}</div>`; return; }
+  el.innerHTML = R.list.slice(0, 5).map((e, i) => `<div onclick="openTevByInfo({title:'${jsAttrEscape(e.t)}',artist:'${jsAttrEscape(e.a)}'})" style="display:flex;align-items:center;gap:10px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,.08);cursor:pointer">
+      <span style="width:16px;font-size:12px;font-weight:800;color:rgba(255,255,255,.5)">${i + 1}</span>
+      <span style="flex:1;min-width:0"><span style="display:block;font-size:12.5px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(titleCaseDisplay(e.t))}</span><span style="display:block;font-size:10.5px;color:rgba(255,255,255,.55)">${escHtml(titleCaseDisplay(e.a))} · ${e.hits.map(h => h.s.short).join(', ')}</span></span>
+      <span style="font-size:11px;font-weight:800;color:#5EE38E">${e.hits.length}×</span>
+    </div>`).join('');
+}
+</script>
+<style>
+.rdg-grid{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; }
+@media (max-width: 1250px){ .rdg-grid{ grid-template-columns:1fr; } #rdgPanel{ padding-left:0 !important; border-left:none !important; border-top:2px solid var(--border); padding-top:20px; } }
+</style>
 <!-- ═══════════════════════════════════════════════════════════════════════
      FPA MOBILE — adaptation automatique aux téléphones (v1)
      Ce script ne fait RIEN tant que l'écran n'est pas un écran de téléphone
