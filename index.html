@@ -12483,10 +12483,31 @@ function extractVagueNum(name){
    chronologiquement correct tant que le format est à largeur fixe). La date
    réelle passe en priorité n°1 quand elle est disponible des deux côtés,
    car c'est la valeur la plus fiable et la moins ambiguë. */
+/** Clé année + semaine d'une vague, quelle que soit l'écriture du numéro ou
+ *  du nom : « 2026-43 », « 2026 43 », « v2026 43 », « V42 2026 », « S43/2026 »…
+ *  → 202643. null si aucune année (20xx) + semaine (1-53) n'est lisible. */
+function vagueYearWeekKey(v){
+  const srcs = [v && v.num != null ? String(v.num) : '', v && (v.vagueName || v.name) || ''];
+  for(const s of srcs){
+    if(!s) continue;
+    const ym = s.match(/(?:^|[^0-9])(20\d{2})(?:[^0-9]|$)/);
+    if(!ym) continue;
+    const rest = s.replace(ym[1], ' ');
+    const wm = rest.match(/(?:^|[^0-9])(\d{1,2})(?:[^0-9]|$)/);
+    if(wm){ const w = parseInt(wm[1], 10); if(w >= 1 && w <= 53) return parseInt(ym[1], 10) * 100 + w; }
+  }
+  return null;
+}
 function sortVagues(a, b){
   const da = a.vagueDate || a.date || '';
   const db = b.vagueDate || b.date || '';
   if(da && db && da !== db) return da < db ? -1 : 1;
+
+  // Année + semaine, insensible à la façon d'écrire le numéro (« 2026-43 »,
+  // « 2026 43 », « V42 2026 »…) — une vague nommée différemment des autres
+  // ne doit pas se retrouver en tête ou en queue de l'historique.
+  const ka = vagueYearWeekKey(a), kb = vagueYearWeekKey(b);
+  if(ka !== null && kb !== null && ka !== kb) return ka - kb;
 
   const rawA = a.num != null && a.num !== '' ? String(a.num) : null;
   const rawB = b.num != null && b.num !== '' ? String(b.num) : null;
@@ -25514,14 +25535,64 @@ function getLiveAirplayValue(radioKey, title, artist){
   return radarLookupDerivedRank(rankMap, title, artist);
 }
 
+/** Bloc Spotify du Digital Snapshot : Daily France (kworb), Weekly France
+ *  (CSV importé) et Top 50 Monde (playlist clé) — logo et libellés lisibles.
+ *  Position actuelle + évolution vs le relevé précédent quand il existe. */
+function buildSnapshotSpotifyBlock(series, title, artist){
+  const nT = norm(title || ''), fa = norm(String(artist || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s)\s*/i)[0] || '');
+  const prevOf = (pts, cur) => { if(!pts || !pts.length) return null; const last = pts[pts.length - 1].val; return (cur !== null && last !== cur) ? last : (pts.length >= 2 ? pts[pts.length - 2].val : null); };
+  // 1. Daily France (kworb fr_daily)
+  let daily = null;
+  try{ const st = kworbSpotifyState.fr; if(st && st.loaded) daily = findInChart(st.data, title, artist) || null; }catch(e){}
+  // 2. Weekly France (CSV Spotify Charts importé)
+  let weekly = null, weeklyIsWeekly = true;
+  try{
+    if(spotifyLoaded){ weekly = findInChart(spotifyData, title, artist) || null; const f = Object.values(spotifyData)[0]; weeklyIsWeekly = !!(f && f.weekly) || /semaine|weekly/i.test(String(spotifyDateUsed || '')); }
+  }catch(e){}
+  const weeklyPrev = prevOf(series.spyFR, weekly);
+  // 3. Top 50 Monde (playlist clé suivie)
+  let top50 = null, top50Prev = null, top50Tracked = false;
+  try{
+    const p = keyPlaylists.find(x => /top[\s-]*50[\s-]*monde/i.test(x.label || ''));
+    if(p){
+      top50Tracked = true;
+      const tr = (p.tracks || []).find(t => norm(t.title || '') === nT && (!fa || norm(t.artist || '').includes(fa))) || (p.tracks || []).find(t => norm(t.title || '') === nT);
+      top50 = tr ? (tr.rank || null) : null;
+      top50Prev = prevOf((series.kpPlaylists || {})[p.id], top50);
+    }
+  }catch(e){}
+  const card = (label, sub, val, prev, note) => {
+    const has = val !== null && val !== undefined;
+    let delta = '';
+    if(has && prev !== null && prev !== undefined){
+      const d = prev - val;
+      delta = d > 0 ? `<span style="font-size:10px;font-weight:800;color:var(--green-text)">▲ ${d}</span>` : d < 0 ? `<span style="font-size:10px;font-weight:800;color:#CC2222">▼ ${Math.abs(d)}</span>` : `<span style="font-size:10px;font-weight:700;color:var(--muted)">=</span>`;
+    } else if(has && prev === null && note !== 'nodelta') delta = '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:${has ? '#EAF8EF' : 'var(--bg)'};border:1.5px solid ${has ? '#9FE0B5' : 'var(--border)'};border-radius:10px;min-width:170px;flex:1">
+      <img src="${LOGO_SPOTIFY}" alt="Spotify" style="width:30px;height:30px;object-fit:contain;flex-shrink:0;transform:scale(1.35)">
+      <div style="min-width:0;flex:1">
+        <div style="font-size:11px;font-weight:800;color:var(--navy);white-space:nowrap">${label}</div>
+        <div style="font-size:9.5px;color:var(--muted);white-space:nowrap">${sub}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--font-display);font-size:18px;font-weight:800;color:${has ? '#1DB954' : 'var(--border)'}">${has ? '#' + val : '–'}</div>
+        ${delta}
+      </div>
+    </div>`;
+  };
+  const html = `<div style="display:flex;align-items:center;gap:6px;font-size:10px;font-weight:800;letter-spacing:.05em;color:#1DB954;margin-bottom:6px">${logoImg(LOGO_SPOTIFY, 'Spotify', 16)} SPOTIFY</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">
+      ${card('Daily France', 'classement du jour', daily, null)}
+      ${card(weeklyIsWeekly ? 'Weekly France' : 'France (CSV)', weeklyIsWeekly ? 'classement de la semaine' : 'classement importé', weekly, weeklyPrev)}
+      ${card('Top 50 Monde', top50Tracked ? 'playlist mondiale' : 'playlist non suivie', top50, top50Prev)}
+    </div>`;
+  return { html, has: daily !== null || weekly !== null || top50 !== null };
+}
 function buildDigitalSnapshotSection(series, title, artist){
+  const spotifyBlock = buildSnapshotSpotifyBlock(series, title, artist);
   const digitalBadges = [
     comiteMiniBadge('🇫🇷', 'SHZ',   series.shzFR, 'var(--navy)'),
     comiteMiniBadge('🌍', 'SHZ WW', series.shzWW, 'var(--text2)'),
-    comiteMiniBadge(logoImg(LOGO_SPOTIFY, 'Spotify', 12), '', series.spyFR, '#1DB954'),
-    comiteMiniBadge(logoImg(LOGO_SPOTIFY, 'Spotify', 12), 'BE', series.spBE, '#1DB954'),
-    comiteMiniBadge(logoImg(LOGO_SPOTIFY, 'Spotify', 12), 'SE', series.spSE, '#1DB954'),
-    comiteMiniBadge(logoImg(LOGO_SPOTIFY, 'Spotify', 12), 'NL', series.spNL, '#1DB954'),
     comiteMiniBadge(logoImg(LOGO_DEEZER, 'Deezer', 12), '', series.dzFR, '#A238FF'),
     comiteMiniBadge(logoImg(LOGO_APPLEMUSIC, 'Apple Music', 9), 'FR', series.amFR, '#1D1D1F'),
     comiteMiniBadge(logoImg(LOGO_APPLEMUSIC, 'Apple Music', 9), 'US', series.amUS, '#1D1D1F'),
@@ -25539,6 +25610,7 @@ function buildDigitalSnapshotSection(series, title, artist){
   // longue : inutile d'afficher une dizaine de badges vides "–").
   const kpFoundBadgesFullMetrics = Object.entries(series.kpPlaylists || {})
     .filter(([id, pts]) => pts && pts.length)
+    .filter(([id]) => { const p = keyPlaylists.find(x => x.id === id); return !(p && /top[\s-]*50[\s-]*monde/i.test(p.label || '')); })
     .map(([id, pts]) => {
       const p = keyPlaylists.find(x => x.id === id);
       const label = p ? p.label : id;
@@ -25589,7 +25661,7 @@ function buildDigitalSnapshotSection(series, title, artist){
       </div>`;
     }).join('');
 
-  const hasAnyData = series.shzFR.length || series.shzWW.length || series.spyFR.length || series.spBE.length || series.spSE.length || series.spNL.length || series.dzFR.length ||
+  const hasAnyData = spotifyBlock.has || series.shzFR.length || series.shzWW.length || series.spyFR.length || series.dzFR.length ||
     series.amFR.length || series.amUS.length || series.itFR.length || series.yt.length || series.bbUS.length || series.bbG200.length ||
     Object.values(series.kpPlaylists || {}).some(pts => pts.length) ||
     Object.values(series.radioCharts || {}).some(pts => pts.length) ||
@@ -25623,6 +25695,7 @@ function buildDigitalSnapshotSection(series, title, artist){
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${airplayBadges}</div>
     ${liveAirplayHtml ? `<div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:#3B82F6;margin-bottom:6px">🔴 AIRPLAY (LIVE #RANGS)</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${liveAirplayHtml}</div>` : ''}
+    ${spotifyBlock.html}
     <div style="font-size:9px;font-weight:800;letter-spacing:.05em;color:#10B981;margin-bottom:6px">🎧 DIGITAL (LIVE)</div>
     <div style="display:flex;flex-wrap:wrap;gap:6px">${digitalBadges}</div>
     ${kpFoundBadgesFullMetrics ? `<div style="display:flex;align-items:center;gap:5px;font-size:9px;font-weight:800;letter-spacing:.05em;color:var(--muted);margin:10px 0 6px">${logoImg(LOGO_SPOTIFY, 'Spotify', 11)} PLAYLISTS SPOTIFY</div>
