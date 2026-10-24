@@ -46749,6 +46749,8 @@ function genHistMerge(a, b){
   out.songs = out.songs || {}; out.charts = out.charts || {};
   Object.entries((b && b.songs) || {}).forEach(([id, e]) => { if(!out.songs[id]) out.songs[id] = e; else Object.assign(out.songs[id].pv, e.pv || {}, out.songs[id].pv); });
   Object.entries((b && b.charts) || {}).forEach(([k, days]) => { out.charts[k] = Object.assign({}, days || {}, out.charts[k] || {}); });
+  out.map = Object.assign({}, (b && b.map) || {}, out.map || {});
+  Object.entries((b && b.songs) || {}).forEach(([id, e]) => { if(e && e.lang && out.songs[id] && !out.songs[id].lang) out.songs[id].lang = e.lang; });
   return out;
 }
 function genHistSave(){
@@ -46767,7 +46769,8 @@ function genHistSave(){
         await driveBgSave('genius_hist', genHist, m => {
           const keep = genAddDays(genToday(), -30), old = genAddDays(genToday(), -7);
           const out = { songs:{}, charts:{} };
-          Object.entries(m.songs || {}).forEach(([id, e]) => { const pv = {}; Object.keys(e.pv || {}).forEach(d => { if(d >= keep) pv[d] = e.pv[d]; }); const ds = Object.keys(pv); if(ds.length >= 2 || ds.some(d => d >= old)) out.songs[id] = { t:e.t, a:e.a, pv }; });
+          Object.entries(m.songs || {}).forEach(([id, e]) => { const pv = {}; Object.keys(e.pv || {}).forEach(d => { if(d >= keep) pv[d] = e.pv[d]; }); const ds = Object.keys(pv); if(ds.length >= 2 || ds.some(d => d >= old)) out.songs[id] = Object.assign({ t:e.t, a:e.a, pv }, e.lang ? { lang:e.lang } : {}); });
+          if(m.map) out.map = m.map;
           Object.entries(m.charts || {}).forEach(([k, days]) => { out.charts[k] = {}; Object.keys(days).forEach(d => { if(d >= keep) out.charts[k][d] = days[d]; }); });
           return out;
         });
@@ -47108,6 +47111,349 @@ if(typeof OVERVIEW_WIDGETS !== 'undefined'){
     if(panel){ panel.style.display = 'block'; renderGeniusPanel(); }
     if(!genUI.items.length && !genUI.loading && !genUI.error) genLoadChart();
   };
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     GENIUS — FRANCOPHONES / INTERNATIONAUX ET INDICE GENIUS
+     • Langue : champ « language » de Genius (langue des paroles) ; à défaut
+       colonne Langue des fichiers Call Out / OMT ; correction manuelle
+       possible par artiste (🇫🇷 / 🌍).
+     • Vivier « Marché français » : titres du top Spotify France, Deezer
+       France, Airplay et de la Playlist — pages vues relevées chaque jour.
+     • Indice Genius : pages vues de la semaine rapportées au titre MÉDIAN de
+       sa catégorie (100 = médiane des francophones pour un titre français,
+       des internationaux pour un titre étranger) — compare équitablement un
+       titre français et un tube mondial.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaGeniusLangJs">
+const GEN_LANG_OVR_KEY = 'fpa_genius_lang_override_v1';
+genUI.langFilter = 'all';
+genUI.market = []; genUI.marketLoading = false; genUI.marketProgress = '';
+
+/* ── Langue ────────────────────────────────────────────────────────── */
+let genFpaLangMap = null;
+function genFpaLang(title, artist){
+  if(!genFpaLangMap){
+    genFpaLangMap = {};
+    try{ (histLoad() || []).forEach(v => (v.sheets || []).forEach(sh => (sh.rows || []).forEach(r => {
+      if(r && r.language) genFpaLangMap[norm(r.t || '') + '|||' + norm(r.a || '')] = String(r.language).toUpperCase().trim();
+    }))); }catch(e){}
+  }
+  const v = genFpaLangMap[norm(title || '') + '|||' + norm(artist || '')];
+  if(!v) return null;
+  return /^(FR|FRA|FRANC)/.test(v) ? 'fr' : 'intl';
+}
+function genLangOverrides(){ try{ return JSON.parse(localStorage.getItem(GEN_LANG_OVR_KEY) || '{}') || {}; }catch(e){ return {}; } }
+function genArtistKey(a){ return norm(String(a || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s)\s*/i)[0] || ''); }
+/** 'fr' (francophone) | 'intl' (international) | null (inconnue). */
+function genLangOf(s){
+  if(!s) return null;
+  const o = genLangOverrides();
+  if(s.id && o['id:' + s.id]) return o['id:' + s.id];
+  const ak = genArtistKey(s.artist || s.a);
+  if(ak && o['a:' + ak]) return o['a:' + ak];
+  const gl = s.lang || (s.id && genHist && genHist.songs[s.id] && genHist.songs[s.id].lang) || null;
+  if(gl) return gl === 'fr' ? 'fr' : 'intl';
+  return genFpaLang(s.title || s.t, s.artist || s.a);
+}
+function genSetLangOverride(id, artist, lang){
+  const o = genLangOverrides();
+  const ak = genArtistKey(artist);
+  // Correction par artiste (ses autres titres suivent), et pour ce titre
+  if(ak) o['a:' + ak] = lang;
+  if(id) o['id:' + id] = lang;
+  try{ localStorage.setItem(GEN_LANG_OVR_KEY, JSON.stringify(o)); }catch(e){}
+  renderGeniusPanel();
+}
+function genFlag(lang, s){
+  const f = lang === 'fr' ? '🇫🇷' : lang === 'intl' ? '🌍' : '❔';
+  const tip = lang === 'fr' ? 'Francophone' : lang === 'intl' ? 'International' : 'Langue inconnue';
+  if(!s) return `<span title="${tip}">${f}</span>`;
+  const next = lang === 'fr' ? 'intl' : 'fr';
+  return `<span title="${tip} — cliquer pour corriger (tout l'artiste)" onclick="event.stopPropagation();genSetLangOverride(${s.id || 'null'},'${jsAttrEscape(s.artist || s.a || '')}','${next}')" style="cursor:pointer">${f}</span>`;
+}
+
+/* ── Données Genius : langue conservée ─────────────────────────────── */
+function genSongFrom(item){
+  const s = item && (item.item || item.result || item);
+  if(!s || !s.id) return null;
+  return { id: s.id, title: s.title || '', artist: s.artist_names || (s.primary_artist && s.primary_artist.name) || '', url: s.url || '',
+    pv: s.stats && s.stats.pageviews != null ? +s.stats.pageviews : null, hot: !!(s.stats && s.stats.hot),
+    img: s.song_art_image_thumbnail_url || s.header_image_thumbnail_url || '', released: s.release_date_for_display || '',
+    lang: s.language || null };
+}
+function genRecordSong(s){
+  if(!s || !s.id || s.pv == null) return;
+  const e = genHist.songs[s.id] || (genHist.songs[s.id] = { t: s.title, a: s.artist, pv:{} });
+  e.t = s.title; e.a = s.artist; e.pv[genToday()] = s.pv;
+  if(s.lang) e.lang = s.lang;
+  if(s.img) e.img = s.img;
+}
+
+/* ── Indice Genius ─────────────────────────────────────────────────── */
+/** Pages vues de la semaine (ramenées à 7 jours si l'historique est plus court). */
+function genWeekly(id){
+  const pv = genLatestPv(id); const w = genWeekGain(id, pv);
+  if(!w || !(w.days > 0)) return null;
+  return Math.max(0, w.partial ? Math.round(w.gain * 7 / w.days) : w.gain);
+}
+/** Médianes du jour par catégorie, sur les titres relevés ces 2 derniers jours. */
+function genMedians(){
+  const recent = genAddDays(genToday(), -2), g = { fr:[], intl:[] };
+  Object.entries(genHist.songs || {}).forEach(([id, e]) => {
+    const last = Object.keys(e.pv || {}).sort().pop();
+    if(!last || last < recent) return;
+    const lang = genLangOf({ id:+id, title:e.t, artist:e.a, lang:e.lang });
+    const wv = genWeekly(id);
+    if(!lang || wv === null) return;
+    g[lang].push(wv);
+  });
+  const med = a => { if(a.length < 5) return null; const s = a.slice().sort((x, y) => x - y); return s[Math.floor((s.length - 1) / 2)] || null; };
+  return { fr: med(g.fr), intl: med(g.intl), nFr: g.fr.length, nIntl: g.intl.length };
+}
+let genMedCache = null;
+function genIndex(id, lang){
+  if(!genMedCache || genMedCache.at !== genToday() + Object.keys(genHist.songs).length) genMedCache = Object.assign({ at: genToday() + Object.keys(genHist.songs).length }, genMedians());
+  const m = genMedCache[lang];
+  const wv = genWeekly(id);
+  if(!m || wv === null) return null;
+  return Math.round(wv / m * 100);
+}
+function genIndexHtml(idx, lang){
+  if(idx === null || idx === undefined) return '<span style="color:var(--muted);font-size:11px" title="Indice disponible dès 2 relevés et 5 titres relevés dans la catégorie">—</span>';
+  const col = idx >= 200 ? '#16a34a' : idx >= 100 ? '#0B1D3A' : idx >= 50 ? '#d97706' : '#dc2626';
+  return `<span title="Indice Genius : pages vues de la semaine rapportées au titre ${lang === 'fr' ? 'francophone' : 'international'} médian (= 100)" style="font-family:var(--font-display);font-size:15px;font-weight:800;color:${col}">${idx}</span>`;
+}
+
+/* ── Vivier « Marché français » ────────────────────────────────────── */
+function genMarketSources(){
+  const out = [], seen = new Set();
+  const add = (t, a, src) => { if(!t) return; const k = norm(t) + '|||' + norm(a || ''); if(seen.has(k)) { const o = out.find(x => x.k === k); if(o && !o.src.includes(src)) o.src.push(src); return; } seen.add(k); out.push({ k, t, a: a || '', src:[src] }); };
+  const fromChart = (ch, n, src) => { if(!ch) return; Object.entries(ch).forEach(([r, e]) => { if(parseInt(r, 10) <= n && e) add(e.t || e.title, e.a || e.artist, src); }); };
+  try{ if(spotifyLoaded) fromChart(spotifyData, 50, 'Spotify FR'); }catch(e){}
+  try{ if(deezerLoaded) fromChart(deezerData, 50, 'Deezer FR'); }catch(e){}
+  try{ if(airplayLoaded) Object.values(airplayData).filter(e => e && (parseInt(e.rg, 10) || 999) <= 50).forEach(e => add(e.title || e.t, e.artist || e.a, 'Airplay')); }catch(e){}
+  try{ (playlistTitles || []).filter(t => t.station === ACTIVE_STATION).forEach(t => add(t.title, t.artist, 'Playlist')); }catch(e){}
+  return out;
+}
+async function genLoadMarket(auto){
+  if(genUI.marketLoading) return;
+  genUI.marketLoading = true; genUI.error = ''; renderGeniusPanel();
+  try{
+    await genHistLoad();
+    genHist.map = genHist.map || {};
+    const list = genMarketSources();
+    const today = genToday(), out = [];
+    for(let i = 0; i < list.length; i++){
+      const t = list[i];
+      genUI.marketProgress = (i + 1) + '/' + list.length; renderGeniusPanel(true);
+      try{
+        let id = genHist.map[t.k] || null, song = null;
+        if(id && genHist.songs[id] && genHist.songs[id].pv[today] != null){
+          const e = genHist.songs[id]; song = { id, title: e.t, artist: e.a, pv: e.pv[today], lang: e.lang, img: e.img };
+        } else if(id){
+          const r = await genCall('/api/songs/' + id, {});
+          song = genSongFrom(r.song || r); if(song) genRecordSong(song);
+        } else {
+          const r = await genCall('/api/search/song', { q: t.t + ' ' + t.a, per_page: 5 });
+          const cands = (((r.sections || [])[0] || {}).hits || []).map(h => genSongFrom(h)).filter(Boolean);
+          const nT = norm(t.t), fa = genArtistKey(t.a);
+          song = cands.find(c => norm(c.title) === nT && norm(c.artist).includes(fa)) || cands.find(c => norm(c.title) === nT) || cands.find(c => similarity(norm(c.title), nT) >= 0.85) || null;
+          if(song){ genHist.map[t.k] = song.id; genRecordSong(song); }
+        }
+        if(song) out.push(Object.assign({ src: t.src }, song));
+      }catch(e){}
+      if(i % 10 === 9) genHistSave();
+      await new Promise(r => setTimeout(r, 200));
+    }
+    genUI.market = out;
+    try{ localStorage.setItem('fpa_genius_market_day', today); }catch(e){}
+    genHistSave();
+  }catch(e){ genUI.error = e.message || String(e); }
+  genUI.marketLoading = false; genMedCache = null;
+  renderGeniusPanel();
+}
+/** Vivier déjà relevé aujourd'hui (sans nouvel appel). */
+function genMarketFromHist(){
+  if(!genHist || !genHist.map) return [];
+  const today = genToday(), recent = genAddDays(today, -2);
+  return genMarketSources().map(t => {
+    const id = genHist.map[t.k]; const e = id && genHist.songs[id];
+    if(!e) return null;
+    const last = Object.keys(e.pv || {}).sort().pop();
+    if(!last || last < recent) return null;
+    return { id:+id, title:e.t, artist:e.a, pv:e.pv[last], lang:e.lang, img:e.img, src:t.src };
+  }).filter(Boolean);
+}
+
+/* ── Page Classements → Genius (4 vues) ────────────────────────────── */
+function genSetView(v){
+  genUI.view = v; renderGeniusPanel();
+  if((v === 'market' || v === 'fr') && !genUI.marketLoading){
+    genHistLoad().then(() => {
+      if(!genUI.market.length) genUI.market = genMarketFromHist();
+      let day = null; try{ day = localStorage.getItem('fpa_genius_market_day'); }catch(e){}
+      if(day !== genToday()) genLoadMarket(true); else renderGeniusPanel();
+    });
+  }
+}
+function genTableHtml(list, opts){
+  const cols = opts.cols;
+  const rows = list.map((s, i) => {
+    const lang = genLangOf(s), w = s.id ? genWeekGain(s.id, s.pv) : null;
+    const cell = {
+      rank: `<td style="padding:7px 8px;font-family:var(--font-display);font-size:15px;font-weight:800;color:var(--navy);text-align:center">${i + 1}</td>`,
+      evo: `<td style="padding:7px 6px;text-align:center">${opts.rankEvo ? genRankEvo(s.id, i + 1) : ''}</td>`,
+      flag: `<td style="padding:7px 4px;text-align:center;font-size:15px">${genFlag(lang, s)}</td>`,
+      title: `<td style="padding:7px 10px;max-width:400px">${s.id ? genRowTitle(s) : `<div style="font-size:13px;font-weight:800;color:var(--navy)">${escHtml(titleCaseDisplay(s.fpaTitle || s.title))}</div><div style="font-size:11px;color:var(--muted)">${escHtml(titleCaseDisplay(s.fpaArtist || s.artist))} · introuvable sur Genius</div>`}${s.src ? `<div style="font-size:9.5px;color:var(--muted);margin-top:1px">${escHtml(s.src.join(' · '))}</div>` : ''}</td>`,
+      cat: `<td style="padding:7px 8px;text-align:center;font-size:10.5px;font-weight:800;color:var(--text2)">${escHtml(s.cat || '')}</td>`,
+      index: `<td style="padding:7px 10px;text-align:right">${s.id && lang ? genIndexHtml(genIndex(s.id, lang), lang) : '<span style="color:var(--muted)">—</span>'}</td>`,
+      pv: `<td style="padding:7px 10px;text-align:right;font-weight:800;color:var(--navy);white-space:nowrap">${genFmt(s.pv)}</td>`,
+      gain: `<td style="padding:7px 10px;text-align:right;white-space:nowrap">${genEvoHtml(w)}</td>`
+    };
+    return `<tr style="background:${i % 2 ? 'var(--white)' : '#F4F6FA'};border-top:1px solid var(--border)">${cols.map(c => cell[c]).join('')}</tr>`;
+  }).join('');
+  const H = { rank:['#','center'], evo:['Évol.','center'], flag:['Langue','center'], title:['Titre / Artiste','left'], cat:['Cat.','center'], index:['Indice','right'], pv:['Pages vues (total)','right'], gain:['+ 7 jours','right'] };
+  return `<div style="overflow-x:auto;border:1.5px solid var(--border);border-radius:12px;background:var(--white)"><table style="width:100%;border-collapse:collapse">
+    <thead><tr style="background:var(--bg)">${cols.map(c => `<th style="padding:8px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:${H[c][1]}">${H[c][0]}</th>`).join('')}</tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
+}
+function renderGeniusPanel(quick){
+  const panel = document.getElementById('geniusChartsPanel');
+  if(!panel) return;
+  const sel = (arr, cur, fn) => arr.map(([k, l]) => `<button onclick="${fn}('${k}')" style="font-size:11px;font-weight:800;padding:5px 11px;border-radius:20px;cursor:pointer;border:1.5px solid ${k === cur ? 'var(--navy)' : 'var(--border)'};background:${k === cur ? 'var(--navy)' : 'var(--white)'};color:${k === cur ? '#fff' : 'var(--text2)'}">${l}</button>`).join('');
+  const med = genHist ? (genMedCache && genMedCache.at === genToday() + Object.keys(genHist.songs).length ? genMedCache : (genMedCache = Object.assign({ at: genToday() + Object.keys(genHist.songs).length }, genMedians()))) : null;
+  const head = `<div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="font-family:var(--font-display);font-size:22px;font-weight:800;color:var(--navy)">📝 Genius</div>
+      <span style="font-size:12px;color:var(--muted)">paroles les plus lues · évolution sur 7 jours</span>
+      <span style="margin-left:auto;display:inline-flex;gap:6px;flex-wrap:wrap">${sel([['chart','🌍 Top mondial'],['market','🇫🇷 Marché français'],['fr','Francophones'],['mine','Mes titres']], genUI.view, 'genSetView')}</span>
+    </div>
+    <div style="font-size:11px;color:var(--text2);background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:7px 12px;margin-bottom:10px">
+      <b>Indice Genius</b> = pages vues de la semaine ÷ celles du titre médian de sa catégorie × 100. <b>100</b> = un titre « dans la norme » de sa catégorie ; <b>250</b> = 2,5 fois plus lu. Les titres <b>🇫🇷 francophones</b> sont comparés entre eux, les <b>🌍 internationaux</b> entre eux — un titre français n'est plus écrasé par les chiffres mondiaux.
+      ${med ? `<span style="color:var(--muted)"> · Médianes du jour : 🇫🇷 ${med.fr ? genFmt(med.fr) + ' p.v./sem. (' + med.nFr + ' titres)' : 'pas encore assez de titres'} · 🌍 ${med.intl ? genFmt(med.intl) + ' p.v./sem. (' + med.nIntl + ' titres)' : 'pas encore assez de titres'}</span>` : ''}
+    </div>`;
+  let body = '';
+  const err = genUI.error ? `<div style="padding:12px;color:#B91C1C;font-size:12.5px">⚠ ${escHtml(genUI.error)}</div>` : '';
+  if(genUI.view === 'chart'){
+    const ctrl = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${sel(GEN_PERIODS, genUI.period, 'genSetPeriod')}<span style="width:10px"></span>${sel(GEN_GENRES, genUI.genre, 'genSetGenre')}
+        <button class="btn-ghost" onclick="genLoadChart()" style="margin-left:auto;font-size:11px;padding:5px 11px">🔄 Actualiser</button></div>`;
+    body = ctrl + err + (genUI.loading ? '<div style="padding:30px;text-align:center;color:var(--muted)">⏳ Chargement du classement Genius…</div>'
+      : !genUI.items.length ? '<div style="padding:30px;text-align:center;color:var(--muted)">Aucune donnée — cliquez sur « Actualiser ».</div>'
+      : genTableHtml(genUI.items, { cols:['rank','evo','flag','title','index','pv','gain'], rankEvo:true }));
+  } else if(genUI.view === 'market' || genUI.view === 'fr'){
+    const onlyFr = genUI.view === 'fr';
+    let list = genUI.market.length ? genUI.market : (genHist ? genMarketFromHist() : []);
+    list = list.map(s => Object.assign({ _lang: genLangOf(s) }, s));
+    if(onlyFr) list = list.filter(s => s._lang === 'fr');
+    else if(genUI.langFilter !== 'all') list = list.filter(s => s._lang === genUI.langFilter);
+    list.sort((a, b) => ((b.id && b._lang ? genIndex(b.id, b._lang) : -1) ?? -1) - ((a.id && a._lang ? genIndex(a.id, a._lang) : -1) ?? -1) || (b.pv || 0) - (a.pv || 0));
+    const ctrl = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--text2)">${onlyFr ? 'Titres francophones du marché français' : 'Titres du marché français (top 50 Spotify FR, Deezer FR, Airplay, Playlist)'}, classés par <b>indice Genius</b>.</span>
+        ${onlyFr ? '' : `<span style="display:inline-flex;gap:5px">${sel([['all','Tous'],['fr','🇫🇷'],['intl','🌍']], genUI.langFilter, 'genSetLangFilter')}</span>`}
+        <button class="btn-ghost" onclick="genLoadMarket()" ${genUI.marketLoading ? 'disabled' : ''} style="margin-left:auto;font-size:11px;padding:5px 11px">${genUI.marketLoading ? '⏳ ' + genUI.marketProgress : '🔄 Relever le marché'}</button></div>`;
+    body = ctrl + err + (!list.length ? `<div style="padding:30px;text-align:center;color:var(--muted)">${genUI.marketLoading ? '⏳ Relevé des pages vues Genius du marché français…' : 'Aucun relevé — chargez les classements (Spotify France, Deezer, Airplay) puis « Relever le marché ».'}</div>`
+      : genTableHtml(list, { cols:['rank','flag','title','index','pv','gain'] }));
+  } else {
+    const ctrl = `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--text2)">Titres de la Playlist ${escHtml(STATION_LABELS[ACTIVE_STATION] || '')}, classés par indice Genius.</span>
+        <button class="btn-ghost" onclick="genLoadMine()" ${genUI.mineLoading ? 'disabled' : ''} style="margin-left:auto;font-size:11px;padding:5px 11px">${genUI.mineLoading ? '⏳ ' + (genUI.mineProgress || '') : '🔄 Relever mes titres'}</button></div>`;
+    const list = genUI.mine.slice().sort((a, b) => { const ia = a.id ? genIndex(a.id, genLangOf(a)) : null, ib = b.id ? genIndex(b.id, genLangOf(b)) : null; return (ib ?? -1) - (ia ?? -1) || (b.pv || 0) - (a.pv || 0); });
+    body = ctrl + err + (!list.length ? `<div style="padding:30px;text-align:center;color:var(--muted)">${genUI.mineLoading ? '⏳ Recherche des titres sur Genius…' : 'Cliquez sur « Relever mes titres ».'}</div>`
+      : genTableHtml(list, { cols:['flag','title','cat','index','pv','gain'] }));
+  }
+  panel.innerHTML = head + body + `<div style="font-size:10.5px;color:var(--muted);margin-top:8px">Pages vues cumulées tous pays. Langue : celle des paroles indiquée par Genius (à défaut, la colonne Langue de vos fichiers Call Out / OMT) — cliquez sur 🇫🇷 / 🌍 pour corriger un artiste. L'indice et l'évolution reposent sur les relevés quotidiens de FPA.</div>`;
+}
+function genSetLangFilter(f){ genUI.langFilter = f; renderGeniusPanel(); }
+
+/* ── Fiche Song Metrics : chiffre, catégorie et indice ─────────────── */
+async function genFindSong(title, artist){
+  await genHistLoad();
+  genHist.map = genHist.map || {};
+  const k = norm(title || '') + '|||' + norm(artist || '');
+  const nT = norm(title || ''), fa = genArtistKey(artist);
+  const today = genToday();
+  let id = genHist.map[k];
+  if(!id){
+    const known = Object.entries(genHist.songs).find(([sid, e]) => norm(e.t || '') === nT && (!fa || norm(e.a || '').includes(fa)));
+    if(known) id = +known[0];
+  }
+  if(id && genHist.songs[id] && genHist.songs[id].pv[today] != null){ const e = genHist.songs[id]; return { id:+id, title:e.t, artist:e.a, pv:e.pv[today], lang:e.lang }; }
+  if(typeof dailyGasUrl !== 'function' || !dailyGasUrl()){ if(id && genHist.songs[id]){ const e = genHist.songs[id]; return { id:+id, title:e.t, artist:e.a, pv:genLatestPv(id), lang:e.lang }; } return null; }
+  let song = null;
+  if(id){ try{ const r = await genCall('/api/songs/' + id, {}); song = genSongFrom(r.song || r); }catch(e){} }
+  if(!song){
+    const r = await genCall('/api/search/song', { q: title + ' ' + artist, per_page: 5 });
+    const cands = (((r.sections || [])[0] || {}).hits || []).map(x => genSongFrom(x)).filter(Boolean);
+    song = cands.find(c => norm(c.title) === nT && norm(c.artist).includes(fa)) || cands.find(c => norm(c.title) === nT) || cands.find(c => similarity(norm(c.title), nT) >= 0.85) || null;
+  }
+  if(song){ genHist.map[k] = song.id; genRecordSong(song); genHistSave(); }
+  return song;
+}
+async function geniusRenderInto(elId, title, artist){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const head = lang => `<div style="display:flex;align-items:center;gap:7px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:3px;background:#FFFF64;color:#000;font-size:9px;font-weight:900">G</span>
+      <span style="font-size:10.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--navy)">Genius — pages vues des paroles</span>
+      ${lang ? `<span style="font-size:11px;font-weight:700;color:var(--text2)">${lang === 'fr' ? '🇫🇷 titre francophone' : '🌍 titre international'}</span>` : ''}
+    </div>`;
+  const tiles = (pv, w, idx, lang, rankTxt) => `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:8px">
+      ${kwsTile('Indice Genius', idx === null || idx === undefined ? '—' : String(idx), idx === null || idx === undefined ? '<span style="font-size:10.5px;color:var(--muted)">dès 2 relevés</span>' : `<span style="font-size:10.5px;color:var(--muted)">100 = titre ${lang === 'fr' ? 'francophone' : 'international'} médian${rankTxt ? ' · ' + rankTxt : ''}</span>`, 'Pages vues de la semaine rapportées au titre médian de sa catégorie (francophones entre eux, internationaux entre eux)')}
+      ${kwsTile('+ 7 jours', w ? (w.gain >= 0 ? '+' : '') + genFmt(w.gain) : '—', w ? `<span style="font-size:10.5px;color:var(--muted)">${w.base ? (w.gain >= 0 ? '+' : '') + (w.gain / w.base * 100).toLocaleString('fr-FR', { maximumFractionDigits:1 }) + ' %' : ''}${w.partial ? ' · sur ' + w.days + ' j' : ''}</span>` : '', 'Pages vues gagnées sur la semaine')}
+      ${kwsTile('Pages vues (total)', genFmt(pv), '<span style="font-size:10.5px;color:var(--muted)">tous pays, depuis la mise en ligne</span>', 'Cumul de la page paroles sur Genius')}
+    </div>`;
+  el.innerHTML = head(null) + tiles(null, null, null, null);
+  let s = null;
+  try{ s = await genFindSong(title, artist); }catch(e){ s = null; }
+  if(!document.getElementById(elId)) return;
+  if(!s){ el.innerHTML = head(null) + tiles(null, null, null, null); return; }
+  const lang = genLangOf(s) || 'intl';
+  const e = genHist.songs[s.id] || { pv:{} };
+  const pvNow = s.pv != null ? s.pv : genLatestPv(s.id);
+  const w = genWeekGain(s.id, pvNow);
+  genMedCache = null;
+  const idx = genIndex(s.id, lang);
+  // Rang de l'indice parmi les titres de la même catégorie relevés
+  let rankTxt = '';
+  if(idx !== null){
+    const recent = genAddDays(genToday(), -2);
+    const peers = Object.entries(genHist.songs).filter(([id, x]) => { const l = Object.keys(x.pv || {}).sort().pop(); return l && l >= recent && genLangOf({ id:+id, title:x.t, artist:x.a, lang:x.lang }) === lang && genWeekly(id) !== null; }).map(([id]) => genWeekly(id)).sort((a, b) => b - a);
+    const mine = genWeekly(s.id);
+    if(peers.length >= 5 && mine !== null) rankTxt = (peers.filter(v => v > mine).length + 1) + 'ᵉ / ' + peers.length;
+  }
+  el.innerHTML = head(lang) + tiles(pvNow, w, idx, lang, rankTxt) + `<div style="font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin:4px 0 2px">Pages vues par jour</div>` + genSparkHtml(e.pv);
+}
+
+/* ── Overview : drapeaux + carte « Francophones » ──────────────────── */
+(function(){
+  if(typeof OVERVIEW_WIDGETS === 'undefined') return;
+  ['genius_playlist','genius_day','genius_evo'].forEach(id => {
+    const w = OVERVIEW_WIDGETS.find(x => x.id === id);
+    if(!w || w._langWrapped) return;
+    const orig = w.getAsync; w._langWrapped = true;
+    w.getAsync = async function(){
+      const r = await orig.apply(this, arguments);
+      if(r && r.rows) r.rows.forEach(row => { const l = genLangOf({ title: row.title, artist: row.artist }); if(l) row.title = (l === 'fr' ? '🇫🇷 ' : '🌍 ') + row.title; });
+      return r;
+    };
+  });
+  OVERVIEW_WIDGETS.push({ id:'genius_fr', icon:'🇫🇷', label:'Genius · Francophones (indice)', go: () => { genUI.view = 'fr'; overviewGoChart('genius'); },
+    async getAsync(){
+      await genHistLoad();
+      genMedCache = null;
+      const recent = genAddDays(genToday(), -2);
+      const rows = Object.entries(genHist.songs).map(([id, e]) => {
+        const last = Object.keys(e.pv || {}).sort().pop();
+        if(!last || last < recent) return null;
+        if(genLangOf({ id:+id, title:e.t, artist:e.a, lang:e.lang }) !== 'fr') return null;
+        const idx = genIndex(id, 'fr');
+        return idx === null ? null : { title:e.t, artist:e.a, idx, w: genWeekGain(id, genLatestPv(id)) };
+      }).filter(Boolean).sort((a, b) => b.idx - a.idx);
+      if(!rows.length) return { empty:'Pas encore assez de relevés — Classements → Genius → 🇫🇷 Marché français.' };
+      return { rows: rows.slice(0, 5).map((r, i) => ({ rank:i + 1, title:r.title, artist:r.artist, value:'indice ' + r.idx, color: r.idx >= 100 ? '#16a34a' : 'var(--navy)', valueTitle: r.w ? '+' + genFmt(r.w.gain) + ' pages vues sur 7 jours' : '' })),
+        note:'Indice Genius des titres francophones (100 = francophone médian)' };
+    } });
 })();
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
