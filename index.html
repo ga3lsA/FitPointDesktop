@@ -4059,8 +4059,11 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 <!-- PAGE RESULTS -->
 <div id="pageResults" style="display:none">
 
-  <!-- FP Recap + bouton export -->
-  <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:stretch;margin-bottom:16px">
+  <!-- Baromètre santé (remplace le récapitulatif Fit Point et les compteurs de quadrants) -->
+  <div id="fitHealthBox" style="margin-bottom:12px"></div>
+
+  <!-- FP Recap + bouton export (masqués : remplacés par le baromètre ; l'export passe dans la barre de filtres) -->
+  <div style="display:none;flex-wrap:wrap;gap:10px;align-items:stretch;margin-bottom:16px">
     <div id="fpRecap" class="card" style="flex:1;display:flex;flex-wrap:wrap;gap:14px;align-items:center;padding:14px 18px;border-left:4px solid var(--cyan)"></div>
     <div style="display:flex;flex-direction:column;gap:8px;justify-content:center">
       <button class="btn-export" onclick="exportExcel()">
@@ -4071,8 +4074,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
     </div>
   </div>
 
-  <!-- Quadrant stats -->
-  <div style="display:flex;flex-wrap:nowrap;align-items:stretch;gap:10px;margin-bottom:14px;width:100%;max-width:100%;box-sizing:border-box">
+  <!-- Quadrant stats (masqués) -->
+  <div style="display:none;flex-wrap:nowrap;align-items:stretch;gap:10px;margin-bottom:14px;width:100%;max-width:100%;box-sizing:border-box">
     <div id="quadStats" style="display:flex;flex-wrap:nowrap;align-items:stretch;gap:8px;flex:5 1 0;min-width:0"></div>
     <div style="display:flex;flex-wrap:nowrap;align-items:stretch;gap:8px;flex:3 1 0;min-width:0">
       <div style="width:2px;background:var(--border);border-radius:2px;align-self:stretch;flex-shrink:0"></div>
@@ -4095,6 +4098,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   <!-- Filtres -->
   <div style="background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center;box-shadow:var(--shadow)">
     <input id="searchBox" placeholder="Rechercher titre, artiste…" style="flex:1 1 150px;font-size:12px" oninput="renderTableDebounced()">
+    <button onclick="exportExcel()" title="Export Excel complet : toutes données + FIT_SCORE + QUADRANT + onglet synthèse" style="display:none;order:99;font-size:11.5px;font-weight:800;padding:6px 12px;border-radius:8px;border:1.5px solid #A8DDB9;background:#E6F6EC;color:#1E7A3C;cursor:pointer;white-space:nowrap">⬇ Excel</button>
     <select id="filterQ" onchange="renderTable()" style="font-size:12px">
       <option value="ALL">Tous quadrants</option>
       <option value="POWER_SONG">⚡ Power Song</option>
@@ -8756,6 +8760,7 @@ function showResults(){
 
   const validA=anchors.filter(a=>a.trim().length>0);
   const aRows=validA.map(a=>analysisResult.find(r=>r.title.toUpperCase().includes(a.toUpperCase()))).filter(Boolean);
+  setTimeout(() => { try{ renderFitHealthBarometer(); }catch(e){} }, 0);
   document.getElementById('fpRecap').innerHTML=
     `<div style="display:flex;align-items:center;gap:6px;margin-right:8px"><div style="width:8px;height:8px;border-radius:2px;background:var(--cyan)"></div><span style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted)">FIT POINT</span></div>`+
     aRows.map(r=>`<div style="display:flex;align-items:center;gap:7px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;padding:5px 12px"><span style="font-size:12px;font-weight:700;color:var(--navy)">${escHtml(titleCaseDisplay(r.title))}</span><span style="font-size:11px;color:var(--muted)">${escHtml(titleCaseDisplay(r.artist))}</span><span style="background:var(--navy);color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:5px">${r.score.toFixed(2)}</span></div>`).join('')+
@@ -42625,6 +42630,7 @@ function fpaRefTargetRefresh(){
   try{ if(typeof analyseRows !== 'undefined' && analyseRows.length && typeof renderAnalyseStats === 'function'){ renderAnalyseStats(); if(typeof renderAnalyseTableBody === 'function') renderAnalyseTableBody(); } }catch(e){}
   try{ if(typeof renderAnalyseRefTargetBar === 'function') renderAnalyseRefTargetBar(); }catch(e){}
   try{ const hb = document.getElementById('healthBarometer'); if(hb && hb.offsetParent !== null) renderHealthBarometer(); }catch(e){}
+  try{ const fb = document.getElementById('fitHealthBox'); if(fb && fb.offsetParent !== null) renderFitHealthBarometer(); }catch(e){}
   try{ if(typeof mktTab !== 'undefined' && mktTab === 'marketing' && mktVisible()) renderMarketingPage(); }catch(e){}
 }
 /* Barre « Cible » de la programmation hebdomadaire (au-dessus des statistiques) */
@@ -44656,8 +44662,35 @@ const HEALTH_CRITERIA = [
       const w = weeks[weeks.length - 1];
       return { value: w.audienceMoyenne, context: healthDaudContext(w) + ' · 5h-24h' };
     },
-    auto(st){ return healthDaudAutoThresholds(st, 'audienceMoyenne', 'Vert dès la'); } }
+    auto(st){ return healthDaudAutoThresholds(st, 'audienceMoyenne', 'Vert dès la'); } },
+
+  { id:'drd', group:'Délai Radio ↔ Digital', icon:'⏱️', label:'DRD — délai médian entre la percée digitale et l\'adoption par la station (jours)', decimals:0, unit:' j', higherIsBetter:false,
+    value(st){
+      const rk = st === 'RFM' ? 'rfm' : 'e2';
+      const res = (typeof dlyState !== 'undefined') ? dlyState.result : null;
+      if(!res){ healthDrdEnsure(); return { value:null, empty: healthDrdState === 'none' ? 'Historique des classements insuffisant (3 semaines sauvegardées sur Drive minimum).' : 'Calcul en cours… (historique des classements sur Drive)' }; }
+      const r = res.byRadio[rk];
+      if(!r || !r.median) return { value:null, empty:'Pas encore de titre percé en digital sur la période.' };
+      const m = r.median;
+      return { value: m.v, context: (m.v < 0 ? Math.abs(m.v) + ' j d\'avance' : (m.c ? '≥ ' : '') + m.v + ' j de retard') + ' · anticipation ' + (r.anticPct === null ? '—' : r.anticPct + ' %') + ' · couverture ' + (r.coverage === null ? '—' : r.coverage + '/' + r.coverageN) + ' · ' + r.n + ' titres (Digital Métrics → Délai Radio)' };
+    },
+    auto(){ return { green:7, orange:21, explain:'Vert jusqu\'à 7 jours de retard (ou en avance), orange jusqu\'à 21 jours, rouge au-delà' }; } }
 ];
+/* DRD : le calcul du Délai Radio repose sur l'historique Drive (asynchrone) */
+let healthDrdState = '';
+function healthDrdEnsure(){
+  if(healthDrdState || typeof dlyLoadSnapshots !== 'function') return;
+  healthDrdState = 'loading';
+  (async () => {
+    try{ if(typeof dailyProgLoad === 'function') await dailyProgLoad(); }catch(e){}
+    await dlyHfLoad();
+    const snaps = await dlyLoadSnapshots(false);
+    if(snaps.length >= 3){ dlyState.result = dlyCompute(snaps, dlyCfg()); healthDrdState = 'done'; }
+    else healthDrdState = 'none';
+    try{ renderHealthBarometer(); }catch(e){}
+    try{ if(typeof renderFitHealthBarometer === 'function') renderFitHealthBarometer(); }catch(e){}
+  })().catch(() => { healthDrdState = 'none'; });
+}
 
 /* ── Seuils : sauvegarde par station (les audiences Europe 2 et RFM n'ont
       pas les mêmes ordres de grandeur) ─────────────────────────────────── */
@@ -44730,7 +44763,8 @@ const HEALTH_SHORT = {
   co_fit:'Fit Call Out', co_pot:'Pot Call Out',
   prog_pot:'Pot hebdo', prog_fit:'Fit hebdo',
   daily_fit:'Fit du jour', daily_pot:'Pot du jour',
-  daud_sessions:'Sessions', daud_uniques:'Visiteurs uniq.', daud_audience:'Audience moy.'
+  daud_sessions:'Sessions', daud_uniques:'Visiteurs uniq.', daud_audience:'Audience moy.',
+  drd:'DRD'
 };
 function healthLightHtml(status){
   const dot = key => {
@@ -44741,6 +44775,17 @@ function healthLightHtml(status){
   return `<span aria-label="${HEALTH_COLORS[status].label}" style="flex-shrink:0;display:inline-flex;gap:3px;padding:3px 5px;border-radius:8px;background:var(--navy)">${dot('red')}${dot('orange')}${dot('green')}</span>`;
 }
 
+/** Baromètre santé en tête de la page Fit Score : même rendu que dans
+ *  l'Overview (le conteneur prend l'identifiant le temps du rendu). */
+function renderFitHealthBarometer(){
+  const fit = document.getElementById('fitHealthBox');
+  if(!fit) return;
+  const ov = document.getElementById('healthBarometer');
+  if(ov) ov.id = 'healthBarometer__ov';
+  fit.id = 'healthBarometer';
+  try{ renderHealthBarometer(); }catch(e){ console.warn('Baromètre (Fit Score)', e); }
+  finally{ fit.id = 'fitHealthBox'; if(ov) ov.id = 'healthBarometer'; }
+}
 function renderHealthBarometer(){
   const box = document.getElementById('healthBarometer');
   if(!box) return;
@@ -46234,6 +46279,7 @@ function fmtAfterChange(){
     try{ renderAnalyseFormatShare(); }catch(e){}
     try{ if(typeof analyseSubView !== 'undefined' && analyseSubView === 'graph' && document.getElementById('graphformatChart')) graphRenderCard('format'); }catch(e){}
     try{ const hb = document.getElementById('healthBarometer'); if(hb && hb.offsetParent !== null) renderHealthBarometer(); }catch(e){}
+    try{ const fb = document.getElementById('fitHealthBox'); if(fb && fb.offsetParent !== null) renderFitHealthBarometer(); }catch(e){}
   }, 350);
 }
 </script>
@@ -47552,11 +47598,59 @@ function dlySetCfg(k, v){
   try{ localStorage.setItem(DLY_CFG_KEY, JSON.stringify(c)); }catch(e){}
   dlyState.result = null; renderRadioDelayPage();
 }
-function dlyHorsFormat(){ try{ return new Set(JSON.parse(localStorage.getItem(DLY_HF_KEY) || '[]')); }catch(e){ return new Set(); } }
-function dlyToggleHorsFormat(key){
-  const s = dlyHorsFormat(); s.has(key) ? s.delete(key) : s.add(key);
-  try{ localStorage.setItem(DLY_HF_KEY, JSON.stringify([...s])); }catch(e){}
+/* ── Titres hors format : PAR RADIO ─────────────────────────────────────
+   { radioKey: [clés titre], …, savedAt } — un titre hors format pour Europe 2
+   reste compté pour NRJ, Fun… Stockage : mémoire + IndexedDB (sans limite de
+   taille) + copie localStorage + Drive Sync (partagé entre postes).
+   L'ancienne liste commune (v1) est reprise pour Europe 2. */
+const DLY_HF_KEY2 = 'fpa_radio_delay_horsformat_v2';
+let dlyHfMap = null, dlyHfPromise = null;
+function dlyHfLoad(){
+  if(dlyHfPromise) return dlyHfPromise;
+  dlyHfPromise = (async () => {
+    let m = null;
+    try{ m = await idbGet(DLY_HF_KEY2); }catch(e){}
+    if(!m){ try{ m = JSON.parse(localStorage.getItem(DLY_HF_KEY2) || 'null'); }catch(e){} }
+    if(!m){
+      m = {};
+      try{ const old = JSON.parse(localStorage.getItem(DLY_HF_KEY) || '[]'); if(old.length) m.e2 = old; }catch(e){}
+    }
+    if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+      try{ const r = await driveCall('load', 'radio_delay_horsformat'); const remote = r && r.data ? JSON.parse(r.data) : null;
+        if(remote && (remote.savedAt || '') > (m.savedAt || '')) m = remote; }catch(e){}
+    }
+    dlyHfMap = m;
+    return m;
+  })();
+  return dlyHfPromise;
+}
+/** Ensemble des titres hors format pour une radio. */
+function dlyHorsFormat(radioKey){
+  const m = dlyHfMap || {};
+  return new Set(Array.isArray(m[radioKey]) ? m[radioKey] : []);
+}
+function dlyHfCount(radioKey){ return dlyHorsFormat(radioKey).size; }
+async function dlyHfSave(){
+  dlyHfMap.savedAt = new Date().toISOString();
+  try{ await idbSet(DLY_HF_KEY2, dlyHfMap); }catch(e){}
+  try{ localStorage.setItem(DLY_HF_KEY2, JSON.stringify(dlyHfMap)); }catch(e){}
+  if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL){
+    try{ await driveCall('save', 'radio_delay_horsformat', JSON.stringify(dlyHfMap)); }catch(e){ console.warn('Hors format — Drive', e); }
+  }
+}
+async function dlyToggleHorsFormat(key, radioKey){
+  await dlyHfLoad();
+  const rk = radioKey || dlyState.radio || 'e2';
+  const s = dlyHorsFormat(rk); s.has(key) ? s.delete(key) : s.add(key);
+  dlyHfMap[rk] = [...s];
   dlyState.result = null; renderRadioDelayPage();
+  dlyHfSave();
+}
+async function dlyHfReset(radioKey){
+  await dlyHfLoad();
+  delete dlyHfMap[radioKey];
+  dlyState.result = null; renderRadioDelayPage();
+  dlyHfSave();
 }
 function dlyKey(t, a){ return norm(a || '') + '|||' + norm(t || ''); }
 function dlyDays(a, b){ return Math.round((new Date(b + 'T12:00:00') - new Date(a + 'T12:00:00')) / 86400000); }
@@ -47624,7 +47718,6 @@ function dlyFirstDailyPlay(radioKey, title, artist, fromIso, toIso){
 /* ── Calcul ─────────────────────────────────────────────────────────── */
 function dlyCompute(snaps, cfg){
   const win = snaps.slice(-Math.max(2, cfg.window + 1));
-  const hf = dlyHorsFormat();
   const cache = {};
   // Vivier : titres entrés dans le top N digital pendant la fenêtre (pas
   // déjà présents au premier instantané : leur vraie date de percée est inconnue)
@@ -47635,12 +47728,13 @@ function dlyCompute(snaps, cfg){
     if(i === 0) { pool[k] = { skip:true }; return; }
     pool[k] = { key:k, t:e.t, a:e.a, bIdx:i, bDate: win[i].date };
   }));
-  const titles = Object.values(pool).filter(p => !p.skip && !hf.has(p.key));
+  const titles = Object.values(pool).filter(p => !p.skip);
   const lastIdx = win.length - 1, lastDate = win[lastIdx].date;
   const radios = [{ key:'rg', label:'Marché (Général)', short:'Marché' }].concat(AIRPLAY_RADIOS.filter(r => r.key !== 'rg').map(r => ({ key:r.key, label:r.col, short:r.label, own:r.own })));
   const byRadio = {};
   radios.forEach(rd => {
-    const rows = titles.map(p => {
+    const hf = dlyHorsFormat(rd.key);           // hors format propre à CETTE radio
+    const rows = titles.filter(p => !hf.has(p.key)).map(p => {
       // Première semaine d'adoption (y compris avant la percée digitale)
       let aIdx = null;
       for(let i = 1; i < win.length; i++){ if(dlyAdopted(win[i], p.t, p.a, rd.key, cfg, cache)){ aIdx = i; break; } }
@@ -47694,6 +47788,7 @@ async function renderRadioDelayPage(force){
   if(!dlyState.result || force){
     box.innerHTML = '<div style="padding:30px;text-align:center;color:var(--muted)">⏳ Chargement de l\'historique des classements…</div>';
     try{ if(typeof dailyProgLoad === 'function') await dailyProgLoad(); }catch(e){}
+    await dlyHfLoad();
     const snaps = await dlyLoadSnapshots(force);
     if(snaps.length < 3){
       box.innerHTML = dlyHeaderHtml(cfg) + `<div style="padding:18px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:12.5px;color:var(--text2)">Il faut au moins 3 semaines de classements sauvegardées sur Drive (Spotify France et Airplay) pour mesurer un délai. ${typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL ? 'Historique disponible : ' + snaps.length + ' instantané(s).' : 'Drive Sync n\'est pas configuré.'}</div>`;
@@ -47736,11 +47831,11 @@ async function renderRadioDelayPage(force){
       </div>
       <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px">
         <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px">🕳️ Angles morts — top ${cfg.topN} digital non joué par ${escHtml(R.def.label)}</div>
-        <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">✕ = hors format (retiré du calcul pour toutes les radios)</div>
+        <div style="font-size:10.5px;color:var(--muted);margin-bottom:6px">✕ = hors format pour ${escHtml(R.def.label)} (retiré du calcul de cette radio uniquement)</div>
         ${R.coverage === null ? '<div style="font-size:12px;color:var(--muted)">Pas de données Airplay cette semaine.</div>' : (R.blind.length ? R.blind.slice(0, 15).map(b => `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--border)">
             <span style="width:26px;font-size:11px;font-weight:800;color:var(--muted);text-align:right">#${b.rank}</span>
             <span style="flex:1;min-width:0;font-size:12px"><b style="color:var(--navy)">${escHtml(titleCaseDisplay(b.t))}</b> <span style="color:var(--muted)">${escHtml(titleCaseDisplay(b.a))}</span></span>
-            <button onclick="dlyToggleHorsFormat('${jsAttrEscape(b.key)}')" title="Hors format" style="border:1.5px solid var(--border);background:var(--white);border-radius:6px;font-size:10px;cursor:pointer;color:var(--muted)">✕</button></div>`).join('') : '<div style="font-size:12px;color:#16a34a;font-weight:700">✓ Tout le top digital est joué.</div>')}
+            <button onclick="dlyToggleHorsFormat('${jsAttrEscape(b.key)}','${sel}')" title="Hors format pour ${escHtml(R.def.label)}" style="border:1.5px solid var(--border);background:var(--white);border-radius:6px;font-size:10px;cursor:pointer;color:var(--muted)">✕</button></div>`).join('') : '<div style="font-size:12px;color:#16a34a;font-weight:700">✓ Tout le top digital est joué.</div>')}
       </div>
     </div>
     <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px;margin-top:14px">
@@ -47752,10 +47847,10 @@ async function renderRadioDelayPage(force){
           <td style="padding:6px 10px;text-align:center;font-size:12px">${dlyFmtDate(r.bDate)}</td>
           <td style="padding:6px 10px;text-align:center;font-size:12px">${r.aDate ? dlyFmtDate(r.aDate) + (r.precise ? ' <span title="Date exacte du premier passage (conducteur quotidien)" style="color:var(--cyan)">●</span>' : '') : '—'}</td>
           <td style="padding:6px 10px;text-align:center;font-size:12px">${status(r)}</td>
-          <td style="padding:6px 6px;text-align:center"><button onclick="dlyToggleHorsFormat('${jsAttrEscape(r.key)}')" title="Marquer hors format (retiré du calcul)" style="border:1.5px solid var(--border);background:var(--white);border-radius:6px;font-size:10px;cursor:pointer;color:var(--muted)">✕</button></td>
+          <td style="padding:6px 6px;text-align:center"><button onclick="dlyToggleHorsFormat('${jsAttrEscape(r.key)}','${sel}')" title="Marquer hors format pour ${escHtml(R.def.label)} (retiré du calcul de cette radio)" style="border:1.5px solid var(--border);background:var(--white);border-radius:6px;font-size:10px;cursor:pointer;color:var(--muted)">✕</button></td>
         </tr>`).join('')}</tbody></table></div>
       ${rows.length > 25 ? `<button class="btn-ghost" onclick="dlyState.showAllTitles=!dlyState.showAllTitles;renderRadioDelayPage()" style="margin-top:8px;font-size:11px;padding:5px 12px">${dlyState.showAllTitles ? '▴ Replier' : '▾ Voir les ' + rows.length + ' titres'}</button>` : ''}
-      ${dlyHorsFormat().size ? `<div style="font-size:10.5px;color:var(--muted);margin-top:8px">${dlyHorsFormat().size} titre(s) hors format exclu(s) · <a href="javascript:void(0)" onclick="localStorage.removeItem(DLY_HF_KEY);dlyState.result=null;renderRadioDelayPage()" style="color:var(--cyan)">tout réintégrer</a></div>` : ''}
+      ${dlyHfCount(sel) ? `<div style="font-size:10.5px;color:var(--muted);margin-top:8px">${dlyHfCount(sel)} titre(s) hors format exclu(s) pour ${escHtml(R.def.label)} · <a href="javascript:void(0)" onclick="dlyHfReset('${sel}')" style="color:var(--cyan)">tout réintégrer</a></div>` : ''}
     </div>`;
 }
 function dlyHeaderHtml(cfg){
@@ -47772,7 +47867,7 @@ function dlyHeaderHtml(cfg){
       <div style="font-size:12px;color:var(--text2);line-height:1.65;margin-top:8px">
         <b>Percée digitale</b> : la semaine où un titre entre dans le top ${cfg.topN} digital. <b>Adoption radio</b> : la première semaine où la radio le joue au moins ${cfg.plays} fois (top ${cfg.rankMax} pour les classements Général et Indés). Pour Europe 2 et RFM, la date est affinée au jour près grâce aux conducteurs quotidiens (●).<br>
         <b>Délai radio</b> : médiane, sur tous les titres percés, du nombre de jours entre les deux. Un titre pas encore adopté compte comme « au moins N jours » — la médiane affiche alors « ≥ ». <b>Avance</b> = la radio a adopté le titre avant sa percée digitale.<br>
-        <b>Anticipation</b> : part des titres adoptés avant ou la même semaine que leur percée. <b>Couverture</b> : nombre de titres du top ${cfg.topN} digital actuel que la radio joue. <b>Angles morts</b> : ceux qu'elle ne joue pas (✕ pour les écarter s'ils sont hors format).
+        <b>Anticipation</b> : part des titres adoptés avant ou la même semaine que leur percée. <b>Couverture</b> : nombre de titres du top ${cfg.topN} digital actuel que la radio joue. <b>Angles morts</b> : ceux qu'elle ne joue pas (✕ pour les écarter s'ils sont hors format — <b>pour cette radio uniquement</b> : un titre hors format Europe 2 reste compté pour NRJ ou Fun).
       </div>
     </details>
     <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:10px 14px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;margin-bottom:12px;font-size:11.5px;font-weight:700;color:var(--text2)">
