@@ -44674,8 +44674,64 @@ const HEALTH_CRITERIA = [
       const m = r.median;
       return { value: m.v, context: (m.v < 0 ? Math.abs(m.v) + ' j d\'avance' : (m.c ? '≥ ' : '') + m.v + ' j de retard') + ' · anticipation ' + (r.anticPct === null ? '—' : r.anticPct + ' %') + ' · couverture ' + (r.coverage === null ? '—' : r.coverage + '/' + r.coverageN) + ' · ' + r.n + ' titres (Digital Métrics → Délai Radio)' };
     },
-    auto(){ return { green:7, orange:21, explain:'Vert jusqu\'à 7 jours de retard (ou en avance), orange jusqu\'à 21 jours, rouge au-delà' }; } }
+    auto(){ return { green:7, orange:21, explain:'Vert jusqu\'à 7 jours de retard (ou en avance), orange jusqu\'à 21 jours, rouge au-delà' }; } },
+
+  { id:'pl_common', group:'Europe 2 ∩ RFM', icon:'🔗', label:'Titres en commun — part de la Playlist présente aussi dans la Playlist de l\'autre station', decimals:0, unit:' %', higherIsBetter:false,
+    value(st){
+      const other = healthOtherStation(st);
+      let all = []; try{ all = playlistTitles || []; }catch(e){}
+      const live = t => String(t.categorie || '').toUpperCase().trim() !== 'OUT';
+      const A = all.filter(t => t.station === st && live(t)), B = all.filter(t => t.station === other && live(t));
+      if(!A.length || !B.length) return { value:null, empty:'Playlists ' + healthStLabel(st) + ' et ' + healthStLabel(other) + ' nécessaires.' };
+      const setB = new Set(B.map(t => healthTitleKey(t.title, t.artist))), setBt = new Set(B.map(t => norm(t.title || '')));
+      const n = A.filter(t => setB.has(healthTitleKey(t.title, t.artist)) || setBt.has(norm(t.title || ''))).length;
+      return { value: n / A.length * 100, context: n + ' titre(s) en commun · ' + healthStLabel(st) + ' ' + A.length + ' / ' + healthStLabel(other) + ' ' + B.length + ' titres (hors OUT)' };
+    },
+    auto(){ return { green:25, orange:40, explain:'Plus la part commune est faible, plus les deux playlists se distinguent — vert ≤ 25 %, orange ≤ 40 % (à ajuster)' }; } },
+
+  { id:'diff_common', group:'Europe 2 ∩ RFM', icon:'📡', label:'Diffusions en commun — part des diffusions de la semaine sur des titres joués aussi par l\'autre station (pondérée par les diffusions)', decimals:0, unit:' %', higherIsBetter:false,
+    value(st){
+      const v = healthCommonDiffEnsure(st);
+      if(v === null) return { value:null, empty:'Programmation hebdomadaire des deux stations nécessaire (onglet Analyse).' };
+      if(v === 'loading') return { value:null, empty:'Calcul en cours… (détail des semaines programmées)' };
+      if(v.missing) return { value:null, empty:'Détail de la semaine introuvable pour l\'une des stations (réimportez la programmation).' };
+      return { value: v.rate, context: v.common.toLocaleString('fr-FR') + ' diffusions sur ' + v.tot.toLocaleString('fr-FR') + ' · ' + v.nCommon + ' titres communs · ' + v.wa.weekLabel + (v.sameWeek ? '' : ' (autre station : ' + v.wb.weekLabel + ')') };
+    },
+    auto(){ return { green:25, orange:40, explain:'Part des diffusions sur des titres communs — vert ≤ 25 %, orange ≤ 40 % (à ajuster)' }; } }
 ];
+/* ── Titres / diffusions en commun Europe 2 ∩ RFM ───────────────────── */
+function healthOtherStation(st){ return st === 'RFM' ? 'EUROPE2' : 'RFM'; }
+function healthStLabel(st){ return st === 'RFM' ? 'RFM' : 'Europe 2'; }
+function healthTitleKey(t, a){ return norm(t || '') + '|' + norm(String(a || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s)\s*/i)[0] || ''); }
+let healthCommonDiffCache = { key:null, value:null, loading:false };
+function healthCommonDiffEnsure(st){
+  const wa = healthLastProgWeek(st), other = healthOtherStation(st);
+  let h = {}; try{ h = analyseLoadHistory() || {}; }catch(e){}
+  const ob = (h[other] || []).slice();
+  if(!wa || !ob.length) return null;
+  // Semaine de l'autre station : la même (début de semaine identique), sinon la plus récente
+  const wb = ob.find(w => wa.weekStart && w.weekStart === wa.weekStart) || healthLastProgWeek(other);
+  const key = st + '|' + wa.weekLabel + '|' + wb.weekLabel;
+  if(healthCommonDiffCache.key === key && !healthCommonDiffCache.loading) return healthCommonDiffCache.value;
+  if(healthCommonDiffCache.key === key && healthCommonDiffCache.loading) return 'loading';
+  healthCommonDiffCache = { key, value:null, loading:true };
+  (async () => {
+    const [da, db] = await Promise.all([analyseLoadWeekDetail(st, wa.weekLabel), analyseLoadWeekDetail(other, wb.weekLabel)]);
+    let value = { missing:true, wa, wb };
+    if(da && da.rows && da.rows.length && db && db.rows && db.rows.length){
+      const setB = new Set(db.rows.map(r => healthTitleKey(r.title, r.artist)));
+      const setBt = new Set(db.rows.map(r => norm(r.title || '')));
+      let tot = 0, common = 0, nCommon = 0;
+      da.rows.forEach(r => { const n = +r.nbDiffs || 0; tot += n; if(setB.has(healthTitleKey(r.title, r.artist)) || setBt.has(norm(r.title || ''))){ common += n; nCommon++; } });
+      value = { rate: tot ? common / tot * 100 : null, common, tot, nCommon, nTitles: da.rows.length, wa, wb, sameWeek: wa.weekStart && wa.weekStart === wb.weekStart };
+    }
+    healthCommonDiffCache = { key, value, loading:false };
+    try{ renderHealthBarometer(); }catch(e){}
+    try{ if(typeof renderFitHealthBarometer === 'function') renderFitHealthBarometer(); }catch(e){}
+  })().catch(() => { healthCommonDiffCache = { key, value:{ missing:true }, loading:false }; });
+  return 'loading';
+}
+
 /* DRD : le calcul du Délai Radio repose sur l'historique Drive (asynchrone) */
 let healthDrdState = '';
 function healthDrdEnsure(){
@@ -44764,7 +44820,7 @@ const HEALTH_SHORT = {
   prog_pot:'Pot hebdo', prog_fit:'Fit hebdo',
   daily_fit:'Fit du jour', daily_pot:'Pot du jour',
   daud_sessions:'Sessions', daud_uniques:'Visiteurs uniq.', daud_audience:'Audience moy.',
-  drd:'DRD'
+  drd:'DRD', pl_common:'Titres communs', diff_common:'Diff. communes'
 };
 function healthLightHtml(status){
   const dot = key => {
@@ -47734,7 +47790,17 @@ function dlyCompute(snaps, cfg){
   const byRadio = {};
   radios.forEach(rd => {
     const hf = dlyHorsFormat(rd.key);           // hors format propre à CETTE radio
-    const rows = titles.filter(p => !hf.has(p.key)).map(p => {
+    // Europe 2 et RFM : tous les titres percés (le format se règle à la main, ✕).
+    // Autres radios et marché : uniquement les titres que la radio a diffusés
+    // au moins une fois sur la période — leur format est implicite.
+    const playedOnly = rd.key !== 'e2' && rd.key !== 'rfm';
+    const played = k => {
+      const p = titles.find(x => x.key === k) || null;
+      const t = p ? p.t : null, a = p ? p.a : null;
+      if(!t) return false;
+      return win.some(s => { if(!s.airplay) return false; const ck = s.date + '|' + k; let e = cache[ck]; if(e === undefined){ e = radarFindAirplayEntry(s.airplay, t, a) || null; cache[ck] = e; } const v = e ? parseInt(e[rd.key], 10) || 0 : 0; return v > 0; });
+    };
+    const rows = titles.filter(p => !hf.has(p.key) && (!playedOnly || played(p.key))).map(p => {
       // Première semaine d'adoption (y compris avant la percée digitale)
       let aIdx = null;
       for(let i = 1; i < win.length; i++){ if(dlyAdopted(win[i], p.t, p.a, rd.key, cfg, cache)){ aIdx = i; break; } }
@@ -47755,10 +47821,12 @@ function dlyCompute(snaps, cfg){
     const adopted = rows.filter(r => r.delay !== null);
     const antic = adopted.filter(r => r.delay <= 0).length;
     // Couverture : top N digital du dernier instantané
-    const cur = Object.entries(tops[lastIdx]).filter(([k]) => !hf.has(k));
+    const curAll = Object.entries(tops[lastIdx]).filter(([k]) => !hf.has(k));
+    // Couverture / angles morts : même règle (titres diffusés pour les autres radios)
+    const cur = !playedOnly ? curAll : curAll.filter(([k, e]) => win.some(s => { if(!s.airplay) return false; const en = radarFindAirplayEntry(s.airplay, e.t, e.a); return en && (parseInt(en[rd.key], 10) || 0) > 0; }));
     const covered = cur.filter(([k, e]) => dlyAdopted(win[lastIdx], e.t, e.a, rd.key, cfg, cache)).length;
     const radioData = !!win[lastIdx].airplay;
-    byRadio[rd.key] = { def: rd, rows, median: med, n: rows.length, nAdopted: adopted.length, waiting: rows.length - adopted.length,
+    byRadio[rd.key] = { def: rd, playedOnly, rows, median: med, n: rows.length, nAdopted: adopted.length, waiting: rows.length - adopted.length,
       antic, anticPct: adopted.length ? Math.round(antic / adopted.length * 100) : null,
       coverage: radioData ? covered : null, coverageN: cur.length,
       blind: cur.filter(([k, e]) => radioData && !dlyAdopted(win[lastIdx], e.t, e.a, rd.key, cfg, cache)).map(([k, e]) => ({ key:k, t:e.t, a:e.a, rank:e.rank })).sort((x, y) => x.rank - y.rank) };
@@ -47805,7 +47873,7 @@ async function renderRadioDelayPage(force){
   const card = rd => {
     const r = res.byRadio[rd.key], on = rd.key === sel;
     return `<div onclick="dlyState.radio='${rd.key}';renderRadioDelayPage()" style="cursor:pointer;background:${on ? '#EEF6FF' : 'var(--white)'};border:${on ? '2px solid var(--navy)' : '1.5px solid var(--border)'};border-radius:12px;padding:12px 14px">
-      <div style="display:flex;align-items:center;gap:6px"><span style="font-size:12.5px;font-weight:800;color:var(--navy)">${escHtml(rd.label)}</span>${rd.own ? '<span style="font-size:9px;font-weight:800;color:var(--cyan)">● station</span>' : ''}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:12.5px;font-weight:800;color:var(--navy)">${escHtml(rd.label)}</span>${rd.own ? '<span style="font-size:9px;font-weight:800;color:var(--cyan)">● station</span>' : ''}${r.playedOnly ? '<span title="Calcul sur les seuls titres diffusés par cette radio pendant la période" style="font-size:9px;font-weight:700;color:var(--muted)">titres diffusés</span>' : ''}</div>
       <div style="font-family:var(--font-display);font-size:19px;font-weight:800;margin:4px 0 6px">${dlyDelayText(r.median, true)}</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;font-size:10.5px;color:var(--text2)">
         <span title="Part des titres adoptés avant ou la même semaine que leur percée digitale">⚡ Anticipation <b>${r.anticPct === null ? '—' : r.anticPct + ' %'}</b></span>
@@ -47866,7 +47934,8 @@ function dlyHeaderHtml(cfg){
       <summary style="cursor:pointer;font-size:12px;font-weight:800;color:var(--navy)">Comment lire ces indicateurs</summary>
       <div style="font-size:12px;color:var(--text2);line-height:1.65;margin-top:8px">
         <b>Percée digitale</b> : la semaine où un titre entre dans le top ${cfg.topN} digital. <b>Adoption radio</b> : la première semaine où la radio le joue au moins ${cfg.plays} fois (top ${cfg.rankMax} pour les classements Général et Indés). Pour Europe 2 et RFM, la date est affinée au jour près grâce aux conducteurs quotidiens (●).<br>
-        <b>Délai radio</b> : médiane, sur tous les titres percés, du nombre de jours entre les deux. Un titre pas encore adopté compte comme « au moins N jours » — la médiane affiche alors « ≥ ». <b>Avance</b> = la radio a adopté le titre avant sa percée digitale.<br>
+        <b>Vivier</b> : pour Europe 2 et RFM, tous les titres percés (✕ pour écarter un titre hors format, station par station) ; pour les autres radios et le marché, <b>uniquement les titres que chaque radio a diffusés</b> pendant la période — son format est ainsi pris en compte sans réglage.<br>
+        <b>Délai radio</b> : médiane, sur les titres du vivier, du nombre de jours entre les deux. Un titre pas encore adopté compte comme « au moins N jours » — la médiane affiche alors « ≥ ». <b>Avance</b> = la radio a adopté le titre avant sa percée digitale.<br>
         <b>Anticipation</b> : part des titres adoptés avant ou la même semaine que leur percée. <b>Couverture</b> : nombre de titres du top ${cfg.topN} digital actuel que la radio joue. <b>Angles morts</b> : ceux qu'elle ne joue pas (✕ pour les écarter s'ils sont hors format — <b>pour cette radio uniquement</b> : un titre hors format Europe 2 reste compté pour NRJ ou Fun).
       </div>
     </details>
