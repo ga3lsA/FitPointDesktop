@@ -48915,5 +48915,176 @@ async function renderHomeRdgSummary(){
   onChange();
 })();
 </script>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     FPA MOBILE v2 — lisibilité et usages mobiles (téléphones uniquement)
+     • Textes agrandis (les tailles 9-13 px du bureau passent à 12-15 px).
+     • Cibles tactiles ≥ 44 px, champs à 16 px (pas de zoom forcé sur iPhone).
+     • Barre basse à 5 onglets : Accueil, Classements, Décision, Playlist et
+       « Plus » (FitScore, Comité, Datas, Analyse, Configuration).
+     • Sous-onglets sur une seule ligne défilante ; actions secondaires et
+       blocs peu utilisés repliés derrière un bouton.
+     Aucun effet sur ordinateur (même requête média que FPA MOBILE v1).
+     ═══════════════════════════════════════════════════════════════════════ -->
+<style id="fpaMobileV2Css">
+@media (max-width: 760px), (max-height: 500px) and (max-width: 1000px) and (orientation: landscape){
+  /* ── Typographie : planchers de lisibilité ─────────────────────────── */
+  body{font-size:15px;-webkit-text-size-adjust:100%}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:8px"], :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:8.5px"], :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:9px"], :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:9.5px"],
+  .modal-overlay [style*="font-size:9px"], [id$="Modal"] [style*="font-size:9px"], [id$="Modal"] [style*="font-size:9.5px"]{font-size:12px!important}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:10px"], :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:10.5px"],
+  [id$="Modal"] [style*="font-size:10px"], [id$="Modal"] [style*="font-size:10.5px"]{font-size:12.5px!important}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:11px"], :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:11.5px"],
+  [id$="Modal"] [style*="font-size:11px"], [id$="Modal"] [style*="font-size:11.5px"]{font-size:13.5px!important}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:12px"], :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:12.5px"],
+  [id$="Modal"] [style*="font-size:12px"], [id$="Modal"] [style*="font-size:12.5px"]{font-size:14.5px!important}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:13px"], :is([id^="page"],[id^="modal"],[id$="Modal"]) [style*="font-size:13.5px"],
+  [id$="Modal"] [style*="font-size:13px"], [id$="Modal"] [style*="font-size:13.5px"]{font-size:15px!important}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) svg text{font-size:inherit}
+  /* ── Cibles tactiles et champs ─────────────────────────────────────── */
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) button, :is([id^="page"],[id^="modal"],[id$="Modal"]) .btn-ghost, :is([id^="page"],[id^="modal"],[id$="Modal"]) .btn-primary, [id$="Modal"] button{min-height:40px}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) input[type="text"], :is([id^="page"],[id^="modal"],[id$="Modal"]) input[type="number"], :is([id^="page"],[id^="modal"],[id$="Modal"]) input[type="date"], :is([id^="page"],[id^="modal"],[id$="Modal"]) input[type="search"], :is([id^="page"],[id^="modal"],[id$="Modal"]) input:not([type]), :is([id^="page"],[id^="modal"],[id$="Modal"]) select, :is([id^="page"],[id^="modal"],[id$="Modal"]) textarea,
+  [id$="Modal"] input[type="text"], [id$="Modal"] input[type="number"], [id$="Modal"] input[type="date"], [id$="Modal"] input:not([type]), [id$="Modal"] select, [id$="Modal"] textarea{
+    font-size:16px!important;min-height:42px}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) input[type="checkbox"], :is([id^="page"],[id^="modal"],[id$="Modal"]) input[type="radio"]{width:20px!important;height:20px!important;min-height:0}
+  /* ── Sous-onglets : une seule ligne qui défile ─────────────────────── */
+  .m2-scrollrow{flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .m2-scrollrow::-webkit-scrollbar{display:none}
+  .m2-scrollrow > *{flex-shrink:0!important;white-space:nowrap}
+  /* ── Actions secondaires et blocs repliés ──────────────────────────── */
+  .m2-more{display:none!important}
+  .m2-showmore .m2-more{display:inline-flex!important}
+  .m2-hide{display:none!important}
+  .m2-collapsed{display:none!important}
+  .m2-toggle{display:flex!important;align-items:center;gap:8px;width:100%;justify-content:space-between;background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:12px 14px;font-size:14px;font-weight:800;color:var(--navy);margin:0 0 12px;cursor:pointer}
+  .m2-toggle .m2-chev{transition:transform .2s;color:var(--muted)}
+  .m2-toggle.m2-open .m2-chev{transform:rotate(90deg)}
+  .m2-morebtn{display:inline-flex!important;align-items:center;justify-content:center;font-size:14px!important;font-weight:800!important;padding:0 16px!important;border-radius:10px!important;border:1.5px solid var(--border)!important;background:var(--white)!important;color:var(--navy)!important}
+  /* ── Barre basse : 5 onglets ───────────────────────────────────────── */
+  #appHeader #headerTabsRow > button.m2-navhide.m2-navhide.m2-navhide, #appHeader #headerTabsRow > div.m2-navhide.m2-navhide.m2-navhide, #appHeader #headerTabsRow .m2-navhide.m2-navhide.m2-navhide{display:none!important}
+  #headerTabsRow #datasDropdownWrap.m2-navhide{display:none!important}
+  #appHeader #headerTabsRow > button::after, #appHeader #headerTabsRow #datasTabBtn::after{font-size:11px!important}
+  #appHeader #headerTabsRow > button > svg:first-child{width:22px!important;height:22px!important}
+  #mMoreBtn.m-active, #mMoreBtn.m2-active{background:var(--cyan-light)!important;color:var(--navy)!important}
+  /* Feuille « Plus » */
+  #m2MoreSheet{position:fixed;inset:0;z-index:2600;background:rgba(11,29,58,.45);display:flex;align-items:flex-end}
+  #m2MoreSheet .m2-sheet{background:var(--white);width:100%;border-radius:18px 18px 0 0;padding:10px 14px calc(18px + env(safe-area-inset-bottom,0px));box-shadow:0 -10px 30px rgba(11,29,58,.25)}
+  #m2MoreSheet .m2-grip{width:40px;height:5px;border-radius:5px;background:var(--border);margin:2px auto 12px}
+  #m2MoreSheet .m2-item{display:flex;align-items:center;gap:14px;width:100%;min-height:56px;padding:0 10px;border:none;background:none;border-radius:12px;font-size:17px;font-weight:700;color:var(--navy);text-align:left}
+  #m2MoreSheet .m2-item:active{background:var(--bg)}
+  #m2MoreSheet .m2-item .m2-ic{width:38px;height:38px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  /* ── Tableaux : défilement horizontal propre ───────────────────────── */
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) table{font-size:13.5px}
+  :is([id^="page"],[id^="modal"],[id$="Modal"]) div[style*="overflow-x:auto"]{-webkit-overflow-scrolling:touch}
+}
+</style>
+<script id="fpaMobileV2Js">
+(function(){
+  'use strict';
+  var MQ = window.matchMedia('(max-width: 760px), (max-height: 500px) and (max-width: 1000px) and (orientation: landscape)');
+  var timer = null;
+  function isOn(){ return MQ.matches; }
+  function vis(el){ return !!(el && el.offsetParent !== null); }
+
+  /* Barre basse : Accueil · Classements · Décision · Playlist · Plus */
+  var MORE_ITEMS = [
+    { id:'homeTabBtn',    ic:'📊', label:'Fit Score' },
+    { id:'comiteTabBtn',  ic:'🎧', label:'Comité d\'écoute' },
+    { id:'datasTabBtn',   ic:'🗂️', label:'Datas' },
+    { id:'analyseTabBtn', ic:'📈', label:'Analyse' },
+    { id:'__config',      ic:'⚙️', label:'Configuration FPA' }
+  ];
+  function setupNav(){
+    var row = document.getElementById('headerTabsRow');
+    if(!row) return;
+    ['homeTabBtn','comiteTabBtn','analyseTabBtn'].forEach(function(id){ var b = document.getElementById(id); if(b) b.classList.add('m2-navhide'); });
+    var dw = document.getElementById('datasDropdownWrap'); if(dw) dw.classList.add('m2-navhide');
+    var dt = document.getElementById('datasTabBtn'); if(dt && !dw) dt.classList.add('m2-navhide');
+    if(!document.getElementById('mMoreBtn')){
+      var b = document.createElement('button');
+      b.id = 'mMoreBtn'; b.type = 'button'; b.className = 'btn-ghost';
+      b.setAttribute('data-m-label', 'Plus'); b.setAttribute('aria-label', 'Plus de rubriques');
+      b.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/></svg>';
+      b.onclick = openMore;
+      row.appendChild(b);
+    }
+    // « Plus » allumé quand on est sur une rubrique qu'il contient
+    var more = document.getElementById('mMoreBtn');
+    var on = ['pageResults','pageComite','pageAnalyse','pageRawData','pageHistory','pageCateg','pageQuotas'].some(function(id){ return vis(document.getElementById(id)); });
+    if(more) more.classList.toggle('m2-active', on);
+  }
+  function openMore(){
+    var old = document.getElementById('m2MoreSheet'); if(old){ old.remove(); return; }
+    var ov = document.createElement('div'); ov.id = 'm2MoreSheet';
+    ov.innerHTML = '<div class="m2-sheet"><div class="m2-grip"></div>' + MORE_ITEMS.map(function(it, i){
+      return '<button type="button" class="m2-item" data-i="' + i + '"><span class="m2-ic">' + it.ic + '</span>' + it.label + '</button>';
+    }).join('') + '</div>';
+    ov.addEventListener('click', function(e){
+      var btn = e.target.closest('.m2-item');
+      if(!btn){ if(e.target === ov) ov.remove(); return; }
+      var it = MORE_ITEMS[+btn.getAttribute('data-i')];
+      ov.remove();
+      if(it.id === '__config'){ if(typeof openFpaConfigModal === 'function') openFpaConfigModal(); return; }
+      var t = document.getElementById(it.id); if(t) t.click();
+    });
+    document.body.appendChild(ov);
+  }
+
+  /* Sous-onglets en ligne défilante */
+  function setupScrollRows(){
+    var a = document.getElementById('analyseSubProgBtn'); if(a && a.parentElement) a.parentElement.classList.add('m2-scrollrow');
+    var c = document.getElementById('fpaCfgTabs'); if(c) c.classList.add('m2-scrollrow');
+  }
+
+  /* Playlist : actions principales visibles, le reste derrière « ⋯ Plus » */
+  var PL_KEEP = /Sauvegarder|PDF|titres —|Europe|RFM|^\s*📊\s*Excel\s*$/;
+  function setupPlaylistActions(){
+    var link = document.getElementById('playlistLinkModeBtn');
+    var bar = link && link.parentElement;
+    if(!bar || bar.getAttribute('data-m2')) return;
+    bar.setAttribute('data-m2', '1');
+    Array.prototype.forEach.call(bar.children, function(el){ if(!PL_KEEP.test(el.textContent || '')) el.classList.add('m2-more'); });
+    var mb = document.createElement('button'); mb.type = 'button'; mb.className = 'm2-morebtn'; mb.style.display = 'none';
+    mb.textContent = '⋯ Plus'; mb.onclick = function(){ bar.classList.toggle('m2-showmore'); mb.textContent = bar.classList.contains('m2-showmore') ? '✕ Moins' : '⋯ Plus'; };
+    bar.appendChild(mb);
+  }
+
+  /* Blocs peu utilisés : repliés derrière un intitulé */
+  function collapsible(el, label, key){
+    if(!el || el.getAttribute('data-m2c')) return;
+    el.setAttribute('data-m2c', '1');
+    el.classList.add('m2-collapsed');
+    var t = document.createElement('button'); t.type = 'button'; t.className = 'm2-toggle'; t.style.display = 'none';
+    t.innerHTML = '<span>' + label + '</span><span class="m2-chev">▸</span>';
+    t.onclick = function(){ var open = el.classList.toggle('m2-collapsed') === false; t.classList.toggle('m2-open', open); };
+    el.parentNode.insertBefore(t, el);
+  }
+  function setupCollapsibles(){
+    var v = document.getElementById('playlistValidityFrom');
+    if(v){ var box = v.closest('div[style*="border-radius"]'); collapsible(box, '🗓️ Validité de la playlist'); }
+    // Textes d'introduction longs des pages (gardés sur ordinateur)
+    document.querySelectorAll('main h2 + div, main h2 + p').forEach(function(p){
+      if(p.getAttribute('data-m2h')) return;
+      var txt = (p.textContent || '').trim();
+      if(txt.length > 140 && !p.querySelector('button,input,select,table,canvas,svg')){ p.setAttribute('data-m2h', '1'); p.classList.add('m2-hide'); }
+    });
+  }
+
+  function run(){
+    if(!isOn()) return;
+    try{ setupNav(); }catch(e){}
+    try{ setupScrollRows(); }catch(e){}
+    try{ setupPlaylistActions(); }catch(e){}
+    try{ setupCollapsibles(); }catch(e){}
+  }
+  function schedule(){ clearTimeout(timer); timer = setTimeout(run, 250); }
+  function start(){
+    run();
+    try{ new MutationObserver(schedule).observe(document.body, { childList:true, subtree:true }); }catch(e){}
+    window.addEventListener('resize', schedule);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
+  if(MQ.addEventListener) MQ.addEventListener('change', schedule);
+})();
+</script>
 </body>
 </html>
