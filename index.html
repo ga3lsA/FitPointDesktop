@@ -13988,10 +13988,56 @@ function digitalAudienceLoadLocal(){
   }catch(e){ /* ignoré */ }
   if(!digitalAudienceHistory.EUROPE2) digitalAudienceHistory.EUROPE2 = {};
   if(!digitalAudienceHistory.RFM)     digitalAudienceHistory.RFM     = {};
+  // Copie IndexedDB (si le localStorage est saturé, c'est elle qui fait foi)
+  try{
+    idbGet(DIGITAL_AUDIENCE_LOCAL_KEY).then(v => {
+      if(!v) return;
+      const before = JSON.stringify(digitalAudienceHistory);
+      digitalAudienceMerge(digitalAudienceHistory, v);
+      if(JSON.stringify(digitalAudienceHistory) !== before){ try{ renderDigitalAudiencePage(); }catch(e){} }
+    }).catch(() => {});
+  }catch(e){}
 }
 function digitalAudienceSaveLocal(){
   try{ localStorage.setItem(DIGITAL_AUDIENCE_LOCAL_KEY, JSON.stringify(digitalAudienceHistory)); }
-  catch(e){ /* quota localStorage, ignoré */ }
+  catch(e){ /* quota localStorage : la copie IndexedDB ci-dessous prend le relais */ }
+  try{ idbSet(DIGITAL_AUDIENCE_LOCAL_KEY, digitalAudienceHistory).catch(() => {}); }catch(e){}
+}
+/* Date de dernière modification d'une semaine : import OU correction manuelle
+ * (une correction doit l'emporter sur l'import d'origine, sur tous les postes) */
+function digitalAudienceRecStamp(rec){
+  const a = rec && rec.importedAt ? new Date(rec.importedAt).getTime() : 0;
+  const b = rec && rec.correctedAt ? new Date(rec.correctedAt).getTime() : 0;
+  return Math.max(a || 0, b || 0);
+}
+/* Semaines supprimées ou déplacées (date de début corrigée) : on le note pour
+ * que la synchronisation ne les fasse pas réapparaître depuis un autre poste */
+function digitalAudienceTombstone(stKey, weekStart){
+  const t = digitalAudienceHistory.__deleted || (digitalAudienceHistory.__deleted = {});
+  (t[stKey] = t[stKey] || {})[weekStart] = new Date().toISOString();
+}
+/* Fusion de deux historiques : semaine par semaine, la version la plus
+ * récemment importée ou corrigée l'emporte ; les suppressions sont respectées */
+function digitalAudienceMerge(local, remote){
+  const tomb = {};
+  [local && local.__deleted, remote && remote.__deleted].forEach(src => Object.entries(src || {}).forEach(([st, weeks]) => {
+    tomb[st] = tomb[st] || {};
+    Object.entries(weeks || {}).forEach(([w, d]) => { if(!tomb[st][w] || d > tomb[st][w]) tomb[st][w] = d; });
+  }));
+  DIGITAL_AUDIENCE_STATIONS.forEach(stKey => {
+    const localSt = local[stKey] || (local[stKey] = {});
+    const remoteSt = (remote && remote[stKey]) || {};
+    Object.keys(remoteSt).forEach(w => {
+      const rr = remoteSt[w], lr = localSt[w];
+      if(!lr || digitalAudienceRecStamp(rr) > digitalAudienceRecStamp(lr)) localSt[w] = rr;
+    });
+    Object.entries(tomb[stKey] || {}).forEach(([w, d]) => {
+      const rec = localSt[w];
+      if(rec && new Date(d).getTime() >= digitalAudienceRecStamp(rec)) delete localSt[w];
+    });
+  });
+  local.__deleted = tomb;
+  return local;
 }
 
 /** Sauvegarde l'historique complet (2 stations, données hebdo agrégées —
@@ -14000,6 +14046,8 @@ function digitalAudienceSaveLocal(){
 async function digitalAudienceSaveToDrive(){
   if(!DRIVE_SYNC_URL) return { ok:false, reason:'no_url' };
   try{
+    try{ const r = await driveCall('load', DIGITAL_AUDIENCE_DRIVE_KEY); if(r && r.data) digitalAudienceMerge(digitalAudienceHistory, JSON.parse(r.data)); }catch(e){}
+    digitalAudienceSaveLocal();
     const payload = JSON.stringify(digitalAudienceHistory);
     await driveCall('save', DIGITAL_AUDIENCE_DRIVE_KEY, payload);
     return { ok:true };
@@ -14018,15 +14066,7 @@ async function digitalAudienceLoadHistoryFromDrive(manual){
     digitalAudienceDriveLoaded = true;
     if(!r || !r.data){ if(manual) renderDigitalAudiencePage(); return { ok:true, empty:true }; }
     const remote = JSON.parse(r.data);
-    DIGITAL_AUDIENCE_STATIONS.forEach(stKey => {
-      const remoteSt = remote[stKey] || {};
-      const localSt  = digitalAudienceHistory[stKey] || (digitalAudienceHistory[stKey] = {});
-      Object.keys(remoteSt).forEach(weekStart => {
-        const remRec = remoteSt[weekStart];
-        const locRec = localSt[weekStart];
-        if(!locRec || new Date(remRec.importedAt||0) > new Date(locRec.importedAt||0)) localSt[weekStart] = remRec;
-      });
-    });
+    digitalAudienceMerge(digitalAudienceHistory, remote);
     digitalAudienceSaveLocal();
     if(manual) showToast('Historique audience digitale synchronisé depuis Drive', 'success');
     renderDigitalAudiencePage();
@@ -14483,14 +14523,17 @@ function saveDigitalAudienceEditedWeek(){
   // déplace l'enregistrement plutôt que de le dupliquer.
   if(newWeekStart !== oldKey){
     delete digitalAudienceHistory[stKey][oldKey];
+    digitalAudienceTombstone(stKey, oldKey);
     digitalAudienceHistory[stKey][newWeekStart] = rec;
     digitalAudienceUI.week = newWeekStart;
   }
 
   digitalAudienceSaveLocal();
-  if(DRIVE_SYNC_URL) digitalAudienceSaveToDrive();
   closeDigitalAudienceEditWeekModal();
-  showToast('✓ Semaine corrigée', 'success');
+  if(DRIVE_SYNC_URL){
+    showToast('✓ Semaine corrigée — envoi sur Drive…', 'success');
+    digitalAudienceSaveToDrive().then(r => { if(r && r.ok) showToast('✓ Correction enregistrée sur ce poste et sur Drive', 'success'); });
+  } else showToast('✓ Semaine corrigée (sur ce poste — Drive Sync non configuré)', 'success');
   renderDigitalAudienceDetail();
 }
 
@@ -14894,6 +14937,7 @@ function renderDigitalAudienceHistoryTable(){
 function digitalAudienceDeleteWeek(stKey, weekStart){
   if(!confirm('Supprimer la semaine du ' + digitalAudienceFmtDate(weekStart) + ' (' + STATION_LABELS[stKey] + ') ?')) return;
   if(digitalAudienceHistory[stKey]) delete digitalAudienceHistory[stKey][weekStart];
+  digitalAudienceTombstone(stKey, weekStart);
   digitalAudienceSaveLocal();
   if(DRIVE_SYNC_URL) digitalAudienceSaveToDrive();
   renderDigitalAudiencePage();
@@ -22113,19 +22157,19 @@ async function openTevByInfo(info){
   if(row360){
     const { fpBadge, fitBadge, spuBadge, dqBadge, burnBadge, polarBadge, potBadge } = build360Badges(row360);
     sections.push(`<div style="margin-bottom:6px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">🎯 FPA Metrics</div>`);
-    sections.push(`<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;margin-bottom:20px">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding-right:10px;border-right:1.5px solid var(--border)">
-        <span style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase">Fit Score</span>
-        ${fitBadge}
-      </div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-        ${fpBadge}
-        ${dqBadge}
-        ${spuBadge}
-        ${burnBadge}
-        ${polarBadge}
-        ${potBadge}
-      </div>
+    // Chaque résultat avec le nom de son critère (et une explication au survol)
+    const cell = (label, badge, tip, sep) => `<div title="${escHtml(tip)}" style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:0 10px;${sep ? 'border-right:1.5px solid var(--border);' : ''}cursor:help">
+        <span style="font-size:9px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">${label}</span>
+        <div style="min-height:26px;display:flex;align-items:center">${badge}</div>
+      </div>`;
+    sections.push(`<div style="display:flex;flex-wrap:wrap;gap:12px 0;align-items:flex-start;padding:14px 8px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;margin-bottom:20px">
+      ${cell('Fit Score', fitBadge, 'Fit Score : proximité du titre avec le Fit Point (profil idéal de la vague), de 0 à 100', true)}
+      ${cell('Quadrant', fpBadge, 'Quadrant Fit Point : Power Song, Power Burned, Sleeper, Wrong Format ou Miss')}
+      ${cell('Décision', dqBadge, 'Quadrant de décision (Stars, Pépites, Usés…) selon le potentiel et l\'usure')}
+      ${cell('SPU', spuBadge, 'Score de Programmation Unifié (0-100) : Pot Score, Burn inversé, Aime beaucoup, Fit… — avec son feu tricolore')}
+      ${cell('Burn', burnBadge, 'Burn : part des auditeurs lassés du titre (rouge au-delà du seuil)')}
+      ${cell('Potentiel totémique', polarBadge, 'Potentiel totémique : polarisation × Pot Score ÷ 100 — titres qui marquent fortement leur public')}
+      ${cell('Potentiel brut', potBadge, 'Potentiel brut (momentum) : croise le signal Shazam et la part d\'inconnus — un titre encore peu connu mais déjà recherché')}
     </div>`);
   }
 
@@ -31834,7 +31878,7 @@ function build360Badges(r){
         ? pill('#FFF4E0','#FFD085','#B05E00', `🎯 ${r.pot.momentumBrut.toFixed(0)}`, `Potentiel brut : ${r.pot.momentumBrut.toFixed(0)}`)
         : r.pot.momentumBrut>=30
           ? pill('var(--bg)','var(--border)','var(--text2)', `👁 ${r.pot.momentumBrut.toFixed(0)}`, `Potentiel brut : ${r.pot.momentumBrut.toFixed(0)}`)
-          : `<span style="font-size:11px;color:var(--muted)">${r.pot.momentumBrut.toFixed(0)}</span>`)
+          : pill('var(--bg)','var(--border)','var(--muted)', `${r.pot.momentumBrut.toFixed(0)}`, `Potentiel brut : ${r.pot.momentumBrut.toFixed(0)} (faible)`))
     : dash;
 
   return { fpBadge, fitBadge, spuBadge, dqBadge, burnBadge, polarBadge, potBadge };
