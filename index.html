@@ -41653,10 +41653,12 @@ async function loadLatestAirplayOnStartup(){
   // driveCallJSONPWithRetry) : un aléa réseau ponctuel sur UN appel ne doit
   // pas priver la home de sa référence Airplay pour toute la session.
   async function callWithOneRetry(params){
-    try{ return await driveCallJSONP(params, 18000); }
+    // Délais larges : sur un partage de connexion ou une 4G faible, le
+    // fichier de la semaine peut mettre plus de 20 s à arriver
+    try{ return await driveCallJSONP(params, 40000); }
     catch(e){
-      await new Promise(r => setTimeout(r, 1200));
-      return await driveCallJSONP(params, 18000);
+      await new Promise(r => setTimeout(r, 1500));
+      return await driveCallJSONP(params, 60000);
     }
   }
 
@@ -41680,7 +41682,7 @@ async function loadLatestAirplayOnStartup(){
       statusEl.textContent = 'Aucune référence chargée';
     }
   } catch(e) {
-    if(statusEl) statusEl.textContent = 'Drive injoignable — réessayez depuis Classements → Airplay';
+    if(statusEl) statusEl.innerHTML = 'Drive injoignable (connexion lente ou coupée) — <a href="javascript:void(0)" onclick="loadLatestAirplayOnStartup()" style="color:var(--cyan);font-weight:700">réessayer</a>';
   }
 }
 
