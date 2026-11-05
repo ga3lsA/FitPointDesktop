@@ -40721,7 +40721,30 @@ function compress(str) {
 // ── JSONP core ────────────────────────────────────────────────────────────
 let _driveCbId = 0;
 
+/* Limiteur d'appels simultanés vers le script Drive Sync. Au démarrage, de
+ * nombreux modules interrogent Drive en même temps (classements, audience,
+ * historiques Genius / streams / radar…) : au-delà d'une poignée d'appels
+ * parallèles, Google Apps Script refuse les requêtes (« trop d'exécutions
+ * simultanées ») et FPA conclut à tort que Drive est injoignable. Les appels
+ * passent donc par une file : 3 à la fois au maximum. Le délai d'attente de
+ * chaque appel ne court qu'à partir de son départ réel. */
+const DRIVE_MAX_PARALLEL = 3;
+let _driveInFlight = 0;
+const _driveWaitQueue = [];
 function driveCallJSONP(params, timeoutMs = 20000) {
+  return new Promise((resolve, reject) => {
+    const go = () => {
+      _driveInFlight++;
+      _driveCallJSONPRaw(params, timeoutMs).then(resolve, reject).finally(() => {
+        _driveInFlight--;
+        const next = _driveWaitQueue.shift();
+        if(next) next();
+      });
+    };
+    if(_driveInFlight < DRIVE_MAX_PARALLEL) go(); else _driveWaitQueue.push(go);
+  });
+}
+function _driveCallJSONPRaw(params, timeoutMs = 20000) {
   return new Promise((resolve, reject) => {
     // Garde-fou : si DRIVE_SYNC_URL est vide/invalide au moment précis de cet
     // appel (course avec un autre appel, variable pas encore prête, etc.), on
@@ -40944,7 +40967,7 @@ songDiffusionsLoadFromDrive();
  *  dans la console pour qui voudrait vérifier.
  */
 if(DRIVE_SYNC_URL){
-  driveCall('cleanup_chunks').then(r => {
+  (_driveSaveQueue = _driveSaveQueue.catch(() => {}).then(() => driveCall('cleanup_chunks'))).then(r => {
     if(r && r.deleted) console.log('[FPA] Nettoyage automatique Drive Sync : ' + r.deleted + ' chunk(s) orphelin(s) supprimé(s), ' + (r.freedChars||0).toLocaleString('fr-FR') + ' caractères libérés.');
   }).catch(() => { /* best-effort, jamais bloquant au démarrage */ });
 }
@@ -41011,16 +41034,48 @@ async function recoverMissingChartsWeeks(weeksBack = 20){
 }
 
 // ── Charger l'index des semaines disponibles ──────────────────────────────
+/** Reconstruit l'index des semaines en interrogeant Drive vendredi par
+ *  vendredi (clé charts_week_AAAA-MM-JJ) sur les 60 dernières semaines. */
+let _rebuildIndexPromise = null;
+function rebuildChartsIndexFromWeeks(){
+  if(_rebuildIndexPromise) return _rebuildIndexPromise;
+  _rebuildIndexPromise = (async () => {
+    const out = [], dates = [];
+    const d0 = new Date();
+    for(let k = 0; k < MAX_CHARTS_WEEKS + 8; k++){ const d = new Date(d0); d.setDate(d.getDate() - 7 * k); dates.push(fridayWeekKey(d)); }
+    await Promise.all([...new Set(dates)].map(async date => {
+      try{
+        const r = await driveCallJSONP({ action:'load', key:'charts_week_' + date }, 40000);
+        if(!r || !r.data) return;
+        let e = null; try{ e = JSON.parse(r.data); }catch(err){ return; }
+        if(!e) return;
+        chartsHistoryWeeks[date] = e;
+        out.push({ date, label: e.label || ('Semaine du ' + date), savedAt: e.savedAt || new Date(date + 'T12:00:00').toISOString() });
+      }catch(err){ /* semaine absente */ }
+    }));
+    _rebuildIndexPromise = null;
+    return out;
+  })();
+  return _rebuildIndexPromise;
+}
 async function loadChartsIndex() {
   try {
     const r = await driveCall('load', CHARTS_INDEX_KEY);
     try {
       chartsHistoryIndex = JSON.parse(r.data);
+      if(!Array.isArray(chartsHistoryIndex)) throw new Error('pas une liste');
     } catch(parseErr) {
-      // Afficher les premiers caractères reçus pour diagnostic
-      const preview = (r.data || '').slice(0, 120);
-      console.warn('Drive index parse error. Contenu reçu :', preview);
-      throw new Error('JSON invalide dans charts_index — supprimez le fichier via le panneau Drive pour repartir. Aperçu : ' + preview);
+      // Index abîmé (envoi interrompu) : on le RECONSTRUIT à partir des
+      // semaines réellement présentes sur Drive — les données hebdomadaires
+      // sont dans des fichiers séparés et ne sont pas touchées.
+      console.warn('[FPA] charts_index illisible — reconstruction. Aperçu :', String(r.data || '').slice(0, 120));
+      chartsHistoryIndex = await rebuildChartsIndexFromWeeks();
+      chartsHistoryIndex = dedupeAndSortChartsIndex(chartsHistoryIndex);
+      await saveChartsIndex();
+      chartsHistoryLoaded = true;
+      try{ showToast('🔧 Index Drive réparé — ' + chartsHistoryIndex.length + ' semaine(s) retrouvée(s)', 'success'); }catch(e){}
+      updateDriveSyncStatus();
+      return;
     }
   } catch(e) {
     if (e.message.includes('ntrouvable')) chartsHistoryIndex = [];
@@ -41029,8 +41084,11 @@ async function loadChartsIndex() {
   // Ordre garanti descendant (semaine la plus récente en premier), et doublons
   // de date éliminés, quel que soit l'état déjà présent dans le fichier index
   // sur Drive — auto-répare tout historique corrompu par le passé.
+  const beforeClean = JSON.stringify(chartsHistoryIndex);
   chartsHistoryIndex = dedupeAndSortChartsIndex(chartsHistoryIndex);
-  saveChartsIndex(); // réécrit l'index nettoyé sur Drive pour que la correction soit durable
+  // Réécrit l'index sur Drive seulement s'il a dû être nettoyé (évite des
+  // réécritures inutiles à chaque démarrage, sources d'index abîmé)
+  if(JSON.stringify(chartsHistoryIndex) !== beforeClean) saveChartsIndex();
   chartsHistoryLoaded = true;
   updateDriveSyncStatus();
 }
@@ -41663,10 +41721,8 @@ async function loadLatestAirplayOnStartup(){
   }
 
   try {
-    const idxRes = await callWithOneRetry({ action:'load', key: CHARTS_INDEX_KEY });
-    let index;
-    try { index = JSON.parse(idxRes.data); } catch(e){ throw new Error('Index Drive illisible'); }
-    index = dedupeAndSortChartsIndex(index);
+    if(!chartsHistoryLoaded) await loadChartsIndex();
+    let index = dedupeAndSortChartsIndex(chartsHistoryIndex || []);
     if(!index.length){ if(statusEl) statusEl.textContent = 'Aucune semaine enregistrée sur Drive'; return; }
 
     const latest = index[0];
@@ -41682,7 +41738,8 @@ async function loadLatestAirplayOnStartup(){
       statusEl.textContent = 'Aucune référence chargée';
     }
   } catch(e) {
-    if(statusEl) statusEl.innerHTML = 'Drive injoignable (connexion lente ou coupée) — <a href="javascript:void(0)" onclick="loadLatestAirplayOnStartup()" style="color:var(--cyan);font-weight:700">réessayer</a>';
+    console.warn('[FPA] Référence Airplay depuis Drive :', e && e.message);
+    if(statusEl) statusEl.innerHTML = 'Drive injoignable — <span style="opacity:.8">' + escHtml((e && e.message) || 'erreur inconnue') + '</span> — <a href="javascript:void(0)" onclick="loadLatestAirplayOnStartup()" style="color:var(--cyan);font-weight:700">réessayer</a>';
   }
 }
 
