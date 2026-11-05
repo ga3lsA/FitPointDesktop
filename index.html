@@ -49031,6 +49031,17 @@ async function renderHomeRdgSummary(){
   #m2MoreSheet .m2-item{display:flex;align-items:center;gap:14px;width:100%;min-height:56px;padding:0 10px;border:none;background:none;border-radius:12px;font-size:17px;font-weight:700;color:var(--navy);text-align:left}
   #m2MoreSheet .m2-item:active{background:var(--bg)}
   #m2MoreSheet .m2-item .m2-ic{width:38px;height:38px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+  /* ── Lecture d'abord : pas d'écoute Spotify ni de sélecteur d'ajout ── */
+  a[title="Écouter sur Spotify"], [data-membership-key]{display:none!important}
+  /* Conducteur : colonnes « écoute » et « ajout » retirées de la grille */
+  :is([style*="grid-template-columns:54px 22px 24px 18px"],[style*="grid-template-columns: 54px 22px 24px 18px"]){grid-template-columns:46px 16px minmax(0,1fr) 34px 44px 44px!important;gap:6px!important;min-width:0!important;width:auto!important}
+  :is([style*="grid-template-columns:54px 22px 24px 18px"],[style*="grid-template-columns: 54px 22px 24px 18px"]):not(.dp-band) > :nth-child(2),
+  :is([style*="grid-template-columns:54px 22px 24px 18px"],[style*="grid-template-columns: 54px 22px 24px 18px"]):not(.dp-band) > :nth-child(3){display:none!important}
+  .dp-band > div:is([style*="grid-column:2 / 7"],[style*="grid-column: 2 / 7"]){grid-column:2 / 5!important}
+  /* Pastilles Core / Market / Border et petits badges : compacts */
+  .fmt-badge, .fmt-badge.fmt-lg{min-height:0!important;font-size:10.5px!important;padding:2px 7px!important;line-height:1.2!important;border-width:1px!important}
+  .fmt-badge.fmt-none{display:none!important}
+  .fpa-row button:not(.btn-primary):not(.btn-ghost), .dp-row button{min-height:0!important}
   /* ── Tableaux : défilement horizontal propre ───────────────────────── */
   :is([id^="page"],[id^="modal"],[id$="Modal"]) table{font-size:13.5px}
   :is([id^="page"],[id^="modal"],[id$="Modal"]) div[style*="overflow-x:auto"]{-webkit-overflow-scrolling:touch}
