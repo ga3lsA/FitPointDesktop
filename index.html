@@ -49032,7 +49032,11 @@ async function renderHomeRdgSummary(){
   #m2MoreSheet .m2-item:active{background:var(--bg)}
   #m2MoreSheet .m2-item .m2-ic{width:38px;height:38px;border-radius:10px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
   /* ── Lecture d'abord : pas d'écoute Spotify ni de sélecteur d'ajout ── */
-  a[title="Écouter sur Spotify"], [data-membership-key]{display:none!important}
+  /* masqués sans retirer leur cellule (sinon les grilles se décalent) ; les
+     colonnes correspondantes sont ramenées à 0 par le script ci-dessous */
+  a[title="Écouter sur Spotify"], [data-membership-key]{visibility:hidden!important;pointer-events:none!important;width:0!important;overflow:hidden!important}
+  /* Menus à onglets (Classements, Décision…) : hauteur fixe d'origine conservée */
+  .dec-group button, .dec-group > *, button[style*="height:28px"]{min-height:0!important}
   /* Conducteur : colonnes « écoute » et « ajout » retirées de la grille */
   :is([style*="grid-template-columns:54px 22px 24px 18px"],[style*="grid-template-columns: 54px 22px 24px 18px"]){grid-template-columns:46px 16px minmax(0,1fr) 34px 44px 44px!important;gap:6px!important;min-width:0!important;width:auto!important}
   :is([style*="grid-template-columns:54px 22px 24px 18px"],[style*="grid-template-columns: 54px 22px 24px 18px"]):not(.dp-band) > :nth-child(2),
@@ -49139,8 +49143,32 @@ async function renderHomeRdgSummary(){
     });
   }
 
+  /* Grilles des classements : colonnes « écoute » (24 px) et « ajout » (26 px)
+     ramenées à 0 — le titre récupère la place, plus de lignes à rallonge */
+  function setupGrids(){
+    var fix = function(g){
+      if(/^48px 24px 26px /.test(g)) return g.replace(/^48px 24px 26px /, '34px 0px 0px ');
+      if(/^48px 24px minmax/.test(g)) return g.replace(/^48px 24px /, '34px 0px ');
+      return null;
+    };
+    document.querySelectorAll('[style*="grid-template-columns"], [style*="--m-gtc"]').forEach(function(el){
+      var g = el.style.gridTemplateColumns || '';
+      var ng = fix(g); if(ng) el.style.gridTemplateColumns = ng;
+      // Couche mobile v1 : la grille passe par la variable --m-gtc (et --m-minw)
+      var v = el.style.getPropertyValue('--m-gtc');
+      if(v){
+        var nv = fix(v.trim());
+        if(nv){
+          el.style.setProperty('--m-gtc', nv);
+          var mw = parseFloat(el.style.getPropertyValue('--m-minw'));
+          if(mw) el.style.setProperty('--m-minw', Math.max(0, mw - 64) + 'px');
+        }
+      }
+    });
+  }
   function run(){
     if(!isOn()) return;
+    try{ setupGrids(); }catch(e){}
     try{ setupNav(); }catch(e){}
     try{ setupScrollRows(); }catch(e){}
     try{ setupPlaylistActions(); }catch(e){}
