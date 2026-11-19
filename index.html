@@ -4343,11 +4343,13 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <button type="button" data-tab="urls" onclick="fpaCfgShowTab('urls')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid var(--navy);color:var(--navy);cursor:pointer;margin-bottom:-1.5px">🔗 URLs &amp; services</button>
       <button type="button" data-tab="display" onclick="fpaCfgShowTab('display')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--muted);cursor:pointer;margin-bottom:-1.5px">🎨 Affichage des scores</button>
       <button type="button" data-tab="drive" onclick="fpaCfgShowTab('drive')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--muted);cursor:pointer;margin-bottom:-1.5px">☁️ Drive</button>
+      <button type="button" data-tab="storage" onclick="fpaCfgShowTab('storage')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--muted);cursor:pointer;margin-bottom:-1.5px">💾 Stockage</button>
       <button type="button" data-tab="imports" onclick="fpaCfgShowTab('imports')" style="font-size:12.5px;font-weight:800;padding:10px 14px;border:none;background:none;border-bottom:2.5px solid transparent;color:var(--muted);cursor:pointer;margin-bottom:-1.5px">📥 Imports</button>
     </div>
     <div id="fpaCfgDisplaySection" style="display:none;padding:18px 22px"></div>
     <div id="fpaCfgDriveSection" style="display:none;padding:18px 22px;background:var(--bg)"></div>
     <div id="fpaCfgImportsSection" style="display:none;padding:18px 22px;background:var(--bg)"></div>
+    <div id="fpaCfgStorageSection" style="display:none;padding:18px 22px;background:var(--bg)"></div>
     <div id="fpaCfgUrlsSection" style="padding:18px 22px;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:14px 22px;align-items:start">
 
       <div style="grid-column:1/-1;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:4px">Sauvegarde &amp; suivi</div>
@@ -13246,10 +13248,12 @@ function analyseSaveHistory(h){
     return;
   }
   analyseHistoryCache = h; // source de vérité immédiate pour tous les lecteurs synchrones
-  idbSet(ANALYSE_HISTORY_KEY, h).catch(e => console.error('Échec de sauvegarde IndexedDB (historique Analyse) :', e));
-  // Best-effort sur localStorage également (compat descendante) — son échec
-  // éventuel est désormais sans conséquence, IndexedDB fait foi.
-  try{ localStorage.setItem(ANALYSE_HISTORY_KEY, JSON.stringify(h)); }catch(e){ /* sans conséquence, voir ci-dessus */ }
+  // IndexedDB fait foi. Le localStorage (≈ 5 Mo pour tout le site) ne sert
+  // plus que de secours si IndexedDB échoue — plus de copie en double.
+  idbSet(ANALYSE_HISTORY_KEY, h).then(() => { try{ localStorage.removeItem(ANALYSE_HISTORY_KEY); }catch(e){} }).catch(e => {
+    console.error('Échec de sauvegarde IndexedDB (historique Analyse) :', e);
+    try{ localStorage.setItem(ANALYSE_HISTORY_KEY, JSON.stringify(h)); }catch(e2){}
+  });
 }
 
 function analyseSlugifyWeekLabel(weekLabel){ return String(weekLabel || '').replace(/[^A-Za-z0-9_-]/g, '_'); }
@@ -24911,10 +24915,11 @@ async function songAttributesCacheLoad(){
 songAttributesCacheLoad();
 
 function songAttributesSaveToStorage(){
-  idbSet(SONG_ATTRIBUTES_IDB_KEY, songAttributes).catch(e => console.error('Échec de sauvegarde IndexedDB (Song Attributs) :', e));
-  // Best-effort sur localStorage également (compat descendante) — son échec
-  // éventuel (quota dépassé) est désormais sans conséquence, IndexedDB fait foi.
-  try{ localStorage.setItem(SONG_ATTRIBUTES_IDB_KEY, JSON.stringify(songAttributes)); }catch(e){ /* sans conséquence, voir ci-dessus */ }
+  // IndexedDB fait foi ; copie localStorage seulement en secours (échec IDB)
+  idbSet(SONG_ATTRIBUTES_IDB_KEY, songAttributes).then(() => { try{ localStorage.removeItem(SONG_ATTRIBUTES_IDB_KEY); }catch(e){} }).catch(e => {
+    console.error('Échec de sauvegarde IndexedDB (Song Attributs) :', e);
+    try{ localStorage.setItem(SONG_ATTRIBUTES_IDB_KEY, JSON.stringify(songAttributes)); }catch(e2){}
+  });
 }
 function getSongAttributes(title, artist){
   const key = comiteKey(title, artist);
@@ -42659,7 +42664,7 @@ function fpaCfgDecorate(){
 }
 /* Onglets de la fenêtre Configuration FPA */
 function fpaCfgShowTab(t){
-  const sec = { urls:'fpaCfgUrlsSection', display:'fpaCfgDisplaySection', drive:'fpaCfgDriveSection', imports:'fpaCfgImportsSection' };
+  const sec = { urls:'fpaCfgUrlsSection', display:'fpaCfgDisplaySection', drive:'fpaCfgDriveSection', imports:'fpaCfgImportsSection', storage:'fpaCfgStorageSection' };
   if(!document.getElementById('fpaCfgUrlsSection')) return;
   Object.entries(sec).forEach(([k, id]) => {
     const el = document.getElementById(id);
@@ -42676,6 +42681,7 @@ function fpaCfgShowTab(t){
   if(t === 'urls') fpaCfgDecorate();
   if(typeof fpaCfgDriveShow === 'function'){ if(t === 'drive') fpaCfgDriveShow(); else fpaCfgDriveRestore(); }
   if(t === 'imports' && typeof fpaCfgImportsRender === 'function') fpaCfgImportsRender();
+  if(t === 'storage' && typeof fpaStorageRender === 'function') fpaStorageRender();
 }
 </script>
 <!-- ═══════════════════════════════════════════════════════════════════════
@@ -46725,8 +46731,34 @@ const kwsSongsCache = {};          // artistId → { date, songs[], fetchedAt } 
 let kwsIndexPromise = null;
 let kwsDriveTimer = null, kwsDriveLoaded = false;
 
-function kwsLoad(key, dflt){ try{ return JSON.parse(localStorage.getItem(key) || 'null') || dflt; }catch(e){ return dflt; } }
-function kwsSave(key, v){ try{ localStorage.setItem(key, JSON.stringify(v)); }catch(e){ console.warn('Streams — stockage', e); } }
+/* Les gros éléments (index des artistes, historique des streams) vivent en
+ * mémoire + IndexedDB, plus dans le localStorage (limité à ~5 Mo). Les petits
+ * réglages (associations manuelles) restent dans le localStorage. */
+const KWS_IDB_KEYS = ['fpa_kworb_artist_index_v1', 'fpa_spotify_streams_v1'];
+const kwsMem = {};
+let kwsIdbReady = null;
+function kwsIdbInit(){
+  if(kwsIdbReady) return kwsIdbReady;
+  kwsIdbReady = (async () => {
+    for(const k of KWS_IDB_KEYS){
+      let v = null;
+      try{ v = await idbGet(k); }catch(e){}
+      if(v == null){ try{ v = JSON.parse(localStorage.getItem(k) || 'null'); if(v != null) await idbSet(k, v); }catch(e){} }
+      if(v != null) kwsMem[k] = v;
+      try{ if(v != null) localStorage.removeItem(k); }catch(e){}
+    }
+  })();
+  return kwsIdbReady;
+}
+setTimeout(() => { try{ kwsIdbInit(); }catch(e){} }, 4000);
+function kwsLoad(key, dflt){
+  if(KWS_IDB_KEYS.includes(key)) return kwsMem[key] != null ? kwsMem[key] : dflt;
+  try{ return JSON.parse(localStorage.getItem(key) || 'null') || dflt; }catch(e){ return dflt; }
+}
+function kwsSave(key, v){
+  if(KWS_IDB_KEYS.includes(key)){ kwsMem[key] = v; try{ idbSet(key, v).catch(() => {}); }catch(e){} return; }
+  try{ localStorage.setItem(key, JSON.stringify(v)); }catch(e){ console.warn('Streams — stockage', e); }
+}
 function kwsNum(s){ const n = parseInt(String(s || '').replace(/[^\d]/g, ''), 10); return isNaN(n) ? null : n; }
 function kwsIso(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 function kwsAddDays(iso, n){ const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return kwsIso(d); }
@@ -46745,6 +46777,7 @@ function kwsParseArtistLinks(html){
   return Object.keys(out).length ? out : null;
 }
 async function kwsArtistIndex(force){
+  await kwsIdbInit();
   const cached = kwsLoad(KWS_INDEX_KEY, null);
   if(!force && cached && cached.at && (Date.now() - cached.at) < 7 * 86400000 && Object.keys(cached.map || {}).length) return cached.map;
   if(kwsIndexPromise) return kwsIndexPromise;
@@ -46881,6 +46914,7 @@ function kwsMerge(a, b){
   return out;
 }
 async function kwsDrivePull(){
+  await kwsIdbInit();
   if(kwsDriveLoaded || !kwsDriveOn()) return;
   kwsDriveLoaded = true;
   try{ const r = await driveCall('load', KWS_DRIVE_KEY); if(r && r.data) kwsSave(KWS_HIST_KEY, kwsMerge(kwsHist(), JSON.parse(r.data))); }catch(e){}
@@ -48378,6 +48412,140 @@ async function renderHomeRdgSummary(){
 .rdg-grid{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; }
 @media (max-width: 1250px){ .rdg-grid{ grid-template-columns:1fr; } #rdgPanel{ padding-left:0 !important; border-left:none !important; border-top:2px solid var(--border); padding-top:20px; } }
 </style>
+<!-- ═══════════════════════════════════════════════════════════════════════
+     STOCKAGE DU POSTE (Configuration FPA → 💾 Stockage)
+     Analyse le localStorage du navigateur (limité à ~5 millions de caractères
+     par site) : taille de chaque élément, ce qu'il contient, s'il existe
+     ailleurs (IndexedDB, Drive) ou se reconstruit — et libère l'espace sans
+     perte de données.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<script id="fpaStorageJs">
+/* kind : 'idb'   → copie en double : la donnée vit aussi dans IndexedDB (vérifié, ou copiée avant suppression)
+          'cache' → se reconstruit tout seul
+          'drive' → restauré depuis Drive au besoin
+          'keep'  → données ou réglages propres au poste : on n'y touche pas */
+const FPA_STORAGE_CATALOG = [
+  { re:/^fpa_history_v1$/,                label:'Historique des vagues (ancienne copie)', kind:'idb' },
+  { re:/^fpa_daily_prog_v1$/,             label:'Conducteurs quotidiens (ancienne copie)', kind:'idb' },
+  { re:/^fpa_digital_audience_v1$/,       label:'Audience digitale', kind:'idb' },
+  { re:/^fpa_playlist_cat_hist_v1$/,      label:'Moyennes Playlist par catégorie', kind:'idb' },
+  { re:/^fpa_radio_delay_horsformat_v2$/, label:'Titres hors format (Délai radio)', kind:'idb' },
+  { re:/^fpa_kworb_artist_index_v1$/,     label:'Index des artistes Spotify (streams)', kind:'cache' },
+  { re:/^fpa_spotify_streams_v1$/,        label:'Relevés des streams Spotify', kind:'idb' },
+  { re:/^fpa_home_pending_files$/,        label:'Fichiers en attente sur l\'accueil', kind:'reload', note:'à réimporter si besoin' },
+  { re:/^fpa_airplay_local_/,             label:'Fichiers Airplay importés (copie)', kind:'reload', note:'la référence revient depuis Drive ; sinon réimporter' },
+  { re:/^fpa_live_data_v2$/,              label:'Airplay Live (copie)', kind:'reload', note:'réimporter le Live si besoin' },
+  { re:/^fpa_saved_analysis$/,            label:'Analyse en cours (reprise de session)', kind:'reload', note:'la dernière analyse ne sera pas restaurée au prochain lancement' },
+  { re:/^fpa_analyse_history_v1$/,        label:'Programmation hebdomadaire (statistiques)', kind:'idb' },
+  { re:/^fpa_analyse_week_/,              label:'Programmation hebdomadaire — détail d\'une semaine (ancienne copie)', kind:'idb' },
+  { re:/^fpa_song_attributes$/,           label:'Song Attributs (labels, genres, dates…)', kind:'idb' },
+  { re:/^fpa_radio_top_songs$/,           label:'Top Songs des radios internationales (copie)', kind:'reload', note:'rechargés avec les Classements' },
+  { re:/^fpa_watchlist_titles$/,          label:'Titres surveillés (Veille)', kind:'keep' },
+  { re:/^fpa_analyse_detail_queue_v1$/,   label:'Envois Drive en attente', kind:'keep' },
+  { re:/^fpa_marche_historique_v1$/,      label:'Historique Marché (Médiamétrie)', kind:'keep' },
+  { re:/^fpa_mediametrie_v1$/,            label:'Résultats Médiamétrie', kind:'keep' },
+  { re:/^fpa_interim_concurrence_v1$/,    label:'Intermédiaires concurrence', kind:'keep' },
+  { re:/^fpa_playlist_titles$/,           label:'Playlist', kind:'keep' },
+  { re:/^fpa_comite_titles$/,             label:'Comité d\'écoute', kind:'keep' },
+  { re:/^fpa_marketing/,                  label:'Marketing antenne', kind:'keep' },
+  { re:/^fpa_key_playlists$/,             label:'Playlists suivies (titres)', kind:'keep' },
+  { re:/^fpa_spotify_csv_v1$/,            label:'Spotify France (CSV importé)', kind:'keep' },
+  { re:/^fpa_habs_scores$/,               label:'Scores Habs(R)', kind:'keep' }
+];
+function fpaStorageItems(){
+  const out = [];
+  for(let i = 0; i < localStorage.length; i++){
+    const k = localStorage.key(i); if(!k || k === '__fpa_probe__') continue;
+    const v = localStorage.getItem(k) || '';
+    const cat = FPA_STORAGE_CATALOG.find(c => c.re.test(k));
+    out.push({ key:k, size:(k.length + v.length), label: cat ? cat.label : (k.startsWith('fpa_') ? 'Réglage FPA' : 'Autre application du même site (hors FPA)'), kind: cat ? cat.kind : 'keep', note: cat && cat.note || (k.startsWith('fpa_') ? '' : 'partage le même espace de stockage') });
+  }
+  return out.sort((a, b) => b.size - a.size);
+}
+/** Place encore libre, mesurée en écrivant un élément témoin (aussitôt effacé). */
+function fpaStorageFree(){
+  const k = '__fpa_probe__';
+  let lo = 0, hi = 12 * 1024 * 1024;
+  try{
+    while(hi - lo > 16384){
+      const mid = Math.floor((lo + hi) / 2);
+      try{ localStorage.setItem(k, 'x'.repeat(mid)); lo = mid; }catch(e){ hi = mid; }
+    }
+  }finally{ try{ localStorage.removeItem(k); }catch(e){} }
+  return lo;
+}
+const fpaMo = c => (c / 1000000).toLocaleString('fr-FR', { maximumFractionDigits:2, minimumFractionDigits:2 }) + ' M car.';
+async function fpaStorageCanFree(it){ return it.kind !== 'keep'; }
+/* « Libérer tout » : uniquement ce qui se libère SANS AUCUNE perte (copies en
+   double et caches reconstruits). Les éléments « à recharger » se libèrent un
+   par un, en connaissance de cause. */
+function fpaStorageAuto(it){ return it.kind === 'idb' || it.kind === 'cache'; }
+async function fpaStorageFreeKeys(keys){
+  let freed = 0;
+  for(const k of keys){
+    const v = localStorage.getItem(k) || '';
+    const cat = FPA_STORAGE_CATALOG.find(c => c.re.test(k));
+    if(!cat || cat.kind === 'keep') continue;
+    if(cat.kind === 'idb'){
+      // Garantie : la donnée doit exister dans IndexedDB avant d'effacer la copie
+      try{ const inIdb = await idbGet(k); if(inIdb == null){ await idbSet(k, JSON.parse(v)); if((await idbGet(k)) == null) continue; } }catch(e){ continue; }
+    }
+    try{ localStorage.removeItem(k); freed += k.length + v.length; }catch(e){}
+  }
+  return freed;
+}
+async function fpaStorageRender(){
+  const box = document.getElementById('fpaCfgStorageSection');
+  if(!box) return;
+  box.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted)">⏳ Analyse du stockage…</div>';
+  await new Promise(r => setTimeout(r, 30));
+  const items = fpaStorageItems();
+  const used = items.reduce((s, x) => s + x.size, 0);
+  const free = fpaStorageFree();
+  const cap = used + free, pct = cap ? Math.round(used / cap * 100) : 0;
+  const can = await Promise.all(items.map(fpaStorageCanFree));
+  const recov = items.filter(fpaStorageAuto).reduce((s, x) => s + x.size, 0);
+  const reload = items.filter(x => x.kind === 'reload').reduce((s, x) => s + x.size, 0);
+  const col = pct >= 90 ? '#dc2626' : pct >= 70 ? '#d97706' : '#16a34a';
+  const kindTxt = { idb:'copie en double (donnée conservée dans la base IndexedDB)', cache:'se reconstruit tout seul', reload:'libérable — à recharger ensuite', keep:'à conserver' };
+  const rows = items.map((x, i) => `<tr style="background:${i % 2 ? 'var(--white)' : '#F4F6FA'};border-top:1px solid var(--border)">
+      <td style="padding:7px 10px"><div style="font-size:12.5px;font-weight:800;color:var(--navy)">${escHtml(x.label)}</div><div style="font-size:10px;color:var(--muted);font-family:ui-monospace,monospace">${escHtml(x.key)}</div></td>
+      <td style="padding:7px 10px;text-align:right;font-weight:800;white-space:nowrap;color:${x.size > 500000 ? '#dc2626' : x.size > 150000 ? '#d97706' : 'var(--navy)'}">${(x.size / 1000).toLocaleString('fr-FR', { maximumFractionDigits:0 })} k</td>
+      <td style="padding:7px 10px;font-size:11px;color:${fpaStorageAuto(x) ? '#16a34a' : x.kind === 'reload' ? '#B45309' : 'var(--muted)'}">${fpaStorageAuto(x) ? '✓ ' : x.kind === 'reload' ? '◐ ' : ''}${kindTxt[x.kind]}${x.note ? ' — ' + escHtml(x.note) : ''}</td>
+      <td style="padding:7px 8px;text-align:right">${can[i] ? `<button class="btn-ghost" onclick="fpaStorageFreeOne('${jsAttrEscape(x.key)}')" style="font-size:11px;padding:4px 10px">Libérer</button>` : ''}</td>
+    </tr>`).join('');
+  box.innerHTML = `
+    <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:12px">
+      <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:var(--navy)">💾 Stockage local du navigateur</div>
+        <span style="font-size:12px;color:var(--text2)">${fpaMo(used)} utilisés sur ≈ ${fpaMo(cap)} — <b style="color:${col}">${pct} %</b></span>
+      </div>
+      <div style="height:12px;border-radius:6px;background:var(--bg);border:1px solid var(--border);overflow:hidden;margin:10px 0 8px"><div style="height:100%;width:${pct}%;background:${col}"></div></div>
+      <div style="font-size:11.5px;color:var(--text2);line-height:1.5">Le navigateur réserve à ce stockage rapide quelques millions de caractères par site. Les données volumineuses de FPA (vagues, conducteurs, historiques…) sont rangées dans la base <b>IndexedDB</b>, qui n'a pas cette limite. Les éléments <b style="color:#16a34a">✓</b> se libèrent <b>sans aucune perte</b> : leur contenu existe ailleurs ou se reconstruit. Les éléments <b style="color:#B45309">◐</b> (${fpaMo(reload)}) peuvent aussi être libérés, mais il faudra recharger le fichier ou l'analyse correspondante.</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap">
+        <button class="btn-primary" ${recov ? '' : 'disabled'} onclick="fpaStorageFreeAll()" style="font-size:12.5px;padding:9px 16px;border-radius:9px">🧹 Libérer l'espace récupérable (${fpaMo(recov)})</button>
+        <button class="btn-ghost" onclick="fpaStorageRender()" style="font-size:12px;padding:8px 12px">↻ Réanalyser</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto;border:1.5px solid var(--border);border-radius:12px;background:var(--white)"><table style="width:100%;border-collapse:collapse">
+      <thead><tr style="background:var(--bg)">${['Élément','Taille','Statut',''].map((t, i) => `<th style="padding:8px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:${i === 1 ? 'right' : 'left'}">${t}</th>`).join('')}</tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
+}
+async function fpaStorageFreeOne(key){
+  const n = await fpaStorageFreeKeys([key]);
+  showToast(n ? '✓ ' + fpaMo(n) + ' libérés' : 'Rien à libérer', n ? 'success' : 'err');
+  fpaStorageRender();
+}
+async function fpaStorageFreeAll(){
+  const items = fpaStorageItems();
+  const can = await Promise.all(items.map(fpaStorageCanFree));
+  const keys = items.filter(fpaStorageAuto).map(x => x.key);
+  const n = await fpaStorageFreeKeys(keys);
+  showToast('✓ ' + fpaMo(n) + ' libérés (' + keys.length + ' élément(s))', 'success');
+  fpaStorageRender();
+}
+</script>
+
 <!-- ═══════════════════════════════════════════════════════════════════════
      FPA MOBILE — adaptation automatique aux téléphones (v1)
      Ce script ne fait RIEN tant que l'écran n'est pas un écran de téléphone
