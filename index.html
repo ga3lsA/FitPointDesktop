@@ -12936,6 +12936,24 @@ function getPlaylistCallOutMetrics(title, artist){
   };
 }
 
+/** Ligne d'une feuille de vague correspondant au titre recherché : la
+ *  MEILLEURE correspondance seulement (et non la première venue), avec un
+ *  titre réellement proche. Auparavant, un autre titre du même artiste placé
+ *  plus haut dans la feuille pouvait être retenu (ex. un autre titre d'Ariana
+ *  Grande à la place de « Hate That I Made You Love Me ») — d'où des Pot /
+ *  Fit / Fam Scores d'un autre titre. */
+function histBestRows(rows, qT, qA, nA){
+  let best = null, bestScore = 0;
+  (rows || []).forEach(r => {
+    const ts = similarityPrep(qT, simPrep(r.t || ''));
+    if(ts < 0.75) return;                       // le titre doit vraiment correspondre
+    const as = nA ? similarityPrep(qA, simPrep(r.a || '')) : 0.5;
+    const score = ts * 0.6 + as * 0.4;
+    if(score < 0.55) return;
+    if(score > bestScore){ best = r; bestScore = score; }
+  });
+  return best ? [best] : [];
+}
 function getTitleVagueSeries(title, artist){
   const hist = histLoad().filter(isHistFixedRadio); // cohérent avec le reste de l'appli : Europe 2 uniquement
   const raw = { potTous:[], potP1:[], incTous:[], incP1:[], burnTous:[], burnP1:[], loveTous:[], fit:[] };
@@ -12954,19 +12972,18 @@ function getTitleVagueSeries(title, artist){
     v.sheets.forEach(sh => {
       if(!isHistFixedSheet(sh.sheetName)) return;
       const isP1 = isP1Sheet(sh);
-      sh.rows.forEach(r => {
-        const ts = similarityPrep(qT, simPrep(r.t||''));
-        if(ts*0.6 + 0.4 < 0.55) return; // même un artiste identique ne suffirait pas
-        const as = nA ? similarityPrep(qA, simPrep(r.a||'')) : 0.5;
-        const score = ts*0.6 + as*0.4;
-        if(score < 0.55) return;
+      histBestRows(sh.rows, qT, qA, nA).forEach(r => {
         const point = { num: v.num || null, date: v.date || '', name: v.name, vagueName: v.name };
         const scores = r.scores || {};
         const potEntry  = Object.entries(scores).find(([k]) => isPotScoreLike(k));
         const incEntry  = Object.entries(scores).find(([k]) => isHistFixedInc(k));
         const burnEntry = Object.entries(scores).find(([k]) => isHistFixedBurn(k));
         const loveEntry = Object.entries(scores).find(([k]) => isHistFixedLove(k));
-        const fitEntry  = Object.entries(scores).find(([k]) => isFitScoreLike(k));
+        // Fit Score : celui calculé par FPA (clé exacte « Fit Score », injectée à
+        // l'enregistrement de la vague) PRIME sur une éventuelle colonne « FIT
+        // SCORE » d'origine du fichier, qui n'a pas la même définition
+        const fitEntry  = (scores['Fit Score'] !== undefined && scores['Fit Score'] !== null && scores['Fit Score'] !== '')
+          ? ['Fit Score', scores['Fit Score']] : Object.entries(scores).find(([k]) => isFitScoreLike(k));
         if(potEntry)  (isP1 ? raw.potP1  : raw.potTous ).push({...point, val: potEntry[1]});
         if(incEntry)  (isP1 ? raw.incP1  : raw.incTous ).push({...point, val: incEntry[1]});
         if(burnEntry) (isP1 ? raw.burnP1 : raw.burnTous).push({...point, val: burnEntry[1]});
@@ -13011,12 +13028,7 @@ function getTitleFamScoreSeries(title, artist){
     const matchingSheets = v.sheets.filter(sh => isHistFixedSheet(sh.sheetName));
     const targetSheets = matchingSheets.length ? matchingSheets : (v.sheets[0] ? [v.sheets[0]] : []);
     targetSheets.forEach(sh => {
-      sh.rows.forEach(r => {
-        const ts = similarityPrep(qT, simPrep(r.t||''));
-        if(ts*0.6 + 0.4 < 0.55) return; // même un artiste identique ne suffirait pas
-        const as = nA ? similarityPrep(qA, simPrep(r.a||'')) : 0.5;
-        const score = ts*0.6 + as*0.4;
-        if(score < 0.55) return;
+      histBestRows(sh.rows, qT, qA, nA).forEach(r => {
         const point = { num: v.num || null, date: v.date || '', name: v.name, vagueName: v.name };
         const scores = r.scores || {};
         const keys = Object.keys(scores);
@@ -13039,7 +13051,7 @@ function getTitleFamScoreSeries(title, artist){
 
         // Fit Score calculé par FPA à l'analyse de la vague OMT (injecté dans
         // l'archive à l'enregistrement — voir confirmSaveVague)
-        const fitKeyOmt = keys.find(k => isFitScoreLike(k));
+        const fitKeyOmt = (scores['Fit Score'] !== undefined && scores['Fit Score'] !== null && scores['Fit Score'] !== '') ? 'Fit Score' : keys.find(k => isFitScoreLike(k));
         if(fitKeyOmt && scores[fitKeyOmt] !== null && scores[fitKeyOmt] !== '' && !isNaN(parseFloat(scores[fitKeyOmt]))) raw.fit.push({...point, val: scores[fitKeyOmt]});
         if(famTotalKey)  raw.famTous.push({...point, val: scores[famTotalKey]});
         if(famP1Key)     raw.famP1.push({...point, val: scores[famP1Key]});
@@ -13087,14 +13099,29 @@ function analyseNormPct(v){
  *  historique (dernière vague connue), pour ne pas perdre toute donnée sur
  *  un simple défaut de saisie de date. Sans referenceDate (semaine de
  *  programmation elle-même non datée — cas des anciens imports), même repli. */
+/** Date effective d'une vague : sa date saisie, sinon le lundi de la
+ *  semaine lue dans son numéro (« 2026-43 », « V42 2026 »…). Une vague sans
+ *  date n'est ainsi plus ignorée. */
+function analyseVagueEffDate(p){
+  if(p && p.date) return String(p.date).slice(0, 10);
+  const k = typeof vagueYearWeekKey === 'function' ? vagueYearWeekKey(p) : null;
+  if(!k) return '';
+  const y = Math.floor(k / 100), w = k % 100;
+  const jan4 = new Date(Date.UTC(y, 0, 4));
+  const monday = new Date(jan4.getTime() - ((jan4.getUTCDay() + 6) % 7) * 86400000 + (w - 1) * 7 * 86400000);
+  return monday.toISOString().slice(0, 10);
+}
 function analyseNearestPriorEntry(series, referenceDate){
   if(!series || !series.length) return null;
-  const dated = series.filter(p => p.date);
-  if(!dated.length || !referenceDate) return series[series.length - 1];
-  let prior = null;
-  for(const p of dated){
-    if(p.date <= referenceDate) prior = p; else break;
-  }
+  if(!referenceDate) return series[series.length - 1];
+  // Vague la plus récente antérieure (ou égale) à la date — sans dépendre de
+  // l'ordre de la série (des vagues sans date ou mal triées faussaient le choix)
+  let prior = null, pd = '';
+  series.forEach(p => {
+    const d = analyseVagueEffDate(p);
+    if(d && d <= referenceDate && d >= pd){ prior = p; pd = d; }
+  });
+  if(!prior && !series.some(p => analyseVagueEffDate(p))) return series[series.length - 1];
   return prior; // null si la programmation est antérieure à toute recherche connue
 }
 
@@ -13151,7 +13178,9 @@ function analyseGetSearchScores(title, artist, referenceDate){
     // source à privilégier pour la contemporanéité avec la semaine analysée.
     // Fit Score : vague Call Out OU OMT la plus proche avant la date (les golds
     // n'ont de Fit Score que dans les vagues OMT)
-    fit: pick(analyseMergeVagueSeries(co.fit, omt.fit))
+    // Fit Score : celui de la vague CALL OUT la plus proche avant la date ; celui
+    // des vagues OMT seulement à défaut (titres testés uniquement en OMT, golds)
+    fit: (() => { const c = pick(co.fit); return c !== null && c !== undefined ? c : pick(omt.fit); })()
   };
 }
 
