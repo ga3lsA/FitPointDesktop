@@ -43224,6 +43224,7 @@ async function dailyProgDeleteDay(date){
 
 /* ── Matching FPA ───────────────────────────────────────────────────── */
 function dailyProgNum(v){ const n = parseFloat(v); return isNaN(n) ? null : n; }
+let dailyRows360Cache = null;
 function dailyScoresFor(title, artist, dateISO){
   const key = dailyProgStation() + '|' + fpaRefTarget() + '|' + (typeof norm === 'function' ? norm(artist) + '|' + norm(title) : artist + '|' + title) + '|' + dateISO;
   if(dailyProgScoreMemo[key]) return dailyProgScoreMemo[key];
@@ -43233,10 +43234,15 @@ function dailyScoresFor(title, artist, dateISO){
     const se = analyseGetSearchScores(title, artist, dateISO);
     if(se){ s.pot = dailyProgNum(fpaRefPot(se)); s.fam = dailyProgNum(fpaRefFam(se)); s.fit = dailyProgNum(se.fit); }
   }catch(e){}
-  // Fit Score : à défaut du chiffre daté, dernier Fit Score FPA connu (corpus 360°)
-  if(s.fit === null){
-    try{ const f = analyseGetFpaScores(title, artist); if(f && f.fit != null) s.fit = dailyProgNum(f.fit); }catch(e){}
-  }
+  // Fit Score : le MÊME que dans la Playlist et la fiche Song Metrics (corpus
+  // 360° de FPA, rapproché du titre de la même façon) ; le chiffre archivé dans
+  // la vague ne sert qu'à défaut — il pouvait venir de la colonne d'origine du
+  // fichier ou d'un calcul antérieur, et différer de celui affiché ailleurs.
+  try{
+    if(!dailyRows360Cache || Date.now() - dailyRows360Cache.at > 30000) dailyRows360Cache = { at: Date.now(), rows: build360Rows() };
+    const r360 = dailyRows360Cache.rows && dailyRows360Cache.rows.length ? findRow360Match(dailyRows360Cache.rows, title, artist) : null;
+    if(r360 && r360.fit !== null && r360.fit !== undefined) s.fit = dailyProgNum(r360.fit);
+  }catch(e){}
   // Classements digitaux (rang du jour chargé dans FPA)
   try{
     const fr = (chartsLoaded && chartsLoaded.fr) ? chartsData.fr : (typeof SHAZAM_FR_BUILTIN !== 'undefined' ? SHAZAM_FR_BUILTIN : null);
