@@ -44986,6 +44986,77 @@ function renderFitHealthBarometer(){
   try{ renderHealthBarometer(); }catch(e){ console.warn('Baromètre (Fit Score)', e); }
   finally{ fit.id = 'fitHealthBox'; if(ov) ov.id = 'healthBarometer'; }
 }
+/* ══════════════════════════════════════════════════════════════════════
+   ÉVOLUTIONS DU BAROMÈTRE : valeur précédente de chaque critère
+   — critères journaliers : vs la veille (journée précédente importée)
+   — critères hebdomadaires : vs la semaine précédente
+   ══════════════════════════════════════════════════════════════════════ */
+function healthProgWeeksSorted(st){
+  let h = {}; try{ h = analyseLoadHistory() || {}; }catch(e){}
+  return (h[st] || []).slice().sort((a, b) => {
+    const da = a.weekStart || '', db = b.weekStart || '';
+    if(da && db && da !== db) return da < db ? -1 : 1;
+    return String(a.weekLabel).localeCompare(String(b.weekLabel), undefined, { numeric:true });
+  });
+}
+function healthPrevDaily(st, key){
+  if(typeof dailyProgStore === 'undefined' || !dailyProgStore || !dailyProgStore[st]) return null;
+  const dates = Object.keys(dailyProgStore[st]).sort();
+  if(dates.length < 2) return null;
+  const d = dailyProgStore[st][dates[dates.length - 2]];
+  let agg = null; try{ agg = dailyProgAggregate(d.items, d.date); }catch(e){}
+  if(!agg || agg[key] == null) return null;
+  let lbl = d.date; try{ lbl = dailyProgDateLabel(d.date, true); }catch(e){}
+  return { value: agg[key], label: 'vs la veille (' + lbl + ')' };
+}
+function healthPrevProg(st, field){
+  const ws = healthProgWeeksSorted(st);
+  if(ws.length < 2) return null;
+  const w = ws[ws.length - 2];
+  const v = w.stats ? (typeof field === 'function' ? field(w.stats) : w.stats[field]) : null;
+  return v == null ? null : { value: v, label: 'vs semaine précédente (' + w.weekLabel + ')' };
+}
+function healthPrevDaud(st, field){
+  const weeks = healthDaudWeeks(st);
+  if(weeks.length < 2) return null;
+  const w = weeks[weeks.length - 2];
+  return w[field] == null ? null : { value: w[field], label: 'vs semaine précédente' };
+}
+let healthDrdPrevCache = { key:null, value:null };
+function healthPrevDrd(st){
+  if(typeof dlyState === 'undefined' || !dlyState.result || !dlyState.snapshots || dlyState.snapshots.length < 4) return null;
+  const snaps = dlyState.snapshots, rk = st === 'RFM' ? 'rfm' : 'e2';
+  const key = rk + '|' + snaps.length + '|' + snaps[snaps.length - 1].date;
+  if(healthDrdPrevCache.key !== key){
+    let v = null;
+    try{ const r = dlyCompute(snaps.slice(0, -1), dlyCfg()); const m = r.byRadio[rk] && r.byRadio[rk].median; v = m ? m.v : null; }catch(e){}
+    healthDrdPrevCache = { key, value: v };
+  }
+  return healthDrdPrevCache.value == null ? null : { value: healthDrdPrevCache.value, label: 'vs semaine précédente' };
+}
+const HEALTH_PREV = {
+  prog_pot:      st => healthPrevProg(st, s => fpaIsP1() ? s.avgPotP1 : s.avgPot),
+  prog_fit:      st => healthPrevProg(st, 'avgFit'),
+  daily_fit:     st => healthPrevDaily(st, 'fit'),
+  daily_pot:     st => healthPrevDaily(st, 'pot'),
+  daud_sessions: st => healthPrevDaud(st, 'sessions'),
+  daud_uniques:  st => healthPrevDaud(st, 'uniques'),
+  daud_audience: st => healthPrevDaud(st, 'audienceMoyenne'),
+  drd:           st => healthPrevDrd(st)
+};
+/** Petite flèche d'évolution (verte = amélioration, rouge = dégradation). */
+function healthEvoHtml(crit, cur, prev){
+  if(!prev || cur == null || isNaN(cur) || prev.value == null || isNaN(prev.value)) return { html:'', tip:'' };
+  const d = cur - prev.value;
+  const eps = crit.decimals ? 0.05 : 0.5;
+  const tip = prev.label + ' : ' + healthFmt(prev.value, crit.decimals) + (crit.unit ? ' ' + crit.unit.trim() : '');
+  if(Math.abs(d) < eps) return { html:`<span title="${escHtml(tip)}" style="font-size:10px;font-weight:800;color:var(--muted)">=</span>`, tip };
+  const better = crit.higherIsBetter === false ? d < 0 : d > 0;
+  const col = better ? '#16a34a' : '#dc2626';
+  const abs = Math.abs(d);
+  const txt = (crit.decimals === 0 && abs >= 1000) ? Math.round(abs).toLocaleString('fr-FR') : healthFmt(abs, crit.decimals);
+  return { html:`<span title="${escHtml(tip)}" style="font-size:10px;font-weight:800;color:${col};white-space:nowrap">${d > 0 ? '▲' : '▼'} ${txt}</span>`, tip };
+}
 function renderHealthBarometer(){
   const box = document.getElementById('healthBarometer');
   if(!box) return;
@@ -44995,14 +45066,17 @@ function renderHealthBarometer(){
     let v = { value:null, empty:'Calcul impossible.' };
     try{ v = crit.value(st) || v; }catch(e){ console.warn('Baromètre — ' + crit.id, e); }
     const th = healthThresholds(crit, st);
-    return { crit, v, th, status: healthStatus(crit, v.value, th) };
+    let prev = null;
+    try{ if(HEALTH_PREV[crit.id] && v.value != null) prev = HEALTH_PREV[crit.id](st); }catch(e){}
+    return { crit, v, th, prev, status: healthStatus(crit, v.value, th) };
   });
   const counts = { green:0, orange:0, red:0, none:0 };
   results.forEach(r => counts[r.status]++);
   const globalStatus = counts.red ? 'red' : counts.orange ? 'orange' : counts.green ? 'green' : 'none';
   const chip = key => counts[key] ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:800;padding:1px 7px;border-radius:20px;background:rgba(255,255,255,.12);color:#fff"><span style="width:7px;height:7px;border-radius:50%;background:${HEALTH_COLORS[key].c}"></span>${counts[key]}</span>` : '';
 
-  const tiles = results.map(({ crit, v, th, status }) => {
+  const tiles = results.map(({ crit, v, th, prev, status }) => {
+    const evo = healthEvoHtml(crit, v.value, prev);
     const col = HEALTH_COLORS[status];
     const cmp = crit.higherIsBetter === false ? '≤' : '≥';
     const hasVal = !(v.value === null || v.value === undefined || isNaN(v.value));
@@ -45012,7 +45086,7 @@ function renderHealthBarometer(){
     const potLike = ['prog_pot','daily_pot'].includes(crit.id);
     const tip = crit.icon + ' ' + crit.group + ' — ' + crit.label + (potLike ? ' (cible ' + (fpaIsP1() ? fpaP1Label() : 'Ensemble') + ')' : '') + '\n'
       + (hasVal ? healthFmt(v.value, crit.decimals) + (crit.unit ? ' ' + crit.unit : '') + ' · ' + col.label : (v.empty || 'Indisponible'))
-      + (v.context ? '\n' + v.context : '') + '\n' + thTxt;
+      + (v.context ? '\n' + v.context : '') + (evo.tip ? '\n' + evo.tip : '') + '\n' + thTxt;
     const shortCtx = hasVal ? (v.context || '').split(' · ')[0].replace(/^Semaine du (\d{2}\/\d{2})\/\d{4}/, 'sem. $1').replace(/^Semaine /, 'S') : 'Indisponible';
     return `<div title="${escHtml(tip)}" style="min-width:0;padding:7px 9px;border-radius:9px;border:1px solid var(--border);border-left:3px solid ${col.c};background:${col.bg};cursor:default">
       <div style="display:flex;align-items:center;gap:6px;min-width:0">
@@ -45021,6 +45095,7 @@ function renderHealthBarometer(){
       </div>
       <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px;min-width:0">
         <span style="font-family:var(--font-display);font-size:17px;font-weight:800;color:${hasVal ? 'var(--navy)' : 'var(--muted)'};line-height:1.1;white-space:nowrap">${hasVal ? healthFmt(v.value, crit.decimals) : '—'}</span>
+        ${evo.html}
         <span style="font-size:9.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(shortCtx)}</span>
       </div>
     </div>`;
