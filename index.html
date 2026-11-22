@@ -11287,8 +11287,10 @@ function buildAutoVagueName(type, date, num){
  *  fichiers Excel, extrait pour chacun le(s) onglet(s) exploitables pour la
  *  station active, et enregistre ou remplace la vague correspondante dans
  *  l'historique. */
+let bulkAutoFit = 0;
 async function bulkImportFiles(fileList){
   if(!requireAdmin()) return;
+  bulkAutoFit = 0;
   if(!fileList || fileList.length === 0) return;
   const files = Array.from(fileList);
   const station = STATION_LABELS[ACTIVE_STATION];
@@ -11373,18 +11375,23 @@ async function bulkImportFiles(fileList){
       if(existingIdx !== -1){
         // Ré-import d'une vague déjà archivée : on conserve le Fit Score calculé
         // lors de son analyse (il n'existe pas dans le fichier Excel d'origine)
+        // On conserve le Fit Score CALCULÉ PAR FPA (clé exacte « Fit Score »),
+        // même si le fichier d'origine contient sa propre colonne « FIT SCORE »
         const fitByTitle = {};
         (history[existingIdx].sheets || []).forEach(sh => (sh.rows || []).forEach(r => {
-          const f = r.scores && Object.keys(r.scores).find(k => isFitScoreLike(k));
-          if(f && r.scores[f] !== null && r.scores[f] !== '') fitByTitle[norm(r.t || '') + '|||' + norm(r.a || '')] = r.scores[f];
+          const f = r.scores && r.scores['Fit Score'];
+          if(f !== undefined && f !== null && f !== '') fitByTitle[norm(r.t || '') + '|||' + norm(r.a || '')] = f;
         }));
         if(Object.keys(fitByTitle).length) snapshot.sheets.forEach(sh => sh.rows.forEach(r => {
           const v = fitByTitle[norm(r.t || '') + '|||' + norm(r.a || '')];
-          if(v !== undefined && !Object.keys(r.scores || {}).some(k => isFitScoreLike(k))) (r.scores = r.scores || {})['Fit Score'] = v;
+          if(v !== undefined) (r.scores = r.scores || {})['Fit Score'] = v;
         }));
         history.splice(existingIdx, 1, snapshot); replaced++;
       }
       else { history.unshift(snapshot); added++; }
+      // Vague sans Fit Score FPA : calcul automatique avec les anchors configurés
+      // pour sa période (Call Out et OMT ont chacun leurs anchors)
+      try{ if(typeof fpaAutoFitVague === 'function' && fpaAutoFitVague(snapshot)) bulkAutoFit = (bulkAutoFit || 0) + 1; }catch(e){}
 
     }catch(e){
       skipped.push(file.name + ' (erreur : ' + e.message + ')');
@@ -11396,7 +11403,7 @@ async function bulkImportFiles(fileList){
   renderHomePendingCard('callout');
   renderHomePendingCard('omt');
 
-  let msg = `${added} vague${added>1?'s':''} ajoutée${added>1?'s':''}, ${replaced} remplacée${replaced>1?'s':''}`;
+  let msg = `${added} vague${added>1?'s':''} ajoutée${added>1?'s':''}, ${replaced} remplacée${replaced>1?'s':''}` + (bulkAutoFit ? ` · Fit Score calculé pour ${bulkAutoFit} vague(s) (anchors configurés)` : '');
   if(skipped.length) msg += ` — ${skipped.length} ignoré${skipped.length>1?'s':''} : ${skipped.join(' · ')}`;
   showToast(msg, skipped.length ? 'err' : 'success');
 }
@@ -13181,7 +13188,7 @@ function analyseGetSearchScores(title, artist, referenceDate){
     // n'ont de Fit Score que dans les vagues OMT)
     // Fit Score : celui de la vague CALL OUT la plus proche avant la date ; celui
     // des vagues OMT seulement à défaut (titres testés uniquement en OMT, golds)
-    fit: (() => { const c = pick(co.fit); return c !== null && c !== undefined ? c : pick(omt.fit); })()
+    fit: (() => { const r = fpaRefFit(title, artist); if(r) return r.value; const c = pick(co.fit); return c !== null && c !== undefined ? c : pick(omt.fit); })()
   };
 }
 
@@ -20488,7 +20495,87 @@ function analyseDetectWeekInfo(period, fileName){
  *  sinon dernière vague connue par titre dans l'historique — voir
  *  buildDecisionRows). Même matching flou titre+artiste (60/40, seuil 0.55)
  *  que le reste de l'app. */
-function analyseGetFpaScores(title, artist){
+
+/* ══════════════════════════════════════════════════════════════════════
+   FIT SCORE DE RÉFÉRENCE — règle unique pour toute la plateforme
+   Fit d'un titre = celui de la DERNIÈRE VAGUE CALL OUT où il figure ; à
+   défaut, celui de la dernière vague OMT (golds). Seul le Fit calculé par
+   FPA (clé « Fit Score », avec les anchors de la vague) est retenu — jamais
+   la colonne d'origine du fichier. Indépendant du fichier actuellement
+   chargé : identique sur la Playlist, les fiches, la programmation
+   quotidienne et hebdomadaire, le Marketing antenne et le baromètre.
+   Le tableau Fit Score, le Radar Général et la Décision restent, eux, les
+   vues de l'analyse en cours.
+   ══════════════════════════════════════════════════════════════════════ */
+let _fpaRefFitIdx = null;
+function fpaRefFitIndex(){
+  const hist = histLoad() || [];
+  const sig = hist.length + '|' + hist.map(v => v.savedAt || v.date || '').join(',').length + '|' + (typeof ACTIVE_STATION !== 'undefined' ? ACTIVE_STATION : '');
+  if(_fpaRefFitIdx && _fpaRefFitIdx.sig === sig) return _fpaRefFitIdx;
+  const waves = hist.filter(v => { try{ return isHistFixedRadio(v); }catch(e){ return true; } })
+    .filter(v => (v.sheets || []).some(sh => (sh.rows || []).some(r => r.scores && r.scores['Fit Score'] != null && r.scores['Fit Score'] !== '')))
+    .slice().sort(sortVagues).reverse();                       // plus récente d'abord
+  const idx = { sig, co: [], omt: [], cache: {} };
+  waves.forEach(v => {
+    const sheet = (v.sheets || []).find(sh => isHistFixedSheet(sh.sheetName)) || (v.sheets || [])[0];
+    if(!sheet) return;
+    const byTitle = {};
+    (sheet.rows || []).forEach(r => {
+      const f = r.scores && r.scores['Fit Score'];
+      if(f === undefined || f === null || f === '' || isNaN(parseFloat(f))) return;
+      const k = norm(r.t || '');
+      (byTitle[k] = byTitle[k] || []).push(r);
+    });
+    const entry = { v, sheet, byTitle };
+    (isOmtVague(v) ? idx.omt : idx.co).push(entry);
+  });
+  _fpaRefFitIdx = idx;
+  return idx;
+}
+/** { value, source:'co'|'omt', vague, date } ou null. */
+function fpaRefFit(title, artist){
+  if(!title) return null;
+  const idx = fpaRefFitIndex();
+  const ck = norm(title) + '|' + norm(artist || '');
+  if(ck in idx.cache) return idx.cache[ck];
+  const nT = norm(title), qT = simPrep(nT), nA = norm(artist || ''), qA = simPrep(nA);
+  const fa = norm(String(artist || '').split(/\s*(?:&|,|\/|\+|\s[xX]\s|\bfeat\.?\s|\bft\.?\s)\s*/i)[0] || '');
+  const findIn = list => {
+    for(const e of list){
+      let row = null;
+      const exact = e.byTitle[nT];
+      if(exact) row = exact.find(r => !fa || norm(r.a || '').includes(fa) || fa.includes(norm(r.a || '').split(' ')[0] || '~')) || (exact.length === 1 ? exact[0] : null);
+      if(!row){ const best = histBestRows(e.sheet.rows.filter(r => r.scores && r.scores['Fit Score'] != null && r.scores['Fit Score'] !== ''), qT, qA, nA); row = best[0] || null; }
+      if(row) return { value: Math.round(parseFloat(row.scores['Fit Score']) * 10) / 10, vague: e.v.name, date: e.v.date || '' };
+    }
+    return null;
+  };
+  let res = findIn(idx.co);
+  if(res) res.source = 'co';
+  else { res = findIn(idx.omt); if(res) res.source = 'omt'; }
+  idx.cache[ck] = res;
+  return res;
+}
+function fpaRefFitValue(title, artist, fallback){
+  const r = fpaRefFit(title, artist);
+  return r ? r.value : (fallback === undefined ? null : fallback);
+}
+/** Vague archivée sans Fit Score FPA : calcul avec les anchors configurés
+ *  pour sa période (Historique → Recalculer le Fit Score). Retourne true si fait. */
+function fpaAutoFitVague(v){
+  if(!v || !v.sheets) return false;
+  if(v.sheets.some(sh => (sh.rows || []).some(r => r.scores && r.scores['Fit Score'] != null && r.scores['Fit Score'] !== ''))) return false;
+  const rk = detectVagueRadio(v);
+  const stKey = rk === 'rfm' ? 'rfm' : (rk === 'e2' ? 'e2' : null);
+  if(!stKey) return false;
+  const anchors = fitRetroFindAnchorsForDate(stKey, v.date, isOmtVague(v) ? 'omt' : 'co');
+  if(!anchors) return false;
+  const res = fitRetroRecalcVague(v, anchors);
+  _fpaRefFitIdx = null;
+  return !!(res && res.ok);
+}
+
+function analyseGetFpaScoresCurrent(title, artist){
   let rows;
   try{ rows = build360Rows(); }catch(e){ return null; }
   if(!rows || !rows.length) return null;
@@ -20509,6 +20596,14 @@ function analyseGetFpaScores(title, artist){
     quadrant: best.q || null,
     globalScore: best.globalScore != null ? Math.round(best.globalScore) : null
   };
+}
+/** Scores FPA d'un titre — Fit Score = Fit de référence (dernière vague
+ *  Call Out, sinon OMT), les autres indicateurs viennent de l'analyse en cours. */
+function analyseGetFpaScores(title, artist){
+  const cur = analyseGetFpaScoresCurrent(title, artist);
+  const ref = fpaRefFit(title, artist);
+  if(!ref) return cur;
+  return Object.assign({}, cur || {}, { fit: ref.value, fitSource: ref });
 }
 
 /** Enrichit chaque ligne importée avec : les derniers chiffres de recherche
@@ -22275,8 +22370,9 @@ async function openTevByInfo(info){
   const sections = [];
 
   // ── Bandeau de synthèse 360° ──
+  const fitRef = fpaRefFit(title, artist);
   if(row360){
-    const { fpBadge, fitBadge, spuBadge, dqBadge, burnBadge, polarBadge, potBadge } = build360Badges(row360);
+    const { fpBadge, fitBadge, spuBadge, dqBadge, burnBadge, polarBadge, potBadge } = build360Badges(fitRef ? Object.assign({}, row360, { fit: fitRef.value }) : row360);
     sections.push(`<div style="margin-bottom:6px;font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">🎯 FPA Metrics</div>`);
     // Chaque résultat avec le nom de son critère (et une explication au survol)
     const cell = (label, badge, tip, sep) => `<div title="${escHtml(tip)}" style="display:flex;flex-direction:column;align-items:center;gap:5px;padding:0 10px;${sep ? 'border-right:1.5px solid var(--border);' : ''}cursor:help">
@@ -22284,7 +22380,7 @@ async function openTevByInfo(info){
         <div style="min-height:26px;display:flex;align-items:center">${badge}</div>
       </div>`;
     sections.push(`<div style="display:flex;flex-wrap:wrap;gap:12px 0;align-items:flex-start;padding:14px 8px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;margin-bottom:20px">
-      ${cell('Fit Score', fitBadge, 'Fit Score : proximité du titre avec le Fit Point (profil idéal de la vague), de 0 à 100', true)}
+      ${cell('Fit Score', fitBadge, 'Fit Score : proximité du titre avec le Fit Point (profil idéal de la vague), de 0 à 100' + (fitRef ? ' — Fit de référence : ' + fitRef.vague + (fitRef.source === 'omt' ? ' (OMT)' : ' (Call Out)') : ''), true)}
       ${cell('Quadrant', fpBadge, 'Quadrant Fit Point : Power Song, Power Burned, Sleeper, Wrong Format ou Miss')}
       ${cell('Décision', dqBadge, 'Quadrant de décision (Stars, Pépites, Usés…) selon le potentiel et l\'usure')}
       ${cell('SPU', spuBadge, 'Score de Programmation Unifié (0-100) : Pot Score, Burn inversé, Aime beaucoup, Fit… — avec son feu tricolore')}
@@ -26560,7 +26656,7 @@ function playlistSortValue(t, mode, rows360, cache){
   if(!cache[k]) cache[k] = { row360: findRow360Match(rows360, t.title, t.artist), metrics: getPlaylistCallOutMetrics(t.title, t.artist) };
   const c = cache[k];
   const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
-  if(mode === 'fit') return c.row360 && c.row360.fit != null ? num(c.row360.fit) : null;
+  if(mode === 'fit') return num(fpaRefFitValue(t.title, t.artist, c.row360 && c.row360.fit != null ? c.row360.fit : null));
   if(mode === 'potTous') return num(c.metrics.potTous);
   if(mode === 'potP1') return num(c.metrics.potP1);
   if(mode === 'plays'){
@@ -26686,9 +26782,9 @@ const PL_CAT_METRICS = [
 const PL_CAT_HIST_KEY = 'fpa_playlist_cat_hist_v1', PL_CAT_SEL_KEY = 'fpa_playlist_cat_hist_sel_v1';
 let plCatHistDriveLoaded = false, plCatHistTimer = null, plCatHistShowAll = false;
 function plCatAvgNew(){ const a = {}; PL_CAT_METRICS.forEach(m => a[m.k] = []); return a; }
-function plCatAvgAdd(acc, metrics, row360){
+function plCatAvgAdd(acc, metrics, row360, t){
   const num = v => { const n = parseFloat(v); return isNaN(n) ? null : n; };
-  const vals = { fit: row360 && row360.fit != null ? num(row360.fit) : null,
+  const vals = { fit: num(t ? fpaRefFitValue(t.title, t.artist, row360 && row360.fit != null ? row360.fit : null) : (row360 && row360.fit != null ? row360.fit : null)),
     potTous: num(metrics && metrics.potTous), potP1: num(metrics && metrics.potP1),
     burnTous: num(metrics && metrics.burnTous), burnP1: num(metrics && metrics.burnP1),
     incTous: num(metrics && metrics.incTous), incP1: num(metrics && metrics.incP1) };
@@ -26904,8 +27000,9 @@ function buildPlaylistRow(t, metrics, row360){
     ? `<span onclick="event.stopPropagation();unlinkPlaylistBundle('${t.key}')" title="Paquet avec « ${escHtml(titleCaseDisplay(partner.title))} » — cliquer pour délier" style="flex-shrink:0;display:inline-flex;align-items:center;font-size:10px;color:var(--cyan);cursor:pointer;white-space:nowrap">🔗<span style="margin-left:1px;font-weight:800;color:#CC2222">✕</span></span>`
     : '';
 
-  const fitCell = (row360 && row360.fit !== null && row360.fit !== undefined)
-    ? `<span style="font-size:12px;font-weight:800;color:${(typeof fpaScoreColor === 'function' && fpaScoreColor('fit', row360.fit)) || 'var(--navy)'}">${row360.fit.toFixed(0)}</span>`
+  const fitRefV = fpaRefFitValue(t.title, t.artist, row360 && row360.fit != null ? row360.fit : null);
+  const fitCell = (fitRefV !== null && fitRefV !== undefined && !isNaN(fitRefV))
+    ? `<span style="font-size:12px;font-weight:800;color:${(typeof fpaScoreColor === 'function' && fpaScoreColor('fit', fitRefV)) || 'var(--navy)'}">${Number(fitRefV).toFixed(0)}</span>`
     : '<span style="color:var(--muted)">–</span>';
 
   const quad = row360 && row360.fpQuad ? QUAD[row360.fpQuad] : null;
@@ -27067,7 +27164,7 @@ async function renderPlaylistPage(){
       try{
         const metrics = getPlaylistCallOutMetrics(t.title, t.artist);
         const row360  = findRow360Match(rows360, t.title, t.artist);
-        plCatAvgAdd(avgAcc, metrics, row360);
+        plCatAvgAdd(avgAcc, metrics, row360, t);
         return buildPlaylistRow(t, metrics, row360);
       }catch(e){
         console.error('Erreur d\'affichage pour', t.title, t.artist, e);
@@ -43328,8 +43425,12 @@ function dailyScoresFor(title, artist, dateISO){
   // fichier ou d'un calcul antérieur, et différer de celui affiché ailleurs.
   try{
     if(!dailyRows360Cache || Date.now() - dailyRows360Cache.at > 30000) dailyRows360Cache = { at: Date.now(), rows: build360Rows() };
-    const r360 = dailyRows360Cache.rows && dailyRows360Cache.rows.length ? findRow360Match(dailyRows360Cache.rows, title, artist) : null;
-    if(r360 && r360.fit !== null && r360.fit !== undefined) s.fit = dailyProgNum(r360.fit);
+    const ref = fpaRefFit(title, artist);
+    if(ref) s.fit = dailyProgNum(ref.value);
+    else {
+      const r360 = dailyRows360Cache.rows && dailyRows360Cache.rows.length ? findRow360Match(dailyRows360Cache.rows, title, artist) : null;
+      if(r360 && r360.fit !== null && r360.fit !== undefined) s.fit = dailyProgNum(r360.fit);
+    }
   }catch(e){}
   // Classements digitaux (rang du jour chargé dans FPA)
   try{
@@ -43894,7 +43995,9 @@ async function dailyProgRenderSide(){
   // Song Metrics (mêmes briques que la fiche complète)
   let badges = '';
   try{
-    const row360 = findRow360Match(build360Rows(), title, artist);
+    let row360 = findRow360Match(build360Rows(), title, artist);
+    const fr = fpaRefFit(title, artist);
+    if(row360 && fr) row360 = Object.assign({}, row360, { fit: fr.value });
     if(row360){
       const b = build360Badges(row360);
       badges = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:10px 12px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px">
