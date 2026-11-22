@@ -11495,7 +11495,7 @@ function confirmSaveVague(){
         const rnk      = findVal(r,'RNK','RANK','POS');
         const rowScores = extractScoresFromRow(r, s.headers);
         const fitKey = norm(t) + '|||' + norm(a);
-        if(fitByTitle[fitKey] !== undefined) rowScores['Fit Score'] = fitByTitle[fitKey];
+        if(fitByTitle[fitKey] !== undefined){ rowScores['Fit Score'] = fitByTitle[fitKey]; rowScores['FPA Fit Score'] = fitByTitle[fitKey]; }
         return {
           a, t, cat, sound, language, year, rnk,
           scores: rowScores
@@ -11697,6 +11697,8 @@ function vagueFitStatus(v){
     if(s['Fit Score'] !== undefined && s['Fit Score'] !== null && s['Fit Score'] !== '') nFpa++;
     else if(Object.keys(s).some(k => isFitScoreLike(k))) nNative++;
   }));
+  // « Fit Score » non vérifiable (le fichier avait sa propre colonne) → traité comme d'origine
+  if(nFpa && !fpaTrustedFitKey(v)){ nNative += nFpa; nFpa = 0; }
   return { nFpa, nNative, n, meta: v.fitMeta || null };
 }
 function vagueFitStatusHtml(v){
@@ -12119,6 +12121,7 @@ function fitRetroRecalcVague(v, anchorTitles){
       if(!r.scores) r.scores = {};
       let changed = false;
       if(r.scores['Fit Score'] !== fit){ r.scores['Fit Score'] = fit; changed = true; }
+      r.scores['FPA Fit Score'] = fit;
       if(r.scores['Quadrant'] !== quadrant){ r.scores['Quadrant'] = quadrant; changed = true; }
       if(changed) titresModifies++;
     });
@@ -20549,26 +20552,47 @@ function analyseDetectWeekInfo(period, fileName){
    Le tableau Fit Score, le Radar Général et la Décision restent, eux, les
    vues de l'analyse en cours.
    ══════════════════════════════════════════════════════════════════════ */
+/** Clé fiable du Fit Score FPA dans une vague archivée :
+ *  « FPA Fit Score » (vagues récentes) ; « Fit Score » seulement si on sait
+ *  qu'il vient de FPA (calcul documenté, ou fichier d'origine SANS colonne
+ *  Fit Score). Sinon la vague est écartée : son « Fit Score » peut être la
+ *  colonne d'origine du fichier (ex. 47,3 au lieu de 100). */
+function fpaTrustedFitKey(v){
+  const rows = []; (v.sheets || []).forEach(sh => (sh.rows || []).forEach(r => rows.push(r)));
+  const has = k => rows.some(r => r.scores && r.scores[k] !== undefined && r.scores[k] !== null && r.scores[k] !== '');
+  if(has('FPA Fit Score')) return 'FPA Fit Score';
+  if(!has('Fit Score')) return null;
+  if(v.fitMeta) return 'Fit Score';
+  const nativeFit = (v.sheets || []).some(sh => (sh.scoreHeaders || []).some(hd => isFitScoreLike(hd)));
+  return nativeFit ? null : 'Fit Score';
+}
+function fpaCurrentAnalysisRef(){
+  if(typeof analysisResult === 'undefined' || !analysisResult || !analysisResult.length) return null;
+  const isOmt = analysisResult.length >= OMT_TITLE_THRESHOLD;
+  let wave = null;
+  try{ wave = (histLoad() || []).find(v => (v.sourceFile && v.sourceFile === sourceFileName) || v.name === sourceFileName) || null; }catch(e){}
+  return { isOmt, wave };
+}
 let _fpaRefFitIdx = null;
 function fpaRefFitIndex(){
   const hist = histLoad() || [];
   const sig = hist.length + '|' + hist.map(v => v.savedAt || v.date || '').join(',').length + '|' + (typeof ACTIVE_STATION !== 'undefined' ? ACTIVE_STATION : '');
-  if(_fpaRefFitIdx && _fpaRefFitIdx.sig === sig) return _fpaRefFitIdx;
+  if(_fpaRefFitIdx && _fpaRefFitIdx.sig === sig + '|' + (typeof sourceFileName !== 'undefined' ? sourceFileName : '') + '|' + (analysisResult ? analysisResult.length : 0)) return _fpaRefFitIdx;
   const waves = hist.filter(v => { try{ return isHistFixedRadio(v); }catch(e){ return true; } })
-    .filter(v => (v.sheets || []).some(sh => (sh.rows || []).some(r => r.scores && r.scores['Fit Score'] != null && r.scores['Fit Score'] !== '')))
-    .slice().sort(sortVagues).reverse();                       // plus récente d'abord
-  const idx = { sig, co: [], omt: [], cache: {} };
-  waves.forEach(v => {
+    .map(v => ({ v, key: fpaTrustedFitKey(v) })).filter(x => x.key)
+    .sort((a, b) => sortVagues(a.v, b.v)).reverse();           // plus récente d'abord
+  const idx = { sig: sig + '|' + (typeof sourceFileName !== 'undefined' ? sourceFileName : '') + '|' + (analysisResult ? analysisResult.length : 0), co: [], omt: [], cache: {} };
+  waves.forEach(({ v, key }) => {
     const sheet = (v.sheets || []).find(sh => isHistFixedSheet(sh.sheetName)) || (v.sheets || [])[0];
     if(!sheet) return;
     const byTitle = {};
     (sheet.rows || []).forEach(r => {
-      const f = r.scores && r.scores['Fit Score'];
+      const f = r.scores && r.scores[key];
       if(f === undefined || f === null || f === '' || isNaN(parseFloat(f))) return;
       const k = norm(r.t || '');
       (byTitle[k] = byTitle[k] || []).push(r);
     });
-    const entry = { v, sheet, byTitle };
+    const entry = { v, sheet, byTitle, key };
     (isOmtVague(v) ? idx.omt : idx.co).push(entry);
   });
   _fpaRefFitIdx = idx;
@@ -20587,14 +20611,29 @@ function fpaRefFit(title, artist){
       let row = null;
       const exact = e.byTitle[nT];
       if(exact) row = exact.find(r => !fa || norm(r.a || '').includes(fa) || fa.includes(norm(r.a || '').split(' ')[0] || '~')) || (exact.length === 1 ? exact[0] : null);
-      if(!row){ const best = histBestRows(e.sheet.rows.filter(r => r.scores && r.scores['Fit Score'] != null && r.scores['Fit Score'] !== ''), qT, qA, nA); row = best[0] || null; }
-      if(row) return { value: Math.round(parseFloat(row.scores['Fit Score']) * 10) / 10, vague: e.v.name, date: e.v.date || '' };
+      if(!row){ const best = histBestRows(e.sheet.rows.filter(r => r.scores && r.scores[e.key] != null && r.scores[e.key] !== ''), qT, qA, nA); row = best[0] || null; }
+      if(row) return { value: Math.round(parseFloat(row.scores[e.key]) * 10) / 10, vague: e.v.name, date: e.v.date || '' };
     }
     return null;
   };
-  let res = findIn(idx.co);
+  // L'analyse en cours compte comme la vague la plus récente de son type
+  // (Call Out ou OMT) quand elle n'est pas encore archivée ou qu'elle EST la
+  // dernière vague archivée de ce type : son Fit est alors le Fit de référence.
+  const cur = fpaCurrentAnalysisRef();
+  const fromCurrent = () => {
+    const r = histBestRows(analysisResult.map(x => ({ t: x.title, a: x.artist, x })).filter(o => o.x.fit != null), qT, qA, nA)[0];
+    return r ? { value: Math.round(r.x.fit * 10) / 10, vague: cur.wave ? cur.wave.name : 'analyse en cours (' + (sourceFileName || 'fichier chargé') + ')', date: cur.wave ? (cur.wave.date || '') : '' } : null;
+  };
+  const curLatest = list => cur && (!cur.wave || !list.length || list[0].v === cur.wave || sortVagues(cur.wave, list[0].v) >= 0);
+  let res = null;
+  if(cur && !cur.isOmt && curLatest(idx.co)) res = fromCurrent();
+  if(!res) res = findIn(idx.co);
   if(res) res.source = 'co';
-  else { res = findIn(idx.omt); if(res) res.source = 'omt'; }
+  else {
+    if(cur && cur.isOmt && curLatest(idx.omt)) res = fromCurrent();
+    if(!res) res = findIn(idx.omt);
+    if(res) res.source = 'omt';
+  }
   idx.cache[ck] = res;
   return res;
 }
@@ -43469,7 +43508,7 @@ function dailyScoresFor(title, artist, dateISO){
   try{
     if(!dailyRows360Cache || Date.now() - dailyRows360Cache.at > 30000) dailyRows360Cache = { at: Date.now(), rows: build360Rows() };
     const ref = fpaRefFit(title, artist);
-    if(ref) s.fit = dailyProgNum(ref.value);
+    if(ref){ s.fit = dailyProgNum(ref.value); s.fitSrc = ref; }
     else {
       const r360 = dailyRows360Cache.rows && dailyRows360Cache.rows.length ? findRow360Match(dailyRows360Cache.rows, title, artist) : null;
       if(r360 && r360.fit !== null && r360.fit !== undefined) s.fit = dailyProgNum(r360.fit);
@@ -43861,7 +43900,7 @@ function dailyProgListHtml(day, hourAggs){
           <div style="color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${typeof formatBadgeHtml === 'function' ? formatBadgeHtml(it.title, it.artist) : ''}${escHtml(titleCaseDisplay(it.artist))}${typeof playlistCategoryBadgeHtml === 'function' ? playlistCategoryBadgeHtml(it.title, it.artist) : ''}</div>
         </div>
         <div style="text-align:center"><span title="Catégorie de rotation du conducteur${it.year ? ' · ' + escHtml(it.year) : ''}" style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:6px;background:var(--bg);color:var(--text2)">${escHtml(it.cat || '—')}</span></div>
-        <div style="text-align:right">${dailyProgFmt(fitM, s.fit)}</div>
+        <div style="text-align:right" title="${escHtml(s.fitSrc ? 'Fit de référence : ' + s.fitSrc.vague + (s.fitSrc.source === 'omt' ? ' (OMT)' : ' (Call Out)') : (s.fit != null ? 'Fit de l\'analyse en cours' : ''))}">${dailyProgFmt(fitM, s.fit)}</div>
         <div style="text-align:right">${dailyProgPotFamCell(potM, s)}</div>
       </div>`;
     }).join('');
