@@ -11458,6 +11458,12 @@ function confirmSaveVague(){
     num  : num || null,
     savedAt : new Date().toISOString(),
     sourceFile: sourceFileName || '',   // fichier d'origine : Datas retrouve tous ses onglets après rechargement
+    // Comment le Fit Score de cette vague a été calculé (affiché dans l'Historique)
+    fitMeta : (analysisResult && analysisResult.length) ? {
+      method: 'analyse', at: new Date().toISOString(),
+      anchors: (anchors || []).map(a => String(a || '').trim()).filter(Boolean),
+      targetCol: targetCol || '', fitPoint: Math.round((fitPoint || 0) * 100) / 100, stdDev: Math.round((stdDev || 0) * 100) / 100
+    } : null,
     sheets  : rawDataAllSheets.map(s => ({
       sheetName : s.name,
       cible     : s.cible,
@@ -11681,6 +11687,39 @@ const VAGUE_RADIO_META = {
   none: { label:'Autre',    short:'?',   color:'#94A3B8', bg:'#F1F5F9' },
 };
 
+/** État du Fit Score d'une vague archivée : calculé par FPA (avec quels
+ *  anchors, comment, quand), seulement la colonne d'origine du fichier, ou absent. */
+function vagueFitStatus(v){
+  let nFpa = 0, nNative = 0, n = 0;
+  (v.sheets || []).forEach(sh => (sh.rows || []).forEach(r => {
+    n++;
+    const s = r.scores || {};
+    if(s['Fit Score'] !== undefined && s['Fit Score'] !== null && s['Fit Score'] !== '') nFpa++;
+    else if(Object.keys(s).some(k => isFitScoreLike(k))) nNative++;
+  }));
+  return { nFpa, nNative, n, meta: v.fitMeta || null };
+}
+function vagueFitStatusHtml(v){
+  const st = vagueFitStatus(v);
+  const m = st.meta;
+  const dt = iso => iso ? new Date(iso).toLocaleDateString('fr-FR') : '';
+  if(!st.nFpa){
+    const txt = st.nNative ? '⚠ Fit d\'origine du fichier seulement (pas de Fit FPA)' : '⚠ Pas de Fit Score';
+    return `<div title="Utilisez ▶ pour calculer le Fit Score de cette vague avec ses anchors, puis enregistrez-la, ou le recalcul par périodes d'anchors" style="font-size:10px;font-weight:700;color:#B45309;background:#FFFBEB;border:1px solid #FCD34D;border-radius:6px;padding:3px 7px">${txt}</div>`;
+  }
+  let detail = '';
+  if(m){
+    const how = m.method === 'recalcul' ? 'recalcul par période' : m.method === 'auto' ? 'calcul automatique (import)' : 'analyse';
+    const anc = (m.anchors || []).length ? m.anchors.join(', ') : (m.anchorFallback ? 'aucun retrouvé — repli moyenne + écart-type' : '—');
+    detail = `anchors : ${anc}`;
+    const tip = 'Fit Score calculé par FPA — ' + how + (m.at ? ' le ' + dt(m.at) : '') + '\nAnchors : ' + anc
+      + (m.anchorsRequested && m.anchorsRequested.length && m.anchorsRequested.length !== (m.anchors || []).length ? '\nDemandés : ' + m.anchorsRequested.join(', ') : '')
+      + (m.fitPoint ? '\nFit Point : ' + m.fitPoint + ' · écart-type : ' + m.stdDev : '') + '\n' + st.nFpa + ' titre(s) avec un Fit Score';
+    const warn = m.anchorFallback;
+    return `<div title="${escHtml(tip)}" style="font-size:10px;font-weight:700;color:${warn ? '#B45309' : '#1E7A3C'};background:${warn ? '#FFFBEB' : '#E6F6EC'};border:1px solid ${warn ? '#FCD34D' : '#A8DDB9'};border-radius:6px;padding:3px 7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${warn ? '⚠' : '✓'} Fit FPA · ${escHtml(detail)}</div>`;
+  }
+  return `<div title="Fit Score FPA présent (${st.nFpa} titres) — enregistré avant le suivi des anchors : relancez un recalcul ou une analyse pour l'afficher" style="font-size:10px;font-weight:700;color:#1E7A3C;background:#E6F6EC;border:1px solid #A8DDB9;border-radius:6px;padding:3px 7px">✓ Fit FPA · anchors non mémorisés</div>`;
+}
 function renderHistoryPage(){
   const history = histLoad();
   const listEl  = document.getElementById('histVagueList');
@@ -11720,6 +11759,7 @@ function renderHistoryPage(){
         <span style="font-size:9px;font-weight:800;color:#fff;background:${meta.color};padding:2px 6px;border-radius:5px;white-space:nowrap;flex-shrink:0">${meta.short}</span>
       </div>
       <div style="font-size:10px;color:var(--text2)">${totalTitles} titres · 📅 ${dateStr}</div>
+      ${vagueFitStatusHtml(v)}
       <div style="display:flex;align-items:center;gap:4px;margin-top:2px">
         <button onclick="loadVagueForAnalysis(${idx})" title="Calculer le Fit Score sur cette vague (sans réimporter de fichier)"
           style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;flex-shrink:0;background:var(--navy);border:1.5px solid var(--navy);border-radius:5px;cursor:pointer;transition:all .15s" onmouseenter="this.style.background='var(--navy2)'" onmouseleave="this.style.background='var(--navy)'">
@@ -12084,6 +12124,8 @@ function fitRetroRecalcVague(v, anchorTitles){
     });
   });
 
+  v.fitMeta = { method: 'recalcul', at: new Date().toISOString(), anchors: anchorsFound.slice(), anchorsRequested: (anchorTitles || []).slice(),
+    anchorFallback, fitPoint: Math.round(fitPoint*100)/100, stdDev: Math.round(stdDev*100)/100 };
   return { ok:true, isOmt, titresModifies, fitPoint:Math.round(fitPoint*100)/100, stdDev:Math.round(stdDev*100)/100, burnPct, powerPct, anchorsFound, anchorsRequested:anchorTitles||[], anchorFallback };
 }
 
@@ -20571,6 +20613,7 @@ function fpaAutoFitVague(v){
   const anchors = fitRetroFindAnchorsForDate(stKey, v.date, isOmtVague(v) ? 'omt' : 'co');
   if(!anchors) return false;
   const res = fitRetroRecalcVague(v, anchors);
+  if(res && res.ok && v.fitMeta) v.fitMeta.method = 'auto';
   _fpaRefFitIdx = null;
   return !!(res && res.ok);
 }
