@@ -2425,6 +2425,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
           btn.disabled=false; btn.textContent=orig;
         })()" title="Renvoie tout l'historique local vers Drive, même si rien n'a changé depuis — utile après un échec de sauvegarde (ex. quota Drive plein) pour forcer le renvoi sans attendre une nouvelle modification">☁️⬆️ Forcer l'envoi vers Drive</button>
         <button class="btn-primary" style="font-size:12px;padding:9px 16px" onclick="digitalAudienceTriggerImport()">📥 Importer un ou plusieurs PDF Live Stats</button>
+        <button class="btn-ghost" style="font-size:12px;padding:9px 14px" onclick="digitalAudienceAutoSync(true)" title="Relever maintenant les mails « Audience Live Digitale » et intégrer les nouvelles semaines (sinon : automatique chaque jeudi à 18h)">📬 Relever Gmail maintenant</button>
       </div>
       <div id="mediaActions" style="display:none;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <button class="btn-ghost" style="font-size:11px;padding:8px 14px" onclick="mediaLoadHistoryFromDrive(true)" title="Recharge Médiamétrie depuis Drive Sync">☁️ Synchroniser Drive</button>
@@ -14092,6 +14093,91 @@ async function digitalAudienceSaveToDrive(){
 
 /** Charge depuis Drive et fusionne avec le cache local, semaine par semaine
  *  (on garde l'entrée la plus récemment importée en cas de doublon). */
+
+/* ══════════════════════════════════════════════════════════════════════
+   AUDIENCE DIGITALE — INTÉGRATION AUTOMATIQUE (relève Gmail du jeudi 18h)
+   Le script Google « FPA_Conducteurs_Gmail » (v3.4) range chaque jeudi les
+   PDF reçus par mail (« <Radio> Audience Live Digitale <date> ») dans Drive,
+   par radio et par semaine (date lue dans le nom du fichier). FPA les
+   intègre ici avec son lecteur de PDF habituel, puis envoie un mail si un
+   chiffre n'a pas pu être lu ou si une erreur survient.
+   ══════════════════════════════════════════════════════════════════════ */
+let daudAutoBusy = false;
+function daudAddDays(iso, n){ const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); }
+async function digitalAudienceAutoSync(manual){
+  if(daudAutoBusy || typeof dailyGasUrl !== 'function' || !dailyGasUrl()) { if(manual && !dailyGasUrl()) showToast('Script Google non configuré (Configuration FPA → Import automatique)', 'err'); return; }
+  daudAutoBusy = true;
+  const results = [];
+  try{
+    const ping = await dailyGasCall({ action:'ping' }, 20000);
+    if((ping.build || 0) < 34){ if(manual) showToast('Mettez à jour le script Google « FPA_Conducteurs_Gmail » (version 3.4)', 'err'); return; }
+    if(manual){ try{ await dailyGasCall({ action:'daud_fetch_now' }, 120000); }catch(e){} }
+    const r = await dailyGasCall({ action:'daud_list' }, 30000);
+    const tomb = digitalAudienceHistory.__deleted || {};
+    const todo = (r.files || []).filter(f => DIGITAL_AUDIENCE_STATIONS.includes(f.station)
+      && !((digitalAudienceHistory[f.station] || {})[f.weekStart])
+      && !((tomb[f.station] || {})[f.weekStart]));
+    for(const f of todo){
+      try{
+        const buf = await dailyGasDownload(f.id);
+        const file = new File([buf], f.name, { type:'application/pdf' });
+        const data = await digitalAudienceExtractPdfData(file);
+        const parsed = digitalAudienceParsePdfText(data, f.name);
+        const missing = [];
+        if(!parsed.sessions) missing.push('sessions');
+        if(!parsed.uniques) missing.push('visiteurs uniques');
+        if(!parsed.audienceMoyenne) missing.push('audience moyenne');
+        if(!parsed.dureeSec) missing.push('durée moyenne');
+        const nDays = (parsed.daily || []).filter(d => d.value != null).length;
+        if(nDays < 5) missing.push('audience par jour (' + nDays + '/5)');
+        if((parsed.tranches || []).length < 6) missing.push('tranches programme (' + (parsed.tranches || []).length + '/6)');
+        const rec = {
+          weekStart: f.weekStart, weekEnd: daudAddDays(f.weekStart, 4),
+          sessions: parsed.sessions, uniques: parsed.uniques, dureeSec: parsed.dureeSec, audienceMoyenne: parsed.audienceMoyenne,
+          evolS1Sessions: parsed.evolS1Sessions, evol1anSessions: parsed.evol1anSessions,
+          evolS1Uniques: parsed.evolS1Uniques, evol1anUniques: parsed.evol1anUniques,
+          evolS1Audience: parsed.evolS1Audience, evol1anAudience: parsed.evol1anAudience,
+          daily: parsed.daily, tranches: parsed.tranches, contexte: parsed.contexte,
+          filename: f.name, importedAt: new Date().toISOString(), autoImport: true, missing
+        };
+        if(!digitalAudienceHistory[f.station]) digitalAudienceHistory[f.station] = {};
+        digitalAudienceHistory[f.station][f.weekStart] = rec;
+        results.push({ f, missing });
+      }catch(e){ results.push({ f, error: e.message || String(e) }); }
+    }
+    if(results.length){
+      digitalAudienceSaveLocal();
+      if(typeof DRIVE_SYNC_URL !== 'undefined' && DRIVE_SYNC_URL) digitalAudienceSaveToDrive();
+      try{ renderDigitalAudiencePage(); }catch(e){}
+      const ok = results.filter(x => !x.error && !x.missing.length).length;
+      showToast('🎧 Audience digitale : ' + results.length + ' semaine(s) intégrée(s) automatiquement' + (ok < results.length ? ' — à vérifier' : ''), ok < results.length ? 'err' : 'success');
+      // Mail de compte rendu d'intégration si quelque chose manque
+      const bad = results.filter(x => x.error || x.missing.length);
+      if(bad.length){
+        const lab = st => STATION_LABELS[st] || st;
+        const body = ['Intégration automatique des audiences digitales dans FPA :', '']
+          .concat(results.map(x => (x.error ? '✗ ' : x.missing.length ? '⚠ ' : '✓ ') + lab(x.f.station) + ' — semaine du ' + formatDateFr(x.f.weekStart)
+            + (x.error ? ' : erreur de lecture (' + x.error + ')' : x.missing.length ? ' : non lu → ' + x.missing.join(', ') : ' : complet')))
+          .concat(['', 'Vous pouvez compléter ou corriger la semaine dans FPA → Analyse → Audience digitale (✏️).']).join('\n');
+        try{ await dailyGasCall({ action:'notify', subject:'FPA · Audience digitale — ⚠ intégration incomplète', body }, 30000); }catch(e){}
+      }
+    } else if(manual) showToast('Audience digitale : aucune nouvelle semaine à intégrer', 'success');
+  }catch(e){
+    console.warn('[FPA] Audience digitale — intégration automatique', e);
+    if(manual) showToast('Audience digitale : ' + (e.message || e), 'err');
+    try{ await dailyGasCall({ action:'notify', subject:'FPA · Audience digitale — ✗ erreur d\'intégration', body:'L\'intégration automatique a échoué : ' + (e.message || e) }, 30000); }catch(e2){}
+  }finally{ daudAutoBusy = false; }
+}
+// À l'ouverture de FPA, puis le jeudi soir (après la relève de 18h) si FPA reste ouvert
+setTimeout(() => { digitalAudienceAutoSync(false).catch(() => {}); }, 12000);
+setInterval(() => {
+  const d = new Date(), key = 'fpa_daud_auto_' + d.toISOString().slice(0, 10);
+  if(d.getDay() === 4 && d.getHours() >= 18 && d.getMinutes() >= 20 && !localStorage.getItem(key)){
+    try{ localStorage.setItem(key, '1'); }catch(e){}
+    digitalAudienceAutoSync(false).catch(() => {});
+  }
+}, 10 * 60000);
+
 async function digitalAudienceLoadHistoryFromDrive(manual){
   if(!DRIVE_SYNC_URL){ if(manual) showToast('URL Drive Sync non configurée', 'err'); return { ok:false, reason:'no_url' }; }
   try{
@@ -14162,7 +14248,9 @@ async function digitalAudienceExtractPdfData(file){
   return { text: fullText, items };
 }
 
-const DIGITAL_AUDIENCE_FR_MONTH = {janvier:1,fevrier:2,'février':2,mars:3,avril:4,mai:5,juin:6,juillet:7,aout:8,'août':8,septembre:9,octobre:10,novembre:11,decembre:12,'décembre':12};
+const DIGITAL_AUDIENCE_FR_MONTH = {janvier:1,fevrier:2,'février':2,mars:3,avril:4,mai:5,juin:6,juillet:7,aout:8,'août':8,septembre:9,octobre:10,novembre:11,decembre:12,'décembre':12,
+  // abrégés (« NOV 26 », « sept », « déc. »…)
+  janv:1,jan:1,fev:2,fevr:2,avr:4,juil:7,sept:9,sep:9,oct:10,nov:11,dec:12};
 
 function digitalAudienceParseNumberFr(str){
   if(str===undefined||str===null) return null;
@@ -14358,7 +14446,7 @@ function digitalAudienceParsePdfText(data, filename){
     if(weekMatch){
       const d1 = parseInt(weekMatch[1],10);
       const d2 = weekMatch[2] ? parseInt(weekMatch[2],10) : d1;
-      const monthNorm = weekMatch[3].normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      const monthNorm = weekMatch[3].normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\./g, '');
       const monthNum = DIGITAL_AUDIENCE_FR_MONTH[monthNorm];
       let year = parseInt(weekMatch[4],10);
       if(year<100) year += 2000;
