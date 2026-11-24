@@ -48308,6 +48308,15 @@ function dlyFirstDailyPlay(radioKey, title, artist, fromIso, toIso){
      deux, qui a été le plus rapide — la comparaison la plus juste entre
      radios, quel que soit leur format.
    ══════════════════════════════════════════════════════════════════════ */
+/* Radios analysées : une coche par carte ; décochée = radio grisée et exclue
+   du calcul (mémorisé sur le poste). */
+const DLY_OFF_KEY = 'fpa_radio_delay_off_v1';
+function dlyRadiosOff(){ try{ return new Set(JSON.parse(localStorage.getItem(DLY_OFF_KEY) || '[]')); }catch(e){ return new Set(); } }
+function dlyToggleRadio(key, on){
+  const s = dlyRadiosOff(); on ? s.delete(key) : s.add(key);
+  try{ localStorage.setItem(DLY_OFF_KEY, JSON.stringify([...s])); }catch(e){}
+  dlyState.result = null; renderRadioDelayPage();
+}
 function dlyMedian(arr){ if(!arr.length) return null; const s = arr.slice().sort((a, b) => a - b); const m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2); }
 function dlyCompute(snaps, cfg){
   const win = snaps.slice(-Math.max(2, cfg.window + 1));
@@ -48323,8 +48332,11 @@ function dlyCompute(snaps, cfg){
   const lastIdx = win.length - 1, lastDate = win[lastIdx].date;
   const matureDays = (cfg.maturity || 6) * 7;
   const mature = p => dlyDays(p.bDate, lastDate) >= matureDays;
-  const radios = [{ key:'rg', label:'Marché (Général)', short:'Marché', market:true }].concat(AIRPLAY_RADIOS.filter(r => r.key !== 'rg').map(r => ({ key:r.key, label:r.col, short:r.label, own:r.own })));
-  // Date d'adoption de chaque titre pour chaque radio
+  const radiosAll = [{ key:'rg', label:'Marché (Général)', short:'Marché', market:true }].concat(AIRPLAY_RADIOS.filter(r => r.key !== 'rg').map(r => ({ key:r.key, label:r.col, short:r.label, own:r.own })));
+  const off = dlyRadiosOff();
+  const radios = radiosAll.filter(r => !off.has(r.key));
+  const marketOn = !off.has('rg');
+  // Date d'adoption de chaque titre pour chaque radio analysée
   const adopt = {};
   radios.forEach(rd => {
     adopt[rd.key] = {};
@@ -48349,9 +48361,10 @@ function dlyCompute(snaps, cfg){
     const med = dlyMedian(delays);
     const antic = delays.filter(d => d <= 0).length;
     // Écart vs marché (titres adoptés par les deux)
-    const vsM = rd.market ? [] : titles.filter(p => A[p.key] && adopt.rg[p.key]).map(p => dlyDays(adopt.rg[p.key].aDate, A[p.key].aDate));
+    const M = marketOn ? adopt.rg : {};
+    const vsM = rd.market ? [] : titles.filter(p => A[p.key] && M[p.key]).map(p => dlyDays(M[p.key].aDate, A[p.key].aDate));
     const rows = titles.map(p => Object.assign({}, p, A[p.key] || { aDate:null, delay:null }, { mature: mature(p),
-      vsMarket: (!rd.market && A[p.key] && adopt.rg[p.key]) ? dlyDays(adopt.rg[p.key].aDate, A[p.key].aDate) : null }));
+      vsMarket: (!rd.market && A[p.key] && M[p.key]) ? dlyDays(M[p.key].aDate, A[p.key].aDate) : null }));
     byRadio[rd.key] = { def: rd, rows,
       median: med === null ? null : { v: med, c:false }, n: adoptedMature.length, nMature: matureTitles.length,
       adoptRate: matureTitles.length ? Math.round(adoptedMature.length / matureTitles.length * 100) : null,
@@ -48359,7 +48372,7 @@ function dlyCompute(snaps, cfg){
       vsMarket: dlyMedian(vsM), vsMarketN: vsM.length,
       waiting: titles.filter(p => !A[p.key] && !mature(p)).length };
   });
-  return { radios, byRadio, adopt, titles, win, lastDate, firstDate: win[0].date, nTitles: titles.length };
+  return { radios, radiosAll, marketOn, byRadio, adopt, titles, win, lastDate, firstDate: win[0].date, nTitles: titles.length };
 }
 /** Face-à-face : radio sélectionnée vs chaque autre, sur les titres adoptés par les deux. */
 function dlyHeadToHead(res, key){
@@ -48400,7 +48413,12 @@ async function renderRadioDelayPage(force){
     dlyState.result = dlyCompute(snaps, cfg);
   }
   const res = dlyState.result;
-  const sel = res.byRadio[dlyState.radio] ? dlyState.radio : 'e2';
+  const sel = res.byRadio[dlyState.radio] ? dlyState.radio : (res.byRadio.e2 ? 'e2' : (res.radios[0] ? res.radios[0].key : null));
+  if(!sel){
+    box.innerHTML = dlyHeaderHtml(cfg) + `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${res.radiosAll.map(rd => dlyOffCard(rd)).join('')}</div><div style="padding:18px;color:var(--muted);font-size:12.5px">Cochez au moins une radio à analyser.</div>`;
+    return;
+  }
+  dlyState.radio = sel;
   const order = res.radios.slice().sort((a, b) => {
     const A = res.byRadio[a.key], B = res.byRadio[b.key];
     if(a.market) return -1; if(b.market) return 1;
@@ -48410,11 +48428,11 @@ async function renderRadioDelayPage(force){
   const card = rd => {
     const r = res.byRadio[rd.key], on = rd.key === sel;
     return `<div onclick="dlyState.radio='${rd.key}';renderRadioDelayPage()" style="cursor:pointer;background:${on ? '#EEF6FF' : 'var(--white)'};border:${on ? '2px solid var(--navy)' : '1.5px solid var(--border)'};border-radius:12px;padding:12px 14px">
-      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:12.5px;font-weight:800;color:var(--navy)">${escHtml(rd.label)}</span>${rd.own ? '<span style="font-size:9px;font-weight:800;color:var(--cyan)">● station</span>' : ''}</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap"><span style="font-size:12.5px;font-weight:800;color:var(--navy)">${escHtml(rd.label)}</span>${rd.own ? '<span style="font-size:9px;font-weight:800;color:var(--cyan)">● station</span>' : ''}${dlyRadioCheck(rd, true)}</div>
       <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;color:var(--muted);margin-top:6px">Délai d'adoption</div>
       <div style="font-family:var(--font-display);font-size:19px;font-weight:800;margin:1px 0 6px">${dlyDaysTxt(r.median ? r.median.v : null, { noWeeks:true })}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-size:10.5px;color:var(--text2)">
-        <span title="Écart médian avec le Marché sur les titres adoptés par les deux (négatif = plus rapide que le marché)">⚖️ vs marché <b>${rd.market ? '—' : (r.vsMarket === null ? '—' : (r.vsMarket > 0 ? '+' : '') + r.vsMarket + ' j')}</b></span>
+        <span title="Écart médian avec le Marché sur les titres adoptés par les deux (négatif = plus rapide que le marché)">⚖️ vs marché <b>${rd.market || !res.marketOn ? '—' : (r.vsMarket === null ? '—' : (r.vsMarket > 0 ? '+' : '') + r.vsMarket + ' j')}</b></span>
         <span title="Part des titres percés en digital (depuis au moins ${cfg.maturity || 6} semaines) que la radio a adoptés : l'ouverture de son format aux hits digitaux">🎯 Adoption <b>${r.adoptRate === null ? '—' : r.adoptRate + ' %'}</b></span>
         <span title="Part des titres adoptés avant ou la même semaine que leur percée digitale">⚡ Anticipation <b>${r.anticPct === null ? '—' : r.anticPct + ' %'}</b></span>
         <span title="Titres adoptés pris en compte dans le délai">🎵 <b>${r.n}</b> titre${r.n > 1 ? 's' : ''}</span>
@@ -48423,13 +48441,13 @@ async function renderRadioDelayPage(force){
   };
   const R = res.byRadio[sel];
   const h2h = dlyHeadToHead(res, sel);
-  const trend = dlyTrend(res, sel), trendM = dlyTrend(res, 'rg');
+  const trend = R ? dlyTrend(res, sel) : [], trendM = res.marketOn ? dlyTrend(res, 'rg') : [];
   const adopted = R.rows.filter(r => r.delay !== null).sort((a, b) => b.bDate.localeCompare(a.bDate));
   const notAdopted = R.rows.filter(r => r.delay === null).sort((a, b) => b.bDate.localeCompare(a.bDate));
   const shown = dlyState.showAllTitles ? adopted : adopted.slice(0, 25);
   box.innerHTML = dlyHeaderHtml(cfg) + `
     <div style="font-size:11px;color:var(--muted);margin:-4px 0 10px">${res.nTitles} titres entrés dans le top ${cfg.topN} ${cfg.source === 'spotify' ? 'Spotify France' : 'digital'} entre le ${dlyFmtDate(res.firstDate)} et le ${dlyFmtDate(res.lastDate)} · radios classées de la plus rapide à la plus lente par rapport au marché · cliquez une radio pour le détail</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${order.map(card).join('')}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${order.map(card).join('')}${res.radiosAll.filter(rd => !res.byRadio[rd.key]).map(dlyOffCard).join('')}</div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin-top:16px" class="dly-2col">
       <div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:14px">
         <div style="font-size:13px;font-weight:800;color:var(--navy);margin-bottom:4px">🥊 Face-à-face — ${escHtml(R.def.label)}</div>
@@ -48463,6 +48481,16 @@ async function renderRadioDelayPage(force){
       ${notAdopted.length ? `<details style="margin-top:12px"><summary style="cursor:pointer;font-size:12px;font-weight:800;color:var(--muted)">Percés en digital mais non adoptés par ${escHtml(R.def.label)} (${notAdopted.length}) — considérés hors de son format, ils n'entrent pas dans son délai</summary>
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">${notAdopted.slice(0, 80).map(r => `<span onclick="openTevByInfo({title:'${jsAttrEscape(r.t)}',artist:'${jsAttrEscape(r.a)}'})" style="cursor:pointer;font-size:11px;padding:3px 9px;border-radius:20px;background:var(--bg);border:1px solid var(--border);color:var(--text2)">${escHtml(titleCaseDisplay(r.t))} <span style="color:var(--muted)">· ${dlyFmtDate(r.bDate)}</span></span>`).join('')}</div></details>` : ''}
     </div>`;
+}
+function dlyRadioCheck(rd, on){
+  return `<label onclick="event.stopPropagation()" title="${on ? 'Décocher pour ne plus analyser cette radio' : 'Cocher pour analyser cette radio'}" style="margin-left:auto;display:inline-flex;align-items:center;cursor:pointer">
+    <input type="checkbox" ${on ? 'checked' : ''} onchange="dlyToggleRadio('${rd.key}', this.checked)" style="width:17px;height:17px;accent-color:var(--navy);cursor:pointer"></label>`;
+}
+function dlyOffCard(rd){
+  return `<div style="background:var(--bg);border:1.5px dashed var(--border);border-radius:12px;padding:12px 14px;opacity:.55;filter:grayscale(1)">
+    <div style="display:flex;align-items:center;gap:6px"><span style="font-size:12.5px;font-weight:800;color:var(--muted)">${escHtml(rd.label)}</span>${dlyRadioCheck(rd, false)}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px">Non analysée</div>
+  </div>`;
 }
 function dlyHeaderHtml(cfg){
   const sel = (k, opts) => `<select onchange="dlySetCfg('${k}',this.value)" style="font-size:11.5px;padding:4px 8px;border-radius:7px;font-weight:700">${opts.map(([v, l]) => `<option value="${v}" ${String(cfg[k] || (k === 'maturity' ? 6 : '')) === String(v) ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
