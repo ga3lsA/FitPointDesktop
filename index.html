@@ -2290,6 +2290,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <span style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">➕ Ajouter un titre manuellement</span>
       <input id="playlistManualArtist" type="text" placeholder="Artiste" style="flex:1;min-width:140px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit">
       <input id="playlistManualTitle" type="text" placeholder="Titre" style="flex:1;min-width:140px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit" onkeydown="if(event.key==='Enter') addManualPlaylistTitle()">
+      <select id="playlistManualCat" title="Catégorie (facultatif)" style="min-width:130px;padding:6px 10px;border-radius:7px;border:1.5px solid var(--border);font-size:12px;font-family:inherit"><option value="">Catégorie (facultatif)</option></select>
       <button onclick="addManualPlaylistTitle()" style="font-size:11px;padding:7px 14px;border-radius:7px;background:var(--navy);border:none;color:#fff;cursor:pointer;font-weight:700;white-space:nowrap">Ajouter</button>
     </div>
 
@@ -25568,6 +25569,18 @@ function togglePlaylistTitle(title, artist){
  *  métriques Call Out) se fera automatiquement dès que ce titre apparaîtra
  *  dans un classement ou une vague Call Out/OMT — aucune action supplémentaire
  *  n'est nécessaire, la Playlist se contente de chercher par titre/artiste. */
+/** Liste des catégories de la station active dans le formulaire d'ajout manuel. */
+function playlistManualCatFill(){
+  const sel = document.getElementById('playlistManualCat');
+  if(!sel) return;
+  const cats = (PLAYLIST_CATEGORY_ORDER[ACTIVE_STATION] || []).concat(['OUT']);
+  const sig = ACTIVE_STATION + cats.join(',');
+  if(sel.dataset.sig === sig) return;
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Catégorie (facultatif)</option>' + cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  sel.dataset.sig = sig;
+  if(cats.includes(cur)) sel.value = cur;
+}
 function addManualPlaylistTitle(){
   const artistInput = document.getElementById('playlistManualArtist');
   const titleInput  = document.getElementById('playlistManualTitle');
@@ -25582,10 +25595,23 @@ function addManualPlaylistTitle(){
     showToast('Ce titre est déjà dans la Playlist ' + STATION_LABELS[ACTIVE_STATION], 'err');
     return;
   }
+  const catSel = document.getElementById('playlistManualCat');
+  const categorie = catSel ? String(catSel.value || '').toUpperCase().trim() : '';
+  // Date d'entrée : celle déjà connue du titre (Song Attributs), sinon la date du jour
+  const auto = playlistAutoFillFields(title, artist, ACTIVE_STATION);
+  if(!auto.dateEntree){
+    auto.dateEntree = (typeof fpaLocalTodayISO === 'function') ? fpaLocalTodayISO() : new Date().toISOString().slice(0, 10);
+    try{
+      const attrs = getSongAttributes(title, artist);
+      attrs[ACTIVE_STATION === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2'] = auto.dateEntree;
+      songAttributesSaveToStorage();
+    }catch(e){}
+  }
   playlistTitles.push({
     key, title, artist, addedAt: new Date().toISOString(), station: ACTIVE_STATION,
-    ...playlistAutoFillFields(title, artist, ACTIVE_STATION), categorie:'', powerNew:false, powerNewStop:false, powerIntro:false, callOut:false, manual:true
+    ...auto, categorie, powerNew:false, powerNewStop:false, powerIntro:false, callOut:false, manual:true
   });
+  if(catSel) catSel.value = '';
   playlistSaveToStorage();
   updatePlaylistBadge();
   if(artistInput) artistInput.value = '';
@@ -27213,6 +27239,7 @@ function playlistTableHeader(){
 }
 
 async function renderPlaylistPage(){
+  try{ playlistManualCatFill(); }catch(e){}
   const listEl  = document.getElementById('playlistList');
   const emptyEl = document.getElementById('playlistEmptyBar');
   if(!listEl) return;
@@ -45541,7 +45568,7 @@ let mktDriveLoaded = false;
 let mktDriveTimer = null;
 
 /* ── Stockage ───────────────────────────────────────────────────────── */
-function mktEmpty(){ return { pool:[], montages:[], validity:{ from:'', to:'' } }; }
+function mktEmpty(){ return { pool:[], montages:[], validity:{ from:'', to:'' }, claims:[] }; }
 function mktLoadLocal(){
   let d = null;
   try{ d = JSON.parse(localStorage.getItem(MKT_LOCAL_KEY) || 'null'); }catch(e){ d = null; }
@@ -45897,6 +45924,65 @@ function mktAvgRow(songs, cols, lead){
 }
 const MKT_H = 'font-size:9.5px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)';
 
+
+/* ── Texte / Verbatim / Claims ─────────────────────────────────────────
+   Modules d'habillage par station : nom, date de mise à l'antenne,
+   On air / Off air, texte. Enregistrés avec le Marketing antenne (poste +
+   Drive Sync). */
+function mktClaims(){ const d = mktGet(); d.claims = d.claims || []; return d.claims; }
+function mktClaimAdd(){
+  const c = { id:'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), name:'Nouveau texte ' + (mktClaims().length + 1),
+    airDate: (typeof fpaLocalTodayISO === 'function' ? fpaLocalTodayISO() : new Date().toISOString().slice(0, 10)), onAir:true, text:'',
+    createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+  mktClaims().unshift(c);
+  mktSave(); renderMarketingPage();
+  setTimeout(() => { const el = document.querySelector('[data-cname="' + c.id + '"]'); if(el){ el.focus(); el.select(); } }, 40);
+}
+function mktClaimSet(id, field, value){
+  const c = mktClaims().find(x => x.id === id); if(!c) return;
+  c[field] = field === 'onAir' ? !!value : value;
+  c.updatedAt = new Date().toISOString();
+  mktSave();
+  if(field === 'onAir') renderMarketingPage();
+}
+function mktClaimDelete(id){
+  const c = mktClaims().find(x => x.id === id); if(!c) return;
+  if(!confirm('Supprimer le module « ' + (c.name || 'Sans nom') + ' » ?')) return;
+  const d = mktGet(); d.claims = d.claims.filter(x => x.id !== id);
+  mktSave(); renderMarketingPage();
+}
+let mktClaimsShowOff = false;
+function mktClaimsHtml(){
+  const all = mktClaims();
+  const on = all.filter(c => c.onAir), off = all.filter(c => !c.onAir);
+  const list = mktClaimsShowOff ? on.concat(off) : on;
+  const card = c => `<div class="mkt-card" style="padding:12px 14px;border-left:4px solid ${c.onAir ? '#16a34a' : 'var(--border)'};${c.onAir ? '' : 'opacity:.6'}">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input data-cname="${c.id}" value="${escHtml(c.name || '')}" placeholder="Nom du module" onchange="mktClaimSet('${c.id}','name',this.value)"
+          style="flex:1;min-width:180px;font-size:13.5px;font-weight:800;color:var(--navy);padding:6px 9px;border-radius:7px;border:1.5px solid transparent;background:transparent" onfocus="this.style.borderColor='var(--border)'" onblur="this.style.borderColor='transparent'">
+        <label style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;color:var(--muted)">À l'antenne le
+          <input type="date" value="${escHtml(c.airDate || '')}" onchange="mktClaimSet('${c.id}','airDate',this.value)" style="font-size:11.5px;padding:4px 6px;border-radius:7px;border:1.5px solid var(--border)"></label>
+        <span style="display:inline-flex;border:1.5px solid var(--border);border-radius:20px;overflow:hidden">
+          <button onclick="mktClaimSet('${c.id}','onAir',true)" style="font-size:10.5px;font-weight:800;padding:4px 10px;border:none;cursor:pointer;background:${c.onAir ? '#16a34a' : 'transparent'};color:${c.onAir ? '#fff' : 'var(--muted)'}">● On air</button>
+          <button onclick="mktClaimSet('${c.id}','onAir',false)" style="font-size:10.5px;font-weight:800;padding:4px 10px;border:none;cursor:pointer;background:${!c.onAir ? 'var(--navy)' : 'transparent'};color:${!c.onAir ? '#fff' : 'var(--muted)'}">○ Off air</button>
+        </span>
+        <button class="mkt-x" onclick="mktClaimDelete('${c.id}')" title="Supprimer ce module">🗑</button>
+      </div>
+      <textarea rows="4" placeholder="Texte de l'élément d'habillage (verbatim, claim, liner…)" onchange="mktClaimSet('${c.id}','text',this.value)"
+        style="width:100%;box-sizing:border-box;margin-top:8px;resize:vertical;min-height:70px;font-size:13px;line-height:1.5;padding:8px 10px;border-radius:8px;border:1.5px solid var(--border);font-family:inherit;color:var(--text)">${escHtml(c.text || '')}</textarea>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Modifié le ${new Date(c.updatedAt || c.createdAt).toLocaleDateString('fr-FR')}${c.onAir ? '' : ' · n\'est plus diffusé'}</div>
+    </div>`;
+  return `<div style="margin-top:22px">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+      <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy)">✍️ Texte / Verbatim / Claims</div>
+      <span style="font-size:11.5px;color:var(--muted)">${on.length} à l'antenne${off.length ? ' · ' + off.length + ' off air' : ''}</span>
+      ${off.length ? `<button class="btn-ghost" onclick="mktClaimsShowOff=!mktClaimsShowOff;renderMarketingPage()" style="font-size:11px;padding:5px 11px">${mktClaimsShowOff ? 'Masquer les off air' : 'Afficher les off air (' + off.length + ')'}</button>` : ''}
+      <button onclick="mktClaimAdd()" style="margin-left:auto;font-size:11px;padding:6px 12px;border-radius:7px;background:var(--white);border:1.5px solid var(--navy);color:var(--navy);cursor:pointer;font-weight:800">+ Nouveau module</button>
+    </div>
+    ${list.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,420px),1fr));gap:10px">${list.map(card).join('')}</div>`
+      : `<div class="mkt-card" style="padding:18px;text-align:center;color:var(--muted);font-size:12.5px">${all.length ? 'Aucun module à l\'antenne — affichez les off air pour les retrouver.' : 'Aucun module pour l\'instant — « + Nouveau module » pour saisir un texte d\'habillage.'}</div>`}
+  </div>`;
+}
 function renderMarketingPage(){
   const view = document.getElementById('marketingView');
   if(!view) return;
@@ -46024,7 +46110,8 @@ function renderMarketingPage(){
       <span style="font-size:11px;color:var(--muted)">${d.montages.length} montage${d.montages.length > 1 ? 's' : ''} · Promo Musique (3 titres) ou montage 1 titre · tapez un titre ou un artiste pour être guidé</span>
     </div>
     ${d.montages.length ? `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,330px),1fr));gap:12px">${cards}</div>`
-      : `<div class="mkt-card" style="padding:26px;text-align:center;color:var(--muted);font-size:12.5px">Aucun montage pour ${escHtml(stLabel)}. <button class="btn-primary" onclick="mktAddMontage(3)" style="margin-left:8px;font-size:12px;padding:8px 14px">+ Créer un montage</button></div>`}`;
+      : `<div class="mkt-card" style="padding:26px;text-align:center;color:var(--muted);font-size:12.5px">Aucun montage pour ${escHtml(stLabel)}. <button class="btn-primary" onclick="mktAddMontage(3)" style="margin-left:8px;font-size:12px;padding:8px 14px">+ Créer un montage</button></div>`}
+    ${mktClaimsHtml()}`;
 }
 
 /* ── Export PDF : « Mise à jour du marketing antenne » ─────────────── */
