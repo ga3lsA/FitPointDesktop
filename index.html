@@ -19056,7 +19056,7 @@ const graphSeasonBandsPlugin = {
       const yearEnd = !summer && graphIsYearEndWeek(w);
       if(!summer && !yearEnd) return;
       const center = xScale.getPixelForValue(i);
-      ctx.fillStyle = summer ? 'rgba(230,140,0,0.09)' : 'rgba(90,70,200,0.10)';
+      ctx.fillStyle = summer ? 'rgba(230,30,130,0.08)' : 'rgba(230,30,130,0.16)';
       ctx.fillRect(center - bandWidth/2, chartArea.top, bandWidth, chartArea.bottom - chartArea.top);
     });
     ctx.restore();
@@ -19440,8 +19440,8 @@ function graphWeekControlsHtml(key, weeks, from, to){
     </label>
     ${isFullRange ? '' : `<button onclick="graphShowAllWeeks('${key}')" title="Réaffiche l'ensemble de l'historique archivé (par défaut, seuls les 6 derniers mois sont affichés)" style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🕐 Tout l'historique</button>`}
     <span style="font-size:10px;color:var(--muted);display:inline-flex;align-items:center;gap:8px;margin-left:4px" title="Trame de fond du graphique : semaines estivales (1er juillet → 31 août) et semaines de fêtes de fin d'année (24 décembre → 1er janvier)">
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(230,140,0,0.45);vertical-align:-1px"></span> Été</span>
-      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(90,70,200,0.5);vertical-align:-1px"></span> Fêtes</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(230,30,130,0.4);vertical-align:-1px"></span> Été</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(230,30,130,0.8);vertical-align:-1px"></span> Fêtes</span>
     </span>`;
 }
 function graphAudToggleHtml(key, checked){
