@@ -2805,6 +2805,28 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         .clab-method{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px 26px}
         .clab-method h4{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:4px}
         .clab-method p{font-size:12px;color:var(--text2);line-height:1.6}
+        .clab-editor{margin-top:10px;background:var(--white);border:1.5px solid var(--navy);border-radius:10px;padding:12px 14px}
+        .clab-editor-head{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;color:var(--text)}
+        .clab-editor-head b{color:var(--navy)}
+        .clab-x{background:transparent;border:none;font-size:18px;line-height:1;padding:0 4px;color:var(--muted)}
+        .clab-x:hover{color:var(--navy)}
+        .clab-editor-body{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-top:10px}
+        .clab-editor-body label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:700;color:var(--text2)}
+        .clab-editor-body select,.clab-editor-body input{font-size:12px;padding:7px 10px;font-weight:400}
+        .clab-editor-body .clab-grow{flex:1;min-width:200px}
+        .clab-editor-actions{display:flex;gap:8px}
+        .clab-editor-actions button{font-size:12px;padding:8px 14px}
+        .clab-excl-bar{margin-top:12px;padding-top:10px;border-top:1px dashed var(--clab-line);font-size:12px}
+        #clExclSummary{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+        .clab-excl-chip{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;background:var(--orange-bg);color:var(--orange-text);border:1px solid var(--orange-border)}
+        .clab-excl-chip.tech{background:#FDECEC;color:#A31B1B;border-color:#F3B9B9}
+        .clab-pill.tech{background:#FDECEC;color:#A31B1B}
+        .clab-excl-details{margin-top:8px}
+        .clab-excl-details>summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--navy)}
+        .clab-excl-table input[type=text]{font-size:11.5px;padding:5px 8px;width:100%;min-width:140px}
+        .clab-excl-table input[type=checkbox]{width:15px;height:15px;padding:0;accent-color:var(--navy)}
+        .clab-excl-table tr.is-excl td{background:#FFF8EE}
+        .clab-excl-table select:disabled,.clab-excl-table input:disabled{opacity:.45}
         @media (max-width:900px){
           .clab-setup-grid,.clab-charts,.clab-combo{grid-template-columns:1fr}
           .clf-head{display:none}
@@ -2858,6 +2880,15 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             </div>
             <div class="clab-timeline"><canvas id="clTimelineChart" aria-label="Audience par semaine : période analysée en bleu nuit, semaines exclues en orange"></canvas></div>
             <div id="clPeriodNote" class="clab-hint"></div>
+            <div id="clWeekEditor" class="clab-editor" style="display:none"></div>
+            <div class="clab-excl-bar">
+              <div id="clExclSummary"></div>
+              <details class="clab-excl-details">
+                <summary>Gérer les semaines écartées <span id="clExclListCount" class="clab-muted"></span></summary>
+                <p class="clab-muted" style="margin:8px 0">Les semaines cochées sont retirées de toutes les analyses de cette page (palmarès, détail, modèle combiné) mais restent dans l'historique et les autres pages. Les exclusions sont enregistrées sur Drive et partagées entre postes.</p>
+                <div id="clExclList" style="max-height:360px;overflow:auto"></div>
+              </details>
+            </div>
           </div>
         </section>
 
@@ -4625,8 +4656,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.248';
-const FPA_BUILD_ISO = '2026-11-27T17:00:00+01:00';
+const FPA_VERSION   = 'v30.249';
+const FPA_BUILD_ISO = '2026-11-27T18:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -20386,7 +20417,6 @@ function corrSetManualMatch(stKey, weekStart, weekLabel){
 
 // ── Réglages persistés ──────────────────────────────────────────────────
 const CL_SETTINGS_KEY = 'fpa_corr_settings_v2';
-const CL_EXCL_KEY     = 'fpa_corr_excluded_v1';
 let clSettings = Object.assign(
   { target:'sessions', mode:'diff', lag:0, focus:null, combo:['avgFit'], exclOps:false, group:'all', preset:'all' },
   (() => { try{ return JSON.parse(localStorage.getItem(CL_SETTINGS_KEY) || '{}'); }catch(e){ return {}; } })()
@@ -20397,14 +20427,205 @@ function clOnSetting(k, v){
   clSaveSettings();
   renderCorrPage();
 }
-function clLoadExcl(){ try{ return JSON.parse(localStorage.getItem(CL_EXCL_KEY) || '{}'); }catch(e){ return {}; } }
-function clToggleExcl(stKey, weekStart){
-  const m = clLoadExcl();
-  const set = new Set(m[stKey] || []);
-  if(set.has(weekStart)) set.delete(weekStart); else set.add(weekStart);
-  m[stKey] = Array.from(set);
-  try{ localStorage.setItem(CL_EXCL_KEY, JSON.stringify(m)); }catch(e){ /* ignoré */ }
+const CL_EXCL_KEY       = 'fpa_corr_excluded_v1';   // ancien format (tableau par station), migré
+const CL_EXCL2_KEY      = 'fpa_corr_excluded_v2';
+const CL_EXCL_DRIVE_KEY = 'corr_excluded_weeks';
+/** Motifs d'exclusion d'une semaine — deux familles : « atypique » (la
+ *  semaine est réelle mais non représentative) et « technique » (les
+ *  données elles-mêmes sont douteuses). */
+const CL_EXCL_REASONS = {
+  conges:    { label:'Congés / vacances scolaires',          kind:'atypique' },
+  ferie:     { label:'Jour férié / pont',                    kind:'atypique' },
+  activite:  { label:'Activité réduite',                     kind:'atypique' },
+  evenement: { label:'Événement exceptionnel',               kind:'atypique' },
+  mesure:    { label:'Incident de mesure d\'audience',       kind:'technique' },
+  prog:      { label:'Données de programmation incomplètes', kind:'technique' },
+  autre:     { label:'Autre',                                kind:'atypique' }
+};
+/** Store : { EUROPE2: { '2026-03-16': { excluded, reason, note, updatedAt } }, RFM:{…} }.
+ *  Une réintégration garde l'entrée avec excluded:false (et sa date) pour
+ *  que la fusion entre postes via Drive sache qu'elle est plus récente
+ *  qu'une exclusion faite ailleurs. */
+let clExclStore = null;
+function clExclLoad(){
+  if(clExclStore) return clExclStore;
+  let st = {};
+  try{ st = JSON.parse(localStorage.getItem(CL_EXCL2_KEY) || '{}') || {}; }catch(e){ st = {}; }
+  try{
+    const old = JSON.parse(localStorage.getItem(CL_EXCL_KEY) || 'null');
+    if(old){
+      Object.keys(old).forEach(stKey => (old[stKey] || []).forEach(w => {
+        st[stKey] = st[stKey] || {};
+        if(!st[stKey][w]) st[stKey][w] = { excluded:true, reason:'autre', note:'', updatedAt:new Date().toISOString() };
+      }));
+      localStorage.removeItem(CL_EXCL_KEY);
+      localStorage.setItem(CL_EXCL2_KEY, JSON.stringify(st));
+    }
+  }catch(e){ /* ignoré */ }
+  clExclStore = st;
+  return st;
+}
+function clExclMerge(a, b){
+  const out = JSON.parse(JSON.stringify(a || {}));
+  Object.keys(b || {}).forEach(stKey => {
+    out[stKey] = out[stKey] || {};
+    Object.entries(b[stKey] || {}).forEach(([w, e]) => {
+      const cur = out[stKey][w];
+      if(!cur || String(e.updatedAt || '') > String(cur.updatedAt || '')) out[stKey][w] = e;
+    });
+  });
+  return out;
+}
+let clExclDriveLoaded = false, clExclSaveTimer = null;
+async function clExclLoadFromDrive(){
+  if(clExclDriveLoaded || !DRIVE_SYNC_URL) return;
+  clExclDriveLoaded = true;
+  try{
+    const r = await driveCall('load', CL_EXCL_DRIVE_KEY);
+    if(r && r.data){
+      const before = JSON.stringify(clExclLoad());
+      clExclStore = clExclMerge(clExclLoad(), JSON.parse(r.data));
+      try{ localStorage.setItem(CL_EXCL2_KEY, JSON.stringify(clExclStore)); }catch(e){}
+      if(JSON.stringify(clExclStore) !== before && analyseSubView === 'corr') renderCorrPage();
+    }
+  }catch(e){ /* hors ligne ou clé absente : copie locale conservée */ }
+}
+function clExclSave(){
+  try{ localStorage.setItem(CL_EXCL2_KEY, JSON.stringify(clExclLoad())); }catch(e){}
+  if(!DRIVE_SYNC_URL) return;
+  clearTimeout(clExclSaveTimer);
+  clExclSaveTimer = setTimeout(async () => {
+    try{
+      try{ const r = await driveCall('load', CL_EXCL_DRIVE_KEY); if(r && r.data) clExclStore = clExclMerge(clExclLoad(), JSON.parse(r.data)); }catch(e){}
+      await driveCall('save', CL_EXCL_DRIVE_KEY, JSON.stringify(clExclLoad()));
+    }catch(e){ showToast('Semaines écartées enregistrées sur ce poste, mais pas sur Drive : ' + e.message, 'err'); }
+  }, 1500);
+}
+function clExclGet(stKey, w){
+  const e = (clExclLoad()[stKey] || {})[w];
+  return e && e.excluded ? e : null;
+}
+function clExclSet(stKey, w, excluded, reason, note){
+  const st = clExclLoad();
+  st[stKey] = st[stKey] || {};
+  st[stKey][w] = { excluded: !!excluded, reason: reason || 'autre', note: (note || '').slice(0, 200), updatedAt: new Date().toISOString() };
+  clExclSave();
+}
+/** Compatibilité : ancienne API (liste simple des semaines exclues). */
+function clLoadExcl(){
+  const st = clExclLoad(), out = {};
+  Object.keys(st).forEach(k => { out[k] = Object.keys(st[k]).filter(w => st[k][w].excluded); });
+  return out;
+}
+function clToggleExcl(stKey, weekStart){ clOpenWeekEditor(weekStart); }
+
+/* ── Éditeur d'une semaine (clic sur la frise ou sur la liste) ───────── */
+let clEditorWeek = null;
+function clOpenWeekEditor(w){ clEditorWeek = w; clRenderWeekEditor(); }
+function clCloseWeekEditor(){ clEditorWeek = null; clRenderWeekEditor(); }
+function clRenderWeekEditor(){
+  const el = document.getElementById('clWeekEditor');
+  if(!el) return;
+  const L = clLast;
+  if(!clEditorWeek || !L){ el.innerHTML = ''; el.style.display = 'none'; return; }
+  const w = clEditorWeek;
+  const row = L.rowsAll.find(r => r.weekStart === w);
+  const e = clExclGet(L.stKey, w);
+  const isOps = L.opsWeeks.includes(w);
+  const v = row ? L.target.get(row.aud) : null;
+  el.style.display = 'block';
+  el.innerHTML = `
+    <div class="clab-editor-head">
+      <div><b>Semaine du ${digitalAudienceFmtDate(w)}</b>${row ? ' · ' + escHtml(row.progLabel) : ''}${v != null ? ' · ' + escHtml(L.target.label) + ' : ' + Math.round(v).toLocaleString('fr-FR') : ''}
+        ${e ? `<span class="clab-pill ${CL_EXCL_REASONS[e.reason]?.kind === 'technique' ? 'tech' : 'warn'}">Écartée</span>` : ''}
+        ${isOps ? `<div class="clab-muted" style="margin-top:3px">Opération signalée dans le rapport : ${escHtml(((row && row.aud.contexte) || []).join(' ').slice(0,160))}</div>` : ''}
+      </div>
+      <button type="button" class="clab-x" onclick="clCloseWeekEditor()" aria-label="Fermer">×</button>
+    </div>
+    <div class="clab-editor-body">
+      <label>Motif
+        <select id="clEdReason">
+          <optgroup label="Semaine atypique">${Object.entries(CL_EXCL_REASONS).filter(([k,r]) => r.kind === 'atypique' && k !== 'autre').map(([k,r]) => `<option value="${k}" ${e && e.reason===k?'selected':''}>${escHtml(r.label)}</option>`).join('')}</optgroup>
+          <optgroup label="Problème technique">${Object.entries(CL_EXCL_REASONS).filter(([,r]) => r.kind === 'technique').map(([k,r]) => `<option value="${k}" ${e && e.reason===k?'selected':''}>${escHtml(r.label)}</option>`).join('')}</optgroup>
+          <option value="autre" ${e && e.reason==='autre'?'selected':''}>Autre</option>
+        </select>
+      </label>
+      <label class="clab-grow">Précision (facultatif)
+        <input id="clEdNote" type="text" maxlength="200" value="${escHtml(e ? e.note || '' : '')}" placeholder="ex. vacances de Noël, coupure du flux le 12">
+      </label>
+      <div class="clab-editor-actions">
+        ${e ? `<button type="button" class="btn-ghost" onclick="clEditorApply(false)">Réintégrer la semaine</button>
+               <button type="button" class="btn-primary" onclick="clEditorApply(true)">Mettre à jour</button>`
+            : `<button type="button" class="btn-primary" onclick="clEditorApply(true)">Écarter de l'analyse</button>`}
+      </div>
+    </div>`;
+}
+function clEditorApply(excluded){
+  const L = clLast; if(!L || !clEditorWeek) return;
+  const reason = document.getElementById('clEdReason')?.value || 'autre';
+  const note = document.getElementById('clEdNote')?.value || '';
+  clExclSet(L.stKey, clEditorWeek, excluded, reason, note);
+  showToast(excluded ? 'Semaine du ' + digitalAudienceFmtDate(clEditorWeek) + ' écartée des analyses de corrélation' : 'Semaine du ' + digitalAudienceFmtDate(clEditorWeek) + ' réintégrée', 'success');
+  clEditorWeek = null;
   renderCorrPage();
+}
+/** Coche/décoche depuis la liste de gestion (motif de la ligne conservé). */
+function clListToggle(w, checked){
+  const L = clLast; if(!L) return;
+  const reason = document.querySelector(`select[data-excl-reason="${w}"]`)?.value || 'autre';
+  const note = document.querySelector(`input[data-excl-note="${w}"]`)?.value || '';
+  clExclSet(L.stKey, w, checked, reason, note);
+  if(checked) showToast('Semaine écartée : précisez le motif dans la liste si besoin', 'success');
+  renderCorrPage();
+}
+function clListEdit(w){
+  const L = clLast; if(!L) return;
+  const e = clExclGet(L.stKey, w); if(!e) return;
+  const reason = document.querySelector(`select[data-excl-reason="${w}"]`)?.value || e.reason;
+  const note = document.querySelector(`input[data-excl-note="${w}"]`)?.value ?? e.note;
+  clExclSet(L.stKey, w, true, reason, note);
+  renderCorrPage();
+}
+function clExclReasonOptions(sel){
+  return Object.entries(CL_EXCL_REASONS).map(([k,r]) => `<option value="${k}" ${k===sel?'selected':''}>${escHtml(r.label)}</option>`).join('');
+}
+function clRenderExclPanel(){
+  const L = clLast;
+  const sumEl = document.getElementById('clExclSummary');
+  const listEl = document.getElementById('clExclList');
+  if(!sumEl || !listEl) return;
+  const manual = L.rowsAll.map(r => ({ r, e: clExclGet(L.stKey, r.weekStart) })).filter(o => o.e);
+  const nTech = manual.filter(o => CL_EXCL_REASONS[o.e.reason]?.kind === 'technique').length;
+  const nOps = clSettings.exclOps ? L.opsWeeks.filter(w => !clExclGet(L.stKey, w)).length : 0;
+  if(!manual.length && !nOps){
+    sumEl.innerHTML = '<span class="clab-muted">Aucune semaine écartée. Cliquez sur une barre de la frise pour en écarter une.</span>';
+  } else {
+    const parts = [];
+    if(manual.length - nTech) parts.push((manual.length - nTech) + ' atypique' + (manual.length - nTech > 1 ? 's' : ''));
+    if(nTech) parts.push(nTech + ' technique' + (nTech > 1 ? 's' : ''));
+    if(nOps) parts.push(nOps + ' d\'opération spéciale');
+    sumEl.innerHTML = `<b>${manual.length + nOps} semaine${manual.length + nOps > 1 ? 's' : ''} écartée${manual.length + nOps > 1 ? 's' : ''}</b> <span class="clab-muted">(${parts.join(', ')})</span> `
+      + manual.slice(0, 8).map(o => `<button type="button" class="clab-excl-chip ${CL_EXCL_REASONS[o.e.reason]?.kind === 'technique' ? 'tech' : ''}" onclick="clOpenWeekEditor('${o.r.weekStart}')" title="${escHtml((CL_EXCL_REASONS[o.e.reason]?.label || '') + (o.e.note ? ' — ' + o.e.note : ''))}">${digitalAudienceFmtDate(o.r.weekStart).slice(0,5)}</button>`).join('')
+      + (manual.length > 8 ? `<span class="clab-muted"> +${manual.length - 8}</span>` : '');
+  }
+  const cnt = document.getElementById('clExclListCount');
+  if(cnt) cnt.textContent = manual.length ? manual.length + ' écartée(s) sur ' + L.rowsAll.length : L.rowsAll.length + ' semaines';
+  listEl.innerHTML = `
+    <table class="clab-table clab-excl-table"><thead><tr><th style="width:34px"></th><th>Semaine</th><th>Programmation</th><th class="num">${escHtml(L.target.label)}</th><th>Motif</th><th>Précision</th></tr></thead><tbody>
+    ${L.rowsAll.slice().reverse().map(r => {
+      const e = clExclGet(L.stKey, r.weekStart);
+      const v = L.target.get(r.aud);
+      const ops = L.opsWeeks.includes(r.weekStart);
+      return `<tr class="${e ? 'is-excl' : ''}">
+        <td><input type="checkbox" ${e ? 'checked' : ''} onchange="clListToggle('${r.weekStart}', this.checked)" aria-label="Écarter la semaine du ${digitalAudienceFmtDate(r.weekStart)}"></td>
+        <td>${digitalAudienceFmtDate(r.weekStart)}${ops ? ' <span class="clab-pill man" title="' + escHtml((r.aud.contexte || []).join(' ').slice(0,160)) + '">opération</span>' : ''}</td>
+        <td>${escHtml(r.progLabel)}</td>
+        <td class="num">${v == null ? '—' : Math.round(v).toLocaleString('fr-FR')}</td>
+        <td><select data-excl-reason="${r.weekStart}" ${e ? '' : 'disabled'} onchange="clListEdit('${r.weekStart}')">${e ? '' : '<option value="" selected>—</option>'}${clExclReasonOptions(e ? e.reason : '')}</select></td>
+        <td><input type="text" data-excl-note="${r.weekStart}" maxlength="200" value="${escHtml(e ? e.note || '' : '')}" ${e ? '' : 'disabled'} placeholder="${e ? 'Précision…' : ''}" onchange="clListEdit('${r.weekStart}')"></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table>`;
 }
 
 // ── Petite bibliothèque statistique ─────────────────────────────────────
@@ -20823,6 +21044,7 @@ function renderCorrPage(){
   document.getElementById('clLagSeg').innerHTML = clSeg([0,1,2,3].map(v => ({ v, l: v === 0 ? 'Même semaine' : '+' + v + ' sem.' })), lag, v => `clOnSetting('lag',${v})`);
 
   // Exclusions
+  clExclLoadFromDrive();
   const exclSet = new Set(clLoadExcl()[stKey] || []);
   const opsWeeks = matched.filter(m => clIsOpsWeek(m.audRecord)).map(m => m.weekStart);
   const exclOpsWrap = document.getElementById('clExclOpsWrap');
@@ -20872,6 +21094,8 @@ function renderCorrPage(){
   clRenderHealth(matched.length, windowRows.length, nObs);
   clRenderTimeline();
   clRenderPeriodNote(windowRows.length, nObs);
+  clRenderExclPanel();
+  clRenderWeekEditor();
   clRenderForest();
   if(!clSettings.focus || !results.some(a => a.crit.key === clSettings.focus)){
     const best = clSortedResults().find(a => a.r != null);
@@ -20896,7 +21120,7 @@ function clRenderPeriodNote(nWindow, nObs){
   const msgs = [];
   if(clLast.mode === 'diff' && nWindow - nObs > 0) msgs.push(`${nWindow - nObs} semaine(s) de la période n'ont pas de semaine précédente exploitable (trou dans l'historique ou semaine exclue) et ne comptent pas dans les variations.`);
   if(nObs < 12) msgs.push('Moins de 12 observations : seuls des liens très forts peuvent ressortir. Élargissez la période si possible.');
-  msgs.push('Cliquez sur une barre pour exclure ou réintégrer une semaine atypique (vacances, événement, panne de mesure).');
+  msgs.push('Cliquez sur une barre pour écarter une semaine atypique ou affectée par un problème technique : orange = atypique, rouge = technique.');
   el.textContent = msgs.join(' ');
 }
 function clRenderTimeline(){
@@ -20904,7 +21128,7 @@ function clRenderTimeline(){
   const labels = L.rowsAll.map(r => digitalAudienceFmtDate(r.weekStart).slice(0,5));
   const vals = L.rowsAll.map(r => { const v = L.target.get(r.aud); return v == null ? null : v; });
   const colors = L.rowsAll.map(r => {
-    if(L.isExcluded(r.weekStart)) return 'rgba(224,123,0,.35)';
+    if(L.isExcluded(r.weekStart)){ const e = clExclGet(L.stKey, r.weekStart); return e && CL_EXCL_REASONS[e.reason]?.kind === 'technique' ? 'rgba(204,34,34,.35)' : 'rgba(224,123,0,.38)'; }
     return (r.weekStart >= L.fromW && r.weekStart <= L.toW) ? '#0B1D3A' : '#C9D2E0';
   });
   const borders = L.rowsAll.map(r => L.opsWeeks.includes(r.weekStart) ? '#00B8C8' : 'transparent');
@@ -20916,11 +21140,11 @@ function clRenderTimeline(){
       plugins: { legend: { display:false }, tooltip: { callbacks: {
         title: items => { const r = L.rowsAll[items[0].dataIndex]; return 'Semaine du ' + digitalAudienceFmtDate(r.weekStart) + ' · ' + r.progLabel; },
         label: c => L.target.label + ' : ' + (c.parsed.y == null ? '—' : Math.round(c.parsed.y).toLocaleString('fr-FR')),
-        afterLabel: c => { const r = L.rowsAll[c.dataIndex]; const lines = []; if(L.isExcluded(r.weekStart)) lines.push('Exclue de l\'analyse'); if(L.opsWeeks.includes(r.weekStart)) lines.push('Opération : ' + (r.aud.contexte || []).join(' ').slice(0,90)); return lines; }
+        afterLabel: c => { const r = L.rowsAll[c.dataIndex]; const lines = []; if(L.isExcluded(r.weekStart)){ const e = clExclGet(L.stKey, r.weekStart); lines.push('Écartée' + (e ? ' : ' + (CL_EXCL_REASONS[e.reason]?.label || '') + (e.note ? ' (' + e.note + ')' : '') : ' : opération spéciale')); } lines.push('Cliquer pour ' + (L.isExcluded(r.weekStart) ? 'modifier ou réintégrer' : 'écarter cette semaine')); if(L.opsWeeks.includes(r.weekStart)) lines.push('Opération : ' + (r.aud.contexte || []).join(' ').slice(0,90)); return lines; }
       } } },
       scales: { x: { grid:{ display:false }, ticks:{ color:'#8A9AB5', font:{ size:9 }, maxRotation:0, autoSkip:true, autoSkipPadding:6 } },
                 y: { display:false, beginAtZero:false } },
-      onClick: (evt, els) => { if(els && els.length) clToggleExcl(L.stKey, L.rowsAll[els[0].index].weekStart); }
+      onClick: (evt, els) => { if(els && els.length) clOpenWeekEditor(L.rowsAll[els[0].index].weekStart); }
     }
   });
 }
