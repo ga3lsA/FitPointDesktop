@@ -2701,55 +2701,211 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       <div id="digitalAudienceHistoryArea"></div>
     </div>
 
-    <!-- Sous-page Corrélation programmation ↔ audience digitale -->
-    <div id="analyseCorrContainer" style="display:none">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <label style="font-size:11px;font-weight:700;color:var(--text2)">Période :</label>
-        <label style="font-size:11px;color:var(--text2)">De
-          <select id="corrRangeFrom" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="corrOnRangeChange()"></select>
-        </label>
-        <label style="font-size:11px;color:var(--text2)">à
-          <select id="corrRangeTo" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="corrOnRangeChange()"></select>
-        </label>
-        <span style="font-size:11px;color:var(--muted);margin-left:auto">Jointure par numéro de semaine Yacast (approximatif si le libellé de la semaine n'est pas au format « S32 ») — corrigez la correspondance ligne par ligne si besoin.</span>
+    <!-- Sous-page Corrélation → « Leviers d'audience » (v30.248) -->
+    <div id="analyseCorrContainer" class="clab" data-m-scroll style="display:none">
+      <style>
+        .clab{--clab-line:#E4E9F2;--clab-soft:#F6F8FC;color:var(--text)}
+        .clab-head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;margin-bottom:18px}
+        .clab-title{font-family:var(--font-display);font-size:24px;font-weight:800;color:var(--navy);letter-spacing:-.02em;line-height:1.15}
+        .clab-lede{font-size:13.5px;color:var(--text2);max-width:62ch;margin-top:6px;line-height:1.55}
+        .clab-health{display:flex;gap:6px;flex-wrap:wrap}
+        .clab-stat{background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:8px 12px;min-width:108px;display:flex;flex-direction:column;gap:2px}
+        .clab-stat b{font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy);font-variant-numeric:tabular-nums}
+        .clab-stat span{font-size:10.5px;color:var(--muted);font-weight:600}
+        .clab-stat.good b{color:var(--green-text)} .clab-stat.bad b{color:var(--orange-text)}
+        .clab-panel{background:var(--white);border:1.5px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+        .clab-setup{padding:0;overflow:hidden}
+        .clab-setup-grid{display:grid;grid-template-columns:minmax(190px,1fr) minmax(280px,1.6fr) minmax(260px,1.3fr);gap:18px;padding:16px 20px;border-bottom:1.5px solid var(--clab-line)}
+        .clab-field>label,.clab-period-label{display:block;font-size:11.5px;font-weight:700;color:var(--navy);margin-bottom:7px}
+        .clab-field select{width:100%;font-size:12.5px;padding:7px 10px}
+        .clab-hint{font-size:11px;color:var(--muted);margin-top:7px;line-height:1.5}
+        .clab-seg{display:inline-flex;flex-wrap:wrap;gap:3px;background:var(--clab-soft);border:1.5px solid var(--clab-line);border-radius:9px;padding:3px}
+        .clab-seg-btn{font-size:11.5px;font-weight:700;padding:6px 11px;border-radius:6px;background:transparent;color:var(--text2);border:none}
+        .clab-seg-btn:hover{color:var(--navy);background:var(--white)}
+        .clab-seg-btn.on{background:var(--navy);color:#fff}
+        .clab-seg-btn.off{opacity:.4;cursor:not-allowed}
+        .clab-seg-btn:focus-visible,.clf-row:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+        .clab-period{padding:14px 20px 16px;background:var(--clab-soft)}
+        .clab-period-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+        .clab-period-bar .clab-period-label{margin:0}
+        .clab-period-bar>label{font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:5px}
+        .clab-period-bar select{font-size:11.5px;padding:5px 8px}
+        .clab-check{font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer}
+        .clab-check input{padding:0;width:14px;height:14px;accent-color:var(--navy)}
+        .clab-timeline{position:relative;height:96px;background:var(--white);border:1.5px solid var(--clab-line);border-radius:10px;padding:6px 8px 2px;cursor:pointer}
+        .clab-summary{margin-bottom:14px}
+        .clab-h3{font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy);line-height:1.3;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .clab-summary p{font-size:13px;color:var(--text2);line-height:1.6;max-width:78ch;margin-top:4px}
+        .clab-muted{font-size:11.5px;color:var(--muted);line-height:1.5}
+        .clab-chips{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+        .clf-head,.clf-row{display:grid;grid-template-columns:minmax(150px,1.3fr) minmax(200px,2.4fr) 54px 54px 168px;align-items:center;gap:12px}
+        .clf-head{font-size:10.5px;font-weight:700;color:var(--muted);padding:0 10px 6px;border-bottom:1.5px solid var(--clab-line)}
+        .clf-axis{display:flex;justify-content:space-between}
+        .clf-axis i{font-style:normal;font-variant-numeric:tabular-nums}
+        .clf-row{width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid var(--clab-line);border-radius:0;padding:8px 10px;font-weight:400;color:var(--text)}
+        .clf-row:hover{background:var(--clab-soft)}
+        .clf-row.sel{background:var(--cyan-light);box-shadow:inset 3px 0 0 var(--cyan)}
+        .clf-name{font-size:12.5px;font-weight:700;color:var(--navy);display:flex;flex-direction:column;line-height:1.25}
+        .clf-name small{font-size:10px;font-weight:600;color:var(--muted)}
+        .clf-plot{position:relative;height:22px}
+        .clf-zero{position:absolute;left:50%;top:0;bottom:0;width:1px;background:#B7C2D4}
+        .clf-noise{position:absolute;top:4px;bottom:4px;background:repeating-linear-gradient(135deg,#EEF1F6 0 4px,#E3E8F1 4px 8px);border-radius:3px}
+        .clf-ci{position:absolute;top:50%;height:3px;margin-top:-1.5px;border-radius:2px;opacity:.55}
+        .clf-dot{position:absolute;top:50%;width:11px;height:11px;margin:-5.5px 0 0 -5.5px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(11,29,58,.25)}
+        .clf-r,.clf-q{font-size:12px;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+        .clf-q{font-weight:500;color:var(--text2)}
+        .clf-verdict{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;justify-self:start}
+        .clv-robust{background:var(--navy);color:#fff}
+        .clv-lead{background:var(--blue-bg);color:var(--blue-text);border:1px solid var(--blue-border)}
+        .clv-none{background:transparent;color:var(--muted);border:1px solid var(--clab-line)}
+        .clv-insuff{background:transparent;color:#B4BFD0;border:1px dashed var(--clab-line)}
+        .clf-legend{display:flex;flex-wrap:wrap;gap:16px;font-size:10.5px;color:var(--muted);margin-top:10px;padding:0 10px}
+        .clf-legend span{display:inline-flex;align-items:center;gap:6px}
+        .clf-legend-noise{display:inline-block;width:22px;height:10px;background:repeating-linear-gradient(135deg,#EEF1F6 0 4px,#E3E8F1 4px 8px);border-radius:2px}
+        .clf-legend-ci{display:inline-block;width:22px;height:3px;background:var(--navy);opacity:.5;border-radius:2px}
+        .clf-legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%}
+        .clab-effect{font-size:13.5px;color:var(--text);line-height:1.6;max-width:80ch;margin-top:6px}
+        .clab-pill{display:inline-block;font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap}
+        .clab-pill.ok{background:var(--green-bg);color:var(--green-text)} .clab-pill.warn{background:var(--orange-bg);color:var(--orange-text)}
+        .clab-pill.man{background:var(--cyan-light);color:var(--navy)} .clab-pill.none{background:var(--gray-bg);color:var(--muted)}
+        .clab-chips-stats{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 16px}
+        .clab-chip{border:1.5px solid var(--clab-line);border-radius:9px;padding:6px 10px;display:flex;flex-direction:column;gap:1px;cursor:help}
+        .clab-chip span{font-size:10px;color:var(--muted);font-weight:600}
+        .clab-chip b{font-size:12.5px;color:var(--navy);font-variant-numeric:tabular-nums}
+        .clab-charts{display:grid;grid-template-columns:1.25fr 1fr;gap:14px;margin-bottom:14px}
+        .clab figure{margin:0}
+        .clab figcaption{font-size:11.5px;font-weight:700;color:var(--navy);margin-bottom:6px}
+        .clab figcaption small{font-weight:500;color:var(--muted);margin-left:6px}
+        .clab-chart{position:relative;height:270px;border:1.5px solid var(--clab-line);border-radius:10px;padding:8px}
+        .clab-chart-wide{height:220px}
+        #clLagNote{font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5}
+        .clab-combo{display:grid;grid-template-columns:minmax(230px,1fr) 2fr;gap:20px;margin-top:12px}
+        #corrCombinedCriteria{max-height:420px;overflow:auto;border:1.5px solid var(--clab-line);border-radius:10px;padding:10px 12px}
+        .clab-combo-group{margin-bottom:10px}
+        .clab-combo-gname{font-size:10.5px;font-weight:700;color:var(--muted);margin-bottom:4px}
+        .clab-combo-group .clab-check{padding:2px 0}
+        .clab-model-kpis{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+        .clab-model-verdict{font-size:12.5px;color:var(--text);line-height:1.55;margin-bottom:12px;max-width:72ch}
+        .clab-table{width:100%;border-collapse:collapse;font-size:12px}
+        .clab-table th{font-size:10.5px;font-weight:700;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:1.5px solid var(--clab-line)}
+        .clab-table td{padding:7px 8px;border-bottom:1px solid var(--clab-line)}
+        .clab-table .num{text-align:right;font-variant-numeric:tabular-nums}
+        .clab-table td.warn{color:var(--orange-text);font-weight:700}
+        .clab-table select{font-size:11.5px;padding:5px 8px}
+        .clab-beta{position:relative;display:block;height:8px;background:var(--clab-soft);border-radius:4px;min-width:120px}
+        .clab-beta-mid{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#B7C2D4}
+        .clab-beta-bar{position:absolute;top:0;bottom:0;border-radius:4px}
+        .clab-details{padding:0}
+        .clab-details>summary{cursor:pointer;list-style:none;padding:14px 20px;font-size:13px;font-weight:700;color:var(--navy);display:flex;gap:8px;align-items:center}
+        .clab-details>summary::-webkit-details-marker{display:none}
+        .clab-details>summary::before{content:'';width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s}
+        .clab-details[open]>summary::before{transform:rotate(45deg)}
+        .clab-details>summary span{font-weight:500;color:var(--muted);font-size:11.5px}
+        .clab-details-body{padding:0 20px 18px}
+        .clab-method{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px 26px}
+        .clab-method h4{font-size:12.5px;font-weight:800;color:var(--navy);margin-bottom:4px}
+        .clab-method p{font-size:12px;color:var(--text2);line-height:1.6}
+        @media (max-width:900px){
+          .clab-setup-grid,.clab-charts,.clab-combo{grid-template-columns:1fr}
+          .clf-head{display:none}
+          .clf-row{grid-template-columns:minmax(0,1fr) auto;row-gap:6px}
+          .clf-name{grid-column:1;grid-row:1}
+          .clf-r{grid-column:2;grid-row:1}
+          .clf-plot{grid-column:1 / -1;grid-row:2}
+          .clf-q{display:none}
+          .clf-verdict{grid-column:1 / -1;grid-row:3}
+        }
+        @media (prefers-reduced-motion:reduce){ .clab *{transition:none!important} }
+      </style>
+
+      <div class="clab-head">
+        <div>
+          <h2 class="clab-title">Corrélation et leviers d'audience · <span id="clStationName"></span></h2>
+          <p class="clab-lede">Quels critères de programmation, de recherche ou de FPA évoluent en même temps que l'audience digitale, et lesquels se distinguent réellement du hasard ?</p>
+        </div>
+        <div id="clHealth" class="clab-health"></div>
       </div>
 
       <div id="corrEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center">
-        Pas assez de données pour corréler : il faut au moins une semaine de programmation archivée <em>et</em> une semaine d'audience digitale importée pour cette station.
+        Pour lancer l'analyse, il faut au moins une semaine de programmation archivée <em>et</em> une semaine d'audience digitale importée pour cette station.
       </div>
 
       <div id="corrContent" style="display:none">
-        <div style="font-size:12px;font-weight:800;color:var(--navy);margin:6px 0 10px">🔗 Correspondance des semaines</div>
-        <div id="corrMatchTableArea" style="margin-bottom:26px"></div>
-
-        <div style="font-size:12px;font-weight:800;color:var(--navy);margin:6px 0 10px">📈 Matrice de corrélation (coefficient de Pearson)</div>
-        <div id="corrMatrixArea" style="margin-bottom:26px"></div>
-
-        <div style="font-size:12px;font-weight:800;color:var(--navy);margin:6px 0 6px">🔢 Indice combiné — plusieurs critères à la fois</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">La matrice ci-dessus ne teste qu'un critère à la fois. Cochez-en plusieurs pour voir leur pouvoir prédictif <strong>combiné</strong> sur l'audience choisie (régression linéaire multiple, coefficients standardisés) — utile si aucun critère seul ne ressort, mais qu'une combinaison pourrait expliquer davantage.</div>
-        <div style="display:flex;gap:20px;flex-wrap:wrap;margin-bottom:14px;padding:14px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:10px">
-          <div style="flex:1;min-width:220px">
-            <div style="font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:8px">Critères programmation (1 ou plus)</div>
-            <div id="corrCombinedCriteria" style="display:flex;flex-direction:column;gap:5px"></div>
+        <section class="clab-panel clab-setup">
+          <div class="clab-setup-grid">
+            <div class="clab-field">
+              <label for="clTarget">Audience à expliquer</label>
+              <select id="clTarget" onchange="clOnSetting('target',this.value)"></select>
+            </div>
+            <div class="clab-field">
+              <label>Mesure</label>
+              <div class="clab-seg" id="clModeSeg"></div>
+              <div class="clab-hint" id="clModeHint"></div>
+            </div>
+            <div class="clab-field">
+              <label>Délai entre programmation et audience</label>
+              <div class="clab-seg" id="clLagSeg"></div>
+              <div class="clab-hint">Un effet de la programmation peut mettre une à plusieurs semaines à se voir sur l'audience.</div>
+            </div>
           </div>
-          <div style="flex:1;min-width:220px">
-            <div style="font-size:10.5px;font-weight:700;color:var(--text2);text-transform:uppercase;margin-bottom:8px">Audience à expliquer</div>
-            <select id="corrCombinedTarget" style="font-size:11.5px;padding:6px 9px;border-radius:6px;width:100%;margin-bottom:12px" onchange="renderCorrCombined()"></select>
-            <div id="corrCombinedResult"></div>
+          <div class="clab-period">
+            <div class="clab-period-bar">
+              <span class="clab-period-label">Période analysée</span>
+              <div class="clab-seg" id="clPresetSeg"></div>
+              <label>Du <select id="corrRangeFrom" onchange="corrOnRangeChange()"></select></label>
+              <label>au <select id="corrRangeTo" onchange="corrOnRangeChange()"></select></label>
+              <label class="clab-check" id="clExclOpsWrap" style="display:none"><input type="checkbox" id="clExclOps" onchange="clOnSetting('exclOps',this.checked)"> Exclure les semaines d'opération spéciale <span id="clExclOpsCount" class="clab-muted"></span></label>
+            </div>
+            <div class="clab-timeline"><canvas id="clTimelineChart" aria-label="Audience par semaine : période analysée en bleu nuit, semaines exclues en orange"></canvas></div>
+            <div id="clPeriodNote" class="clab-hint"></div>
           </div>
-        </div>
+        </section>
 
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-          <div style="font-size:12px;font-weight:800;color:var(--navy)">🔬 Nuage de points</div>
-          <label style="font-size:11px;color:var(--text2)">Programmation (X) :
-            <select id="corrScatterX" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="renderCorrScatter()"></select>
-          </label>
-          <label style="font-size:11px;color:var(--text2)">Audience (Y) :
-            <select id="corrScatterY" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="renderCorrScatter()"></select>
-          </label>
-        </div>
-        <div id="corrScatterMeta" style="font-size:11px;color:var(--text2);margin-bottom:8px"></div>
-        <div style="position:relative;height:340px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;padding:10px"><canvas id="corrScatterChart"></canvas></div>
+        <section class="clab-panel">
+          <div id="clSummary"></div>
+          <div id="clGroupChips" class="clab-chips"></div>
+          <div id="clForest"></div>
+        </section>
+
+        <section class="clab-panel" id="clDetailPanel">
+          <div id="clDetailHead"></div>
+          <div class="clab-charts">
+            <figure><figcaption>Nuage de points <small id="clScatterCap"></small></figcaption><div class="clab-chart"><canvas id="clScatterChart"></canvas></div></figure>
+            <figure><figcaption>Selon le délai <small>corrélation pour chaque décalage</small></figcaption><div class="clab-chart"><canvas id="clLagChart"></canvas></div><div id="clLagNote"></div></figure>
+          </div>
+          <figure><figcaption>Évolution comparée <small>les deux séries ramenées sur la même échelle</small></figcaption><div class="clab-chart clab-chart-wide"><canvas id="clSeriesChart"></canvas></div></figure>
+        </section>
+
+        <section class="clab-panel">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap">
+            <div>
+              <h3 class="clab-h3">Combiner plusieurs critères</h3>
+              <p class="clab-muted" style="max-width:72ch;margin-top:4px">Régression multiple sur les mêmes réglages. Le Q² mesure la capacité à prévoir des semaines que le modèle n'a pas vues : c'est lui qui dit si une combinaison a une valeur réelle.</p>
+            </div>
+            <button type="button" class="btn-primary" style="font-size:12px;padding:8px 14px" onclick="clAutoSelect()">Trouver la meilleure combinaison</button>
+          </div>
+          <div class="clab-combo">
+            <div id="corrCombinedCriteria"></div>
+            <div id="corrCombinedResult" style="min-width:0;overflow-x:auto"></div>
+          </div>
+        </section>
+
+        <details class="clab-panel clab-details">
+          <summary>Méthode et précautions de lecture</summary>
+          <div class="clab-details-body clab-method">
+            <div><h4>Pourquoi des variations plutôt que des niveaux</h4><p>Deux séries qui progressent toutes les deux dans le temps (montée du digital, saison) affichent une forte corrélation sans aucun lien entre elles. Comparer la variation d'une semaine sur l'autre, l'évolution sur un an publiée dans le rapport ou les écarts à la tendance élimine ce piège.</p></div>
+            <div><h4>Significativité et effectif effectif</h4><p>Chaque coefficient est testé (Student) et encadré par un intervalle de confiance à 95 % (Fisher). Des semaines consécutives se ressemblent : le nombre d'observations est corrigé de cette autocorrélation (Bartlett) avant le test.</p></div>
+            <div><h4>Tests multiples</h4><p>Tester des dizaines de critères à la fois fait apparaître environ 5 % de faux positifs. La q-value (Benjamini-Hochberg) corrige ce biais. « Lien robuste » exige q ≤ 0,10, le même signe en Spearman et sur les deux moitiés de la période.</p></div>
+            <div><h4>Décalage et sens du lien</h4><p>Le graphique « Selon le délai » teste aussi les décalages négatifs. Si le lien est plus fort quand l'audience bouge avant la programmation, c'est probablement la programmation qui réagit, ou une cause commune. Le test de Granger vérifie si le critère précède l'audience.</p></div>
+            <div><h4>Modèle combiné</h4><p>Le R² augmente toujours quand on ajoute un critère. Le Q² (validation croisée « leave-one-out ») ne récompense que le pouvoir de prévision réel. Comptez au moins 8 observations par critère ; un VIF supérieur à 5 signale des critères redondants.</p></div>
+            <div><h4>Corrélation n'est pas causalité</h4><p>L'actualité, les opérations marketing, les programmes parlés, la distribution sur les applications et les enceintes connectées pèsent aussi sur l'audience. Pour prouver qu'un levier agit, le plus solide est l'expérimentation planifiée : faire varier volontairement ce seul critère sur des blocs de semaines, en gardant le reste stable, puis comparer.</p></div>
+          </div>
+        </details>
+
+        <details class="clab-panel clab-details">
+          <summary>Appariement des semaines <span id="clMatchSummary"></span></summary>
+          <div class="clab-details-body" style="overflow-x:auto"><div id="corrMatchTableArea"></div></div>
+        </details>
       </div>
     </div>
 
@@ -4469,8 +4625,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.247';
-const FPA_BUILD_ISO = '2026-11-27T12:00:00+01:00';
+const FPA_VERSION   = 'v30.248';
+const FPA_BUILD_ISO = '2026-11-27T17:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -20079,19 +20235,44 @@ function renderGraphPage(){
 // d'ambiguïté entre plusieurs années). Toute correspondance reste ensuite
 // modifiable manuellement ligne par ligne (persistée dans un mapping local),
 // car ce rapprochement automatique est une heuristique, pas une garantie.
+// ══════════════════════════════════════════════════════════════════════════
+// LEVIERS D'AUDIENCE (ex-« Corrélation ») — v30.248
+// ══════════════════════════════════════════════════════════════════════════
+// Objectif : repérer les critères de programmation / recherche / FPA dont
+// les variations accompagnent celles de l'audience digitale, en séparant
+// les vrais signaux du hasard. Refonte méthodologique par rapport à la
+// version précédente (Pearson sur niveaux bruts, sans test) :
+//   1. On ne corrèle plus des NIVEAUX bruts (deux séries qui montent toutes
+//      les deux dans le temps se corrèlent sans aucun lien — corrélation
+//      fallacieuse) mais, par défaut, des VARIATIONS d'une semaine sur
+//      l'autre (log-différences pour l'audience, en %), ou l'évolution sur
+//      1 an publiée dans le rapport (désaisonnalisée), ou des écarts à la
+//      tendance linéaire.
+//   2. Chaque coefficient est accompagné d'un test (Student), d'un
+//      intervalle de confiance à 95 % (Fisher) et d'un effectif EFFECTIF
+//      corrigé de l'autocorrélation (Bartlett) — des semaines consécutives
+//      ne sont pas des observations indépendantes.
+//   3. Des dizaines de critères testés en même temps = des faux positifs
+//      garantis : correction de Benjamini-Hochberg (q-values, FDR).
+//   4. Robustesse : Spearman (insensible aux valeurs extrêmes) et stabilité
+//      sur les deux moitiés de la période.
+//   5. Décalages (0 à 3 semaines) + corrélogramme incluant les décalages
+//      négatifs (audience AVANT programmation = causalité inverse probable)
+//      + test de précédence de Granger.
+//   6. Modèle combiné : R² ajusté et Q² en validation croisée « leave-one-
+//      out » (seul indicateur honnête du pouvoir prédictif sur peu de
+//      semaines), VIF pour la redondance entre critères, sélection pas à pas.
+// La jointure programmation ↔ audience (corrBuildMatches) est inchangée.
 let corrStation = 'EUROPE2';
-/** Filtre de période du calcul de corrélation, par station (pour ne pas se
- *  marcher dessus en changeant de station) — { from, to } en weekStart ISO
- *  de la semaine d'audience, ou null pour "depuis le début"/"jusqu'à la fin".
- *  N'affecte QUE la matrice de corrélation et le nuage de points : le
- *  tableau de correspondance au-dessus continue d'afficher TOUTES les
- *  semaines (y compris hors période), pour rester utilisable comme outil de
- *  correction de l'appariement même quand on regarde une fenêtre restreinte. */
+/** Période d'analyse par station — { from, to } en weekStart ISO de la
+ *  semaine d'audience, null = bornes de l'historique. */
 let corrRangeFilter = { EUROPE2: {from:null, to:null}, RFM: {from:null, to:null} };
 function corrOnRangeChange(){
   const from = document.getElementById('corrRangeFrom')?.value || null;
   const to   = document.getElementById('corrRangeTo')?.value || null;
   corrRangeFilter[corrStation] = { from, to };
+  clSettings.preset = 'custom';
+  clSaveSettings();
   renderCorrPage();
 }
 const CORR_MANUAL_MAP_KEY = 'fpa_corr_manual_map_v1';
@@ -20202,396 +20383,839 @@ function corrSetManualMatch(stKey, weekStart, weekLabel){
   renderCorrPage();
 }
 
-const CORR_PROG_METRICS = [
-  { key:'totalDiffs', label:'Nb Diffs (total)' },
-  { key:'avgFit',     label:'Fit Score (moy. pondérée)' },
-  { key:'avgSpu',     label:'SPU (moy. pondérée)' },
-  { key:'avgPot',     label:'Pot Score (moy. pondérée)' },
-  { key:'avgFam',     label:'Fam Score (moy. pondérée)' },
-  // expectNegative:true — à haute dose, le Burn est censé FAIRE BAISSER
-  // l'audience : un r négatif est donc le résultat attendu/confirmant
-  // (vert), pas un signal négatif à corriger. Voir corrColorForR.
-  { key:'avgBurnCO',  label:'Burn Call Out (moy. pondérée)', expectNegative:true },
-  { key:'avgBurnOMT', label:'Burn OMT (moy. pondérée)', expectNegative:true },
-];
-const CORR_AUD_METRICS = [
-  { key:'sessions',        label:'Sessions >30s' },
-  { key:'uniques',         label:'Visiteurs uniques' },
-  { key:'audienceMoyenne', label:'Audience moy. (5h-24h)' },
-  { key:'dureeSec',        label:'Durée moy. (sec)' },
-];
 
-/** expectNegative=true pour les critères où une corrélation NÉGATIVE avec
- *  l'audience est le résultat attendu/confirmant plutôt qu'un signal
- *  inquiétant — c'est le cas du Burn (Call Out et OMT) : à haute dose, le
- *  Burn est censé faire baisser l'audience, donc un r négatif valide le
- *  modèle (vert) et un r positif est le signal contre-intuitif à
- *  investiguer (rouge) — l'inverse de tous les autres critères
- *  (Fit Score, SPU, Pot/Fam Score, Nb Diffs), où l'on espère au contraire
- *  une corrélation positive avec l'audience. */
-function corrColorForR(r, expectNegative){
-  if(r === null) return 'var(--muted)';
-  const signed = expectNegative ? -r : r;
-  const a = Math.abs(signed);
-  if(a >= 0.6) return signed > 0 ? '#0DA76B' : '#CC2222';
-  if(a >= 0.3) return signed > 0 ? '#5B9E3F' : '#E07B00';
-  return 'var(--muted)';
+// ── Réglages persistés ──────────────────────────────────────────────────
+const CL_SETTINGS_KEY = 'fpa_corr_settings_v2';
+const CL_EXCL_KEY     = 'fpa_corr_excluded_v1';
+let clSettings = Object.assign(
+  { target:'sessions', mode:'diff', lag:0, focus:null, combo:['avgFit'], exclOps:false, group:'all', preset:'all' },
+  (() => { try{ return JSON.parse(localStorage.getItem(CL_SETTINGS_KEY) || '{}'); }catch(e){ return {}; } })()
+);
+function clSaveSettings(){ try{ localStorage.setItem(CL_SETTINGS_KEY, JSON.stringify(clSettings)); }catch(e){ /* ignoré */ } }
+function clOnSetting(k, v){
+  clSettings[k] = (k === 'lag') ? parseInt(v, 10) : v;
+  clSaveSettings();
+  renderCorrPage();
 }
-/** Même échelle de couleur que corrColorForR, mais toujours en hexadécimal
- *  littéral — corrColorForR renvoie parfois 'var(--muted)', une variable CSS
- *  que Chart.js ne sait pas résoudre puisqu'il dessine sur un <canvas>, pas
- *  dans le DOM. */
-function corrColorForRCanvas(r, expectNegative){
-  if(r === null) return '#8A94A6';
-  const signed = expectNegative ? -r : r;
-  const a = Math.abs(signed);
-  if(a >= 0.6) return signed > 0 ? '#0DA76B' : '#CC2222';
-  if(a >= 0.3) return signed > 0 ? '#5B9E3F' : '#E07B00';
-  return '#8A94A6';
+function clLoadExcl(){ try{ return JSON.parse(localStorage.getItem(CL_EXCL_KEY) || '{}'); }catch(e){ return {}; } }
+function clToggleExcl(stKey, weekStart){
+  const m = clLoadExcl();
+  const set = new Set(m[stKey] || []);
+  if(set.has(weekStart)) set.delete(weekStart); else set.add(weekStart);
+  m[stKey] = Array.from(set);
+  try{ localStorage.setItem(CL_EXCL_KEY, JSON.stringify(m)); }catch(e){ /* ignoré */ }
+  renderCorrPage();
 }
 
-/** Résout un système linéaire A·x = b par élimination de Gauss avec pivot
- *  partiel — matrices de petite taille ici (au plus 7 critères sélection-
- *  nables). Retourne null si le système est singulier (critères combinés
- *  trop redondants entre eux pour être distingués statistiquement). */
-function solveLinearSystem(A, b){
-  const n = A.length;
-  const M = A.map((row, i) => [...row, b[i]]);
-  for(let col = 0; col < n; col++){
-    let pivotRow = col;
-    for(let r = col+1; r < n; r++){ if(Math.abs(M[r][col]) > Math.abs(M[pivotRow][col])) pivotRow = r; }
-    if(Math.abs(M[pivotRow][col]) < 1e-9) return null;
-    [M[col], M[pivotRow]] = [M[pivotRow], M[col]];
-    for(let r = 0; r < n; r++){
-      if(r === col) continue;
-      const factor = M[r][col] / M[col][col];
-      for(let c = col; c <= n; c++) M[r][c] -= factor * M[col][c];
-    }
-  }
-  return M.map((row, i) => row[n] / row[i]);
+// ── Petite bibliothèque statistique ─────────────────────────────────────
+function clMean(a){ return a.reduce((s,v)=>s+v,0) / a.length; }
+function clSd(a){ if(a.length < 2) return 0; const m = clMean(a); return Math.sqrt(a.reduce((s,v)=>s+(v-m)*(v-m),0) / (a.length-1)); }
+function clPearsonArr(x, y){
+  const n = x.length; if(n < 3) return null;
+  const mx = clMean(x), my = clMean(y);
+  let num = 0, dx2 = 0, dy2 = 0;
+  for(let i=0;i<n;i++){ const dx=x[i]-mx, dy=y[i]-my; num+=dx*dy; dx2+=dx*dx; dy2+=dy*dy; }
+  const den = Math.sqrt(dx2*dy2);
+  return den > 1e-12 ? num/den : null;
 }
-
-/** Régression linéaire multiple STANDARDISÉE : répond à "un critère seul ne
- *  ressort pas, mais une combinaison de plusieurs pourrait-elle expliquer
- *  l'audience ?" — question que la matrice de Pearson ci-dessus, purement
- *  univariée (un critère à la fois), ne peut pas capturer par construction
- *  (deux critères peuvent être individuellement peu corrélés à l'audience
- *  tout en étant, combinés, de bons prédicteurs — ou l'inverse, sembler
- *  corrélés seuls mais redondants une fois combinés). Chaque X et Y sont
- *  centrés-réduits (z-score) avant résolution : l'ordonnée à l'origine
- *  devient nulle, et chaque coefficient obtenu est directement un bêta
- *  standardisé, comparable entre critères d'échelles très différentes
- *  (Nb Diffs en centaines vs Fit Score 0-100). */
-function corrMultiRegression(rows, xKeys, yKey){
-  const pts = rows.filter(r => xKeys.every(k => r.prog[k] != null && !isNaN(r.prog[k])) && r.aud[yKey] != null && !isNaN(r.aud[yKey]));
-  const n = pts.length, k = xKeys.length;
-  if(n < k + 3) return { error: 'insufficient', n, k };
-
-  const zscore = arr => {
-    const m = arr.reduce((s,v)=>s+v,0) / arr.length;
-    const sd = Math.sqrt(arr.reduce((s,v)=>s+(v-m)*(v-m),0) / arr.length);
-    return { m, sd, z: sd > 0 ? arr.map(v => (v-m)/sd) : arr.map(() => 0) };
-  };
-
-  const yZ = zscore(pts.map(p => p.aud[yKey]));
-  const xZs = xKeys.map(key => zscore(pts.map(p => p.prog[key])));
-
-  // Sur données standardisées : X'X = matrice de corrélation entre critères
-  // (diag=1), X'y = corrélation de chaque critère avec l'audience.
-  const XtX = xZs.map(xi => xZs.map(xj => {
-    let s = 0; for(let t=0;t<n;t++) s += xi.z[t]*xj.z[t];
-    return s / n;
-  }));
-  const Xty = xZs.map(xi => {
-    let s = 0; for(let t=0;t<n;t++) s += xi.z[t]*yZ.z[t];
-    return s / n;
-  });
-
-  const beta = solveLinearSystem(XtX, Xty);
-  if(!beta) return { error: 'singular', n, k };
-
-  let ssRes = 0;
-  for(let t=0;t<n;t++){
-    let pred = 0;
-    for(let i=0;i<k;i++) pred += beta[i]*xZs[i].z[t];
-    const err = yZ.z[t] - pred;
-    ssRes += err*err;
-  }
-  const r2 = Math.max(0, 1 - (ssRes/n)); // SStot=1 par construction du z-score
-  return { error:null, n, k, r2, coefs: xKeys.map((key,i) => ({ key, beta: beta[i] })) };
-}
-
-let corrCombinedSelectedCriteria = new Set(['avgFit']);
-function corrOnCombinedCriteriaChange(){
-  corrCombinedSelectedCriteria = new Set(Array.from(document.querySelectorAll('#corrCombinedCriteria input:checked')).map(el => el.value));
-  renderCorrCombined();
-}
-/** Affiche le résultat de la régression multiple pour la sélection de
- *  critères en cours — checkboxes construites une seule fois (la liste de
- *  critères ne change pas selon la station), résultat recalculé à chaque
- *  changement de sélection ou d'audience cible. */
-function renderCorrCombined(){
-  const checkArea = document.getElementById('corrCombinedCriteria');
-  const targetSel = document.getElementById('corrCombinedTarget');
-  if(!checkArea || !targetSel) return;
-  if(!checkArea.dataset.filled){
-    checkArea.innerHTML = CORR_PROG_METRICS.map(p => `
-      <label style="font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:6px;cursor:pointer">
-        <input type="checkbox" value="${p.key}" ${corrCombinedSelectedCriteria.has(p.key)?'checked':''} onchange="corrOnCombinedCriteriaChange()">
-        ${escHtml(p.label)}
-      </label>`).join('');
-    checkArea.dataset.filled = '1';
-  }
-  if(!targetSel.dataset.filled){
-    targetSel.innerHTML = CORR_AUD_METRICS.map(a => `<option value="${a.key}">${escHtml(a.label)}</option>`).join('');
-    targetSel.dataset.filled = '1';
-  }
-
-  const resultArea = document.getElementById('corrCombinedResult');
-  if(!resultArea) return;
-  const xKeys = Array.from(corrCombinedSelectedCriteria);
-  if(!xKeys.length){
-    resultArea.innerHTML = '<div style="font-size:11.5px;color:var(--muted)">Cochez au moins un critère à gauche.</div>';
-    return;
-  }
-  const yKey = targetSel.value || CORR_AUD_METRICS[0].key;
-  const rows = window._corrMatchedRows || [];
-  const res = corrMultiRegression(rows, xKeys, yKey);
-
-  if(res.error === 'insufficient'){
-    resultArea.innerHTML = `<div style="font-size:11.5px;color:var(--muted)">⚠ Pas assez de semaines appariées (${res.n}) pour ${res.k} critère(s) combiné(s) — il en faut au moins ${res.k+3}. Décochez un critère, ou élargissez la période / continuez d'archiver.</div>`;
-    return;
-  }
-  if(res.error === 'singular'){
-    resultArea.innerHTML = `<div style="font-size:11.5px;color:var(--muted)">⚠ Ces critères sont trop redondants entre eux pour être séparés statistiquement (ex. Pot Score et Fam Score évoluent presque toujours ensemble) — décochez-en un.</div>`;
-    return;
-  }
-  const r2pct = Math.round(res.r2 * 100);
-  const barsHtml = res.coefs.map(c => {
-    const metric = CORR_PROG_METRICS.find(p => p.key === c.key);
-    const label = metric?.label || c.key;
-    const pct = Math.min(100, Math.abs(c.beta) * 50);
-    // Même logique que corrColorForR : pour un critère négatif (Burn), un
-    // bêta négatif est le résultat attendu/confirmant (vert), pas un signal
-    // à corriger (rouge) — voir la définition de CORR_PROG_METRICS.
-    const signedBeta = metric?.expectNegative ? -c.beta : c.beta;
-    const color = signedBeta >= 0 ? '#0DA76B' : '#CC2222';
-    return `<div style="margin-bottom:7px">
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin-bottom:2px"><span>${escHtml(label)}${metric?.expectNegative ? ' <span style="color:var(--muted);font-size:9.5px">(critère négatif)</span>' : ''}</span><span style="font-weight:700;color:${color}">${c.beta>=0?'+':''}${c.beta.toFixed(2)}</span></div>
-      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width .6s ease"></div></div>
-    </div>`;
-  }).join('');
-  resultArea.innerHTML = `
-    <div style="font-size:13px;margin-bottom:10px">Ces critères expliquent ensemble <strong style="color:var(--navy);font-size:15px">${r2pct}%</strong> de la variation de cette audience (R², sur ${res.n} semaine(s) appariée(s)).</div>
-    ${barsHtml}
-    <div style="font-size:10.5px;color:var(--muted);margin-top:8px">Coefficient positif = ce critère tire l'audience vers le haut quand il augmente, à autres critères combinés constants ; négatif = l'inverse. Échelle standardisée (bêtas), comparable entre critères d'unités différentes.</div>
-  `;
-}
-
-/** Coefficient de corrélation de Pearson sur les paires (x,y) non nulles. */
+/** Compatibilité : ancienne signature sur paires {x,y}. */
 function corrPearson(pairs){
   const pts = pairs.filter(p => p.x != null && p.y != null && !isNaN(p.x) && !isNaN(p.y));
-  const n = pts.length;
-  if(n < 3) return { r:null, n };
-  const mx = pts.reduce((s,p)=>s+p.x,0) / n;
-  const my = pts.reduce((s,p)=>s+p.y,0) / n;
-  let num = 0, dx2 = 0, dy2 = 0;
-  pts.forEach(p => { const dx = p.x-mx, dy = p.y-my; num += dx*dy; dx2 += dx*dx; dy2 += dy*dy; });
-  const denom = Math.sqrt(dx2*dy2);
-  return { r: denom > 0 ? num/denom : null, n };
+  return { r: clPearsonArr(pts.map(p=>p.x), pts.map(p=>p.y)), n: pts.length };
+}
+function clRanks(a){
+  const idx = a.map((v,i)=>[v,i]).sort((p,q)=>p[0]-q[0]);
+  const r = new Array(a.length);
+  let i = 0;
+  while(i < idx.length){
+    let j = i;
+    while(j+1 < idx.length && idx[j+1][0] === idx[i][0]) j++;
+    const avg = (i+j)/2 + 1;
+    for(let k=i;k<=j;k++) r[idx[k][1]] = avg;
+    i = j+1;
+  }
+  return r;
+}
+function clSpearman(x, y){ return clPearsonArr(clRanks(x), clRanks(y)); }
+function clLogGamma(x){
+  const g = [76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y = x, tmp = x + 5.5; tmp -= (x+0.5)*Math.log(tmp);
+  let ser = 1.000000000190015;
+  for(let j=0;j<6;j++) ser += g[j] / ++y;
+  return -tmp + Math.log(2.5066282746310005*ser/x);
+}
+function clBetacf(a, b, x){
+  const MAXIT = 200, EPS = 3e-14, FPMIN = 1e-300;
+  const qab = a+b, qap = a+1, qam = a-1;
+  let c = 1, d = 1 - qab*x/qap;
+  if(Math.abs(d) < FPMIN) d = FPMIN;
+  d = 1/d; let h = d;
+  for(let m=1; m<=MAXIT; m++){
+    const m2 = 2*m;
+    let aa = m*(b-m)*x/((qam+m2)*(a+m2));
+    d = 1 + aa*d; if(Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa/c; if(Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1/d; h *= d*c;
+    aa = -(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+    d = 1 + aa*d; if(Math.abs(d) < FPMIN) d = FPMIN;
+    c = 1 + aa/c; if(Math.abs(c) < FPMIN) c = FPMIN;
+    d = 1/d; const del = d*c; h *= del;
+    if(Math.abs(del-1) < EPS) break;
+  }
+  return h;
+}
+function clIncBeta(x, a, b){
+  if(x <= 0) return 0; if(x >= 1) return 1;
+  const bt = Math.exp(clLogGamma(a+b) - clLogGamma(a) - clLogGamma(b) + a*Math.log(x) + b*Math.log(1-x));
+  return x < (a+1)/(a+b+2) ? bt*clBetacf(a,b,x)/a : 1 - bt*clBetacf(b,a,1-x)/b;
+}
+/** p-value bilatérale d'un t de Student à df degrés de liberté. */
+function clPvalT(t, df){
+  if(!(df > 0)) return null;
+  if(!isFinite(t)) return 0;
+  return clIncBeta(df/(df+t*t), df/2, 0.5);
+}
+function clPvalR(r, n){
+  const df = n - 2;
+  if(r == null || !(df >= 1)) return null;
+  if(Math.abs(r) >= 0.999999) return 0;
+  return clPvalT(r*Math.sqrt(df/(1-r*r)), df);
+}
+function clTcrit(df, alpha){
+  alpha = alpha || 0.05;
+  let lo = 0, hi = 100;
+  for(let i=0;i<60;i++){ const mid=(lo+hi)/2; if(clPvalT(mid, df) > alpha) lo = mid; else hi = mid; }
+  return (lo+hi)/2;
+}
+/** Plus petit |r| significatif à 5 % pour n observations (effectives). */
+function clRcrit(n){
+  const df = n - 2; if(!(df >= 1)) return 1;
+  const t = clTcrit(df); return t/Math.sqrt(df + t*t);
+}
+function clFisherCI(r, n){
+  if(r == null || !(n > 3)) return null;
+  const z = Math.atanh(Math.max(-0.9999, Math.min(0.9999, r)));
+  const se = 1/Math.sqrt(n-3);
+  return [Math.tanh(z-1.96*se), Math.tanh(z+1.96*se)];
+}
+function clLag1(a){ return a.length < 5 ? 0 : (clPearsonArr(a.slice(0,-1), a.slice(1)) || 0); }
+/** q-values de Benjamini-Hochberg (null conservé pour les tests absents). */
+function clBH(ps){
+  const idx = ps.map((p,i)=>[p,i]).filter(e => e[0] != null).sort((a,b)=>a[0]-b[0]);
+  const m = idx.length, q = ps.map(() => null);
+  let prev = 1;
+  for(let k=m-1;k>=0;k--){ const v = Math.min(prev, idx[k][0]*m/(k+1)); q[idx[k][1]] = v; prev = v; }
+  return q;
+}
+function clInvert(A){
+  const n = A.length;
+  const M = A.map((row,i) => [...row, ...A.map((_,j) => i===j ? 1 : 0)]);
+  for(let c=0;c<n;c++){
+    let p = c;
+    for(let r=c+1;r<n;r++) if(Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+    if(Math.abs(M[p][c]) < 1e-10) return null;
+    [M[c], M[p]] = [M[p], M[c]];
+    const piv = M[c][c];
+    for(let k=0;k<2*n;k++) M[c][k] /= piv;
+    for(let r=0;r<n;r++){
+      if(r === c) continue;
+      const f = M[r][c];
+      if(f) for(let k=0;k<2*n;k++) M[r][k] -= f*M[c][k];
+    }
+  }
+  return M.map(row => row.slice(n));
+}
+/** Moindres carrés ordinaires. X : lignes AVEC la colonne de constante. */
+function clOLS(X, y){
+  const n = X.length, p = X[0].length;
+  if(n <= p) return null;
+  const XtX = Array.from({length:p}, (_,i) => Array.from({length:p}, (_,j) => { let s=0; for(let t=0;t<n;t++) s += X[t][i]*X[t][j]; return s; }));
+  const inv = clInvert(XtX); if(!inv) return null;
+  const Xty = Array.from({length:p}, (_,i) => { let s=0; for(let t=0;t<n;t++) s += X[t][i]*y[t]; return s; });
+  const beta = inv.map(row => row.reduce((s,v,j)=>s+v*Xty[j],0));
+  const my = clMean(y);
+  let ssr = 0, sst = 0, press = 0;
+  for(let t=0;t<n;t++){
+    const pred = X[t].reduce((s,v,j)=>s+v*beta[j],0);
+    const e = y[t]-pred;
+    ssr += e*e; sst += (y[t]-my)*(y[t]-my);
+    let h = 0;
+    for(let i=0;i<p;i++) for(let j=0;j<p;j++) h += X[t][i]*inv[i][j]*X[t][j];
+    press += (h < 0.9999) ? Math.pow(e/(1-h), 2) : e*e*1e6;
+  }
+  const df = n - p, s2 = ssr/df;
+  const se = inv.map((row,i) => Math.sqrt(Math.max(0, s2*row[i])));
+  const tval = beta.map((b,i) => se[i] > 0 ? b/se[i] : 0);
+  const r2 = sst > 0 ? 1 - ssr/sst : 0;
+  return { beta, se, t: tval, p: tval.map(t => clPvalT(t, df)), r2, adjR2: 1-(1-r2)*(n-1)/df, q2: sst > 0 ? 1 - press/sst : null, n, k: p, df, ssr };
+}
+function clFmt(v, d){ if(v == null || isNaN(v)) return '—'; return v.toLocaleString('fr-FR', { minimumFractionDigits:d, maximumFractionDigits:d }); }
+function clFmtSigned(v, d){ if(v == null || isNaN(v)) return '—'; return (v > 0 ? '+' : v < 0 ? '−' : '') + clFmt(Math.abs(v), d); }
+function clFmtP(p){
+  if(p == null) return '—';
+  if(p < 0.001) return '< 0,001';
+  return clFmt(p, p < 0.01 ? 3 : 2);
+}
+function clWeekAdd(iso, days){
+  const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + days);
+  const pad = x => String(x).padStart(2,'0');
+  return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate());
+}
+function clDayIndex(iso){ return Math.round(new Date(iso + 'T12:00:00').getTime() / 86400000); }
+
+// ── Audiences cibles ────────────────────────────────────────────────────
+function clMusicalAudience(rec){
+  if(!rec || !Array.isArray(rec.tranches)) return null;
+  let sw = 0, sh = 0;
+  EUROPE2_MUSICAL_TRANCHES.forEach(mt => {
+    const t = rec.tranches.find(x => x.tranche === mt.tranche);
+    if(t && t.audience != null){ sw += t.audience*mt.hours; sh += mt.hours; }
+  });
+  return sh ? sw/sh : null;
+}
+const CL_TARGETS = [
+  { key:'sessions',        label:'Sessions',                         yoyField:'evol1anSessions', get: r => r.sessions },
+  { key:'uniques',         label:'Visiteurs uniques',                yoyField:'evol1anUniques',  get: r => r.uniques },
+  { key:'audienceMoyenne', label:'Audience moyenne 5h-24h',          yoyField:'evol1anAudience', get: r => r.audienceMoyenne },
+  { key:'musical',         label:'Audience des tranches musicales',  stations:['EUROPE2'],        get: r => clMusicalAudience(r) },
+  { key:'dureeSec',        label:'Durée moyenne d\'écoute',          get: r => r.dureeSec }
+];
+const CL_MODES = {
+  diff:    { label:'Variations hebdo', hint:'Compare la variation d\'une semaine sur l\'autre de chaque critère (en points) à celle de l\'audience (en %). Neutralise les tendances de fond : c\'est la lecture recommandée pour savoir sur quoi agir.' },
+  yoy:     { label:'Évolution sur 1 an', hint:'Audience = « Evol 1 an » publiée dans le rapport (saisonnalité neutralisée), comparée au niveau du critère la même semaine.' },
+  detrend: { label:'Écart à la tendance', hint:'Retire à chaque série sa tendance linéaire sur la période, puis compare les écarts. Utile sur une période longue sans trou.' }
+};
+
+// ── Critères ────────────────────────────────────────────────────────────
+const CL_GROUPS = ['Recherche','Scores FPA','Exposition','Formats','Genres','Décennies','Majors'];
+const clFmtCache = {};
+let clFmtPending = false;
+function clEnsureFormats(stKey, matched){
+  if(typeof fmtWeekShare !== 'function' || clFmtPending) return;
+  const missing = matched.filter(m => !((stKey + '|' + m.progEntry.weekLabel) in clFmtCache));
+  if(!missing.length) return;
+  clFmtPending = true;
+  Promise.all(missing.map(m => {
+    const ck = stKey + '|' + m.progEntry.weekLabel;
+    return fmtWeekShare(stKey, m.progEntry.weekLabel).then(s => { clFmtCache[ck] = s || null; }).catch(() => { clFmtCache[ck] = null; });
+  })).then(() => { clFmtPending = false; if(analyseSubView === 'corr') renderCorrPage(); });
+}
+function clDistPct(dist, field, key){
+  if(!Array.isArray(dist) || !dist.length) return null;
+  const e = dist.find(x => x[field] === key);
+  return e ? e.pct : 0;
+}
+function clTopKeys(rows, distGetter, field, max, exclude){
+  const sums = {}; let nWeeks = 0;
+  rows.forEach(r => {
+    const dist = distGetter(r);
+    if(!Array.isArray(dist) || !dist.length) return;
+    nWeeks++;
+    dist.forEach(e => { const k = e[field]; if(!k || exclude.includes(k)) return; sums[k] = (sums[k]||0) + e.pct; });
+  });
+  if(!nWeeks) return [];
+  return Object.entries(sums).map(([k,s]) => [k, s/nWeeks]).filter(e => e[1] >= 2).sort((a,b)=>b[1]-a[1]).slice(0, max).map(e => e[0]);
+}
+function clBuildCriteria(stKey, rows){
+  const C = [];
+  const add = (key, label, group, get, unit, hyp) => C.push({ key, label, group, get, unit: unit || 'pts', hyp: hyp || 0 });
+  const st = r => r.prog || {};
+  add('avgPot',      'Pot Score (ensemble)',         'Recherche', r => st(r).avgPot, 'pts', 1);
+  add('avgPotP1',    'Pot Score (P1)',               'Recherche', r => st(r).avgPotP1, 'pts', 1);
+  add('avgFam',      'Fam Score (ensemble)',         'Recherche', r => st(r).avgFam, 'pts', 1);
+  add('avgFamP1',    'Fam Score (P1)',               'Recherche', r => st(r).avgFamP1, 'pts', 1);
+  add('avgBurnCO',   'Burn Call Out (ensemble)',     'Recherche', r => st(r).avgBurnCO, 'pts', -1);
+  add('avgBurnCOP1', 'Burn Call Out (P1)',           'Recherche', r => st(r).avgBurnCOP1, 'pts', -1);
+  add('avgBurnOMT',  'Burn OMT (ensemble)',          'Recherche', r => st(r).avgBurnOMT, 'pts', -1);
+  add('avgBurnOMTP1','Burn OMT (P1)',                'Recherche', r => st(r).avgBurnOMTP1, 'pts', -1);
+  add('avgFit',      'Fit Score',                    'Scores FPA', r => st(r).avgFit, 'pts', 1);
+  add('avgSpu',      'SPU',                          'Scores FPA', r => st(r).avgSpu, 'pts', 1);
+  add('totalDiffs',  'Diffusions musicales',         'Exposition', r => st(r).totalDiffs, 'diff.');
+  add('nbTitres',    'Titres différents',            'Exposition', r => st(r).nbTitres, 'titres');
+  add('nbArtistes',  'Artistes différents',          'Exposition', r => st(r).nbArtistes, 'artistes');
+  add('rotation',    'Rotation moyenne (diff./titre)','Exposition', r => { const s = st(r); return s.nbTitres ? s.totalDiffs/s.nbTitres : null; }, 'diff.');
+  add('multiTitres', 'Artistes à plusieurs titres',  'Exposition', r => { const s = st(r); return s.nbArtistes ? s.nbArtistesMultiTitres/s.nbArtistes*100 : null; }, '%');
+  // Formats (calculés à partir du détail par titre, chargé en arrière-plan)
+  const fmtOf = r => clFmtCache[stKey + '|' + r.progLabel];
+  if(rows.filter(r => fmtOf(r)).length >= Math.max(3, rows.length/2)){
+    [['core','Core'],['market','Market'],['border','Border']].forEach(([k,l]) =>
+      add('fmt_'+k, 'Part ' + l, 'Formats', r => { const s = fmtOf(r); return s && s[k] != null ? s[k] : null; }, 'pts'));
+  }
+  clTopKeys(rows, r => st(r).genreDistribution, 'genre', 8, ['Autres','Non renseigné']).forEach(g =>
+    add('genre_'+g, 'Part ' + g, 'Genres', r => clDistPct(st(r).genreDistribution, 'genre', g), 'pts'));
+  clTopKeys(rows, r => st(r).decadeDistribution, 'decade', 6, ['Autres','Non renseigné','Inconnue']).forEach(d =>
+    add('decade_'+d, 'Part années ' + d, 'Décennies', r => clDistPct(st(r).decadeDistribution, 'decade', d), 'pts'));
+  if(typeof resolveLabelMajor === 'function' && rows.some(r => (st(r).labelDistribution||[]).length)){
+    MAJORS.forEach(mj => add('major_'+mj, 'Part ' + mj, 'Majors', r => {
+      const dist = st(r).labelDistribution;
+      if(!Array.isArray(dist) || !dist.length) return null;
+      return dist.filter(l => resolveLabelMajor(l.label) === mj).reduce((s,l)=>s+l.pct,0);
+    }, 'pts'));
+  }
+  return C;
+}
+
+// ── Séries appariées ────────────────────────────────────────────────────
+/** Paires (x, y) datées pour un critère, une audience, un mode et un
+ *  décalage. ctx.by : semaines appariées NON exclues (tout l'historique,
+ *  pour pouvoir lire la semaine précédente / décalée), ctx.windowRows :
+ *  semaines d'audience de la période analysée. lag > 0 : programmation
+ *  ANTÉRIEURE à l'audience ; lag < 0 : programmation POSTÉRIEURE. */
+function clPairs(crit, target, mode, lag, ctx){
+  const out = [];
+  const sh = -7*lag;
+  ctx.windowRows.forEach(row => {
+    const t = row.weekStart;
+    const xr = ctx.by[clWeekAdd(t, sh)];
+    if(!xr) return;
+    let x, y;
+    if(mode === 'diff'){
+      const prev = ctx.by[clWeekAdd(t, -7)], xp = ctx.by[clWeekAdd(t, sh-7)];
+      if(!prev || !xp) return;
+      const Y1 = target.get(row.aud), Y0 = target.get(prev.aud);
+      if(!(Y1 > 0 && Y0 > 0)) return;
+      const a = crit.get(xr), b = crit.get(xp);
+      if(a == null || b == null || isNaN(a) || isNaN(b)) return;
+      y = 100*Math.log(Y1/Y0); x = a - b;
+    } else if(mode === 'yoy'){
+      y = row.aud[target.yoyField];
+      x = crit.get(xr);
+      if(y == null || isNaN(y) || x == null || isNaN(x)) return;
+    } else {
+      y = target.get(row.aud); x = crit.get(xr);
+      if(!(y > 0) || x == null || isNaN(x)) return;
+    }
+    out.push({ t, x, y });
+  });
+  if(mode === 'detrend' && out.length >= 5){
+    const ts = out.map(p => clDayIndex(p.t));
+    const resid = vals => {
+      const fit = clOLS(ts.map(d => [1, d]), vals);
+      return fit ? vals.map((v,i) => v - (fit.beta[0] + fit.beta[1]*ts[i])) : null;
+    };
+    const ys = out.map(p => p.y), my = clMean(ys);
+    const rx = resid(out.map(p => p.x)), ry = resid(ys);
+    if(!rx || !ry) return [];
+    out.forEach((p,i) => { p.x = rx[i]; p.y = my > 0 ? ry[i]/my*100 : ry[i]; });
+  }
+  return out;
+}
+function clAnalyze(pairs){
+  const n = pairs.length;
+  const res = { n, r:null };
+  if(n < 4) return res;
+  const xs = pairs.map(p=>p.x), ys = pairs.map(p=>p.y);
+  const r = clPearsonArr(xs, ys);
+  if(r == null) return res;
+  const a1 = clLag1(xs), b1 = clLag1(ys);
+  const neff = Math.max(4, Math.min(n, n*(1 - a1*b1)/(1 + a1*b1)));
+  const sdx = clSd(xs), sdy = clSd(ys);
+  const half = Math.floor(n/2);
+  const rH1 = half >= 5 ? clPearsonArr(xs.slice(0,half), ys.slice(0,half)) : null;
+  const rH2 = (n-half) >= 5 ? clPearsonArr(xs.slice(half), ys.slice(half)) : null;
+  return Object.assign(res, {
+    r, rs: clSpearman(xs, ys), neff, p: clPvalR(r, neff), ci: clFisherCI(r, neff),
+    slope: sdx > 0 ? r*sdy/sdx : 0, sdx, sdy, rH1, rH2,
+    stable: (rH1 == null || rH2 == null) ? null : (Math.sign(rH1) === Math.sign(r) && Math.sign(rH2) === Math.sign(r))
+  });
+}
+const CL_VERDICTS = {
+  robust: { label:'Lien robuste',         cls:'clv-robust' },
+  lead:   { label:'Piste à confirmer',    cls:'clv-lead' },
+  none:   { label:'Non distinguable du hasard', cls:'clv-none' },
+  insuff: { label:'Trop peu de semaines', cls:'clv-insuff' }
+};
+function clVerdict(a){
+  if(a.r == null || a.n < 8) return 'insuff';
+  if(a.q != null && a.q <= 0.10 && a.rs != null && Math.sign(a.rs) === Math.sign(a.r) && a.stable !== false) return 'robust';
+  if(a.p != null && a.p < 0.05) return 'lead';
+  return 'none';
+}
+/** Test de précédence de Granger (décalage 1, mode variations) : la
+ *  variation du critère la semaine t-1 améliore-t-elle la prévision de la
+ *  variation d'audience en t, au-delà de ce qu'en dit l'audience t-1 ? */
+function clGranger(crit, target, ctx){
+  const pY = clPairs(crit, target, 'diff', 0, ctx);
+  const yBy = {}; pY.forEach(p => { yBy[p.t] = p.y; });
+  const ctxAll = { by: ctx.by, windowRows: Object.values(ctx.by) };
+  const yAll = {}; clPairs(crit, target, 'diff', 0, ctxAll).forEach(p => { yAll[p.t] = p; });
+  const rowsR = [], rowsU = [], ys = [];
+  pY.forEach(p => {
+    const prev = yAll[clWeekAdd(p.t, -7)];
+    if(!prev) return;
+    rowsR.push([1, prev.y]); rowsU.push([1, prev.y, prev.x]); ys.push(p.y);
+  });
+  if(ys.length < 10) return null;
+  const R = clOLS(rowsR, ys), U = clOLS(rowsU, ys);
+  if(!R || !U || !(U.ssr > 0)) return null;
+  const df = ys.length - 3;
+  const F = (R.ssr - U.ssr) / (U.ssr/df);
+  return { n: ys.length, F, p: F > 0 ? clPvalT(Math.sqrt(F), df) : 1, sign: Math.sign(U.beta[2]) };
+}
+
+// ── Rendu principal ─────────────────────────────────────────────────────
+let clLast = null; // dernier contexte calculé (consommé par le détail et le modèle combiné)
+function clSeg(items, current, onclick){
+  return items.map(it => `<button type="button" class="clab-seg-btn${String(it.v) === String(current) ? ' on' : ''}${it.disabled ? ' off' : ''}" ${it.disabled ? 'disabled' : ''} title="${escHtml(it.title || '')}" onclick="${onclick(it.v)}">${escHtml(it.l)}</button>`).join('');
+}
+function clLongestRun(sortedWeeks){
+  let best = [0,0], start = 0;
+  for(let i=1;i<=sortedWeeks.length;i++){
+    if(i === sortedWeeks.length || clWeekAdd(sortedWeeks[i-1], 7) !== sortedWeeks[i]){
+      if(i-1-start > best[1]-best[0]) best = [start, i-1];
+      start = i;
+    }
+  }
+  return sortedWeeks.length ? { from: sortedWeeks[best[0]], to: sortedWeeks[best[1]], len: best[1]-best[0]+1 } : null;
+}
+function clPresetRange(p, run){
+  const last = run[run.length-1];
+  let from = run[0], to = last;
+  if(p === 'run'){ const lr = clLongestRun(run); if(lr){ from = lr.from; to = lr.to; } }
+  else if(p !== 'all' && p !== 'custom'){
+    const limit = clWeekAdd(last, -7*(parseInt(p,10)-1));
+    from = run.find(w => w >= limit) || run[0];
+  }
+  return { from, to };
+}
+function clApplyPreset(p){
+  const run = clLast && clLast.allWeeks;
+  if(!run || !run.length){ return; }
+  const { from, to } = clPresetRange(p, run);
+  corrRangeFilter[corrStation] = { from, to };
+  clSettings.preset = p;
+  clSaveSettings();
+  renderCorrPage();
+}
+function clIsOpsWeek(rec){
+  const c = rec && Array.isArray(rec.contexte) ? rec.contexte.join(' ').trim() : '';
+  return c.length > 2 && !/^(aucun|aucune|néant|neant|ras|-)\b/i.test(c);
 }
 
 function renderCorrPage(){
-  // La station affichée suit le sélecteur de station de référence global
-  // (ACTIVE_STATION, bouton 🔁 de l'en-tête).
   corrStation = ACTIVE_STATION;
   const stKey = corrStation;
   const matches = corrBuildMatches(stKey);
-  const matched = matches.filter(m => m.progEntry);
+  const matched = matches.filter(m => m.progEntry).sort((a,b) => a.weekStart.localeCompare(b.weekStart));
   const emptyBar = document.getElementById('corrEmptyBar');
   const content  = document.getElementById('corrContent');
   if(!emptyBar || !content) return;
-
+  const st = document.getElementById('clStationName');
+  if(st) st.textContent = STATION_LABELS[stKey] || stKey;
   if(matched.length < 1){
-    emptyBar.style.display = 'block';
-    content.style.display = 'none';
+    emptyBar.style.display = 'block'; content.style.display = 'none';
+    const h = document.getElementById('clHealth'); if(h) h.innerHTML = '';
     return;
   }
-  emptyBar.style.display = 'none';
-  content.style.display = 'block';
+  emptyBar.style.display = 'none'; content.style.display = 'block';
+  clEnsureFormats(stKey, matched);
 
-  // ── Tableau de correspondance ──
-  const progHistory = analyseLoadHistory()[stKey] || [];
-  const buildProgOptions = selectedLabel => {
-    let html = `<option value="" ${selectedLabel ? '' : 'selected'}>— aucune —</option>`;
-    progHistory.forEach(e => {
-      html += `<option value="${escHtml(e.weekLabel)}" ${e.weekLabel===selectedLabel ? 'selected' : ''}>${escHtml(e.weekLabel)}</option>`;
-    });
-    return html;
-  };
-  const matchLabel = { date:'✓ date exacte', auto:'✓ n° semaine', 'auto-ambiguous':'✓ n° semaine (ambigu)', manual:'✏️ manuel', none:'— non apparié —' };
-  const matchColor = { date:'#0DA76B', auto:'#5B9E3F', 'auto-ambiguous':'#E07B00', manual:'var(--cyan)', none:'var(--muted)' };
-  document.getElementById('corrMatchTableArea').innerHTML = `
-    <table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden">
-      <thead><tr style="background:var(--bg)">
-        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Semaine audience</th>
-        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted);text-align:left">Semaine programmation</th>
-        <th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Statut</th>
-      </tr></thead>
-      <tbody>
-        ${matches.map(m => `<tr>
-          <td style="padding:7px 10px;font-size:11.5px">${digitalAudienceFmtDate(m.weekStart)}${m.audRecord.weekEnd ? ' → ' + digitalAudienceFmtDate(m.audRecord.weekEnd) : ''}</td>
-          <td style="padding:7px 10px">
-            <select style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="corrSetManualMatch('${stKey}','${m.weekStart}',this.value)">
-              ${buildProgOptions(m.progEntry ? m.progEntry.weekLabel : null)}
-            </select>
-          </td>
-          <td style="padding:7px 10px;text-align:center;font-size:10.5px;font-weight:700;color:${matchColor[m.matchType]}">${matchLabel[m.matchType]}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-  `;
+  // Réglages (audience cible, mesure, décalage)
+  const targets = CL_TARGETS.filter(t => !t.stations || t.stations.includes(stKey));
+  if(!targets.some(t => t.key === clSettings.target)) clSettings.target = targets[0].key;
+  const target = targets.find(t => t.key === clSettings.target);
+  if(clSettings.mode === 'yoy' && !target.yoyField) clSettings.mode = 'diff';
+  const mode = clSettings.mode, lag = clSettings.lag || 0;
+  const tSel = document.getElementById('clTarget');
+  if(tSel) tSel.innerHTML = targets.map(t => `<option value="${t.key}" ${t.key===target.key?'selected':''}>${escHtml(t.label)}</option>`).join('');
+  document.getElementById('clModeSeg').innerHTML = clSeg(Object.entries(CL_MODES).map(([k,m]) => ({ v:k, l:m.label, disabled: k==='yoy' && !target.yoyField, title: k==='yoy' && !target.yoyField ? 'Le rapport ne publie pas d\'évolution sur 1 an pour cette audience' : m.hint })), mode, v => `clOnSetting('mode','${v}')`);
+  document.getElementById('clModeHint').textContent = CL_MODES[mode].hint;
+  document.getElementById('clLagSeg').innerHTML = clSeg([0,1,2,3].map(v => ({ v, l: v === 0 ? 'Même semaine' : '+' + v + ' sem.' })), lag, v => `clOnSetting('lag',${v})`);
 
-  // ── Sélecteur de période — options construites à partir des semaines
-  // d'audience APPARIÉES (seules pertinentes pour un calcul de corrélation),
-  // triées chronologiquement. Reconstruit à chaque rendu (la liste change au
-  // fil des imports) mais la sélection en cours est préservée si elle existe
-  // toujours dans la nouvelle liste.
-  const matchedSorted = matched.slice().sort((a,b) => new Date(a.weekStart) - new Date(b.weekStart));
-  const rangeFilter = corrRangeFilter[stKey] || {from:null, to:null};
-  const fromSel = document.getElementById('corrRangeFrom');
-  const toSel   = document.getElementById('corrRangeTo');
-  if(fromSel && toSel){
-    const opts = matchedSorted.map(m => {
-      const lbl = digitalAudienceFmtDate(m.weekStart) + (m.progEntry ? ' (' + m.progEntry.weekLabel + ')' : '');
-      return { value: m.weekStart, label: lbl };
-    });
-    const buildOpts = (selected, fallbackFirst) => {
-      let html = '';
-      opts.forEach((o,i) => {
-        const isSelected = selected ? o.value===selected : (fallbackFirst ? i===0 : i===opts.length-1);
-        html += `<option value="${o.value}" ${isSelected?'selected':''}>${escHtml(o.label)}</option>`;
-      });
-      return html;
-    };
-    fromSel.innerHTML = buildOpts(rangeFilter.from, true);
-    toSel.innerHTML   = buildOpts(rangeFilter.to, false);
+  // Exclusions
+  const exclSet = new Set(clLoadExcl()[stKey] || []);
+  const opsWeeks = matched.filter(m => clIsOpsWeek(m.audRecord)).map(m => m.weekStart);
+  const exclOpsWrap = document.getElementById('clExclOpsWrap');
+  if(exclOpsWrap){
+    exclOpsWrap.style.display = opsWeeks.length ? '' : 'none';
+    document.getElementById('clExclOps').checked = !!clSettings.exclOps;
+    const lbl = document.getElementById('clExclOpsCount'); if(lbl) lbl.textContent = '(' + opsWeeks.length + ')';
   }
-  const fromIdx = rangeFilter.from ? matchedSorted.findIndex(m => m.weekStart === rangeFilter.from) : 0;
-  const toIdx   = rangeFilter.to   ? matchedSorted.findIndex(m => m.weekStart === rangeFilter.to)   : matchedSorted.length - 1;
-  const a = Math.max(0, Math.min(fromIdx===-1?0:fromIdx, toIdx===-1?matchedSorted.length-1:toIdx));
-  const b = Math.max(fromIdx===-1?0:fromIdx, toIdx===-1?matchedSorted.length-1:toIdx);
-  const matchedInRange = matchedSorted.slice(a, b+1);
+  const isExcluded = w => exclSet.has(w) || (clSettings.exclOps && opsWeeks.includes(w));
 
-  // ── Matrice de corrélation ── (uniquement sur la période sélectionnée)
-  const rows = matchedInRange.map(m => ({ prog: m.progEntry.stats, aud: m.audRecord }));
-  let matrixHtml = `<table style="width:100%;border-collapse:collapse;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;font-size:11px">
-    <thead><tr style="background:var(--bg)">
-      <th style="padding:7px 10px;text-align:left;font-size:9.5px;text-transform:uppercase;color:var(--muted)">Critère programmation \\ Audience</th>
-      ${CORR_AUD_METRICS.map(a => `<th style="padding:7px 10px;font-size:9.5px;text-transform:uppercase;color:var(--muted)">${escHtml(a.label)}</th>`).join('')}
-    </tr></thead><tbody>`;
-  CORR_PROG_METRICS.forEach(p => {
-    matrixHtml += `<tr><td style="padding:7px 10px;font-weight:700;color:var(--navy)">${escHtml(p.label)}${p.expectNegative ? ' <span style="font-weight:500;color:var(--muted);font-size:9.5px" title="Critère négatif : une corrélation négative avec l\'audience est ici le résultat attendu, pas un signal à corriger">(critère négatif)</span>' : ''}</td>`;
-    CORR_AUD_METRICS.forEach(a => {
-      const pairs = rows.map(r => ({ x: r.prog[p.key], y: r.aud[a.key] }));
-      const { r, n } = corrPearson(pairs);
-      const disp = r === null ? (n < 3 ? `n=${n}` : '—') : r.toFixed(2);
-      matrixHtml += `<td style="padding:7px 10px;text-align:center;font-weight:800;color:${corrColorForR(r, p.expectNegative)}" title="${n} semaine(s) appariée(s)">${disp}</td>`;
-    });
-    matrixHtml += '</tr>';
-  });
-  matrixHtml += '</tbody></table>';
-  if(matchedInRange.length < 3){
-    matrixHtml += `<div style="margin-top:8px;font-size:11px;color:var(--muted)">⚠ Seulement ${matchedInRange.length} semaine(s) appariée(s) sur la période sélectionnée — un coefficient de corrélation fiable nécessite au moins 3 à 5 semaines comparables. Élargissez la période, ou continuez d'importer/archiver pour affiner.</div>`;
+  // Période
+  const allWeeks = matched.map(m => m.weekStart);
+  let rf = corrRangeFilter[stKey] || {from:null, to:null};
+  if(!rf.from && !rf.to && clSettings.preset && clSettings.preset !== 'all' && clSettings.preset !== 'custom'){
+    rf = clPresetRange(clSettings.preset, allWeeks);
+    corrRangeFilter[stKey] = rf;
   }
-  document.getElementById('corrMatrixArea').innerHTML = matrixHtml;
+  let fromW = rf.from && allWeeks.includes(rf.from) ? rf.from : allWeeks[0];
+  let toW   = rf.to   && allWeeks.includes(rf.to)   ? rf.to   : allWeeks[allWeeks.length-1];
+  if(fromW > toW){ const tmp = fromW; fromW = toW; toW = tmp; }
+  const fromSel = document.getElementById('corrRangeFrom'), toSel = document.getElementById('corrRangeTo');
+  const optHtml = sel => matched.map(m => `<option value="${m.weekStart}" ${m.weekStart===sel?'selected':''}>${escHtml(digitalAudienceFmtDate(m.weekStart))}</option>`).join('');
+  if(fromSel) fromSel.innerHTML = optHtml(fromW);
+  if(toSel)   toSel.innerHTML   = optHtml(toW);
+  const lr = clLongestRun(allWeeks);
+  document.getElementById('clPresetSeg').innerHTML = clSeg([
+    { v:'13', l:'13 sem.' }, { v:'26', l:'26 sem.' }, { v:'52', l:'52 sem.' }, { v:'all', l:'Tout' },
+    { v:'run', l:'Plus longue série continue' + (lr ? ' (' + lr.len + ')' : ''), title:'Les variations hebdomadaires exigent deux semaines consécutives : la plus longue série sans trou est la fenêtre la plus riche en informations.' }
+  ], clSettings.preset, v => `clApplyPreset('${v}')`);
 
-  // ── Sélecteurs du nuage de points ──
-  const xSel = document.getElementById('corrScatterX');
-  const ySel = document.getElementById('corrScatterY');
-  if(xSel && !xSel.dataset.filled){
-    xSel.innerHTML = CORR_PROG_METRICS.map(p => `<option value="${p.key}">${escHtml(p.label)}</option>`).join('');
-    xSel.dataset.filled = '1';
+  // Contexte d'analyse
+  const rowsAll = matched.map(m => ({ weekStart: m.weekStart, prog: m.progEntry.stats || {}, progLabel: m.progEntry.weekLabel, aud: m.audRecord }));
+  const by = {};
+  rowsAll.forEach(r => { if(!isExcluded(r.weekStart)) by[r.weekStart] = r; });
+  const windowRows = rowsAll.filter(r => r.weekStart >= fromW && r.weekStart <= toW && !isExcluded(r.weekStart));
+  const ctx = { by, windowRows };
+  const criteria = clBuildCriteria(stKey, rowsAll);
+  const results = criteria.map(c => {
+    const pairs = clPairs(c, target, mode, lag, ctx);
+    return Object.assign({ crit: c, pairs }, clAnalyze(pairs));
+  }).filter(a => a.n > 0 && !(a.r == null && a.n >= 4)); // critère absent ou constant sur la période : sans objet
+  const qs = clBH(results.map(a => a.p));
+  results.forEach((a,i) => { a.q = qs[i]; a.verdict = clVerdict(a); });
+  const nObs = results.reduce((m,a) => Math.max(m, a.n), 0);
+  clLast = { stKey, target, mode, lag, ctx, criteria, results, allWeeks, rowsAll, fromW, toW, nObs, isExcluded, opsWeeks };
+
+  clRenderHealth(matched.length, windowRows.length, nObs);
+  clRenderTimeline();
+  clRenderPeriodNote(windowRows.length, nObs);
+  clRenderForest();
+  if(!clSettings.focus || !results.some(a => a.crit.key === clSettings.focus)){
+    const best = clSortedResults().find(a => a.r != null);
+    clSettings.focus = best ? best.crit.key : null;
   }
-  if(ySel && !ySel.dataset.filled){
-    ySel.innerHTML = CORR_AUD_METRICS.map(a => `<option value="${a.key}">${escHtml(a.label)}</option>`).join('');
-    ySel.dataset.filled = '1';
-  }
-  window._corrMatchedRows = rows; // consommé par renderCorrScatter() et renderCorrCombined()
+  clRenderDetail();
   renderCorrCombined();
-  renderCorrScatter();
+  clRenderMatchTable(stKey, matches);
 }
 
-/** Nuage de points animé (Chart.js, type "scatter") avec droite de
- *  régression linéaire simple en overlay — remplace l'ancien rendu en SVG
- *  statique fait main, pour un rendu et une animation d'entrée cohérents
- *  avec les autres graphiques de la page Analyse (voir graphSafeNewChart). */
-function renderCorrScatter(){
-  const metaEl = document.getElementById('corrScatterMeta');
-  const rows = window._corrMatchedRows || [];
-  const xKey = document.getElementById('corrScatterX')?.value;
-  const yKey = document.getElementById('corrScatterY')?.value;
-  if(!xKey || !yKey){
-    if(metaEl) metaEl.textContent = '';
-    if(graphCharts['corrScatterChart']){ graphCharts['corrScatterChart'].destroy(); delete graphCharts['corrScatterChart']; }
-    return;
-  }
-  const xLabel = CORR_PROG_METRICS.find(p => p.key === xKey)?.label || xKey;
-  const yLabel = CORR_AUD_METRICS.find(a => a.key === yKey)?.label || yKey;
-  const pts = rows.map(r => ({ x: r.prog[xKey], y: r.aud[yKey] })).filter(p => p.x != null && p.y != null && !isNaN(p.x) && !isNaN(p.y));
-
-  if(pts.length < 2){
-    if(metaEl) metaEl.innerHTML = '<span style="color:var(--muted)">Pas assez de points pour tracer un nuage.</span>';
-    if(graphCharts['corrScatterChart']){ graphCharts['corrScatterChart'].destroy(); delete graphCharts['corrScatterChart']; }
-    return;
-  }
-
-  const { r } = corrPearson(pts);
-  const n = pts.length;
-  const xMetric = CORR_PROG_METRICS.find(p => p.key === xKey);
-  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
-  const mx = xs.reduce((s,v)=>s+v,0)/n, my = ys.reduce((s,v)=>s+v,0)/n;
-  let num = 0, den = 0;
-  pts.forEach(p => { num += (p.x-mx)*(p.y-my); den += (p.x-mx)*(p.x-mx); });
-  const slope = den > 0 ? num/den : 0;
-  const intercept = my - slope*mx;
-  const xMin = Math.min(...xs), xMax = Math.max(...xs);
-  const trendLine = [{ x:xMin, y:slope*xMin+intercept }, { x:xMax, y:slope*xMax+intercept }];
-  const trendColor = corrColorForRCanvas(r, xMetric?.expectNegative);
-
-  if(metaEl) metaEl.innerHTML = `r = <strong style="color:${corrColorForR(r, xMetric?.expectNegative)}">${r===null?'—':r.toFixed(3)}</strong> sur ${pts.length} semaine(s) appariée(s)${xMetric?.expectNegative ? ' <span style="color:var(--muted);font-size:10px">(critère négatif — un r négatif est ici le résultat attendu)</span>' : ''}`;
-
-  graphSafeNewChart('corrScatterChart', {
-    data: {
-      datasets: [
-        {
-          type: 'scatter', label: 'Semaines', data: pts,
-          backgroundColor: 'rgba(0,184,200,0.75)', borderColor: '#0B1D3A', borderWidth: 1,
-          pointRadius: 6, pointHoverRadius: 8
-        },
-        {
-          type: 'line', label: 'Tendance', data: trendLine,
-          borderColor: trendColor, borderWidth: 2, borderDash: [6,4],
-          pointRadius: 0, fill: false, tension: 0
-        }
-      ]
-    },
+function clRenderHealth(nMatched, nWindow, nObs){
+  const el = document.getElementById('clHealth'); if(!el) return;
+  const rc = nObs >= 4 ? clRcrit(nObs) : null;
+  el.innerHTML = `
+    <div class="clab-stat"><b>${nMatched}</b><span>semaines appariées</span></div>
+    <div class="clab-stat"><b>${nWindow}</b><span>dans la période</span></div>
+    <div class="clab-stat"><b>${nObs}</b><span>observations exploitables</span></div>
+    <div class="clab-stat" title="Avec ce nombre d'observations, un coefficient plus faible que ce seuil ne peut pas être distingué du hasard (test bilatéral à 5 %), même s'il est réel."><b>${rc == null ? '—' : '|r| ≥ ' + clFmt(rc, 2)}</b><span>seuil de détection</span></div>`;
+}
+function clRenderPeriodNote(nWindow, nObs){
+  const el = document.getElementById('clPeriodNote'); if(!el) return;
+  const msgs = [];
+  if(clLast.mode === 'diff' && nWindow - nObs > 0) msgs.push(`${nWindow - nObs} semaine(s) de la période n'ont pas de semaine précédente exploitable (trou dans l'historique ou semaine exclue) et ne comptent pas dans les variations.`);
+  if(nObs < 12) msgs.push('Moins de 12 observations : seuls des liens très forts peuvent ressortir. Élargissez la période si possible.');
+  msgs.push('Cliquez sur une barre pour exclure ou réintégrer une semaine atypique (vacances, événement, panne de mesure).');
+  el.textContent = msgs.join(' ');
+}
+function clRenderTimeline(){
+  const L = clLast;
+  const labels = L.rowsAll.map(r => digitalAudienceFmtDate(r.weekStart).slice(0,5));
+  const vals = L.rowsAll.map(r => { const v = L.target.get(r.aud); return v == null ? null : v; });
+  const colors = L.rowsAll.map(r => {
+    if(L.isExcluded(r.weekStart)) return 'rgba(224,123,0,.35)';
+    return (r.weekStart >= L.fromW && r.weekStart <= L.toW) ? '#0B1D3A' : '#C9D2E0';
+  });
+  const borders = L.rowsAll.map(r => L.opsWeeks.includes(r.weekStart) ? '#00B8C8' : 'transparent');
+  graphSafeNewChart('clTimelineChart', {
+    type: 'bar',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderColor: borders, borderWidth: 2, borderRadius: 3, borderSkipped: false, maxBarThickness: 18 }] },
     options: {
-      responsive: true, maintainAspectRatio: false,
-      animation: { duration: 900, easing: 'easeOutQuart' },
-      interaction: { mode: 'nearest', intersect: true },
-      plugins: {
-        legend: { display: false },
-        tooltip: { callbacks: { label: c => c.datasetIndex === 0
-          ? `${xLabel} : ${c.parsed.x.toLocaleString('fr-FR')}  ·  ${yLabel} : ${c.parsed.y.toLocaleString('fr-FR')}`
-          : 'Tendance' } }
-      },
-      scales: {
-        x: { type:'linear', title:{ display:true, text:xLabel, font:{size:11} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#EEF1F6' } },
-        y: { title:{ display:true, text:yLabel, font:{size:11} }, ticks:{ color:'#4A5E78' }, grid:{ color:'#EEF1F6' } }
-      }
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: { legend: { display:false }, tooltip: { callbacks: {
+        title: items => { const r = L.rowsAll[items[0].dataIndex]; return 'Semaine du ' + digitalAudienceFmtDate(r.weekStart) + ' · ' + r.progLabel; },
+        label: c => L.target.label + ' : ' + (c.parsed.y == null ? '—' : Math.round(c.parsed.y).toLocaleString('fr-FR')),
+        afterLabel: c => { const r = L.rowsAll[c.dataIndex]; const lines = []; if(L.isExcluded(r.weekStart)) lines.push('Exclue de l\'analyse'); if(L.opsWeeks.includes(r.weekStart)) lines.push('Opération : ' + (r.aud.contexte || []).join(' ').slice(0,90)); return lines; }
+      } } },
+      scales: { x: { grid:{ display:false }, ticks:{ color:'#8A9AB5', font:{ size:9 }, maxRotation:0, autoSkip:true, autoSkipPadding:6 } },
+                y: { display:false, beginAtZero:false } },
+      onClick: (evt, els) => { if(els && els.length) clToggleExcl(L.stKey, L.rowsAll[els[0].index].weekStart); }
     }
   });
+}
+
+function clSortedResults(){
+  const order = { robust:0, lead:1, none:2, insuff:3 };
+  return clLast.results.slice().sort((a,b) => (order[a.verdict]-order[b.verdict]) || ((a.p ?? 2) - (b.p ?? 2)));
+}
+function clSetGroup(g){ clSettings.group = g; clSaveSettings(); clRenderForest(); }
+function clFocus(key){ clSettings.focus = key; clSaveSettings(); clRenderForest(); clRenderDetail(); document.getElementById('clDetailPanel')?.scrollIntoView({ behavior:'smooth', block:'start' }); }
+function clModePhrase(){
+  const L = clLast;
+  const lagTxt = L.lag ? ', programmation décalée de ' + L.lag + ' semaine' + (L.lag > 1 ? 's' : '') : '';
+  return { diff:'variations hebdomadaires', yoy:'évolution sur 1 an', detrend:'écarts à la tendance' }[L.mode] + ' · ' + L.target.label.toLowerCase() + lagTxt;
+}
+function clRenderForest(){
+  const L = clLast;
+  const res = clSortedResults();
+  const nRobust = res.filter(a => a.verdict === 'robust').length;
+  const nLead = res.filter(a => a.verdict === 'lead').length;
+  const tested = res.filter(a => a.p != null).length;
+  const rc = L.nObs >= 4 ? clRcrit(L.nObs) : null;
+  let headline, sub;
+  if(L.nObs < 8){
+    headline = 'Pas encore assez de semaines pour conclure';
+    sub = `${L.nObs} observation(s) exploitable(s) sur la période. Il en faut au moins 8, idéalement plus de 20, pour qu'un lien ressorte du bruit.`;
+  } else if(nRobust){
+    const top = res.filter(a => a.verdict === 'robust').slice(0,3).map(a => `${a.crit.label} (r = ${clFmtSigned(a.r,2)})`).join(', ');
+    headline = nRobust === 1 ? '1 critère se détache nettement du hasard' : nRobust + ' critères se détachent nettement du hasard';
+    sub = `${top}. ${nLead ? nLead + ' autre(s) piste(s) à confirmer. ' : ''}${tested} critères testés simultanément, résultats corrigés en conséquence.`;
+  } else if(nLead){
+    headline = 'Des pistes, mais aucun lien encore établi';
+    sub = `${nLead} critère(s) dépassent le seuil de 5 % pris isolément, mais avec ${tested} critères testés en même temps, on en attendrait environ ${clFmt(tested*0.05,0)} par pur hasard. À surveiller à mesure que l'historique s'allonge.`;
+  } else {
+    headline = 'Aucun critère ne se détache du hasard sur cette période';
+    sub = `Avec ${L.nObs} observations, seul un lien d'au moins |r| = ${clFmt(rc,2)} aurait pu être détecté. Un effet plus modeste peut exister : il faudra plus de semaines, ou une variation plus marquée des critères, pour le voir.`;
+  }
+  document.getElementById('clSummary').innerHTML = `
+    <div class="clab-summary">
+      <h3 class="clab-h3">${escHtml(headline)}</h3>
+      <p>${escHtml(sub)}</p>
+      <p class="clab-muted">Lecture : ${escHtml(clModePhrase())}.</p>
+    </div>`;
+
+  const groups = CL_GROUPS.filter(g => res.some(a => a.crit.group === g));
+  if(clSettings.group !== 'all' && !groups.includes(clSettings.group)) clSettings.group = 'all';
+  document.getElementById('clGroupChips').innerHTML = clSeg([{ v:'all', l:'Tous les critères' }, ...groups.map(g => ({ v:g, l:g }))], clSettings.group, v => `clSetGroup('${v}')`)
+    + (clFmtPending ? '<span class="clab-muted" style="margin-left:8px">Calcul des parts de formats…</span>' : '');
+
+  const shown = res.filter(a => clSettings.group === 'all' || a.crit.group === clSettings.group);
+  const pos = v => ((Math.max(-1, Math.min(1, v)) + 1) / 2 * 100).toFixed(2) + '%';
+  const rowsHtml = shown.map(a => {
+    const v = CL_VERDICTS[a.verdict];
+    let plot = '';
+    if(a.r != null){
+      const band = clRcrit(a.neff);
+      const col = a.verdict === 'robust' || a.verdict === 'lead' ? (a.r > 0 ? 'var(--blue)' : 'var(--orange)') : '#9AA7BD';
+      plot = `<span class="clf-noise" style="left:${pos(-band)};width:calc(${pos(band)} - ${pos(-band)})"></span>
+        ${a.ci ? `<span class="clf-ci" style="left:${pos(a.ci[0])};width:calc(${pos(a.ci[1])} - ${pos(a.ci[0])});background:${col}"></span>` : ''}
+        <span class="clf-dot" style="left:${pos(a.r)};background:${col}"></span>`;
+    }
+    const tip = a.r == null ? 'Pas assez de semaines exploitables pour ce critère.' :
+      `r = ${clFmtSigned(a.r,2)} · IC 95 % [${clFmtSigned(a.ci?.[0],2)} ; ${clFmtSigned(a.ci?.[1],2)}] · p = ${clFmtP(a.p)} · q = ${clFmtP(a.q)} · Spearman ${clFmtSigned(a.rs,2)} · n = ${a.n} (effectif ${clFmt(a.neff,0)})`;
+    return `<button type="button" class="clf-row${clSettings.focus === a.crit.key ? ' sel' : ''}" data-key="${escHtml(a.crit.key)}" onclick="clFocus(this.dataset.key)" title="${escHtml(tip)}">
+      <span class="clf-name">${escHtml(a.crit.label)}<small>${escHtml(a.crit.group)}</small></span>
+      <span class="clf-plot"><span class="clf-zero"></span>${plot}</span>
+      <span class="clf-r">${a.r == null ? '—' : clFmtSigned(a.r,2)}</span>
+      <span class="clf-q">${a.q == null ? '—' : clFmtP(a.q)}</span>
+      <span class="clf-verdict ${v.cls}">${v.label}</span>
+    </button>`;
+  }).join('');
+  document.getElementById('clForest').innerHTML = `
+    <div class="clf-head"><span>Critère</span><span class="clf-axis"><i>−1</i><i>0</i><i>+1</i></span><span class="clf-r">r</span><span class="clf-q" title="p-value corrigée des tests multiples (Benjamini-Hochberg)">q</span><span>Verdict</span></div>
+    ${rowsHtml || '<div class="clab-muted" style="padding:14px">Aucun critère dans ce groupe.</div>'}
+    <div class="clf-legend"><span><i class="clf-legend-noise"></i>Zone compatible avec le hasard</span><span><i class="clf-legend-ci"></i>Intervalle de confiance à 95 %</span><span><i class="clf-legend-dot" style="background:var(--blue)"></i>Va dans le même sens que l'audience</span><span><i class="clf-legend-dot" style="background:var(--orange)"></i>Va en sens inverse</span></div>`;
+}
+
+function clRenderDetail(){
+  const L = clLast;
+  const head = document.getElementById('clDetailHead');
+  const a = L.results.find(x => x.crit.key === clSettings.focus);
+  const panel = document.getElementById('clDetailPanel');
+  if(!a || a.r == null){
+    panel.style.display = 'none';
+    return;
+  }
+  panel.style.display = '';
+  const c = a.crit, v = CL_VERDICTS[a.verdict];
+  const unitY = L.mode === 'yoy' ? 'point(s) d\'évolution annuelle' : '%';
+  const step = a.sdx;
+  const eff = a.slope*step;
+  const effCi = a.ci ? [a.ci[0]*a.sdy, a.ci[1]*a.sdy] : null;
+  const xWhat = L.mode === 'diff' ? `varie de ${clFmtSigned(step, step < 10 ? 1 : 0)} ${c.unit} d'une semaine à l'autre (variation typique)` : `est ${clFmt(step, step < 10 ? 1 : 0)} ${c.unit} au-dessus de son niveau habituel`;
+  const effect = `Quand « ${c.label} » ${xWhat}, « ${L.target.label} » ${L.lag ? L.lag + ' semaine(s) plus tard ' : ''}évolue en moyenne de ${clFmtSigned(eff, 1)} ${unitY}${effCi ? ` (entre ${clFmtSigned(effCi[0],1)} et ${clFmtSigned(effCi[1],1)} avec 95 % de confiance)` : ''}.`;
+  let hypo = '';
+  if(c.hyp && (a.verdict === 'robust' || a.verdict === 'lead')){
+    hypo = Math.sign(a.r) === c.hyp ? '<span class="clab-pill ok">Conforme à l\'hypothèse attendue</span>' : '<span class="clab-pill warn">Contraire à l\'hypothèse attendue : à investiguer</span>';
+  }
+  const granger = L.mode === 'diff' ? clGranger(c, L.target, L.ctx) : null;
+  const chips = [
+    ['Corrélation (r)', clFmtSigned(a.r,2), 'Pearson, sur ' + a.n + ' observations'],
+    ['IC 95 %', a.ci ? '[' + clFmtSigned(a.ci[0],2) + ' ; ' + clFmtSigned(a.ci[1],2) + ']' : '—', 'Fourchette plausible du vrai coefficient (Fisher), calculée sur l\'effectif effectif'],
+    ['Spearman (ρ)', clFmtSigned(a.rs,2), 'Corrélation de rangs : si elle diverge de r, quelques semaines extrêmes pilotent le résultat'],
+    ['p / q', clFmtP(a.p) + ' / ' + clFmtP(a.q), 'p : probabilité d\'un lien aussi fort par hasard ; q : la même, corrigée des ' + L.results.filter(x=>x.p!=null).length + ' critères testés'],
+    ['Effectif effectif', clFmt(a.neff,0) + ' / ' + a.n, 'Nombre d\'observations réellement indépendantes une fois l\'autocorrélation des séries prise en compte (Bartlett)'],
+    ['Stabilité', a.rH1 == null ? '—' : clFmtSigned(a.rH1,2) + ' puis ' + clFmtSigned(a.rH2,2), 'Coefficient sur la 1re puis la 2e moitié de la période : un vrai lien garde le même signe'],
+  ];
+  if(granger) chips.push(['Précédence (Granger)', 'p = ' + clFmtP(granger.p), 'La variation du critère en t-1 améliore-t-elle la prévision de la variation d\'audience en t, au-delà de l\'audience t-1 ? (' + granger.n + ' obs.)']);
+  head.innerHTML = `
+    <div class="clab-detail-top">
+      <div>
+        <h3 class="clab-h3">${escHtml(c.label)} <span class="clf-verdict ${v.cls}">${v.label}</span> ${hypo}</h3>
+        <p class="clab-effect">${escHtml(effect)}</p>
+      </div>
+    </div>
+    <div class="clab-chips-stats">${chips.map(ch => `<div class="clab-chip" title="${escHtml(ch[2])}"><span>${escHtml(ch[0])}</span><b>${escHtml(ch[1])}</b></div>`).join('')}</div>`;
+
+  // Nuage de points
+  const pts = a.pairs.map(p => ({ x: p.x, y: p.y, t: p.t }));
+  const xs = pts.map(p=>p.x), mx = clMean(xs), my = clMean(pts.map(p=>p.y));
+  const xMin = Math.min(...xs), xMax = Math.max(...xs);
+  const line = [{ x:xMin, y: my + a.slope*(xMin-mx) }, { x:xMax, y: my + a.slope*(xMax-mx) }];
+  const col = a.r > 0 ? '#1E6FD9' : '#E07B00';
+  const xTitle = (L.mode === 'diff' ? 'Variation ' : L.mode === 'detrend' ? 'Écart à la tendance ' : '') + c.label + ' (' + c.unit + ')';
+  const yTitle = (L.mode === 'diff' ? 'Variation ' : L.mode === 'detrend' ? 'Écart à la tendance ' : 'Évol. 1 an ') + L.target.label + ' (%)';
+  document.getElementById('clScatterCap').textContent = L.mode === 'diff' ? 'Chaque point = une semaine comparée à la précédente' : 'Chaque point = une semaine';
+  graphSafeNewChart('clScatterChart', {
+    data: { datasets: [
+      { type:'scatter', data: pts, backgroundColor: 'rgba(11,29,58,.72)', pointRadius: 4.5, pointHoverRadius: 7 },
+      { type:'line', data: line, borderColor: col, borderWidth: 2, pointRadius: 0, tension: 0 }
+    ] },
+    options: { responsive:true, maintainAspectRatio:false, animation:{ duration:500 },
+      plugins: { legend:{ display:false }, tooltip:{ filter: i => i.datasetIndex === 0, callbacks:{ label: ctx => { const p = pts[ctx.dataIndex]; return 'Sem. du ' + digitalAudienceFmtDate(p.t) + ' : x ' + clFmtSigned(p.x,1) + ' · y ' + clFmtSigned(p.y,1); } } } },
+      scales: { x:{ type:'linear', title:{ display:true, text:xTitle, font:{ size:10.5 } }, grid:{ color:'#EEF1F6' }, ticks:{ color:'#4A5E78' } },
+                y:{ title:{ display:true, text:yTitle, font:{ size:10.5 } }, grid:{ color: c2 => c2.tick && c2.tick.value === 0 ? '#B7C2D4' : '#EEF1F6' }, ticks:{ color:'#4A5E78' } } } }
+  });
+
+  // Corrélogramme
+  const lags = [-2,-1,0,1,2,3,4];
+  const lagRes = lags.map(l => clAnalyze(clPairs(c, L.target, L.mode, l, L.ctx)));
+  graphSafeNewChart('clLagChart', {
+    type:'bar',
+    data: { labels: lags.map(l => l === 0 ? '0' : (l > 0 ? '+' : '−') + Math.abs(l)), datasets: [{
+      data: lagRes.map(x => x.r),
+      backgroundColor: lagRes.map((x,i) => x.r == null ? '#DDE3EE' : (x.p != null && x.p < 0.05 ? (x.r > 0 ? '#1E6FD9' : '#E07B00') : (lags[i] < 0 ? '#E6E9F0' : '#C9D2E0'))),
+      borderColor: lags.map(l => l === L.lag ? '#0B1D3A' : 'transparent'), borderWidth: 2, borderRadius: 3 }] },
+    options: { responsive:true, maintainAspectRatio:false, animation:{ duration:400 },
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => { const x = lagRes[ctx.dataIndex]; return x.r == null ? 'n insuffisant' : 'r = ' + clFmtSigned(x.r,2) + ' · p = ' + clFmtP(x.p) + ' · n = ' + x.n; } } } },
+      scales:{ y:{ min:-1, max:1, ticks:{ stepSize:0.5, color:'#4A5E78' }, grid:{ color: c2 => c2.tick && c2.tick.value === 0 ? '#B7C2D4' : '#EEF1F6' } },
+               x:{ title:{ display:true, text:'Décalage en semaines (négatif = l\'audience bouge avant la programmation)', font:{ size:10 } }, grid:{ display:false } } } }
+  });
+  let lagNote = '';
+  const valid = lagRes.map((x,i) => ({ x, l: lags[i] })).filter(o => o.x.r != null);
+  if(valid.length){
+    const peak = valid.reduce((b,o) => Math.abs(o.x.r) > Math.abs(b.x.r) ? o : b);
+    if(peak.l < 0 && peak.x.p != null && peak.x.p < 0.05) lagNote = 'Le lien le plus fort apparaît quand l\'audience bouge AVANT la programmation : la causalité inverse (la programmation réagit à l\'audience) ou une cause commune est plus probable qu\'un effet de la programmation.';
+    else if(peak.l > 0 && peak.x.p != null && peak.x.p < 0.05) lagNote = 'Le lien le plus fort apparaît avec ' + peak.l + ' semaine(s) de décalage : un effet différé de la programmation est plausible.';
+    else lagNote = 'Barres colorées : décalages où le lien est significatif à 5 % (sans correction). Barre encadrée : décalage actuellement analysé.';
+  }
+  document.getElementById('clLagNote').textContent = lagNote;
+
+  // Séries comparées (centrées-réduites)
+  const z = arr => { const m = clMean(arr), s = clSd(arr) || 1; return arr.map(v => (v-m)/s); };
+  const zx = z(a.pairs.map(p=>p.x)), zy = z(a.pairs.map(p=>p.y));
+  graphSafeNewChart('clSeriesChart', {
+    type:'line',
+    data: { labels: a.pairs.map(p => digitalAudienceFmtDate(p.t).slice(0,5)), datasets: [
+      { label: L.target.label, data: zy, borderColor:'#0B1D3A', backgroundColor:'#0B1D3A', borderWidth:2, pointRadius:2.5, tension:.25 },
+      { label: c.label + (L.lag ? ' (décalé de ' + L.lag + ' sem.)' : ''), data: zx, borderColor:'#00B8C8', backgroundColor:'#00B8C8', borderWidth:2, borderDash:[5,3], pointRadius:2.5, tension:.25 }
+    ] },
+    options: { responsive:true, maintainAspectRatio:false, animation:{ duration:500 }, interaction:{ mode:'index', intersect:false },
+      plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } }, tooltip:{ callbacks:{ label: ctx => ctx.dataset.label + ' : ' + clFmtSigned(ctx.parsed.y,2) + ' écart-type' } } },
+      scales:{ y:{ title:{ display:true, text:'En écarts-types', font:{ size:10 } }, grid:{ color: c2 => c2.tick && c2.tick.value === 0 ? '#B7C2D4' : '#EEF1F6' }, ticks:{ color:'#4A5E78' } },
+               x:{ grid:{ display:false }, ticks:{ color:'#8A9AB5', font:{ size:9 }, maxRotation:0, autoSkip:true } } } }
+  });
+}
+
+// ── Modèle combiné ──────────────────────────────────────────────────────
+function corrOnCombinedCriteriaChange(){
+  clSettings.combo = Array.from(document.querySelectorAll('#corrCombinedCriteria input:checked')).map(el => el.value);
+  clSaveSettings();
+  renderCorrCombined();
+}
+function clComboData(keys){
+  const L = clLast;
+  const maps = keys.map(k => {
+    const a = L.results.find(x => x.crit.key === k);
+    const m = {}; (a ? a.pairs : []).forEach(p => { m[p.t] = p; });
+    return m;
+  });
+  const ts = Object.keys(maps[0] || {}).filter(t => maps.every(m => m[t])).sort();
+  return { ts, X: ts.map(t => maps.map(m => m[t].x)), y: ts.map(t => maps[0][t].y) };
+}
+function clFitCombo(keys){
+  if(!keys.length) return null;
+  const d = clComboData(keys);
+  const n = d.ts.length, k = keys.length;
+  if(n < k + 4) return { error:'insufficient', n, k };
+  const zc = col => { const m = clMean(col), s = clSd(col); return s > 0 ? col.map(v => (v-m)/s) : null; };
+  const cols = keys.map((_,j) => zc(d.X.map(r => r[j])));
+  if(cols.some(c => !c)) return { error:'constant', n, k };
+  const yz = zc(d.y); if(!yz) return { error:'constant', n, k };
+  const X = d.ts.map((_,i) => [1, ...cols.map(c => c[i])]);
+  const fit = clOLS(X, yz);
+  if(!fit) return { error:'singular', n, k };
+  let vif = keys.map(() => 1);
+  if(k > 1){
+    const R = cols.map(ci => cols.map(cj => clPearsonArr(ci, cj) ?? 0));
+    const inv = clInvert(R);
+    if(inv) vif = inv.map((row,i) => row[i]);
+  }
+  return { error:null, n, k, fit, vif };
+}
+function clAutoSelect(){
+  const L = clLast; if(!L) return;
+  const cands = L.results.filter(a => a.r != null && a.n >= 8).map(a => a.crit.key);
+  const kmax = Math.max(1, Math.min(4, Math.floor(L.nObs/8)));
+  let chosen = [], bestQ2 = 0;
+  for(let step=0; step<kmax; step++){
+    let bestKey = null, bestVal = bestQ2;
+    cands.filter(k => !chosen.includes(k)).forEach(k => {
+      const m = clFitCombo([...chosen, k]);
+      if(m && !m.error && m.fit.q2 != null && m.fit.q2 > bestVal + 0.02 && Math.max(...m.vif) < 5){ bestVal = m.fit.q2; bestKey = k; }
+    });
+    if(!bestKey) break;
+    chosen.push(bestKey); bestQ2 = bestVal;
+  }
+  clSettings.combo = chosen;
+  clSaveSettings();
+  if(!chosen.length) showToast('Aucune combinaison ne prédit mieux que la moyenne sur cette période (Q² ≤ 0).', 'err');
+  renderCorrCombined();
+}
+function renderCorrCombined(){
+  const L = clLast;
+  const checkArea = document.getElementById('corrCombinedCriteria');
+  const resultArea = document.getElementById('corrCombinedResult');
+  if(!L || !checkArea || !resultArea) return;
+  const avail = L.results.filter(a => a.r != null);
+  const sel = (clSettings.combo || []).filter(k => avail.some(a => a.crit.key === k));
+  checkArea.innerHTML = CL_GROUPS.filter(g => avail.some(a => a.crit.group === g)).map(g => `
+    <div class="clab-combo-group"><div class="clab-combo-gname">${escHtml(g)}</div>
+      ${avail.filter(a => a.crit.group === g).map(a => `<label class="clab-check"><input type="checkbox" value="${escHtml(a.crit.key)}" ${sel.includes(a.crit.key)?'checked':''} onchange="corrOnCombinedCriteriaChange()"> ${escHtml(a.crit.label)}</label>`).join('')}
+    </div>`).join('');
+  if(!sel.length){
+    resultArea.innerHTML = '<p class="clab-muted">Cochez un ou plusieurs critères, ou laissez FPA chercher la meilleure combinaison.</p>';
+    return;
+  }
+  const m = clFitCombo(sel);
+  if(m.error === 'insufficient'){ resultArea.innerHTML = `<p class="clab-muted">${m.n} observation(s) communes pour ${m.k} critère(s) : il en faut au moins ${m.k + 4}. Retirez un critère ou élargissez la période.</p>`; return; }
+  if(m.error === 'constant'){ resultArea.innerHTML = '<p class="clab-muted">Un des critères ne varie pas sur la période : retirez-le.</p>'; return; }
+  if(m.error === 'singular'){ resultArea.innerHTML = '<p class="clab-muted">Ces critères sont redondants entre eux (ils évoluent ensemble) et ne peuvent pas être séparés : retirez-en un.</p>'; return; }
+  const f = m.fit;
+  const q2 = f.q2;
+  const verdict = q2 == null ? '' : q2 > 0.2 ? 'Pouvoir prédictif réel : la combinaison anticipe une partie des variations sur des semaines qu\'elle n\'a pas vues.'
+    : q2 > 0 ? 'Pouvoir prédictif faible mais positif.'
+    : 'Pas de pouvoir prédictif : sur une semaine qu\'il n\'a pas vue, le modèle se trompe davantage que la simple moyenne. Le R² ci-contre est un effet de sur-ajustement.';
+  const ratio = m.n / m.k;
+  const rows = sel.map((k,i) => {
+    const a = avail.find(x => x.crit.key === k);
+    const b = f.beta[i+1], p = f.p[i+1], vif = m.vif[i];
+    const col = p < 0.05 ? (b > 0 ? 'var(--blue)' : 'var(--orange)') : '#9AA7BD';
+    const w = Math.min(100, Math.abs(b)*60);
+    return `<tr><td>${escHtml(a.crit.label)}</td>
+      <td><span class="clab-beta"><span class="clab-beta-mid"></span><span class="clab-beta-bar" style="${b>=0?'left:50%':'right:50%'};width:${w/2}%;background:${col}"></span></span></td>
+      <td class="num" style="color:${col}">${clFmtSigned(b,2)}</td><td class="num">${clFmtP(p)}</td>
+      <td class="num${vif >= 5 ? ' warn' : ''}" title="Facteur d'inflation de la variance : au-delà de 5, le critère est largement redondant avec les autres">${clFmt(vif,1)}</td></tr>`;
+  }).join('');
+  resultArea.innerHTML = `
+    <div class="clab-model-kpis">
+      <div class="clab-stat"><b>${clFmt(f.r2*100,0)} %</b><span>R² (ajusté ${clFmt(f.adjR2*100,0)} %)</span></div>
+      <div class="clab-stat${q2 != null && q2 > 0 ? ' good' : ' bad'}"><b>${q2 == null ? '—' : clFmt(q2*100,0) + ' %'}</b><span>Q² prédictif (validation croisée)</span></div>
+      <div class="clab-stat"><b>${m.n}</b><span>observations · ${clFmt(ratio,1)} par critère</span></div>
+    </div>
+    <p class="clab-model-verdict">${escHtml(verdict)}${ratio < 8 ? ' Attention : moins de 8 observations par critère, le risque de sur-ajustement est élevé.' : ''}</p>
+    <table class="clab-table"><thead><tr><th>Critère</th><th>Poids standardisé</th><th class="num">β</th><th class="num">p</th><th class="num">VIF</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="clab-muted">β : effet d'une hausse d'un écart-type du critère sur l'audience (en écarts-types), les autres critères cochés restant constants.</p>`;
+}
+
+// ── Tableau d'appariement (repliable) ───────────────────────────────────
+function clRenderMatchTable(stKey, matches){
+  const progHistory = analyseLoadHistory()[stKey] || [];
+  const opts = sel => `<option value="" ${sel ? '' : 'selected'}>— aucune —</option>` + progHistory.map(e => `<option value="${escHtml(e.weekLabel)}" ${e.weekLabel===sel?'selected':''}>${escHtml(e.weekLabel)}</option>`).join('');
+  const matchLabel = { date:'Date exacte', auto:'N° de semaine', 'auto-ambiguous':'N° de semaine (ambigu)', manual:'Manuel', none:'Non apparié' };
+  const matchCls = { date:'ok', auto:'ok', 'auto-ambiguous':'warn', manual:'man', none:'none' };
+  const nOk = matches.filter(m => m.progEntry).length, nAmb = matches.filter(m => m.matchType === 'auto-ambiguous').length;
+  const sum = document.getElementById('clMatchSummary');
+  if(sum) sum.textContent = nOk + ' / ' + matches.length + ' semaines appariées' + (nAmb ? ' · ' + nAmb + ' à vérifier' : '');
+  document.getElementById('corrMatchTableArea').innerHTML = `
+    <p class="clab-muted" style="margin:4px 0 10px">Appariement automatique par recouvrement des dates, à défaut par numéro de semaine Yacast. Corrigez une ligne si besoin : la correction est conservée.</p>
+    <table class="clab-table"><thead><tr><th>Semaine d'audience</th><th>Semaine de programmation</th><th>Appariement</th></tr></thead><tbody>
+    ${matches.slice().reverse().map(m => `<tr>
+      <td>${digitalAudienceFmtDate(m.weekStart)}${m.audRecord.weekEnd ? ' → ' + digitalAudienceFmtDate(m.audRecord.weekEnd) : ''}</td>
+      <td><select onchange="corrSetManualMatch('${stKey}','${m.weekStart}',this.value)">${opts(m.progEntry ? m.progEntry.weekLabel : null)}</select></td>
+      <td><span class="clab-pill ${matchCls[m.matchType]}">${matchLabel[m.matchType]}</span></td></tr>`).join('')}
+    </tbody></table>`;
 }
 
 /** La semaine en cours (potentiellement 500+ titres) est gardée en
