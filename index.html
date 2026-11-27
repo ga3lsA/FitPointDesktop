@@ -4469,8 +4469,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.246';
-const FPA_BUILD_ISO = '2026-10-03T16:00:00+02:00';
+const FPA_VERSION   = 'v30.247';
+const FPA_BUILD_ISO = '2026-11-27T12:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -7543,55 +7543,75 @@ async function loadBillboardChart(){
   if(activeChartTab === 'bbus') renderChartTable();
 }
 
-// ── BILLBOARD GLOBAL 200 (Monde) — miroir JSON communautaire, mis à jour chaque jour ─
+// ── BILLBOARD GLOBAL 200 (Monde) — page officielle billboard.com ─────────────
 // Classement Billboard mondial (streams + ventes agrégés dans ~200 pays),
-// distinct du Hot 100 qui ne couvre que les US. Même principe que Hot 100 :
-// pas d'API officielle, miroir GitHub communautaire (CORS ouvert, vérifié).
-// Source non officielle : "best effort", sans garantie de disponibilité.
-const BILLBOARD_GLOBAL200_URL = 'https://raw.githubusercontent.com/KoreanThinker/billboard-json/main/billboard-global-200/recent.json';
+// distinct du Hot 100 qui ne couvre que les US.
+// v30.247 : l'ancien miroir JSON communautaire (GitHub KoreanThinker/
+// billboard-json) a été bloqué par GitHub le 19/08/2026 (renvoie 404 depuis)
+// — c'était la cause de l'onglet vide. On lit désormais directement la page
+// publique billboard.com, qui n'envoie pas d'en-têtes CORS : elle passe donc
+// par le proxy Apps Script personnel (Code_gs_Proxy_Kworb.gs, générique, déjà
+// utilisé pour kworb.net/Spotify embed), avec repli sur les proxies publics.
+const BILLBOARD_GLOBAL200_URL = 'https://www.billboard.com/charts/billboard-global-200/';
 
 let billboardGlobalData     = {};   // {rang: {a, t, prev, peak, weeks}}
 let billboardGlobalLoaded   = false;
 let billboardGlobalDateUsed = null;
 let billboardGlobalLoading  = false;
+let billboardGlobalChartDate = null; // date de semaine lue dans la page (« AAAA-MM-JJ »), si trouvée
 
-function parseBillboardGlobalObject(data){
+/** Parse le HTML de billboard.com/charts/billboard-global-200/.
+ *  Structure (même que celle exploitée par la librairie billboard.py) :
+ *  chaque ligne = ul.o-chart-results-list-row ; rang = 1er span.c-label du
+ *  1er li ; titre = h3#title-of-a-story ; artiste = span.c-label qui suit le
+ *  h3. Semaine précédente / meilleur rang / semaines : les 3 dernières
+ *  cellules purement numériques (ou « - ») de la ligne — lecture tolérante,
+ *  laissées à null si incohérentes plutôt que de casser tout le classement. */
+function parseBillboardGlobalHTML(html){
   try{
-    const arr = data && data.data;
-    if(!Array.isArray(arr) || arr.length < 5) return null;
+    if(!html || typeof html !== 'string') return null;
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const rows = doc.querySelectorAll('ul.o-chart-results-list-row');
+    if(!rows || rows.length < 5) return null;
+    const clean = el => (el ? (el.textContent || '') : '').replace(/\s+/g,' ').trim();
     const chart = {};
-    arr.forEach(item => {
-      const r = parseInt(item.rank);
-      if(!r) return;
-      chart[r] = {
-        a: item.artist || '', t: item.name || '',
-        prev: (item.last_week_rank !== null && item.last_week_rank !== undefined) ? item.last_week_rank : null,
-        peak: item.peak_rank || null,
-        weeks: item.weeks_on_chart || null
-      };
+    rows.forEach((row, idx) => {
+      const h3 = row.querySelector('h3#title-of-a-story') || row.querySelector('h3');
+      const title = clean(h3);
+      if(!title) return;
+      let artistEl = h3 ? h3.nextElementSibling : null;
+      while(artistEl && !(artistEl.matches && artistEl.matches('span'))) artistEl = artistEl.nextElementSibling;
+      const artist = clean(artistEl);
+
+      const firstLi = row.querySelector('li');
+      let rank = parseInt(clean(firstLi && (firstLi.querySelector('span.c-label') || firstLi)));
+      if(!rank) rank = idx + 1;
+
+      // Cellules numériques feuilles (sans sous-liste), hors 1re cellule (rang)
+      const nums = Array.from(row.querySelectorAll('li'))
+        .filter(li => li !== firstLi && !li.querySelector('li') && !li.querySelector('h3'))
+        .map(li => clean(li))
+        .filter(t => /^(\d{1,3}|-)$/.test(t));
+      let prev = null, peak = null, weeks = null;
+      if(nums.length >= 3){
+        const [lw, pk, wk] = nums.slice(-3).map(t => t === '-' ? null : parseInt(t));
+        // Contrôle de cohérence : meilleur rang ≤ rang actuel, semaines ≥ 1
+        if((pk === null || pk <= rank) && (wk === null || wk >= 1)){ prev = lw; peak = pk; weeks = wk; }
+      }
+      if(!chart[rank]) chart[rank] = { a: artist, t: title, prev, peak, weeks };
     });
+    if(Object.keys(chart).length < 5) return null;
+    const dp = doc.querySelector('#chart-date-picker');
+    billboardGlobalChartDate = (dp && dp.getAttribute('data-date')) || null;
     return chart;
   }catch(e){ return null; }
 }
 
-function parseBillboardGlobalJSON(text){
-  try{ return parseBillboardGlobalObject(JSON.parse(text)); }catch(e){ return null; }
-}
-
-/** Fetch Billboard Global 200 : tentative directe d'abord (miroir GitHub, CORS
- *  ouvert), repli sur la cascade de proxies CORS génériques si besoin. */
+/** Fetch Billboard Global 200 : proxy Apps Script personnel en priorité
+ *  (billboard.com n'a pas de CORS), repli sur les proxies CORS publics. */
 async function fetchBillboardGlobalViaProxy(){
-  try{
-    const resp = await Promise.race([
-      fetch(BILLBOARD_GLOBAL200_URL, {signal:AbortSignal.timeout(8000)}),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000))
-    ]);
-    if(resp.ok){
-      const parsed = parseBillboardGlobalJSON(await resp.text());
-      if(parsed) return parsed;
-    }
-  }catch(e){ /* repli proxy ci-dessous */ }
-  return fetchDataViaProxy(BILLBOARD_GLOBAL200_URL, parseBillboardGlobalJSON);
+  billboardGlobalChartDate = null;
+  return fetchKworbPage(BILLBOARD_GLOBAL200_URL, parseBillboardGlobalHTML);
 }
 
 /** Charge le classement Billboard Global 200 (appelé à la demande, uniquement depuis l'onglet Classements) */
@@ -7605,7 +7625,9 @@ async function loadBillboardGlobalChart(){
   if(chart){
     billboardGlobalData = chart;
     billboardGlobalLoaded = true;
-    billboardGlobalDateUsed = new Date().toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
+    // Date de la semaine du classement si la page la donne, sinon date du jour
+    const _bbgD = billboardGlobalChartDate ? new Date(billboardGlobalChartDate + 'T12:00:00') : null;
+    billboardGlobalDateUsed = ((_bbgD && !isNaN(_bbgD)) ? _bbgD : new Date()).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'});
     if(activeChartTab === 'bbg200') showToast('Classement Billboard Global 200 chargé ✓','success');
   } else if(activeChartTab === 'bbg200'){
     showToast('Connexion à Billboard Global 200 impossible pour le moment — réessayez plus tard','err');
@@ -25111,7 +25133,7 @@ function renderChartTable(){
     else if(activeChartTab === 'bbg200')
       hintEl.innerHTML = billboardGlobalLoading
         ? 'Connexion au classement Billboard Global 200 en cours…'
-        : 'Connexion à Billboard Global 200 indisponible pour le moment (miroir JSON non officiel, sans garantie de disponibilité). Cliquez sur « Charger Billboard Global 200 » ci-dessus pour réessayer.';
+        : 'Connexion à Billboard Global 200 indisponible pour le moment. La page billboard.com passe par le proxy Apps Script ⚙️ (Code_gs_Proxy_Kworb.gs, partagé avec les onglets International) : vérifiez qu\'il est configuré, et que billboard.com est autorisé si votre script a une liste blanche de domaines. Cliquez sur « Charger Billboard Global 200 » ci-dessus pour réessayer.';
     else
       hintEl.innerHTML = 'Importez votre export airplay (.xlsx) via le bouton ci-dessus pour afficher le classement.';
     return;
