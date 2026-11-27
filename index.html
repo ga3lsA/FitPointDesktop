@@ -16117,26 +16117,73 @@ function mediaToggleSubCibles(stKey){
 /** Contexte d'une quinzaine : période (début / fin) + texte libre (activité
  *  de l'antenne, opérations musicales majeures). Enregistré avec la vague. */
 function mediaContextCellHtml(period, wave){
-  const c = wave.context || {};
+  const list = mediaWaveContexts(wave);
   const base = `'${period.id}','${wave.id}'`;
   const inp = 'font-size:11px;padding:4px 6px;border-radius:6px;border:1.5px solid var(--border);background:var(--white);color:var(--navy)';
-  return `<div style="display:flex;align-items:center;gap:5px;margin-bottom:5px;flex-wrap:wrap">
-      <span style="font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">Du</span>
-      <input type="date" value="${escHtml(c.from || '')}" onchange="mediaUpdateWaveContext(${base},'from',this.value)" style="${inp}">
-      <span style="font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">au</span>
-      <input type="date" value="${escHtml(c.to || '')}" onchange="mediaUpdateWaveContext(${base},'to',this.value)" style="${inp}">
-    </div>
-    <textarea rows="2" placeholder="Activité de l'antenne, opérations musicales majeures…" onchange="mediaUpdateWaveContext(${base},'text',this.value)"
-      style="width:100%;box-sizing:border-box;resize:vertical;min-height:44px;font-size:11.5px;line-height:1.4;padding:6px 8px;border-radius:7px;border:1.5px solid var(--border);font-family:inherit;color:var(--navy);background:var(--white)">${escHtml(c.text || '')}</textarea>`;
+  const lim = (wave.dateStart ? ` min="${escHtml(wave.dateStart)}"` : '') + (wave.dateEnd ? ` max="${escHtml(wave.dateEnd)}"` : '');
+  const item = (c, i) => `<div style="border:1px solid var(--border);border-radius:8px;padding:6px 7px;background:${i % 2 ? 'var(--white)' : '#F7F9FC'};margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-bottom:5px">
+        <span style="font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">Du</span>
+        <input type="date" value="${escHtml(c.from || '')}"${lim} onchange="mediaUpdateWaveContext(${base},'${c.id}','from',this.value,this)" style="${inp}">
+        <span style="font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase">au</span>
+        <input type="date" value="${escHtml(c.to || '')}"${lim} onchange="mediaUpdateWaveContext(${base},'${c.id}','to',this.value,this)" style="${inp}">
+        <button type="button" onclick="mediaRemoveWaveContext(${base},'${c.id}')" title="Supprimer ce contexte" style="margin-left:auto;border:none;background:none;color:var(--muted);cursor:pointer;font-size:12px">🗑</button>
+      </div>
+      <textarea rows="2" placeholder="Activité de l'antenne, opération musicale…" onchange="mediaUpdateWaveContext(${base},'${c.id}','text',this.value,this)"
+        style="width:100%;box-sizing:border-box;resize:vertical;min-height:40px;font-size:11.5px;line-height:1.4;padding:5px 7px;border-radius:7px;border:1.5px solid var(--border);font-family:inherit;color:var(--navy);background:var(--white)">${escHtml(c.text || '')}</textarea>
+    </div>`;
+  return list.map(item).join('') + `<button type="button" class="btn-ghost" onclick="mediaAddWaveContext(${base})" style="font-size:10.5px;padding:4px 10px">+ Ajouter un contexte</button>
+    ${wave.dateStart && wave.dateEnd ? `<div style="font-size:9.5px;color:var(--muted);margin-top:4px">Dates comprises entre le ${mediaDateToFr(wave.dateStart)} et le ${mediaDateToFr(wave.dateEnd)}</div>` : ''}`;
 }
-function mediaUpdateWaveContext(periodId, waveId, field, value){
+/** Contextes d'une quinzaine (liste) — reprend l'ancien contexte unique. */
+function mediaWaveContexts(wave){
+  if(!Array.isArray(wave.contexts)){
+    wave.contexts = [];
+    const c = wave.context;
+    if(c && (c.from || c.to || c.text)) wave.contexts.push({ id:'x' + Date.now().toString(36), from:c.from || '', to:c.to || '', text:c.text || '' });
+    delete wave.context;
+  }
+  return wave.contexts;
+}
+function mediaFindWave(periodId, waveId){
   const stKey = mediaUI.station;
   const period = mediaHistory[stKey].periods.find(p => p.id === periodId);
-  if(!period) return;
-  const wave = period.waves.find(w => w.id === waveId);
-  if(!wave) return;
-  wave.context = Object.assign({ from:'', to:'', text:'' }, wave.context || {});
-  wave.context[field] = field === 'text' ? String(value || '').trim() : (value || '');
+  return period ? period.waves.find(w => w.id === waveId) || null : null;
+}
+function mediaAddWaveContext(periodId, waveId){
+  const wave = mediaFindWave(periodId, waveId); if(!wave) return;
+  mediaWaveContexts(wave).push({ id:'x' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), from: wave.dateStart || '', to: '', text: '' });
+  mediaSaveLocal(); if(DRIVE_SYNC_URL) mediaSaveToDrive();
+  renderMediaPage();
+}
+function mediaRemoveWaveContext(periodId, waveId, ctxId){
+  const wave = mediaFindWave(periodId, waveId); if(!wave) return;
+  const list = mediaWaveContexts(wave), c = list.find(x => x.id === ctxId);
+  if(c && (c.text || '').trim() && !confirm('Supprimer ce contexte ?')) return;
+  wave.contexts = list.filter(x => x.id !== ctxId);
+  mediaSaveLocal(); if(DRIVE_SYNC_URL) mediaSaveToDrive();
+  renderMediaPage();
+}
+/** Mise à jour d'un contexte : les dates doivent rester dans la période de
+ *  la quinzaine (et « du » ≤ « au »). */
+function mediaUpdateWaveContext(periodId, waveId, ctxId, field, value, el){
+  const wave = mediaFindWave(periodId, waveId); if(!wave) return;
+  const c = mediaWaveContexts(wave).find(x => x.id === ctxId); if(!c) return;
+  if(field === 'from' || field === 'to'){
+    const v = value || '';
+    if(v && wave.dateStart && v < wave.dateStart || v && wave.dateEnd && v > wave.dateEnd){
+      showToast('La date doit être comprise dans la quinzaine (du ' + mediaDateToFr(wave.dateStart) + ' au ' + mediaDateToFr(wave.dateEnd) + ')', 'err');
+      if(el) el.value = c[field] || '';
+      return;
+    }
+    const from = field === 'from' ? v : c.from, to = field === 'to' ? v : c.to;
+    if(from && to && from > to){
+      showToast('La date de début du contexte doit précéder sa date de fin', 'err');
+      if(el) el.value = c[field] || '';
+      return;
+    }
+    c[field] = v;
+  } else c.text = String(value || '').trim();
   mediaSaveLocal();
   if(DRIVE_SYNC_URL) mediaSaveToDrive();
 }
