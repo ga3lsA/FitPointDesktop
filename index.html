@@ -2932,6 +2932,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             <div><h4>Tests multiples</h4><p>Tester des dizaines de critères à la fois fait apparaître environ 5 % de faux positifs. La q-value (Benjamini-Hochberg) corrige ce biais. « Lien robuste » exige q ≤ 0,10, le même signe en Spearman et sur les deux moitiés de la période.</p></div>
             <div><h4>Décalage et sens du lien</h4><p>Le graphique « Selon le délai » teste aussi les décalages négatifs. Si le lien est plus fort quand l'audience bouge avant la programmation, c'est probablement la programmation qui réagit, ou une cause commune. Le test de Granger vérifie si le critère précède l'audience. Les délais en mois comparent des moyennes sur 4, 9 ou 13 semaines, pour capter les effets d'habitude ; les fenêtres glissantes se chevauchant, l'effectif est ramené au nombre de périodes réellement indépendantes.</p></div>
             <div><h4>Modèle combiné</h4><p>Le R² augmente toujours quand on ajoute un critère. Le Q² (validation croisée « leave-one-out ») ne récompense que le pouvoir de prévision réel. Comptez au moins 8 observations par critère ; un VIF supérieur à 5 signale des critères redondants.</p></div>
+            <div><h4>Adoption radio</h4><p>Pour chaque titre diffusé : délai entre sa sortie officielle et son entrée en playlist, et décalage entre sa première apparition dans un classement digital français (Shazam, Spotify, Deezer, Apple Music) et son entrée en playlist. Une adoption trop rapide comme trop tardive pouvant peser sur l'audience, la moyenne est complétée par les parts d'adoptions précoces et tardives.</p></div>
             <div><h4>Corrélation n'est pas causalité</h4><p>L'actualité, les opérations marketing, les programmes parlés, la distribution sur les applications et les enceintes connectées pèsent aussi sur l'audience. Pour prouver qu'un levier agit, le plus solide est l'expérimentation planifiée : faire varier volontairement ce seul critère sur des blocs de semaines, en gardant le reste stable, puis comparer.</p></div>
           </div>
         </details>
@@ -4659,8 +4660,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.251';
-const FPA_BUILD_ISO = '2026-11-27T20:00:00+01:00';
+const FPA_VERSION   = 'v30.252';
+const FPA_BUILD_ISO = '2026-11-27T21:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -20816,8 +20817,131 @@ const CL_MODES = {
   detrend: { label:'Écart à la tendance', hint:'Retire à chaque série sa tendance linéaire sur la période, puis compare les écarts. Utile sur une période longue sans trou.' }
 };
 
+// ── Délai d'adoption radio (critères hebdomadaires) ─────────────────────
+// Deux mesures du « timing » de la programmation, calculées titre par
+// titre puis agrégées par semaine (pondération par diffusions) :
+//  • Sortie → entrée : date de sortie officielle (iTunes) → date d'entrée
+//    en playlist de la station (même source que la page Délai d'adoption,
+//    titres « Gold » au-delà d'un an exclus).
+//  • Radio vs digital : 1re apparition du titre dans un classement digital
+//    français (Shazam, Spotify, Deezer, Apple Music — historique Drive des
+//    Classements) → entrée en playlist. Négatif = la radio a devancé le
+//    digital. Titres déjà présents dès la 1re semaine d'historique exclus
+//    (date réelle d'arrivée en digital inconnue).
+// Une adoption trop rapide OU trop tardive pouvant toutes deux peser sur
+// l'audience (relation en U), on suit à la fois la moyenne et les parts
+// d'adoptions précoces / tardives.
+const CL_ADOPT_EARLY_DAYS = 28, CL_ADOPT_LATE_DAYS = 84, CL_DIG_LATE_WEEKS = 8;
+const clRowsCache = {};
+let clRowsPending = false;
+let clAdoptCache = {};
+let clDigital = { state:'idle', weeks:null, first:{} };
+function clEnsureWeekRows(stKey, matched){
+  if(typeof analyseLoadWeekDetail !== 'function' || clRowsPending) return;
+  const missing = matched.filter(m => !((stKey + '|' + m.progEntry.weekLabel) in clRowsCache));
+  if(!missing.length) return;
+  clRowsPending = true;
+  Promise.all(missing.map(m => {
+    const ck = stKey + '|' + m.progEntry.weekLabel;
+    return analyseLoadWeekDetail(stKey, m.progEntry.weekLabel)
+      .then(d => { clRowsCache[ck] = (d && Array.isArray(d.rows)) ? d.rows.map(r => ({ title: r.title, artist: r.artist, w: r.nbDiffs || 0 })) : null; })
+      .catch(() => { clRowsCache[ck] = null; });
+  })).then(() => { clRowsPending = false; clAdoptCache = {}; if(analyseSubView === 'corr') renderCorrPage(); });
+}
+function clDigTitleKey(t){ return norm(String(t || '').replace(/\([^)]*\)|\[[^\]]*\]/g, ' ').replace(/\b(feat|ft|featuring)\b.*$/i, '')); }
+async function clEnsureDigitalHistory(){
+  if(clDigital.state !== 'idle') return;
+  if(!DRIVE_SYNC_URL){ clDigital.state = 'unavailable'; return; }
+  clDigital.state = 'loading';
+  try{
+    if(!chartsHistoryLoaded || !chartsHistoryIndex.length){ try{ await loadChartsIndex(); }catch(e){} }
+    let weeks = (typeof _iedrCache !== 'undefined' && _iedrCache && _iedrCache.weeksChrono) ? _iedrCache.weeksChrono : null;
+    if(!weeks){ weeks = await preloadAllChartsWeeks(); try{ _iedrCache = { weeksChrono: weeks }; }catch(e){} }
+    // Index par semaine : titre normalisé → artistes normalisés
+    clDigital.weeks = weeks.filter(w => w && w.entry).map(w => {
+      const idx = new Map();
+      ['shzFR','spotify','dzFR','amFR'].forEach(src => {
+        const chart = w.entry[src];
+        if(!chart) return;
+        Object.values(chart).forEach(e => {
+          const tk = clDigTitleKey(e.t || e.title);
+          if(!tk) return;
+          if(!idx.has(tk)) idx.set(tk, []);
+          idx.get(tk).push(norm(e.a || e.artist || ''));
+        });
+      });
+      return { date: w.date, idx };
+    }).filter(w => w.idx.size).sort((a,b) => a.date.localeCompare(b.date));
+    clDigital.first = {};
+    clDigital.state = clDigital.weeks.length >= 4 ? 'ready' : 'unavailable';
+  }catch(e){ clDigital.state = 'error'; }
+  clAdoptCache = {};
+  if(analyseSubView === 'corr') renderCorrPage();
+}
+/** 1re semaine de présence digitale d'un titre : { date, censored } ou null. */
+function clFirstDigital(title, artist){
+  const key = comiteKey(title, artist);
+  if(key in clDigital.first) return clDigital.first[key];
+  const tk = clDigTitleKey(title), na = norm(artist);
+  const aTok = na.split(' ').filter(x => x.length > 1);
+  let res = null;
+  for(let i=0;i<clDigital.weeks.length;i++){
+    const arts = clDigital.weeks[i].idx.get(tk);
+    if(!arts) continue;
+    const ok = !aTok.length || arts.some(a => aTok.some(t => (' ' + a + ' ').includes(' ' + t + ' ')));
+    if(ok){ res = { date: clDigital.weeks[i].date, censored: i === 0 }; break; }
+  }
+  clDigital.first[key] = res;
+  return res;
+}
+function clAdoptForWeek(stKey, label){
+  const ck = stKey + '|' + label + '|' + clDigital.state;
+  if(ck in clAdoptCache) return clAdoptCache[ck];
+  const rows = clRowsCache[stKey + '|' + label];
+  if(rows === undefined) return null; // pas encore chargé : ne pas mémoriser
+  const out = { rel:null, relEarly:null, relLate:null, dig:null, digAhead:null, digLate:null };
+  if(rows){
+    const field = stKey === 'RFM' ? 'dateEntreeRFM' : 'dateEntreeEurope2';
+    let wR=0, sR=0, eR=0, lR=0, nR=0, wD=0, sD=0, aD=0, lD=0, nD=0;
+    const seen = new Set();
+    rows.forEach(r => {
+      if(!(r.w > 0)) return;
+      const key = comiteKey(r.title, r.artist);
+      if(seen.has(key)) return; seen.add(key);
+      const at = songAttributes[key];
+      if(!at || !at[field]) return;
+      const entree = new Date(at[field] + 'T00:00:00');
+      if(isNaN(entree)) return;
+      if(at.releaseDate){
+        const rel = new Date(at.releaseDate + 'T00:00:00');
+        const d = Math.round((entree - rel) / 86400000);
+        if(!isNaN(d) && d <= ADOPTION_MAX_DELAY_DAYS){
+          wR += r.w; sR += d*r.w; nR++;
+          if(d <= CL_ADOPT_EARLY_DAYS) eR += r.w;
+          if(d > CL_ADOPT_LATE_DAYS) lR += r.w;
+        }
+      }
+      if(clDigital.state === 'ready'){
+        const fd = clFirstDigital(r.title, r.artist);
+        if(fd && !fd.censored){
+          const wk = (entree - new Date(fd.date + 'T00:00:00')) / (7*86400000);
+          if(Math.abs(wk) <= 52){
+            wD += r.w; sD += wk*r.w; nD++;
+            if(wk < 0) aD += r.w;
+            if(wk > CL_DIG_LATE_WEEKS) lD += r.w;
+          }
+        }
+      }
+    });
+    if(nR >= 3 && wR > 0){ out.rel = sR/wR; out.relEarly = eR/wR*100; out.relLate = lR/wR*100; }
+    if(nD >= 3 && wD > 0){ out.dig = sD/wD; out.digAhead = aD/wD*100; out.digLate = lD/wD*100; }
+  }
+  clAdoptCache[ck] = out;
+  return out;
+}
+
 // ── Critères ────────────────────────────────────────────────────────────
-const CL_GROUPS = ['Recherche','Scores FPA','Exposition','Formats','Genres','Décennies','Majors'];
+const CL_GROUPS = ['Recherche','Scores FPA','Exposition','Adoption radio','Formats','Genres','Décennies'];
 const clFmtCache = {};
 let clFmtPending = false;
 function clEnsureFormats(stKey, matched){
@@ -20875,13 +20999,20 @@ function clBuildCriteria(stKey, rows){
     add('genre_'+g, 'Part ' + g, 'Genres', r => clDistPct(st(r).genreDistribution, 'genre', g), 'pts'));
   clTopKeys(rows, r => st(r).decadeDistribution, 'decade', 6, ['Autres','Non renseigné','Inconnue']).forEach(d =>
     add('decade_'+d, 'Part années ' + d, 'Décennies', r => clDistPct(st(r).decadeDistribution, 'decade', d), 'pts'));
-  if(typeof resolveLabelMajor === 'function' && rows.some(r => (st(r).labelDistribution||[]).length)){
-    MAJORS.forEach(mj => add('major_'+mj, 'Part ' + mj, 'Majors', r => {
-      const dist = st(r).labelDistribution;
-      if(!Array.isArray(dist) || !dist.length) return null;
-      return dist.filter(l => resolveLabelMajor(l.label) === mj).reduce((s,l)=>s+l.pct,0);
-    }, 'pts'));
-  }
+  // Délai d'adoption radio (sortie → entrée, radio vs digital)
+  const ad = r => clAdoptForWeek(stKey, r.progLabel) || {};
+  const adoptDefs = [
+    ['rel',      'Délai sortie → entrée (moy.)',              'jours', 'Délai moyen entre la sortie officielle et l\'entrée en playlist des titres diffusés'],
+    ['relEarly', 'Part adoptions précoces (≤ 4 sem. après sortie)', '%'],
+    ['relLate',  'Part adoptions tardives (> 12 sem. après sortie)', '%'],
+    ['dig',      'Décalage radio vs digital (moy.)',          'sem.'],
+    ['digAhead', 'Part entrées avant le digital',             '%'],
+    ['digLate',  'Part entrées tardives vs digital (> 8 sem.)', '%']
+  ];
+  adoptDefs.forEach(([k, label, unit]) => {
+    if(rows.filter(r => ad(r)[k] != null).length >= Math.max(3, rows.length/2))
+      add('adopt_'+k, label, 'Adoption radio', r => ad(r)[k], unit);
+  });
   return C;
 }
 
@@ -21118,6 +21249,8 @@ function renderCorrPage(){
   }
   emptyBar.style.display = 'none'; content.style.display = 'block';
   clEnsureFormats(stKey, matched);
+  clEnsureWeekRows(stKey, matched);
+  clEnsureDigitalHistory();
 
   // Réglages (audience cible, mesure, décalage)
   const targets = CL_TARGETS.filter(t => !t.stations || t.stations.includes(stKey));
@@ -21294,7 +21427,10 @@ function clRenderForest(){
   const groups = CL_GROUPS.filter(g => res.some(a => a.crit.group === g));
   if(clSettings.group !== 'all' && !groups.includes(clSettings.group)) clSettings.group = 'all';
   document.getElementById('clGroupChips').innerHTML = clSeg([{ v:'all', l:'Tous les critères' }, ...groups.map(g => ({ v:g, l:g }))], clSettings.group, v => `clSetGroup('${v}')`)
-    + (clFmtPending ? '<span class="clab-muted" style="margin-left:8px">Calcul des parts de formats…</span>' : '');
+    + (clFmtPending ? '<span class="clab-muted" style="margin-left:8px">Calcul des parts de formats…</span>' : '')
+    + (clRowsPending ? '<span class="clab-muted" style="margin-left:8px">Lecture du détail des semaines…</span>' : '')
+    + (clDigital.state === 'loading' ? '<span class="clab-muted" style="margin-left:8px">Chargement de l\'historique des classements digitaux…</span>' : '')
+    + (clDigital.state === 'unavailable' || clDigital.state === 'error' ? '<span class="clab-muted" style="margin-left:8px" title="Il faut Drive Sync et au moins 4 semaines de Classements enregistrées">Décalage radio vs digital indisponible (historique des Classements manquant)</span>' : '')
 
   const shown = res.filter(a => clSettings.group === 'all' || a.crit.group === clSettings.group);
   const pos = v => ((Math.max(-1, Math.min(1, v)) + 1) / 2 * 100).toFixed(2) + '%';
