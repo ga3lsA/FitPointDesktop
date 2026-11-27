@@ -589,6 +589,31 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   </div>
 </div>
 
+<!-- Résultats par cible — résumé de période (quinzaine ou vague entière) -->
+<div id="modalMediaSummary" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:650;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeMediaSummaryModal()">
+  <div style="background:var(--white);border-radius:14px;padding:26px;max-width:720px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(11,29,58,.25)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-size:15px;font-weight:800;color:var(--navy)">📝 Résumé de période — <span id="mediaSummaryStationLabel"></span></div>
+      <button onclick="closeMediaSummaryModal()" style="background:transparent;border:none;font-size:20px;color:var(--muted);cursor:pointer;line-height:1">×</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:16px">Compile, pour la période choisie, les chiffres Médiamétrie (cible Ensemble + cibles secondaires), la moyenne d'audience digitale, les scores FPA et Call Out/OMT moyens, et le contexte éditorial saisi (opérations, avec leurs dates).</div>
+
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;margin-bottom:16px">
+      <div>
+        <label style="font-size:10.5px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Vague</label>
+        <select id="mediaSummaryPeriodSelect" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);min-width:220px" onchange="mediaSummaryOnPeriodChange()"></select>
+      </div>
+      <div>
+        <label style="font-size:10.5px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">Portée</label>
+        <select id="mediaSummaryWaveSelect" style="font-size:12px;padding:7px 10px;border-radius:8px;border:1.5px solid var(--border);min-width:180px"></select>
+      </div>
+      <button class="btn-primary" style="font-size:12px;padding:8px 16px" onclick="mediaGenerateSummaryUI()">Générer</button>
+    </div>
+
+    <div id="mediaSummaryResultArea"></div>
+  </div>
+</div>
+
 <!-- Import / saisie Historique Marché -->
 <div id="modalMarcheImport" style="display:none;position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:650;align-items:center;justify-content:center;padding:20px" onclick="if(event.target===this) closeMarcheImportModal()">
   <div style="background:var(--white);border-radius:14px;padding:26px;max-width:1080px;width:100%;max-height:90vh;overflow:auto;box-shadow:0 20px 60px rgba(11,29,58,.25)">
@@ -2739,6 +2764,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
       </div>
 
       <div id="mediaInnerLive">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+          <button class="btn-ghost" style="font-size:11.5px;font-weight:800;padding:7px 14px" onclick="openMediaSummaryModal()" title="Compile les chiffres Médiamétrie, audience digitale, FPA et Call Out/OMT d'une quinzaine ou d'une vague entière, avec le contexte éditorial saisi">📝 Générer un résumé</button>
+        </div>
         <div id="mediaEmptyBar" style="display:none;padding:28px;background:var(--bg);border:1.5px solid var(--border);border-radius:12px;font-size:13px;color:var(--text2);text-align:center"></div>
         <div id="mediaHistoryTableArea"></div>
       </div>
@@ -16187,6 +16215,268 @@ function mediaUpdateWaveContext(periodId, waveId, ctxId, field, value, el){
   mediaSaveLocal();
   if(DRIVE_SYNC_URL) mediaSaveToDrive();
 }
+// ══════════════════════════════════════════════════════════════════════════
+// RÉSULTATS PAR CIBLE — RÉSUMÉ DE PÉRIODE (quinzaine ou vague entière)
+// ══════════════════════════════════════════════════════════════════════════
+// Compile, pour une quinzaine donnée OU pour une vague entière, les chiffres
+// Médiamétrie (cible Ensemble + cibles secondaires), la moyenne d'audience
+// digitale, les scores FPA (Fit Score/SPU) et Call Out/OMT moyens de la
+// même période (semaines de programmation archivées dont les dates
+// recoupent la période), et le contexte éditorial saisi (voir
+// mediaWaveContexts). Aucune nouvelle donnée : uniquement de la lecture et
+// de l'agrégation de ce qui est déjà saisi ailleurs dans FPA.
+
+/** Plage de dates (début/fin) d'une vague entière — bornes min/max de ses
+ *  quinzaines datées (même principe que mediaComputePeriodLiveAvg, mais
+ *  exposé séparément pour être réutilisé par le calcul FPA/Call Out/OMT
+ *  ci-dessous, pas seulement par l'audience digitale). */
+function mediaPeriodDateRange(period){
+  let minStart = null, maxEnd = null;
+  (period.waves||[]).forEach(w => {
+    if(w.dateStart && (!minStart || w.dateStart < minStart)) minStart = w.dateStart;
+    if(w.dateEnd && (!maxEnd || w.dateEnd > maxEnd)) maxEnd = w.dateEnd;
+  });
+  return (minStart && maxEnd) ? { start:minStart, end:maxEnd } : null;
+}
+/** Plage de dates du résumé : celle de la quinzaine si une quinzaine précise
+ *  est choisie, sinon celle de la vague entière (mediaPeriodDateRange). */
+function mediaSummaryDateRange(period, wave){
+  if(wave) return (wave.dateStart && wave.dateEnd) ? { start:wave.dateStart, end:wave.dateEnd } : null;
+  return mediaPeriodDateRange(period);
+}
+/** Moyenne (valeurs nulles ignorées) d'une cible Médiamétrie sur un ensemble
+ *  de quinzaines — utilisé pour les cibles secondaires à l'échelle d'une
+ *  vague entière, qui n'ont pas de "résultat final publié" dédié comme la
+ *  cible Ensemble (voir period.finalResult / mediaFinalResultBlockHtml). */
+function mediaAverageCibleOverWaves(waves, cibleKey){
+  const out = {};
+  ['AC','PDA','DEA'].forEach(metric => {
+    const vals = (waves||[]).map(w => w.cibles && w.cibles[cibleKey] && w.cibles[cibleKey][metric]).filter(v => typeof v === 'number');
+    out[metric] = vals.length ? Math.round((vals.reduce((s,v)=>s+v,0)/vals.length)*10)/10 : null;
+  });
+  return out;
+}
+/** Chiffres Médiamétrie (AC/PDA/DEA) de chaque cible pour le résumé : à
+ *  l'échelle d'une quinzaine, directement wave.cibles ; à l'échelle d'une
+ *  vague entière, le résultat final publié (period.finalResult) pour la
+ *  cible Ensemble s'il est renseigné, sinon (et toujours pour les cibles
+ *  secondaires) la moyenne des quinzaines de la vague. */
+function mediaSummaryCiblesData(stKey, period, wave){
+  const cibles = (mediaHistory[stKey] && mediaHistory[stKey].cibles) || [];
+  return cibles.map(c => {
+    let values;
+    if(wave){
+      values = (wave.cibles && wave.cibles[c.key]) || {AC:null,PDA:null,DEA:null};
+    } else {
+      const isEnsemble = /ensemble/i.test(c.label || '');
+      const fr = period.finalResult;
+      const frHasData = fr && (fr.AC!=null || fr.PDA!=null || fr.DEA!=null);
+      values = (isEnsemble && frHasData) ? fr : mediaAverageCibleOverWaves(period.waves, c.key);
+    }
+    return { label: c.label, key: c.key, values };
+  });
+}
+/** Moyennes FPA (Fit Score/SPU) et Call Out/OMT (Pot Score, Fam Score, Burn
+ *  Ensemble/P1) sur les semaines de programmation archivées (Analyse) dont
+ *  les dates RECOUPENT la période donnée — mêmes champs que RECHERCHE_
+ *  CRITERIA / graphRenderFitCard, ici moyennés sur la plage plutôt qu'un
+ *  point par semaine. null si aucune date connue ou aucune semaine archivée
+ *  ne recoupe la période. */
+function mediaAnalyseStatsAvgForRange(stKey, range){
+  if(!range) return null;
+  const weeks = (analyseLoadHistory()[stKey]||[]).filter(w => {
+    const s = w.weekStart, e = w.weekEnd || w.weekStart;
+    return !!s && s <= range.end && e >= range.start;
+  });
+  if(!weeks.length) return null;
+  const avgField = field => {
+    const vals = weeks.map(w => w.stats && w.stats[field]).filter(v => typeof v === 'number');
+    return vals.length ? vals.reduce((s,v)=>s+v,0)/vals.length : null;
+  };
+  return {
+    count: weeks.length,
+    avgFit: avgField('avgFit'), avgSpu: avgField('avgSpu'),
+    avgPot: avgField('avgPot'), avgPotP1: avgField('avgPotP1'),
+    avgFam: avgField('avgFam'), avgFamP1: avgField('avgFamP1'),
+    avgBurnCO: avgField('avgBurnCO'), avgBurnCOP1: avgField('avgBurnCOP1'),
+    avgBurnOMT: avgField('avgBurnOMT'), avgBurnOMTP1: avgField('avgBurnOMTP1')
+  };
+}
+/** Contextes éditoriaux (activité antenne, opérations musicales) saisis sur
+ *  la période du résumé — une quinzaine précise, ou toutes les quinzaines
+ *  de la vague entière — triés chronologiquement par leur date de début. */
+function mediaSummaryContexts(period, wave){
+  const waves = wave ? [wave] : (period.waves || []);
+  const items = [];
+  waves.forEach(w => mediaWaveContexts(w).forEach(c => { if((c.text||'').trim()) items.push(c); }));
+  items.sort((a,b) => (a.from||'').localeCompare(b.from||''));
+  return items;
+}
+function mediaFmtDecimal(n, digits){ return (n==null || isNaN(n)) ? '–' : n.toFixed(digits==null?1:digits).replace('.',','); }
+
+/** Construit le résumé (HTML, pour affichage dans la modale) pour une
+ *  quinzaine (wave fourni) ou une vague entière (wave=null). Seul appelant :
+ *  mediaGenerateSummaryUI. */
+function mediaBuildSummaryHtml(stKey, period, wave){
+  const scopeLabel = wave ? (period.label + ' — ' + wave.label) : ('Vague entière — ' + period.label);
+  const range = mediaSummaryDateRange(period, wave);
+  const rangeLabel = range ? (mediaDateToFr(range.start) + ' → ' + mediaDateToFr(range.end)) : 'dates non renseignées';
+
+  const cibleRows = mediaSummaryCiblesData(stKey, period, wave).map(c => `
+    <tr>
+      <td style="padding:6px 10px;font-weight:700">${escHtml(c.label)}</td>
+      <td style="padding:6px 10px;text-align:center">${c.values.AC==null?'–':mediaFmtDecimal(c.values.AC)+'%'}</td>
+      <td style="padding:6px 10px;text-align:center">${c.values.PDA==null?'–':mediaFmtDecimal(c.values.PDA)+'%'}</td>
+      <td style="padding:6px 10px;text-align:center">${c.values.DEA==null?'–':Math.round(c.values.DEA)}</td>
+    </tr>`).join('');
+
+  const live = range ? mediaComputeLiveAvgForRange(stKey, range.start, range.end) : null;
+  const liveHtml = live
+    ? `${digitalAudienceFmtInt(live.avg)} auditeurs moy. (5h-24h) · ${live.count} semaine(s) · ${digitalAudienceFmtInt(live.sessions)} sessions · ${digitalAudienceFmtInt(live.uniques)} visiteurs uniques`
+    : 'non calculable (dates manquantes, ou pas de données Audience digitale sur la période)';
+
+  const fpa = mediaAnalyseStatsAvgForRange(stKey, range);
+  const fpaHtml = fpa
+    ? `Fit Score moyen : <strong>${mediaFmtDecimal(fpa.avgFit)}</strong> · SPU moyen : <strong>${mediaFmtDecimal(fpa.avgSpu)}</strong> <span style="color:var(--muted)">(${fpa.count} semaine(s) de programmation archivée(s) sur la période)</span>`
+    : 'non calculable (dates manquantes, ou pas de semaine de programmation archivée sur la période)';
+  const coOmtHtml = fpa ? `
+    <table style="width:100%;border-collapse:collapse;margin-top:6px">
+      <thead><tr style="color:var(--muted);font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:4px 8px"></th><th style="padding:4px 8px">Ensemble</th><th style="padding:4px 8px">P1</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:4px 8px;font-weight:700">Pot Score (Call Out)</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgPot)}</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgPotP1)}</td></tr>
+        <tr><td style="padding:4px 8px;font-weight:700">Burn Call Out (%)</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgBurnCO)}</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgBurnCOP1)}</td></tr>
+        <tr><td style="padding:4px 8px;font-weight:700">Fam Score (OMT)</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgFam)}</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgFamP1)}</td></tr>
+        <tr><td style="padding:4px 8px;font-weight:700">Burn OMT (%)</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgBurnOMT)}</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgBurnOMTP1)}</td></tr>
+      </tbody>
+    </table>` : `<div style="font-size:11.5px;color:var(--muted)">non calculable (dates manquantes, ou pas de semaine de programmation archivée sur la période)</div>`;
+
+  const contexts = mediaSummaryContexts(period, wave);
+  const ctxHtml = contexts.length
+    ? `<ul style="margin:6px 0 0;padding-left:18px;font-size:12px;color:var(--text2);line-height:1.6">${contexts.map(c => `<li>${(c.from||c.to) ? '<strong>'+(c.from?mediaDateToFr(c.from):'?')+(c.to && c.to!==c.from ? ' → '+mediaDateToFr(c.to) : '')+'</strong> — ' : ''}${escHtml(c.text)}</li>`).join('')}</ul>`
+    : `<div style="font-size:11.5px;color:var(--muted);margin-top:6px">Aucun contexte éditorial saisi sur cette période.</div>`;
+
+  return `
+    <div style="border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;background:var(--bg)">
+      <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:2px">${stationNameHtml(stKey)} — ${escHtml(scopeLabel)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${escHtml(rangeLabel)}</div>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">📡 Médiamétrie</div>
+      <table style="width:100%;border-collapse:collapse;margin-bottom:16px;background:var(--white);border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
+        <thead><tr style="background:var(--white);color:var(--muted);font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:6px 10px">Cible</th><th style="padding:6px 10px">AC</th><th style="padding:6px 10px">PDA</th><th style="padding:6px 10px">DEA</th></tr></thead>
+        <tbody>${cibleRows}</tbody>
+      </table>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">📈 Audience digitale (moyenne période)</div>
+      <div style="font-size:12.5px;color:var(--navy);margin-bottom:16px">${liveHtml}</div>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">🎯 FPA (moyenne période)</div>
+      <div style="font-size:12.5px;color:var(--navy);margin-bottom:16px">${fpaHtml}</div>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">🎧 Call Out / OMT (moyenne période)</div>
+      <div style="margin-bottom:16px">${coOmtHtml}</div>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px">📝 Contexte éditorial</div>
+      ${ctxHtml}
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <button class="btn-ghost" style="font-size:12px;padding:8px 16px" onclick="mediaCopySummaryText('${stKey}','${period.id}','${wave?wave.id:''}')">📋 Copier (texte)</button>
+    </div>`;
+}
+/** Même résumé que mediaBuildSummaryHtml, en texte brut (sans mise en forme)
+ *  — prêt à coller dans un e-mail, Slack, etc. Seul appelant :
+ *  mediaCopySummaryText. */
+function mediaBuildSummaryText(stKey, period, wave){
+  const scopeLabel = wave ? (period.label + ' — ' + wave.label) : ('Vague entière — ' + period.label);
+  const range = mediaSummaryDateRange(period, wave);
+  const rangeLabel = range ? (mediaDateToFr(range.start) + ' → ' + mediaDateToFr(range.end)) : 'dates non renseignées';
+  const lines = [];
+  lines.push(STATION_LABELS[stKey] + ' — ' + scopeLabel);
+  lines.push(rangeLabel);
+  lines.push('');
+  lines.push('MÉDIAMÉTRIE');
+  mediaSummaryCiblesData(stKey, period, wave).forEach(c => {
+    lines.push('- ' + c.label + ' : AC ' + (c.values.AC==null?'–':mediaFmtDecimal(c.values.AC)+'%') + ' · PDA ' + (c.values.PDA==null?'–':mediaFmtDecimal(c.values.PDA)+'%') + ' · DEA ' + (c.values.DEA==null?'–':Math.round(c.values.DEA)));
+  });
+  lines.push('');
+  lines.push('AUDIENCE DIGITALE (moyenne période)');
+  const live = range ? mediaComputeLiveAvgForRange(stKey, range.start, range.end) : null;
+  lines.push(live
+    ? ('- ' + digitalAudienceFmtInt(live.avg) + ' auditeurs moy. (5h-24h) · ' + live.count + ' semaine(s) · ' + digitalAudienceFmtInt(live.sessions) + ' sessions · ' + digitalAudienceFmtInt(live.uniques) + ' visiteurs uniques')
+    : '- non calculable (dates manquantes, ou pas de données sur la période)');
+  lines.push('');
+  const fpa = mediaAnalyseStatsAvgForRange(stKey, range);
+  lines.push('FPA (moyenne période)');
+  lines.push(fpa ? ('- Fit Score moyen : ' + mediaFmtDecimal(fpa.avgFit) + ' · SPU moyen : ' + mediaFmtDecimal(fpa.avgSpu) + ' (' + fpa.count + ' semaine(s))') : '- non calculable');
+  lines.push('');
+  lines.push('CALL OUT / OMT (moyenne période)');
+  if(fpa){
+    lines.push('- Pot Score (Call Out) : Ensemble ' + mediaFmtDecimal(fpa.avgPot) + ' · P1 ' + mediaFmtDecimal(fpa.avgPotP1));
+    lines.push('- Burn Call Out (%) : Ensemble ' + mediaFmtDecimal(fpa.avgBurnCO) + ' · P1 ' + mediaFmtDecimal(fpa.avgBurnCOP1));
+    lines.push('- Fam Score (OMT) : Ensemble ' + mediaFmtDecimal(fpa.avgFam) + ' · P1 ' + mediaFmtDecimal(fpa.avgFamP1));
+    lines.push('- Burn OMT (%) : Ensemble ' + mediaFmtDecimal(fpa.avgBurnOMT) + ' · P1 ' + mediaFmtDecimal(fpa.avgBurnOMTP1));
+  } else lines.push('- non calculable');
+  lines.push('');
+  lines.push('CONTEXTE ÉDITORIAL');
+  const contexts = mediaSummaryContexts(period, wave);
+  if(contexts.length){
+    contexts.forEach(c => {
+      const dateBit = (c.from||c.to) ? ((c.from?mediaDateToFr(c.from):'?') + (c.to && c.to!==c.from ? ' → '+mediaDateToFr(c.to) : '') + ' — ') : '';
+      lines.push('- ' + dateBit + c.text);
+    });
+  } else lines.push('- Aucun contexte éditorial saisi sur cette période.');
+  return lines.join('\n');
+}
+function mediaCopySummaryText(stKey, periodId, waveId){
+  const period = (mediaHistory[stKey].periods||[]).find(p=>p.id===periodId);
+  if(!period) return;
+  const wave = waveId ? period.waves.find(w=>w.id===waveId) : null;
+  const text = mediaBuildSummaryText(stKey, period, wave);
+  navigator.clipboard.writeText(text).then(
+    () => showToast('✓ Résumé copié dans le presse-papiers', 'success'),
+    () => showToast('Impossible de copier automatiquement — sélectionnez le texte manuellement', 'err')
+  );
+}
+/** Ouvre la modale de résumé — peuple le sélecteur de vagues (station en
+ *  cours) et déclenche un premier résumé (vague entière la plus récente). */
+function openMediaSummaryModal(){
+  const stKey = mediaUI.station;
+  const data = mediaHistory[stKey];
+  if(!data || !data.periods || !data.periods.length){ showToast('Aucune donnée Médiamétrie pour ' + STATION_LABELS[stKey], 'err'); return; }
+  const label = document.getElementById('mediaSummaryStationLabel');
+  if(label) label.innerHTML = stationNameHtml(stKey);
+  const sorted = mediaSortedPeriods(stKey).slice().reverse();
+  const sel = document.getElementById('mediaSummaryPeriodSelect');
+  sel.innerHTML = sorted.map(p => { const season = mediaSeasonLabel(p); return `<option value="${p.id}">${season ? escHtml(season)+' — ' : ''}${escHtml(p.label)}</option>`; }).join('');
+  mediaSummaryOnPeriodChange();
+  document.getElementById('mediaSummaryResultArea').innerHTML = '';
+  document.getElementById('modalMediaSummary').style.display = 'flex';
+}
+function closeMediaSummaryModal(){
+  const m = document.getElementById('modalMediaSummary');
+  if(m) m.style.display = 'none';
+}
+/** Repeuple le sélecteur "Portée" (vague entière ou une quinzaine précise)
+ *  quand la vague choisie change. */
+function mediaSummaryOnPeriodChange(){
+  const stKey = mediaUI.station;
+  const periodSel = document.getElementById('mediaSummaryPeriodSelect');
+  const period = (mediaHistory[stKey].periods||[]).find(p => p.id === periodSel.value);
+  const waveSel = document.getElementById('mediaSummaryWaveSelect');
+  const waves = (period && period.waves) || [];
+  waveSel.innerHTML = `<option value="">Vague entière</option>` + waves.map(w =>
+    `<option value="${w.id}">${escHtml(w.label)}${w.dateStart ? ' (' + mediaDateToFr(w.dateStart) + (w.dateEnd ? ' → ' + mediaDateToFr(w.dateEnd) : '') + ')' : ''}</option>`
+  ).join('');
+}
+function mediaGenerateSummaryUI(){
+  const stKey = mediaUI.station;
+  const periodId = document.getElementById('mediaSummaryPeriodSelect').value;
+  const waveId = document.getElementById('mediaSummaryWaveSelect').value || null;
+  const period = (mediaHistory[stKey].periods||[]).find(p => p.id === periodId);
+  if(!period){ showToast('Vague introuvable', 'err'); return; }
+  const wave = waveId ? period.waves.find(w => w.id === waveId) : null;
+  document.getElementById('mediaSummaryResultArea').innerHTML = mediaBuildSummaryHtml(stKey, period, wave);
+}
+
 function mediaToggleCible(cibleKey){
   const stKey = mediaUI.station;
   if(!mediaUI.collapsed[stKey]) mediaUI.collapsed[stKey] = new Set();
@@ -18605,6 +18895,77 @@ function graphAvailableWeeks(stKey){
     return (a.weekLabel||'').localeCompare(b.weekLabel||'', undefined, {numeric:true});
   });
 }
+/** Semaine de départ de la fenêtre PAR DÉFAUT des graphiques d'évolution : les
+ *  6 derniers mois, ancrés sur la semaine la plus RÉCENTE archivée (pas la
+ *  date du jour) — reste cohérent même si l'historique n'a pas été mis à jour
+ *  récemment. L'ensemble de l'historique reste consultable en changeant
+ *  librement le sélecteur "De" (voir graphWeekControlsHtml) ou via le lien
+ *  "Tout l'historique" (graphShowAllWeeks) : ce réglage ne fait que choisir
+ *  la valeur initiale, jamais une limite d'accès aux données. Repli sur la
+ *  toute première semaine si la plus récente n'a pas de date connue
+ *  (weekStart) — impossible de calculer une fenêtre de 6 mois sans date. */
+function graphDefaultWindowFromLabel(weeks){
+  if(!weeks.length) return null;
+  const last = weeks[weeks.length-1];
+  if(!last.weekStart) return weeks[0].weekLabel;
+  const cutoff = new Date(last.weekStart);
+  cutoff.setMonth(cutoff.getMonth() - 6);
+  const cutoffStr = cutoff.toISOString().slice(0,10);
+  const found = weeks.find(w => w.weekStart && w.weekStart >= cutoffStr);
+  return (found || weeks[0]).weekLabel;
+}
+/** Réaffiche l'ensemble de l'historique disponible pour une carte donnée
+ *  (lien "Tout l'historique" à côté des sélecteurs De/À — voir
+ *  graphWeekControlsHtml), en repartant de la station actuellement affichée. */
+function graphShowAllWeeks(key){
+  const weeks = graphAvailableWeeks(graphUI.station);
+  if(!weeks.length) return;
+  const f = graphFilters[key];
+  if(!f) return;
+  f.from = weeks[0].weekLabel;
+  f.to = weeks[weeks.length-1].weekLabel;
+  graphRenderCard(key);
+}
+/** Mois-jour ('MM-DD') de la date réelle d'une semaine archivée, pour les
+ *  tests saisonniers ci-dessous — repli sur weekEnd si weekStart est absent,
+ *  chaîne vide (donc aucun test saisonnier ne matche) si aucune date connue. */
+function graphWeekMonthDay(w){ return (w.weekStart || w.weekEnd || '').slice(5,10); }
+/** Semaine estivale (1er juillet → 31 août, toutes années confondues) —
+ *  utilisé pour la trame de fond légère des graphiques d'évolution
+ *  (graphSeasonBandsPlugin), purement visuel. */
+function graphIsSummerWeek(w){ const md = graphWeekMonthDay(w); return !!md && md >= '07-01' && md <= '08-31'; }
+/** Semaine de fêtes de fin d'année (24 décembre → 1er janvier, à cheval sur
+ *  le changement d'année) — même usage que graphIsSummerWeek ci-dessus. */
+function graphIsYearEndWeek(w){ const md = graphWeekMonthDay(w); return !!md && (md >= '12-24' || md <= '01-01'); }
+/** Plugin Chart.js INLINE (passé via `plugins:[graphSeasonBandsPlugin]` dans
+ *  la config, jamais enregistré globalement — voir graphBuildMixedChart /
+ *  graphBuildStackedChart, seuls appelants) qui peint une bande verticale très
+ *  légère derrière chaque semaine estivale (teinte chaude) ou de fêtes de fin
+ *  d'année (teinte froide), pour les repérer d'un coup d'œil sur la période
+ *  affichée — aucun impact sur les données, axes ou interactions. Lit le
+ *  tableau "weeks" (mêmes semaines que les datasets du graphique, dans le
+ *  même ordre) depuis options.plugins.graphSeasonBands.weeks. */
+const graphSeasonBandsPlugin = {
+  id: 'graphSeasonBands',
+  beforeDatasetsDraw(chart, args, opts){
+    const weeks = opts && opts.weeks;
+    if(!weeks || !weeks.length) return;
+    const { ctx, chartArea, scales } = chart;
+    if(!chartArea || !scales || !scales.x) return;
+    const xScale = scales.x;
+    const bandWidth = (chartArea.right - chartArea.left) / weeks.length;
+    ctx.save();
+    weeks.forEach((w,i) => {
+      const summer = graphIsSummerWeek(w);
+      const yearEnd = !summer && graphIsYearEndWeek(w);
+      if(!summer && !yearEnd) return;
+      const center = xScale.getPixelForValue(i);
+      ctx.fillStyle = summer ? 'rgba(230,140,0,0.09)' : 'rgba(90,70,200,0.10)';
+      ctx.fillRect(center - bandWidth/2, chartArea.top, bandWidth, chartArea.bottom - chartArea.top);
+    });
+    ctx.restore();
+  }
+};
 /** Titre de bulle partagé pour les graphiques par semaine (graphBuildMixedChart,
  *  graphBuildStackedChart) : numéro de semaine déjà affiché par défaut par
  *  Chart.js (c'est le label d'axe X), complété par la date précise de la
@@ -18942,6 +19303,7 @@ function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, y
   }
 
   return graphSafeNewChart(canvasId, {
+    plugins: [graphSeasonBandsPlugin],
     data: { labels, datasets },
     options: {
       responsive:true, maintainAspectRatio:false,
@@ -18955,7 +19317,8 @@ function graphBuildMixedChart(canvasId, weeks, barSeries, showAudience, stKey, y
           if(c.dataset.yAxisID === 'y2') return `${c.dataset.label} : ${fmtY2(c.parsed.y)}`;
           if(c.dataset.yAxisID === 'y1') return `${c.dataset.label} : ${fmtY1(c.parsed.y)}`;
           return `${c.dataset.label} : ${c.parsed.y==null?'—':c.parsed.y.toLocaleString('fr-FR')}`;
-        } } }
+        } } },
+        graphSeasonBands: { weeks }
       },
       scales: {
         x: { ticks:{ color:'#4A5E78', font:{size:10} }, grid:{ display:false } },
@@ -18971,13 +19334,19 @@ function graphWeekOptionsHtml(weeks, selected){
   return weeks.map(w => `<option value="${escHtml(w.weekLabel)}" ${w.weekLabel===selected?'selected':''}>${escHtml(w.weekLabel)}${w.weekStart?' ('+digitalAudienceFmtDate(w.weekStart)+')':''}</option>`).join('');
 }
 function graphWeekControlsHtml(key, weeks, from, to){
+  const isFullRange = weeks.length && weeks[0].weekLabel===from && weeks[weeks.length-1].weekLabel===to;
   return `
     <label style="font-size:11px;color:var(--text2)">De
       <select id="graph${key}From" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="graphOnPeriodChange('${key}')">${graphWeekOptionsHtml(weeks, from)}</select>
     </label>
     <label style="font-size:11px;color:var(--text2)">à
       <select id="graph${key}To" style="font-size:11.5px;padding:5px 8px;border-radius:6px" onchange="graphOnPeriodChange('${key}')">${graphWeekOptionsHtml(weeks, to)}</select>
-    </label>`;
+    </label>
+    ${isFullRange ? '' : `<button onclick="graphShowAllWeeks('${key}')" title="Réaffiche l'ensemble de l'historique archivé (par défaut, seuls les 6 derniers mois sont affichés)" style="font-size:10.5px;font-weight:700;color:var(--muted);background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:3px 10px;cursor:pointer">🕐 Tout l'historique</button>`}
+    <span style="font-size:10px;color:var(--muted);display:inline-flex;align-items:center;gap:8px;margin-left:4px" title="Trame de fond du graphique : semaines estivales (1er juillet → 31 août) et semaines de fêtes de fin d'année (24 décembre → 1er janvier)">
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(230,140,0,0.45);vertical-align:-1px"></span> Été</span>
+      <span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:rgba(90,70,200,0.5);vertical-align:-1px"></span> Fêtes</span>
+    </span>`;
 }
 function graphAudToggleHtml(key, checked){
   return `<label style="font-size:11px;color:var(--text2);display:flex;align-items:center;gap:5px;cursor:pointer">
@@ -19192,6 +19561,7 @@ function graphBuildStackedChart(canvasId, weeks, barSeries, showAudience, stKey,
   const y2Scale = { position:'right', display: showMediametrie, beginAtZero:true, title:{ display:true, text: (MARCHE_GRAPH_METRICS[mediametrieMetric]||'') + ' Médiamétrie', font:{size:10.5} }, ticks:{ color:'#4A5E78', callback: mediametrieMetric==='dea' ? (v => marcheFmtMinToHM(v)) : (v => graphFmtAxisTick(v) + '%') }, grid:{ drawOnChartArea:false } };
 
   return graphSafeNewChart(canvasId, {
+    plugins: [graphSeasonBandsPlugin],
     data: { labels, datasets },
     options: {
       responsive:true, maintainAspectRatio:false,
@@ -19205,7 +19575,8 @@ function graphBuildStackedChart(canvasId, weeks, barSeries, showAudience, stKey,
           if(c.dataset.yAxisID === 'y2') return `${c.dataset.label} : ${fmtY2(c.parsed.y)}`;
           if(c.dataset.yAxisID === 'y1') return `${c.dataset.label} : ${fmtY1(c.parsed.y)}`;
           return `${c.dataset.label} : ${c.parsed.y==null?'—':c.parsed.y.toLocaleString('fr-FR')+'%'}`;
-        } } }
+        } } },
+        graphSeasonBands: { weeks }
       },
       scales: {
         x: { stacked:true, ticks:{ color:'#4A5E78', font:{size:10} }, grid:{ display:false } },
@@ -19526,12 +19897,15 @@ function renderGraphPage(){
   }
   emptyBar.style.display = 'none';
 
-  // Répare/initialise les périodes par défaut (semaine la plus ancienne →
-  // la plus récente) si elles ne pointent plus vers une semaine existante
-  // (ex. première ouverture, ou changement de station).
+  // Répare/initialise les périodes par défaut si elles ne pointent plus vers
+  // une semaine existante (ex. première ouverture, ou changement de station) :
+  // les 6 derniers mois par défaut (voir graphDefaultWindowFromLabel) → la
+  // plus récente — l'ensemble de l'historique reste affichable (lien "Tout
+  // l'historique" ou sélecteur "De"), ce réglage ne fait que choisir la
+  // valeur initiale.
   ['genre','decades','recherche','fit','exposition','labels'].forEach(k => {
     const f = graphFilters[k];
-    if(!f.from || !weeks.some(w=>w.weekLabel===f.from)) f.from = weeks[0].weekLabel;
+    if(!f.from || !weeks.some(w=>w.weekLabel===f.from)) f.from = graphDefaultWindowFromLabel(weeks);
     if(!f.to   || !weeks.some(w=>w.weekLabel===f.to))   f.to   = weeks[weeks.length-1].weekLabel;
   });
   if(!graphFilters.genre.genres.length){
@@ -46830,7 +47204,7 @@ let fmtGraphToken = 0;
 function graphRenderFormatCard(stKey, weeks){
   if(!graphFilters.format) graphFilters.format = Object.assign({}, graphFilters.decades, { from:null, to:null });
   const f = graphFilters.format;
-  if(!f.from || !weeks.some(w => w.weekLabel === f.from)) f.from = weeks[0].weekLabel;
+  if(!f.from || !weeks.some(w => w.weekLabel === f.from)) f.from = graphDefaultWindowFromLabel(weeks);
   if(!f.to || !weeks.some(w => w.weekLabel === f.to)) f.to = weeks[weeks.length - 1].weekLabel;
   const controls = document.getElementById('graphformatControls');
   if(!controls) return;
