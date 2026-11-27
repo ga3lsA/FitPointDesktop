@@ -16313,6 +16313,61 @@ function mediaSummaryContexts(period, wave){
   return items;
 }
 function mediaFmtDecimal(n, digits){ return (n==null || isNaN(n)) ? '–' : n.toFixed(digits==null?1:digits).replace('.',','); }
+/** Jeu complet de données du résumé (cibles Médiamétrie, audience digitale
+ *  moyenne, FPA/Call Out/OMT moyens) pour une vague ENTIÈRE — utilisé
+ *  uniquement comme base de comparaison V-1/N-1 (voir mediaBuildSummaryHtml/
+ *  Text) : même à l'échelle d'une quinzaine, on compare toujours à la vague
+ *  entière précédente, pas à une quinzaine équivalente (qui n'a pas
+ *  d'équivalent garanti d'une vague à l'autre) — même convention que
+ *  mediaEvolutionBadge/mediaWaveDetailTableHtml ailleurs dans ce module.
+ *  null si la période de comparaison elle-même n'existe pas. */
+function mediaSummaryComparisonBundle(stKey, period){
+  if(!period) return null;
+  const range = mediaPeriodDateRange(period);
+  return {
+    cibles: mediaSummaryCiblesData(stKey, period, null),
+    live: range ? mediaComputeLiveAvgForRange(stKey, range.start, range.end) : null,
+    fpa: mediaAnalyseStatsAvgForRange(stKey, range)
+  };
+}
+/** Badge d'évolution générique (valeur courante vs valeur de comparaison),
+ *  même style visuel que mediaEvolutionBadge mais sur deux nombres bruts
+ *  plutôt que sur period.finalResult — réutilisable pour une cible
+ *  secondaire, l'audience digitale, le FPA ou le Call Out/OMT, qui n'ont pas
+ *  de finalResult dédié. "–" si l'une des deux valeurs est indisponible. */
+function mediaSummaryDeltaBadge(tag, currentVal, compareVal, opts){
+  opts = opts || {};
+  const decimals = opts.decimals==null ? 1 : opts.decimals;
+  const suffix = opts.suffix || '';
+  if(typeof currentVal !== 'number' || typeof compareVal !== 'number'){
+    return `<span style="display:inline-flex;gap:3px;align-items:center;font-size:9.5px;color:var(--muted)"><b>${tag}</b>–</span>`;
+  }
+  const factor = Math.pow(10, decimals);
+  const delta = Math.round((currentVal - compareVal) * factor) / factor;
+  let color = 'var(--muted)', arrow = '＝';
+  if(delta > 0){ color = 'var(--green-text)'; arrow = '▲'; } else if(delta < 0){ color = '#CC2222'; arrow = '▼'; }
+  const deltaStr = (delta > 0 ? '+' : '') + mediaFmtDecimal(delta, decimals) + suffix;
+  return `<span style="display:inline-flex;gap:3px;align-items:center;font-size:9.5px;color:${color};font-weight:700"><b style="color:var(--muted);font-weight:800">${tag}</b>${arrow} ${deltaStr}</span>`;
+}
+/** Équivalent texte brut de mediaSummaryDeltaBadge, pour mediaBuildSummaryText. */
+function mediaSummaryDeltaText(currentVal, compareVal, decimals, suffix){
+  if(typeof currentVal !== 'number' || typeof compareVal !== 'number') return '–';
+  const factor = Math.pow(10, decimals||0);
+  const delta = Math.round((currentVal - compareVal) * factor) / factor;
+  return (delta > 0 ? '+' : '') + mediaFmtDecimal(delta, decimals) + (suffix||'');
+}
+/** Cellule <td> valeur + badges V-1/N-1 empilés dessous — factorise la mise
+ *  en forme répétée des tableaux du résumé (cibles Médiamétrie, FPA, Call
+ *  Out/OMT). */
+function mediaMetricCellHtml(val, cmpChronoVal, cmpYearVal, opts){
+  opts = opts || {};
+  const decimals = opts.decimals==null ? 1 : opts.decimals;
+  const suffix = opts.suffix || '';
+  return `<td style="padding:6px 10px;text-align:center;vertical-align:top">
+    <div>${val==null?'–':mediaFmtDecimal(val,decimals)+suffix}</div>
+    <div style="display:flex;flex-direction:column;gap:1px;margin-top:3px;align-items:center">${mediaSummaryDeltaBadge('V-1',val,cmpChronoVal,opts)}${mediaSummaryDeltaBadge('N-1',val,cmpYearVal,opts)}</div>
+  </td>`;
+}
 
 /** Construit le résumé (HTML, pour affichage dans la modale) pour une
  *  quinzaine (wave fourni) ou une vague entière (wave=null). Seul appelant :
@@ -16322,33 +16377,56 @@ function mediaBuildSummaryHtml(stKey, period, wave){
   const range = mediaSummaryDateRange(period, wave);
   const rangeLabel = range ? (mediaDateToFr(range.start) + ' → ' + mediaDateToFr(range.end)) : 'dates non renseignées';
 
-  const cibleRows = mediaSummaryCiblesData(stKey, period, wave).map(c => `
-    <tr>
-      <td style="padding:6px 10px;font-weight:700">${escHtml(c.label)}</td>
-      <td style="padding:6px 10px;text-align:center">${c.values.AC==null?'–':mediaFmtDecimal(c.values.AC)+'%'}</td>
-      <td style="padding:6px 10px;text-align:center">${c.values.PDA==null?'–':mediaFmtDecimal(c.values.PDA)+'%'}</td>
-      <td style="padding:6px 10px;text-align:center">${c.values.DEA==null?'–':Math.round(c.values.DEA)}</td>
-    </tr>`).join('');
+  // Comparaisons V-1 (vague précédente chronologique) / N-1 (même type de
+  // vague l'année précédente) — toujours à l'échelle de la vague ENTIÈRE,
+  // même quand le résumé porte sur une seule quinzaine (voir
+  // mediaSummaryComparisonBundle).
+  const prevChrono = mediaFindPrevChrono(stKey, period);
+  const prevYear = mediaFindSameTypePrevYear(stKey, period);
+  const cmpChrono = mediaSummaryComparisonBundle(stKey, prevChrono);
+  const cmpYear = mediaSummaryComparisonBundle(stKey, prevYear);
+
+  const cibleRows = mediaSummaryCiblesData(stKey, period, wave).map(c => {
+    const vChrono = cmpChrono && cmpChrono.cibles.find(x => x.key===c.key);
+    const vYear = cmpYear && cmpYear.cibles.find(x => x.key===c.key);
+    return `<tr>
+      <td style="padding:6px 10px;font-weight:700;vertical-align:top">${escHtml(c.label)}</td>
+      ${mediaMetricCellHtml(c.values.AC, vChrono?vChrono.values.AC:null, vYear?vYear.values.AC:null, {suffix:'%'})}
+      ${mediaMetricCellHtml(c.values.PDA, vChrono?vChrono.values.PDA:null, vYear?vYear.values.PDA:null, {suffix:'%'})}
+      ${mediaMetricCellHtml(c.values.DEA, vChrono?vChrono.values.DEA:null, vYear?vYear.values.DEA:null, {decimals:0})}
+    </tr>`;
+  }).join('');
 
   const live = range ? mediaComputeLiveAvgForRange(stKey, range.start, range.end) : null;
   const liveHtml = live
-    ? `${digitalAudienceFmtInt(live.avg)} auditeurs moy. (5h-24h) · ${live.count} semaine(s) · ${digitalAudienceFmtInt(live.sessions)} sessions · ${digitalAudienceFmtInt(live.uniques)} visiteurs uniques`
+    ? `${digitalAudienceFmtInt(live.avg)} auditeurs moy. (5h-24h) · ${live.count} semaine(s) · ${digitalAudienceFmtInt(live.sessions)} sessions · ${digitalAudienceFmtInt(live.uniques)} visiteurs uniques
+       <div style="display:flex;gap:10px;margin-top:4px">${mediaSummaryDeltaBadge('V-1', live.avg, cmpChrono&&cmpChrono.live?cmpChrono.live.avg:null, {decimals:0})}${mediaSummaryDeltaBadge('N-1', live.avg, cmpYear&&cmpYear.live?cmpYear.live.avg:null, {decimals:0})}</div>`
     : 'non calculable (dates manquantes, ou pas de données Audience digitale sur la période)';
 
   const fpa = mediaAnalyseStatsAvgForRange(stKey, range);
-  const fpaHtml = fpa
-    ? `Fit Score moyen : <strong>${mediaFmtDecimal(fpa.avgFit)}</strong> · SPU moyen : <strong>${mediaFmtDecimal(fpa.avgSpu)}</strong> <span style="color:var(--muted)">(${fpa.count} semaine(s) de programmation archivée(s) sur la période)</span>`
+  const fc = cmpChrono && cmpChrono.fpa, fy = cmpYear && cmpYear.fpa;
+  const fpaHtml = fpa ? `
+    <table style="width:100%;border-collapse:collapse;margin-top:2px">
+      <thead><tr style="color:var(--muted);font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:4px 8px"></th><th style="padding:4px 8px">Valeur</th></tr></thead>
+      <tbody>
+        <tr><td style="padding:4px 8px;font-weight:700">Fit Score moyen</td>${mediaMetricCellHtml(fpa.avgFit, fc?fc.avgFit:null, fy?fy.avgFit:null, {})}</tr>
+        <tr><td style="padding:4px 8px;font-weight:700">SPU moyen</td>${mediaMetricCellHtml(fpa.avgSpu, fc?fc.avgSpu:null, fy?fy.avgSpu:null, {})}</tr>
+      </tbody>
+    </table>
+    <div style="font-size:10.5px;color:var(--muted);margin-top:4px">${fpa.count} semaine(s) de programmation archivée(s) sur la période</div>`
     : 'non calculable (dates manquantes, ou pas de semaine de programmation archivée sur la période)';
   const coOmtHtml = fpa ? `
     <table style="width:100%;border-collapse:collapse;margin-top:6px">
       <thead><tr style="color:var(--muted);font-size:10px;text-transform:uppercase"><th style="text-align:left;padding:4px 8px"></th><th style="padding:4px 8px">Ensemble</th><th style="padding:4px 8px">P1</th></tr></thead>
       <tbody>
-        <tr><td style="padding:4px 8px;font-weight:700">Pot Score (Call Out)</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgPot)}</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgPotP1)}</td></tr>
-        <tr><td style="padding:4px 8px;font-weight:700">Burn Call Out (%)</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgBurnCO)}</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgBurnCOP1)}</td></tr>
-        <tr><td style="padding:4px 8px;font-weight:700">Fam Score (OMT)</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgFam)}</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgFamP1)}</td></tr>
-        <tr><td style="padding:4px 8px;font-weight:700">Burn OMT (%)</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgBurnOMT)}</td><td style="padding:4px 8px;text-align:center">${mediaFmtDecimal(fpa.avgBurnOMTP1)}</td></tr>
+        <tr><td style="padding:4px 8px;font-weight:700">Pot Score (Call Out)</td>${mediaMetricCellHtml(fpa.avgPot, fc?fc.avgPot:null, fy?fy.avgPot:null, {})}${mediaMetricCellHtml(fpa.avgPotP1, fc?fc.avgPotP1:null, fy?fy.avgPotP1:null, {})}</tr>
+        <tr><td style="padding:4px 8px;font-weight:700">Burn Call Out (%)</td>${mediaMetricCellHtml(fpa.avgBurnCO, fc?fc.avgBurnCO:null, fy?fy.avgBurnCO:null, {suffix:'%'})}${mediaMetricCellHtml(fpa.avgBurnCOP1, fc?fc.avgBurnCOP1:null, fy?fy.avgBurnCOP1:null, {suffix:'%'})}</tr>
+        <tr><td style="padding:4px 8px;font-weight:700">Fam Score (OMT)</td>${mediaMetricCellHtml(fpa.avgFam, fc?fc.avgFam:null, fy?fy.avgFam:null, {})}${mediaMetricCellHtml(fpa.avgFamP1, fc?fc.avgFamP1:null, fy?fy.avgFamP1:null, {})}</tr>
+        <tr><td style="padding:4px 8px;font-weight:700">Burn OMT (%)</td>${mediaMetricCellHtml(fpa.avgBurnOMT, fc?fc.avgBurnOMT:null, fy?fy.avgBurnOMT:null, {suffix:'%'})}${mediaMetricCellHtml(fpa.avgBurnOMTP1, fc?fc.avgBurnOMTP1:null, fy?fy.avgBurnOMTP1:null, {suffix:'%'})}</tr>
       </tbody>
     </table>` : `<div style="font-size:11.5px;color:var(--muted)">non calculable (dates manquantes, ou pas de semaine de programmation archivée sur la période)</div>`;
+
+  const cmpNote = (prevChrono || prevYear) ? `<div style="font-size:10px;color:var(--muted);margin-bottom:12px">Comparaisons — V-1 : ${prevChrono ? escHtml(prevChrono.label) : 'non disponible'} · N-1 : ${prevYear ? escHtml(prevYear.label) : 'non disponible'}</div>` : '';
 
   const contexts = mediaSummaryContexts(period, wave);
   const ctxHtml = contexts.length
@@ -16358,7 +16436,8 @@ function mediaBuildSummaryHtml(stKey, period, wave){
   return `
     <div style="border:1.5px solid var(--border);border-radius:12px;padding:18px 20px;background:var(--bg)">
       <div style="font-size:14px;font-weight:800;color:var(--navy);margin-bottom:2px">${stationNameHtml(stKey)} — ${escHtml(scopeLabel)}</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:14px">${escHtml(rangeLabel)}</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${escHtml(rangeLabel)}</div>
+      ${cmpNote}
 
       <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px">📡 Médiamétrie</div>
       <table style="width:100%;border-collapse:collapse;margin-bottom:16px;background:var(--white);border:1.5px solid var(--border);border-radius:8px;overflow:hidden">
@@ -16389,31 +16468,48 @@ function mediaBuildSummaryText(stKey, period, wave){
   const scopeLabel = wave ? (period.label + ' — ' + wave.label) : ('Vague entière — ' + period.label);
   const range = mediaSummaryDateRange(period, wave);
   const rangeLabel = range ? (mediaDateToFr(range.start) + ' → ' + mediaDateToFr(range.end)) : 'dates non renseignées';
+  const prevChrono = mediaFindPrevChrono(stKey, period);
+  const prevYear = mediaFindSameTypePrevYear(stKey, period);
+  const cmpChrono = mediaSummaryComparisonBundle(stKey, prevChrono);
+  const cmpYear = mediaSummaryComparisonBundle(stKey, prevYear);
+  const fc = cmpChrono && cmpChrono.fpa, fy = cmpYear && cmpYear.fpa;
   const lines = [];
   lines.push(STATION_LABELS[stKey] + ' — ' + scopeLabel);
   lines.push(rangeLabel);
+  if(prevChrono || prevYear) lines.push('Comparaisons — V-1 : ' + (prevChrono ? prevChrono.label : 'non disponible') + ' · N-1 : ' + (prevYear ? prevYear.label : 'non disponible'));
   lines.push('');
   lines.push('MÉDIAMÉTRIE');
   mediaSummaryCiblesData(stKey, period, wave).forEach(c => {
-    lines.push('- ' + c.label + ' : AC ' + (c.values.AC==null?'–':mediaFmtDecimal(c.values.AC)+'%') + ' · PDA ' + (c.values.PDA==null?'–':mediaFmtDecimal(c.values.PDA)+'%') + ' · DEA ' + (c.values.DEA==null?'–':Math.round(c.values.DEA)));
+    const vChrono = cmpChrono && cmpChrono.cibles.find(x => x.key===c.key);
+    const vYear = cmpYear && cmpYear.cibles.find(x => x.key===c.key);
+    const part = (metric, suffix, decimals) => {
+      const val = c.values[metric];
+      const base = (val==null?'–':mediaFmtDecimal(val,decimals)+suffix);
+      const dChrono = mediaSummaryDeltaText(val, vChrono?vChrono.values[metric]:null, decimals, suffix);
+      const dYear = mediaSummaryDeltaText(val, vYear?vYear.values[metric]:null, decimals, suffix);
+      return base + ' (V-1 ' + dChrono + ' · N-1 ' + dYear + ')';
+    };
+    lines.push('- ' + c.label + ' : AC ' + part('AC','%',1) + ' · PDA ' + part('PDA','%',1) + ' · DEA ' + part('DEA','',0));
   });
   lines.push('');
   lines.push('AUDIENCE DIGITALE (moyenne période)');
   const live = range ? mediaComputeLiveAvgForRange(stKey, range.start, range.end) : null;
   lines.push(live
-    ? ('- ' + digitalAudienceFmtInt(live.avg) + ' auditeurs moy. (5h-24h) · ' + live.count + ' semaine(s) · ' + digitalAudienceFmtInt(live.sessions) + ' sessions · ' + digitalAudienceFmtInt(live.uniques) + ' visiteurs uniques')
+    ? ('- ' + digitalAudienceFmtInt(live.avg) + ' auditeurs moy. (5h-24h) · ' + live.count + ' semaine(s) · ' + digitalAudienceFmtInt(live.sessions) + ' sessions · ' + digitalAudienceFmtInt(live.uniques) + ' visiteurs uniques'
+      + ' (V-1 ' + mediaSummaryDeltaText(live.avg, cmpChrono&&cmpChrono.live?cmpChrono.live.avg:null, 0) + ' · N-1 ' + mediaSummaryDeltaText(live.avg, cmpYear&&cmpYear.live?cmpYear.live.avg:null, 0) + ')')
     : '- non calculable (dates manquantes, ou pas de données sur la période)');
   lines.push('');
   const fpa = mediaAnalyseStatsAvgForRange(stKey, range);
   lines.push('FPA (moyenne période)');
-  lines.push(fpa ? ('- Fit Score moyen : ' + mediaFmtDecimal(fpa.avgFit) + ' · SPU moyen : ' + mediaFmtDecimal(fpa.avgSpu) + ' (' + fpa.count + ' semaine(s))') : '- non calculable');
+  lines.push(fpa ? ('- Fit Score moyen : ' + mediaFmtDecimal(fpa.avgFit) + ' (V-1 ' + mediaSummaryDeltaText(fpa.avgFit, fc?fc.avgFit:null, 1) + ' · N-1 ' + mediaSummaryDeltaText(fpa.avgFit, fy?fy.avgFit:null, 1) + ') · SPU moyen : ' + mediaFmtDecimal(fpa.avgSpu) + ' (V-1 ' + mediaSummaryDeltaText(fpa.avgSpu, fc?fc.avgSpu:null, 1) + ' · N-1 ' + mediaSummaryDeltaText(fpa.avgSpu, fy?fy.avgSpu:null, 1) + ') (' + fpa.count + ' semaine(s))') : '- non calculable');
   lines.push('');
   lines.push('CALL OUT / OMT (moyenne période)');
   if(fpa){
-    lines.push('- Pot Score (Call Out) : Ensemble ' + mediaFmtDecimal(fpa.avgPot) + ' · P1 ' + mediaFmtDecimal(fpa.avgPotP1));
-    lines.push('- Burn Call Out (%) : Ensemble ' + mediaFmtDecimal(fpa.avgBurnCO) + ' · P1 ' + mediaFmtDecimal(fpa.avgBurnCOP1));
-    lines.push('- Fam Score (OMT) : Ensemble ' + mediaFmtDecimal(fpa.avgFam) + ' · P1 ' + mediaFmtDecimal(fpa.avgFamP1));
-    lines.push('- Burn OMT (%) : Ensemble ' + mediaFmtDecimal(fpa.avgBurnOMT) + ' · P1 ' + mediaFmtDecimal(fpa.avgBurnOMTP1));
+    const metricLine = (label, ens, p1) => '- ' + label + ' : Ensemble ' + mediaFmtDecimal(fpa[ens]) + ' (V-1 ' + mediaSummaryDeltaText(fpa[ens], fc?fc[ens]:null, 1) + ' · N-1 ' + mediaSummaryDeltaText(fpa[ens], fy?fy[ens]:null, 1) + ') · P1 ' + mediaFmtDecimal(fpa[p1]) + ' (V-1 ' + mediaSummaryDeltaText(fpa[p1], fc?fc[p1]:null, 1) + ' · N-1 ' + mediaSummaryDeltaText(fpa[p1], fy?fy[p1]:null, 1) + ')';
+    lines.push(metricLine('Pot Score (Call Out)', 'avgPot', 'avgPotP1'));
+    lines.push(metricLine('Burn Call Out (%)', 'avgBurnCO', 'avgBurnCOP1'));
+    lines.push(metricLine('Fam Score (OMT)', 'avgFam', 'avgFamP1'));
+    lines.push(metricLine('Burn OMT (%)', 'avgBurnOMT', 'avgBurnOMTP1'));
   } else lines.push('- non calculable');
   lines.push('');
   lines.push('CONTEXTE ÉDITORIAL');
