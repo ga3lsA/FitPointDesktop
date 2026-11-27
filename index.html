@@ -4659,8 +4659,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.250';
-const FPA_BUILD_ISO = '2026-11-27T19:00:00+01:00';
+const FPA_VERSION   = 'v30.251';
+const FPA_BUILD_ISO = '2026-11-27T20:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -42685,6 +42685,8 @@ async function driveBgSave(key, data, trimFn){
   try{ localStorage.setItem(flag, day); }catch(e){}
 }
 let _driveSaveQueue = Promise.resolve();
+const DRIVE_POST_THRESHOLD = 30000; // caractères de JSON au-delà desquels on tente l'envoi direct
+let _drivePostUnsupported = false;
 async function driveCall(action, key, payload, onProgress) {
   if (!DRIVE_SYNC_URL) throw new Error('URL Drive Sync non configurée');
 
@@ -42709,7 +42711,35 @@ async function driveCall(action, key, payload, onProgress) {
     }
     return driveCallJSONPWithRetry({ action: 'save_finalize', key, total });
   };
+  // Gros envois (semaine Classements complète : Shazam, Spotify ×5, Deezer,
+  // Apple, Billboard, Airplay…) : en morceaux JSONP de 1 500 caractères, il
+  // faut plusieurs centaines d'appels et plusieurs minutes — les morceaux
+  // stockés temporairement côté script expirent ou saturent son quota avant
+  // la fin, d'où « Aucun chunk reçu ». On passe alors par l'envoi en UNE
+  // requête POST du script v6 (save_post, déjà utilisé par l'Analyse), puis
+  // on relit le fichier pour vérifier qu'il est identique. Repli automatique
+  // sur l'envoi en morceaux si le script ne le permet pas.
+  const postUpload = async () => {
+    if(onProgress) onProgress(1, 3);
+    await analyseDrivePost(key, payload);
+    if(onProgress) onProgress(2, 3);
+    const back = await driveCallJSONPWithRetry({ action: 'load', key }, 60000);
+    let same = !!back && typeof back.data === 'string' && back.data === payload;
+    if(!same && back && typeof back.data === 'string'){ try{ same = JSON.stringify(JSON.parse(back.data)) === JSON.stringify(JSON.parse(payload)); }catch(e){ same = false; } }
+    if(!same)
+      throw Object.assign(new Error('vérification après envoi direct : contenu relu différent'), { verifyFailed: true });
+    if(onProgress) onProgress(3, 3);
+    return back;
+  };
   const doSave = (_driveSaveQueue = _driveSaveQueue.catch(() => {}).then(async () => {
+    if(payload.length > DRIVE_POST_THRESHOLD && !_drivePostUnsupported && typeof analyseDrivePost === 'function'){
+      try{
+        return await postUpload();
+      }catch(e){
+        if(/v6 requise|Action inconnue|inconnue|non autoris|not allowed/i.test(e.message || '')) _drivePostUnsupported = true;
+        console.warn('[FPA] Envoi direct (save_post) de « ' + key + ' » impossible, repli sur l\'envoi en morceaux :', e.message);
+      }
+    }
     try{
       return await upload();
     }catch(e){
@@ -42717,7 +42747,10 @@ async function driveCall(action, key, payload, onProgress) {
       // morceaux orphelins puis on recommence une fois l'envoi complet.
       if(/chunk|quota|propri|storage|stockage/i.test(String(e && e.message || e))){
         try{ await driveCallJSONPWithRetry({ action: 'cleanup_chunks' }); }catch(e2){}
-        return await upload();
+        try{ return await upload(); }
+        catch(e3){
+          throw new Error((e3 && e3.message || String(e3)) + ' — envoi de ' + Math.round(payload.length/1024) + ' Ko en morceaux impossible. Essayez « 🧹 Nettoyer les chunks orphelins » dans le panneau Drive Sync, puis réessayez.');
+        }
       }
       throw e;
     }
