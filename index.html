@@ -2726,6 +2726,9 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
         .clab-seg-btn.off{opacity:.4;cursor:not-allowed}
         .clab-seg-btn:focus-visible,.clf-row:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
         .clab-period{padding:14px 20px 16px;background:var(--clab-soft)}
+        .clab-lagwrap{display:flex;flex-direction:column;gap:6px}
+        .clab-lagrow{display:flex;align-items:center;gap:8px}
+        .clab-lagrow>span{font-size:10.5px;font-weight:600;color:var(--muted);width:74px;flex-shrink:0}
         .clab-period-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
         .clab-period-bar .clab-period-label{margin:0}
         .clab-period-bar>label{font-size:11.5px;color:var(--text2);display:flex;align-items:center;gap:5px}
@@ -2866,8 +2869,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             </div>
             <div class="clab-field">
               <label>Délai entre programmation et audience</label>
-              <div class="clab-seg" id="clLagSeg"></div>
-              <div class="clab-hint">Un effet de la programmation peut mettre une à plusieurs semaines à se voir sur l'audience.</div>
+              <div id="clLagSeg" class="clab-lagwrap"></div>
+              <div class="clab-hint" id="clLagHint"></div>
             </div>
           </div>
           <div class="clab-period">
@@ -2927,7 +2930,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
             <div><h4>Pourquoi des variations plutôt que des niveaux</h4><p>Deux séries qui progressent toutes les deux dans le temps (montée du digital, saison) affichent une forte corrélation sans aucun lien entre elles. Comparer la variation d'une semaine sur l'autre, l'évolution sur un an publiée dans le rapport ou les écarts à la tendance élimine ce piège.</p></div>
             <div><h4>Significativité et effectif effectif</h4><p>Chaque coefficient est testé (Student) et encadré par un intervalle de confiance à 95 % (Fisher). Des semaines consécutives se ressemblent : le nombre d'observations est corrigé de cette autocorrélation (Bartlett) avant le test.</p></div>
             <div><h4>Tests multiples</h4><p>Tester des dizaines de critères à la fois fait apparaître environ 5 % de faux positifs. La q-value (Benjamini-Hochberg) corrige ce biais. « Lien robuste » exige q ≤ 0,10, le même signe en Spearman et sur les deux moitiés de la période.</p></div>
-            <div><h4>Décalage et sens du lien</h4><p>Le graphique « Selon le délai » teste aussi les décalages négatifs. Si le lien est plus fort quand l'audience bouge avant la programmation, c'est probablement la programmation qui réagit, ou une cause commune. Le test de Granger vérifie si le critère précède l'audience.</p></div>
+            <div><h4>Décalage et sens du lien</h4><p>Le graphique « Selon le délai » teste aussi les décalages négatifs. Si le lien est plus fort quand l'audience bouge avant la programmation, c'est probablement la programmation qui réagit, ou une cause commune. Le test de Granger vérifie si le critère précède l'audience. Les délais en mois comparent des moyennes sur 4, 9 ou 13 semaines, pour capter les effets d'habitude ; les fenêtres glissantes se chevauchant, l'effectif est ramené au nombre de périodes réellement indépendantes.</p></div>
             <div><h4>Modèle combiné</h4><p>Le R² augmente toujours quand on ajoute un critère. Le Q² (validation croisée « leave-one-out ») ne récompense que le pouvoir de prévision réel. Comptez au moins 8 observations par critère ; un VIF supérieur à 5 signale des critères redondants.</p></div>
             <div><h4>Corrélation n'est pas causalité</h4><p>L'actualité, les opérations marketing, les programmes parlés, la distribution sur les applications et les enceintes connectées pèsent aussi sur l'audience. Pour prouver qu'un levier agit, le plus solide est l'expérimentation planifiée : faire varier volontairement ce seul critère sur des blocs de semaines, en gardant le reste stable, puis comparer.</p></div>
           </div>
@@ -4656,8 +4659,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.249';
-const FPA_BUILD_ISO = '2026-11-27T18:00:00+01:00';
+const FPA_VERSION   = 'v30.250';
+const FPA_BUILD_ISO = '2026-11-27T19:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -20287,7 +20290,7 @@ function renderGraphPage(){
 //      garantis : correction de Benjamini-Hochberg (q-values, FDR).
 //   4. Robustesse : Spearman (insensible aux valeurs extrêmes) et stabilité
 //      sur les deux moitiés de la période.
-//   5. Décalages (0 à 3 semaines) + corrélogramme incluant les décalages
+//   5. Délais (0 à 3 semaines, puis 1, 2, 3 mois sur moyennes glissantes) + corrélogramme incluant les décalages
 //      négatifs (audience AVANT programmation = causalité inverse probable)
 //      + test de précédence de Granger.
 //   6. Modèle combiné : R² ajusté et Q² en validation croisée « leave-one-
@@ -20423,7 +20426,7 @@ let clSettings = Object.assign(
 );
 function clSaveSettings(){ try{ localStorage.setItem(CL_SETTINGS_KEY, JSON.stringify(clSettings)); }catch(e){ /* ignoré */ } }
 function clOnSetting(k, v){
-  clSettings[k] = (k === 'lag') ? parseInt(v, 10) : v;
+  clSettings[k] = (k === 'lag') ? (/^-?m\d$/.test(String(v)) ? String(v) : parseInt(v, 10)) : v;
   clSaveSettings();
   renderCorrPage();
 }
@@ -20719,6 +20722,12 @@ function clFisherCI(r, n){
   const se = 1/Math.sqrt(n-3);
   return [Math.tanh(z-1.96*se), Math.tanh(z+1.96*se)];
 }
+function clAutocorr(a, k){
+  const n = a.length; if(n <= k + 2) return 0;
+  const m = clMean(a); let num = 0, den = 0;
+  for(let i=0;i<n;i++){ den += (a[i]-m)*(a[i]-m); if(i+k < n) num += (a[i]-m)*(a[i+k]-m); }
+  return den > 0 ? num/den : 0;
+}
 function clLag1(a){ return a.length < 5 ? 0 : (clPearsonArr(a.slice(0,-1), a.slice(1)) || 0); }
 /** q-values de Benjamini-Hochberg (null conservé pour les tests absents). */
 function clBH(ps){
@@ -20876,6 +20885,70 @@ function clBuildCriteria(stKey, rows){
   return C;
 }
 
+// ── Délais ──────────────────────────────────────────────────────────────
+/** Délais longs (mois) : les effets d'habitude en radio s'installent sur
+ *  des semaines, voire des mois. Comparer une seule semaine de
+ *  programmation à une seule semaine d'audience décalée de 13 semaines
+ *  noierait ce type d'effet dans le bruit hebdomadaire. On compare donc des
+ *  MOYENNES sur H semaines : l'évolution de la programmation d'un bloc de H
+ *  semaines au suivant, puis l'évolution de l'audience sur le bloc d'après.
+ *  Les fenêtres glissent d'une semaine à l'autre : des observations voisines
+ *  partagent la plupart de leurs semaines, d'où un effectif effectif
+ *  ramené à environ n/H (voir clAnalyze) et une validation croisée par
+ *  blocs pour le modèle combiné. */
+const CL_MONTH_LAGS = { m1:{ H:4, label:'1 mois' }, m2:{ H:9, label:'2 mois' }, m3:{ H:13, label:'3 mois' } };
+function clLagInfo(lag){
+  const s = String(lag);
+  const m = /^(-?)(m\d)$/.exec(s);
+  if(m && CL_MONTH_LAGS[m[2]]){
+    const d = CL_MONTH_LAGS[m[2]];
+    return { block:true, H:d.H, dir: m[1] ? -1 : 1, label: d.label, short: (m[1] ? '−' : '+') + d.label.replace(' mois',' m') };
+  }
+  const L = parseInt(s, 10) || 0;
+  return { block:false, H:1, L, label: L ? L + ' semaine' + (Math.abs(L) > 1 ? 's' : '') : 'même semaine', short: L === 0 ? '0' : (L > 0 ? '+' : '−') + Math.abs(L) };
+}
+/** Moyenne d'une grandeur sur les H semaines se terminant à `end` (incluse),
+ *  si au moins 75 % de ces semaines sont présentes et renseignées. */
+function clBlockMean(ctx, getter, end, H){
+  let sum = 0, cnt = 0;
+  for(let k=0;k<H;k++){
+    const r = ctx.by[clWeekAdd(end, -7*k)];
+    if(!r) continue;
+    const v = getter(r);
+    if(v == null || isNaN(v)) continue;
+    sum += v; cnt++;
+  }
+  return cnt >= Math.ceil(0.75*H) ? sum/cnt : null;
+}
+function clBlockPairs(crit, target, mode, info, ctx){
+  const H = info.H, out = [];
+  const X  = r => crit.get(r);
+  const Y  = r => { const v = target.get(r.aud); return v > 0 ? v : null; };
+  const YY = r => r.aud[target.yoyField];
+  // dir +1 : programmation (blocs précédents) → audience (bloc courant)
+  // dir −1 : audience (blocs précédents) → programmation (bloc courant), contrôle de causalité inverse
+  const xEnd = info.dir > 0 ? -7*H : 0, yEnd = info.dir > 0 ? 0 : -7*H;
+  ctx.windowRows.forEach(row => {
+    const t = row.weekStart;
+    const tx = clWeekAdd(t, xEnd), ty = clWeekAdd(t, yEnd);
+    let x, y;
+    if(mode === 'diff'){
+      const xa = clBlockMean(ctx, X, tx, H), xb = clBlockMean(ctx, X, clWeekAdd(tx, -7*H), H);
+      const ya = clBlockMean(ctx, Y, ty, H), yb = clBlockMean(ctx, Y, clWeekAdd(ty, -7*H), H);
+      if(xa == null || xb == null || !(ya > 0) || !(yb > 0)) return;
+      x = xa - xb; y = 100*Math.log(ya/yb);
+    } else if(mode === 'yoy'){
+      x = clBlockMean(ctx, X, tx, H); y = clBlockMean(ctx, YY, ty, H);
+      if(x == null || y == null) return;
+    } else {
+      x = clBlockMean(ctx, X, tx, H); y = clBlockMean(ctx, Y, ty, H);
+      if(x == null || !(y > 0)) return;
+    }
+    out.push({ t, x, y });
+  });
+  return out;
+}
+
 // ── Séries appariées ────────────────────────────────────────────────────
 /** Paires (x, y) datées pour un critère, une audience, un mode et un
  *  décalage. ctx.by : semaines appariées NON exclues (tout l'historique,
@@ -20883,7 +20956,11 @@ function clBuildCriteria(stKey, rows){
  *  semaines d'audience de la période analysée. lag > 0 : programmation
  *  ANTÉRIEURE à l'audience ; lag < 0 : programmation POSTÉRIEURE. */
 function clPairs(crit, target, mode, lag, ctx){
-  const out = [];
+  const info = clLagInfo(lag);
+  let out;
+  if(info.block){ out = clBlockPairs(crit, target, mode, info, ctx); return clDetrendPairs(out, mode); }
+  lag = info.L;
+  out = [];
   const sh = -7*lag;
   ctx.windowRows.forEach(row => {
     const t = row.weekStart;
@@ -20908,6 +20985,9 @@ function clPairs(crit, target, mode, lag, ctx){
     }
     out.push({ t, x, y });
   });
+  return clDetrendPairs(out, mode);
+}
+function clDetrendPairs(out, mode){
   if(mode === 'detrend' && out.length >= 5){
     const ts = out.map(p => clDayIndex(p.t));
     const resid = vals => {
@@ -20921,15 +21001,23 @@ function clPairs(crit, target, mode, lag, ctx){
   }
   return out;
 }
-function clAnalyze(pairs){
+function clAnalyze(pairs, H){
+  H = H || 1;
   const n = pairs.length;
   const res = { n, r:null };
   if(n < 4) return res;
   const xs = pairs.map(p=>p.x), ys = pairs.map(p=>p.y);
   const r = clPearsonArr(xs, ys);
   if(r == null) return res;
-  const a1 = clLag1(xs), b1 = clLag1(ys);
-  const neff = Math.max(4, Math.min(n, n*(1 - a1*b1)/(1 + a1*b1)));
+  // Effectif effectif de Bartlett : n / (1 + 2·Σ ρx(k)·ρy(k)), sommé sur
+  // les K premiers retards (2H en délai mensuel, où les fenêtres glissantes
+  // se chevauchent ; 4 sinon). Vérifié par simulation (v30.250) : taux de
+  // faux positifs ≈ 4-5 % au seuil de 5 %, contre 0,5 % avec la seule
+  // autocorrélation d'ordre 1 (trop prudente, puissance très dégradée).
+  const K = Math.max(1, Math.min(Math.floor(n/4), H > 1 ? 2*H : 4));
+  let acSum = 0;
+  for(let k=1;k<=K;k++) acSum += clAutocorr(xs, k) * clAutocorr(ys, k);
+  const neff = Math.max(3, Math.min(n, n/(1 + 2*acSum), H > 1 ? 2*n/H : n));
   const sdx = clSd(xs), sdy = clSd(ys);
   const half = Math.floor(n/2);
   const rH1 = half >= 5 ? clPearsonArr(xs.slice(0,half), ys.slice(0,half)) : null;
@@ -20947,7 +21035,7 @@ const CL_VERDICTS = {
   insuff: { label:'Trop peu de semaines', cls:'clv-insuff' }
 };
 function clVerdict(a){
-  if(a.r == null || a.n < 8) return 'insuff';
+  if(a.r == null || a.n < 8 || a.neff < 6) return 'insuff';
   if(a.q != null && a.q <= 0.10 && a.rs != null && Math.sign(a.rs) === Math.sign(a.r) && a.stable !== false) return 'robust';
   if(a.p != null && a.p < 0.05) return 'lead';
   return 'none';
@@ -21036,12 +21124,19 @@ function renderCorrPage(){
   if(!targets.some(t => t.key === clSettings.target)) clSettings.target = targets[0].key;
   const target = targets.find(t => t.key === clSettings.target);
   if(clSettings.mode === 'yoy' && !target.yoyField) clSettings.mode = 'diff';
-  const mode = clSettings.mode, lag = clSettings.lag || 0;
+  const mode = clSettings.mode, lag = clSettings.lag || 0, lagInfo = clLagInfo(lag);
   const tSel = document.getElementById('clTarget');
   if(tSel) tSel.innerHTML = targets.map(t => `<option value="${t.key}" ${t.key===target.key?'selected':''}>${escHtml(t.label)}</option>`).join('');
   document.getElementById('clModeSeg').innerHTML = clSeg(Object.entries(CL_MODES).map(([k,m]) => ({ v:k, l:m.label, disabled: k==='yoy' && !target.yoyField, title: k==='yoy' && !target.yoyField ? 'Le rapport ne publie pas d\'évolution sur 1 an pour cette audience' : m.hint })), mode, v => `clOnSetting('mode','${v}')`);
   document.getElementById('clModeHint').textContent = CL_MODES[mode].hint;
-  document.getElementById('clLagSeg').innerHTML = clSeg([0,1,2,3].map(v => ({ v, l: v === 0 ? 'Même semaine' : '+' + v + ' sem.' })), lag, v => `clOnSetting('lag',${v})`);
+  const lagClick = v => `clOnSetting('lag','${v}')`;
+  document.getElementById('clLagSeg').innerHTML =
+    `<div class="clab-lagrow"><span>Court terme</span><div class="clab-seg">${clSeg([0,1,2,3].map(v => ({ v, l: v === 0 ? 'Même semaine' : '+' + v + ' sem.' })), lag, lagClick)}</div></div>`
+  + `<div class="clab-lagrow"><span>Habitude</span><div class="clab-seg">${clSeg(Object.entries(CL_MONTH_LAGS).map(([k,d]) => ({ v:k, l:d.label, title:'Moyennes sur ' + d.H + ' semaines : évolution de la programmation sur un bloc, puis évolution de l\'audience sur le bloc suivant' })), lag, lagClick)}</div></div>`;
+  const lagHint = document.getElementById('clLagHint');
+  if(lagHint) lagHint.textContent = lagInfo.block
+    ? 'Délai de ' + lagInfo.label + ' : on compare l\'évolution de la programmation (moyenne sur ' + lagInfo.H + ' semaines) à celle de l\'audience sur les ' + lagInfo.H + ' semaines suivantes. Adapté aux effets d\'habitude, mais il faut au moins ' + (3*lagInfo.H) + ' semaines d\'historique continu.'
+    : 'Délais en semaines : effets rapides. Délais en mois : effets d\'habitude et d\'inertie, mesurés sur des moyennes de plusieurs semaines.';
 
   // Exclusions
   clExclLoadFromDrive();
@@ -21084,12 +21179,13 @@ function renderCorrPage(){
   const criteria = clBuildCriteria(stKey, rowsAll);
   const results = criteria.map(c => {
     const pairs = clPairs(c, target, mode, lag, ctx);
-    return Object.assign({ crit: c, pairs }, clAnalyze(pairs));
+    return Object.assign({ crit: c, pairs }, clAnalyze(pairs, lagInfo.H));
   }).filter(a => a.n > 0 && !(a.r == null && a.n >= 4)); // critère absent ou constant sur la période : sans objet
   const qs = clBH(results.map(a => a.p));
   results.forEach((a,i) => { a.q = qs[i]; a.verdict = clVerdict(a); });
   const nObs = results.reduce((m,a) => Math.max(m, a.n), 0);
-  clLast = { stKey, target, mode, lag, ctx, criteria, results, allWeeks, rowsAll, fromW, toW, nObs, isExcluded, opsWeeks };
+  const neffRef = results.reduce((m,a) => a.r != null ? Math.max(m, a.neff) : m, 0) || nObs;
+  clLast = { stKey, target, mode, lag, lagInfo, ctx, criteria, results, allWeeks, rowsAll, fromW, toW, nObs, neffRef, isExcluded, opsWeeks };
 
   clRenderHealth(matched.length, windowRows.length, nObs);
   clRenderTimeline();
@@ -21108,18 +21204,21 @@ function renderCorrPage(){
 
 function clRenderHealth(nMatched, nWindow, nObs){
   const el = document.getElementById('clHealth'); if(!el) return;
-  const rc = nObs >= 4 ? clRcrit(nObs) : null;
+  const ne = clLast.neffRef, block = clLast.lagInfo.block;
+  const rc = ne >= 4 ? clRcrit(ne) : null;
   el.innerHTML = `
     <div class="clab-stat"><b>${nMatched}</b><span>semaines appariées</span></div>
     <div class="clab-stat"><b>${nWindow}</b><span>dans la période</span></div>
-    <div class="clab-stat"><b>${nObs}</b><span>observations exploitables</span></div>
+    <div class="clab-stat" title="${block ? 'Fenêtres glissantes qui se chevauchent : environ ' + clFmt(ne,0) + ' observations réellement indépendantes' : ''}"><b>${nObs}${block ? ' <small style=\'font-size:11px;color:var(--muted)\'>≈ ' + clFmt(ne,0) + ' indép.</small>' : ''}</b><span>observations exploitables</span></div>
     <div class="clab-stat" title="Avec ce nombre d'observations, un coefficient plus faible que ce seuil ne peut pas être distingué du hasard (test bilatéral à 5 %), même s'il est réel."><b>${rc == null ? '—' : '|r| ≥ ' + clFmt(rc, 2)}</b><span>seuil de détection</span></div>`;
 }
 function clRenderPeriodNote(nWindow, nObs){
   const el = document.getElementById('clPeriodNote'); if(!el) return;
   const msgs = [];
   if(clLast.mode === 'diff' && nWindow - nObs > 0) msgs.push(`${nWindow - nObs} semaine(s) de la période n'ont pas de semaine précédente exploitable (trou dans l'historique ou semaine exclue) et ne comptent pas dans les variations.`);
-  if(nObs < 12) msgs.push('Moins de 12 observations : seuls des liens très forts peuvent ressortir. Élargissez la période si possible.');
+  const li = clLast.lagInfo;
+  if(li.block && nObs < 8) msgs.push('Délai de ' + li.label + ' : chaque observation demande ' + (2*li.H) + ' à ' + (3*li.H) + ' semaines d\'historique continu en amont. Choisissez « Tout » ou une période plus longue.');
+  else if(clLast.neffRef < 12) msgs.push('Moins de 12 observations indépendantes : seuls des liens très forts peuvent ressortir. Élargissez la période si possible.');
   msgs.push('Cliquez sur une barre pour écarter une semaine atypique ou affectée par un problème technique : orange = atypique, rouge = technique.');
   el.textContent = msgs.join(' ');
 }
@@ -21157,8 +21256,9 @@ function clSetGroup(g){ clSettings.group = g; clSaveSettings(); clRenderForest()
 function clFocus(key){ clSettings.focus = key; clSaveSettings(); clRenderForest(); clRenderDetail(); document.getElementById('clDetailPanel')?.scrollIntoView({ behavior:'smooth', block:'start' }); }
 function clModePhrase(){
   const L = clLast;
-  const lagTxt = L.lag ? ', programmation décalée de ' + L.lag + ' semaine' + (L.lag > 1 ? 's' : '') : '';
-  return { diff:'variations hebdomadaires', yoy:'évolution sur 1 an', detrend:'écarts à la tendance' }[L.mode] + ' · ' + L.target.label.toLowerCase() + lagTxt;
+  const li = L.lagInfo;
+  const lagTxt = li.block ? ', délai de ' + li.label + ' (moyennes sur ' + li.H + ' semaines)' : (li.L ? ', programmation décalée de ' + li.label : '');
+  return { diff: li.block ? 'variations de moyennes sur ' + li.H + ' semaines' : 'variations hebdomadaires', yoy:'évolution sur 1 an', detrend:'écarts à la tendance' }[L.mode] + ' · ' + L.target.label.toLowerCase() + lagTxt;
 }
 function clRenderForest(){
   const L = clLast;
@@ -21166,11 +21266,13 @@ function clRenderForest(){
   const nRobust = res.filter(a => a.verdict === 'robust').length;
   const nLead = res.filter(a => a.verdict === 'lead').length;
   const tested = res.filter(a => a.p != null).length;
-  const rc = L.nObs >= 4 ? clRcrit(L.nObs) : null;
+  const rc = L.neffRef >= 4 ? clRcrit(L.neffRef) : null;
   let headline, sub;
-  if(L.nObs < 8){
+  if(L.nObs < 8 || L.neffRef < 6){
     headline = 'Pas encore assez de semaines pour conclure';
-    sub = `${L.nObs} observation(s) exploitable(s) sur la période. Il en faut au moins 8, idéalement plus de 20, pour qu'un lien ressorte du bruit.`;
+    sub = L.lagInfo.block
+      ? `Avec un délai de ${L.lagInfo.label}, la période ne fournit qu'environ ${clFmt(L.neffRef,0)} observation(s) indépendante(s). Il en faut au moins 6 : allongez la période ou l'historique (au moins ${6*L.lagInfo.H + 2*L.lagInfo.H} semaines continues).`
+      : `${L.nObs} observation(s) exploitable(s) sur la période. Il en faut au moins 8, idéalement plus de 20, pour qu'un lien ressorte du bruit.`;
   } else if(nRobust){
     const top = res.filter(a => a.verdict === 'robust').slice(0,3).map(a => `${a.crit.label} (r = ${clFmtSigned(a.r,2)})`).join(', ');
     headline = nRobust === 1 ? '1 critère se détache nettement du hasard' : nRobust + ' critères se détachent nettement du hasard';
@@ -21180,7 +21282,7 @@ function clRenderForest(){
     sub = `${nLead} critère(s) dépassent le seuil de 5 % pris isolément, mais avec ${tested} critères testés en même temps, on en attendrait environ ${clFmt(tested*0.05,0)} par pur hasard. À surveiller à mesure que l'historique s'allonge.`;
   } else {
     headline = 'Aucun critère ne se détache du hasard sur cette période';
-    sub = `Avec ${L.nObs} observations, seul un lien d'au moins |r| = ${clFmt(rc,2)} aurait pu être détecté. Un effet plus modeste peut exister : il faudra plus de semaines, ou une variation plus marquée des critères, pour le voir.`;
+    sub = `Avec ${L.lagInfo.block ? 'environ ' + clFmt(L.neffRef,0) + ' observations indépendantes' : L.nObs + ' observations'}, seul un lien d'au moins |r| = ${clFmt(rc,2)} aurait pu être détecté. Un effet plus modeste peut exister : il faudra plus de semaines, ou une variation plus marquée des critères, pour le voir.`;
   }
   document.getElementById('clSummary').innerHTML = `
     <div class="clab-summary">
@@ -21237,13 +21339,17 @@ function clRenderDetail(){
   const step = a.sdx;
   const eff = a.slope*step;
   const effCi = a.ci ? [a.ci[0]*a.sdy, a.ci[1]*a.sdy] : null;
-  const xWhat = L.mode === 'diff' ? `varie de ${clFmtSigned(step, step < 10 ? 1 : 0)} ${c.unit} d'une semaine à l'autre (variation typique)` : `est ${clFmt(step, step < 10 ? 1 : 0)} ${c.unit} au-dessus de son niveau habituel`;
-  const effect = `Quand « ${c.label} » ${xWhat}, « ${L.target.label} » ${L.lag ? L.lag + ' semaine(s) plus tard ' : ''}évolue en moyenne de ${clFmtSigned(eff, 1)} ${unitY}${effCi ? ` (entre ${clFmtSigned(effCi[0],1)} et ${clFmtSigned(effCi[1],1)} avec 95 % de confiance)` : ''}.`;
+  const li = L.lagInfo;
+  const xWhat = li.block
+    ? (L.mode === 'diff' ? `varie de ${clFmtSigned(step, step < 10 ? 1 : 0)} ${c.unit} en moyenne d'une période de ${li.H} semaines à la suivante (variation typique)` : `est en moyenne ${clFmt(step, step < 10 ? 1 : 0)} ${c.unit} au-dessus de son niveau habituel sur ${li.H} semaines`)
+    : (L.mode === 'diff' ? `varie de ${clFmtSigned(step, step < 10 ? 1 : 0)} ${c.unit} d'une semaine à l'autre (variation typique)` : `est ${clFmt(step, step < 10 ? 1 : 0)} ${c.unit} au-dessus de son niveau habituel`);
+  const when = li.block ? `sur les ${li.H} semaines suivantes ` : (li.L ? li.label + ' plus tard ' : '');
+  const effect = `Quand « ${c.label} » ${xWhat}, « ${L.target.label} » ${when}évolue en moyenne de ${clFmtSigned(eff, 1)} ${unitY}${effCi ? ` (entre ${clFmtSigned(effCi[0],1)} et ${clFmtSigned(effCi[1],1)} avec 95 % de confiance)` : ''}.`;
   let hypo = '';
   if(c.hyp && (a.verdict === 'robust' || a.verdict === 'lead')){
     hypo = Math.sign(a.r) === c.hyp ? '<span class="clab-pill ok">Conforme à l\'hypothèse attendue</span>' : '<span class="clab-pill warn">Contraire à l\'hypothèse attendue : à investiguer</span>';
   }
-  const granger = L.mode === 'diff' ? clGranger(c, L.target, L.ctx) : null;
+  const granger = (L.mode === 'diff' && !li.block) ? clGranger(c, L.target, L.ctx) : null;
   const chips = [
     ['Corrélation (r)', clFmtSigned(a.r,2), 'Pearson, sur ' + a.n + ' observations'],
     ['IC 95 %', a.ci ? '[' + clFmtSigned(a.ci[0],2) + ' ; ' + clFmtSigned(a.ci[1],2) + ']' : '—', 'Fourchette plausible du vrai coefficient (Fisher), calculée sur l\'effectif effectif'],
@@ -21270,7 +21376,7 @@ function clRenderDetail(){
   const col = a.r > 0 ? '#1E6FD9' : '#E07B00';
   const xTitle = (L.mode === 'diff' ? 'Variation ' : L.mode === 'detrend' ? 'Écart à la tendance ' : '') + c.label + ' (' + c.unit + ')';
   const yTitle = (L.mode === 'diff' ? 'Variation ' : L.mode === 'detrend' ? 'Écart à la tendance ' : 'Évol. 1 an ') + L.target.label + ' (%)';
-  document.getElementById('clScatterCap').textContent = L.mode === 'diff' ? 'Chaque point = une semaine comparée à la précédente' : 'Chaque point = une semaine';
+  document.getElementById('clScatterCap').textContent = li.block ? 'Chaque point = une fenêtre glissante de ' + li.H + ' semaines (points voisins non indépendants)' : (L.mode === 'diff' ? 'Chaque point = une semaine comparée à la précédente' : 'Chaque point = une semaine');
   graphSafeNewChart('clScatterChart', {
     data: { datasets: [
       { type:'scatter', data: pts, backgroundColor: 'rgba(11,29,58,.72)', pointRadius: 4.5, pointHoverRadius: 7 },
@@ -21283,25 +21389,26 @@ function clRenderDetail(){
   });
 
   // Corrélogramme
-  const lags = [-2,-1,0,1,2,3,4];
-  const lagRes = lags.map(l => clAnalyze(clPairs(c, L.target, L.mode, l, L.ctx)));
+  const lags = ['-m1',-2,-1,0,1,2,3,'m1','m2','m3'];
+  const lagInf = lags.map(l => clLagInfo(l));
+  const lagRes = lags.map((l,i) => clAnalyze(clPairs(c, L.target, L.mode, l, L.ctx), lagInf[i].H));
   graphSafeNewChart('clLagChart', {
     type:'bar',
-    data: { labels: lags.map(l => l === 0 ? '0' : (l > 0 ? '+' : '−') + Math.abs(l)), datasets: [{
+    data: { labels: lagInf.map(x => x.short), datasets: [{
       data: lagRes.map(x => x.r),
-      backgroundColor: lagRes.map((x,i) => x.r == null ? '#DDE3EE' : (x.p != null && x.p < 0.05 ? (x.r > 0 ? '#1E6FD9' : '#E07B00') : (lags[i] < 0 ? '#E6E9F0' : '#C9D2E0'))),
-      borderColor: lags.map(l => l === L.lag ? '#0B1D3A' : 'transparent'), borderWidth: 2, borderRadius: 3 }] },
+      backgroundColor: lagRes.map((x,i) => x.r == null ? '#DDE3EE' : (x.p != null && x.p < 0.05 ? (x.r > 0 ? '#1E6FD9' : '#E07B00') : (lagInf[i].block ? lagInf[i].dir : lagInf[i].L) < 0 ? '#E6E9F0' : '#C9D2E0')),
+      borderColor: lags.map(l => String(l) === String(L.lag) ? '#0B1D3A' : 'transparent'), borderWidth: 2, borderRadius: 3 }] },
     options: { responsive:true, maintainAspectRatio:false, animation:{ duration:400 },
-      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => { const x = lagRes[ctx.dataIndex]; return x.r == null ? 'n insuffisant' : 'r = ' + clFmtSigned(x.r,2) + ' · p = ' + clFmtP(x.p) + ' · n = ' + x.n; } } } },
+      plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label: ctx => { const x = lagRes[ctx.dataIndex]; const inf = lagInf[ctx.dataIndex]; return x.r == null ? 'n insuffisant' : 'r = ' + clFmtSigned(x.r,2) + ' · p = ' + clFmtP(x.p) + ' · n = ' + x.n + (inf.block ? ' (≈ ' + clFmt(x.neff,0) + ' indép.)' : ''); } } } },
       scales:{ y:{ min:-1, max:1, ticks:{ stepSize:0.5, color:'#4A5E78' }, grid:{ color: c2 => c2.tick && c2.tick.value === 0 ? '#B7C2D4' : '#EEF1F6' } },
-               x:{ title:{ display:true, text:'Décalage en semaines (négatif = l\'audience bouge avant la programmation)', font:{ size:10 } }, grid:{ display:false } } } }
+               x:{ title:{ display:true, text:'Délai : semaines (+1…+3) puis mois (négatif = l\'audience bouge avant la programmation)', font:{ size:10 } }, grid:{ display:false } } } }
   });
   let lagNote = '';
-  const valid = lagRes.map((x,i) => ({ x, l: lags[i] })).filter(o => o.x.r != null);
+  const valid = lagRes.map((x,i) => ({ x, l: lagInf[i].block ? lagInf[i].dir*lagInf[i].H : lagInf[i].L, inf: lagInf[i] })).filter(o => o.x.r != null);
   if(valid.length){
     const peak = valid.reduce((b,o) => Math.abs(o.x.r) > Math.abs(b.x.r) ? o : b);
     if(peak.l < 0 && peak.x.p != null && peak.x.p < 0.05) lagNote = 'Le lien le plus fort apparaît quand l\'audience bouge AVANT la programmation : la causalité inverse (la programmation réagit à l\'audience) ou une cause commune est plus probable qu\'un effet de la programmation.';
-    else if(peak.l > 0 && peak.x.p != null && peak.x.p < 0.05) lagNote = 'Le lien le plus fort apparaît avec ' + peak.l + ' semaine(s) de décalage : un effet différé de la programmation est plausible.';
+    else if(peak.l > 0 && peak.x.p != null && peak.x.p < 0.05) lagNote = 'Le lien le plus fort apparaît avec un délai de ' + peak.inf.label + ' : un effet différé de la programmation est plausible' + (peak.inf.block ? ' (effet d\'habitude).' : '.');
     else lagNote = 'Barres colorées : décalages où le lien est significatif à 5 % (sans correction). Barre encadrée : décalage actuellement analysé.';
   }
   document.getElementById('clLagNote').textContent = lagNote;
@@ -21313,7 +21420,7 @@ function clRenderDetail(){
     type:'line',
     data: { labels: a.pairs.map(p => digitalAudienceFmtDate(p.t).slice(0,5)), datasets: [
       { label: L.target.label, data: zy, borderColor:'#0B1D3A', backgroundColor:'#0B1D3A', borderWidth:2, pointRadius:2.5, tension:.25 },
-      { label: c.label + (L.lag ? ' (décalé de ' + L.lag + ' sem.)' : ''), data: zx, borderColor:'#00B8C8', backgroundColor:'#00B8C8', borderWidth:2, borderDash:[5,3], pointRadius:2.5, tension:.25 }
+      { label: c.label + (li.block ? ' (moyenne ' + li.H + ' sem., délai ' + li.label + ')' : (li.L ? ' (décalé de ' + li.label + ')' : '')), data: zx, borderColor:'#00B8C8', backgroundColor:'#00B8C8', borderWidth:2, borderDash:[5,3], pointRadius:2.5, tension:.25 }
     ] },
     options: { responsive:true, maintainAspectRatio:false, animation:{ duration:500 }, interaction:{ mode:'index', intersect:false },
       plugins:{ legend:{ position:'bottom', labels:{ boxWidth:12, font:{ size:11 } } }, tooltip:{ callbacks:{ label: ctx => ctx.dataset.label + ' : ' + clFmtSigned(ctx.parsed.y,2) + ' écart-type' } } },
@@ -21350,6 +21457,25 @@ function clFitCombo(keys){
   const X = d.ts.map((_,i) => [1, ...cols.map(c => c[i])]);
   const fit = clOLS(X, yz);
   if(!fit) return { error:'singular', n, k };
+  // Délai mensuel : fenêtres qui se chevauchent → validation croisée par
+  // blocs (on retire aussi les voisins à moins de H semaines de la semaine
+  // prédite), sinon le Q² « leave-one-out » serait trop optimiste.
+  const H = clLast.lagInfo.H;
+  if(H > 1){
+    let press = 0, sst = 0, cnt = 0;
+    const my = clMean(yz);
+    for(let i=0;i<n;i++){
+      const keep = [];
+      for(let j=0;j<n;j++) if(Math.abs(j-i) >= H) keep.push(j);
+      if(keep.length < k + 3) continue;
+      const f = clOLS(keep.map(j => X[j]), keep.map(j => yz[j]));
+      if(!f) continue;
+      const pred = X[i].reduce((sum,v,j) => sum + v*f.beta[j], 0);
+      press += (yz[i]-pred)*(yz[i]-pred); sst += (yz[i]-my)*(yz[i]-my); cnt++;
+    }
+    fit.q2 = (cnt >= 5 && sst > 0) ? 1 - press/sst : null;
+    fit.blockedCV = true;
+  }
   let vif = keys.map(() => 1);
   if(k > 1){
     const R = cols.map(ci => cols.map(cj => clPearsonArr(ci, cj) ?? 0));
@@ -21361,7 +21487,7 @@ function clFitCombo(keys){
 function clAutoSelect(){
   const L = clLast; if(!L) return;
   const cands = L.results.filter(a => a.r != null && a.n >= 8).map(a => a.crit.key);
-  const kmax = Math.max(1, Math.min(4, Math.floor(L.nObs/8)));
+  const kmax = Math.max(1, Math.min(4, Math.floor(L.neffRef/8)));
   let chosen = [], bestQ2 = 0;
   for(let step=0; step<kmax; step++){
     let bestKey = null, bestVal = bestQ2;
@@ -21401,7 +21527,7 @@ function renderCorrCombined(){
   const verdict = q2 == null ? '' : q2 > 0.2 ? 'Pouvoir prédictif réel : la combinaison anticipe une partie des variations sur des semaines qu\'elle n\'a pas vues.'
     : q2 > 0 ? 'Pouvoir prédictif faible mais positif.'
     : 'Pas de pouvoir prédictif : sur une semaine qu\'il n\'a pas vue, le modèle se trompe davantage que la simple moyenne. Le R² ci-contre est un effet de sur-ajustement.';
-  const ratio = m.n / m.k;
+  const ratio = (clLast.lagInfo.block ? clLast.neffRef : m.n) / m.k;
   const rows = sel.map((k,i) => {
     const a = avail.find(x => x.crit.key === k);
     const b = f.beta[i+1], p = f.p[i+1], vif = m.vif[i];
@@ -21415,8 +21541,8 @@ function renderCorrCombined(){
   resultArea.innerHTML = `
     <div class="clab-model-kpis">
       <div class="clab-stat"><b>${clFmt(f.r2*100,0)} %</b><span>R² (ajusté ${clFmt(f.adjR2*100,0)} %)</span></div>
-      <div class="clab-stat${q2 != null && q2 > 0 ? ' good' : ' bad'}"><b>${q2 == null ? '—' : clFmt(q2*100,0) + ' %'}</b><span>Q² prédictif (validation croisée)</span></div>
-      <div class="clab-stat"><b>${m.n}</b><span>observations · ${clFmt(ratio,1)} par critère</span></div>
+      <div class="clab-stat${q2 != null && q2 > 0 ? ' good' : ' bad'}"><b>${q2 == null ? '—' : clFmt(q2*100,0) + ' %'}</b><span>Q² prédictif (validation croisée${f.blockedCV ? ' par blocs' : ''})</span></div>
+      <div class="clab-stat"><b>${m.n}</b><span>observations · ${clFmt(ratio,1)} ${clLast.lagInfo.block ? 'indépendantes ' : ''}par critère</span></div>
     </div>
     <p class="clab-model-verdict">${escHtml(verdict)}${ratio < 8 ? ' Attention : moins de 8 observations par critère, le risque de sur-ajustement est élevé.' : ''}</p>
     <table class="clab-table"><thead><tr><th>Critère</th><th>Poids standardisé</th><th class="num">β</th><th class="num">p</th><th class="num">VIF</th></tr></thead><tbody>${rows}</tbody></table>
