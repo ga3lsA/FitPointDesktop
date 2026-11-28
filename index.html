@@ -4698,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.254';
-const FPA_BUILD_ISO = '2026-11-28T11:00:00+01:00';
+const FPA_VERSION   = 'v30.255';
+const FPA_BUILD_ISO = '2026-11-28T13:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -33285,10 +33285,25 @@ const RADIO_TARGET_COUNT = 40; // nombre de titres demandés à l'API GraphQL iH
  *  sur Contentful — l'URL change chaque semaine, donc pas d'URL fixe
  *  possible pour ce PDF contrairement aux autres sources). */
 function extract538CurrentPdfUrl(html){
-  const m = html.match(/href="([^"]+\.pdf)"[^>]*>\s*hier\s*</i)
-         || html.match(/href="([^"]+\.pdf)"/i);
-  if(!m) return null;
-  return m[1].replace(/&amp;/g, '&');
+  if(!html) return null;
+  // v30.255 : on ne dépend plus du libellé « hier » ni de l'ordre des liens.
+  // On collecte TOUS les liens PDF de la page (y compris ceux échappés dans
+  // le JSON Next.js : « https:\/\/… » ou « \u002F »), puis on retient celui
+  // dont le nom de fichier porte l'année et la semaine les plus récentes
+  // (« 2026-538-TOP50-week-46.pdf » — le site comporte des fautes de frappe
+  // dans les noms, ex. « 2026-539-… », d'où un motif tolérant).
+  const txt = html.replace(/\\u002F/gi, '/').replace(/\\\//g, '/').replace(/&amp;/g, '&');
+  const urls = Array.from(new Set((txt.match(/https?:\/\/[^"'\s<>()]+?\.pdf/gi) || [])));
+  if(!urls.length) return null;
+  const score = u => {
+    const m = /(20\d\d)-\d{3}-TOP\d{2}-week-(\d{1,2})/i.exec(u) || /TOP\d{2}-week-(\d{1,2})/i.exec(u);
+    if(!m) return -1;
+    return m.length === 3 ? parseInt(m[1],10)*100 + parseInt(m[2],10) : parseInt(m[1],10);
+  };
+  const hier = txt.match(/href="([^"]+\.pdf)"[^>]*>\s*(?:<[^>]+>\s*)*hier\s*</i);
+  const ranked = urls.map(u => ({ u, s: score(u) })).sort((x,y) => y.s - x.s);
+  if(ranked[0].s >= 0) return ranked[0].u;
+  return hier ? hier[1] : urls[0];
 }
 
 /** Regroupe les items positionnés de pdf.js en "lignes" visuelles (même
@@ -33373,13 +33388,30 @@ function parse538TopSongsFromLines(lines){
   //    caractères que des chiffres, ni avec les numéros isolés de l'en-
   //    tête ("31" pour "semaine 31", "1" pour "1 août"...) qui ne
   //    s'enchaînent jamais sur 10+ valeurs consécutives.
+  // v30.255 : la nouvelle mise en page ajoute le nombre de semaines dans la
+  // liste (« 3 WK ») : ces nombres ne doivent pas être pris pour des rangs,
+  // et la séquence des rangs tolère désormais quelques nombres parasites
+  // intercalés (au lieu d'exiger des rangs strictement contigus).
+  const isWeeksNum = i => /^WK\.?$|^WEKEN?$/i.test(texts[i+1] || '');
   const pureNumIdx = [];
-  texts.forEach((t, i) => { if(/^\d{1,2}$/.test(t)) pureNumIdx.push({ i, v: parseInt(t, 10) }); });
+  texts.forEach((t, i) => { if(/^\d{1,2}$/.test(t) && !isWeeksNum(i)) pureNumIdx.push({ i, v: parseInt(t, 10) }); });
 
-  let bestRun = [], curRun = [];
-  for(const entry of pureNumIdx){
-    curRun = (curRun.length && entry.v === curRun[curRun.length - 1].v + 1) ? curRun.concat(entry) : [entry];
-    if(curRun.length > bestRun.length) bestRun = curRun;
+  let bestRun = [];
+  for(let s0=0; s0<pureNumIdx.length; s0++){
+    const run = [pureNumIdx[s0]];
+    let k = s0 + 1;
+    while(k < pureNumIdx.length){
+      const want = run[run.length-1].v + 1;
+      let found = -1;
+      for(let j=k; j<Math.min(pureNumIdx.length, k+6); j++){
+        if(pureNumIdx[j].i - run[run.length-1].i > 14) break;
+        if(pureNumIdx[j].v === want){ found = j; break; }
+      }
+      if(found < 0) break;
+      run.push(pureNumIdx[found]); k = found + 1;
+    }
+    if(run.length > bestRun.length) bestRun = run;
+    if(bestRun.length >= 50) break;
   }
   if(bestRun.length < 10) return { tracks: null, remainderRawSample: '' }; // structure non reconnue
 
@@ -33388,14 +33420,24 @@ function parse538TopSongsFromLines(lines){
   //    ressemble à un badge/en-tête/numéro plutôt qu'à un vrai texte, on la
   //    traite comme absente plutôt que de risquer une donnée fausse.
   const isHeader  = t => /CONTACT|MEER INFO|538\.NL|NIET PUBLICEREN|^WEEK\s+\d+$/i.test(t) || NL_MONTHS_RE.test(t);
-  const isBadge   = t => /^[\d\s\-+=#*]+$/.test(t) && !/^\d{1,2}$/.test(t);
+  const isBadge   = t => (/^[\d\s\-+=#*↑↓▲▼]+$/.test(t) && !/^\d{1,2}$/.test(t)) || /^\d*\s*(WK|WEKEN?|NIEUW|NEW|RE-?ENTRY)\.?$/i.test(t);
   const isPureNum = t => /^\d{1,2}$/.test(t);
   const looksBad  = t => !t || isHeader(t) || isBadge(t) || isPureNum(t);
 
+  // Décalages titre/artiste autour du rang : [titre +2, artiste −1] sur la
+  // mise en page vérifiée en 2026 ; si la mise en page change, on teste les
+  // combinaisons voisines et on garde celle qui donne le plus de couples
+  // lisibles (la mise en page historique reste prioritaire à quasi-égalité).
+  const goodPairs = (dt, da) => bestRun.filter(e => { const t = texts[e.i+dt], a = texts[e.i+da]; return !looksBad(t) && !looksBad(a) && t !== a; }).length;
+  let off = { dt: 2, da: -1, sc: goodPairs(2, -1) };
+  [[1,-1],[1,2],[2,1],[1,-2],[2,-2],[3,-1],[-1,1],[-2,-1],[1,3],[3,1]].forEach(([dt,da]) => {
+    const sc = goodPairs(dt, da);
+    if(sc > off.sc * 1.25 + 1) off = { dt, da, sc };
+  });
   const tracks = bestRun.map(entry => {
     const idx = entry.i;
-    const rawTitle  = texts[idx + 2];
-    const rawArtist = texts[idx - 1];
+    const rawTitle  = texts[idx + off.dt];
+    const rawArtist = texts[idx + off.da];
     return {
       rank: entry.v,
       title:  looksBad(rawTitle)  ? '' : decodeHtmlEntitiesSimple(rawTitle),
@@ -33450,25 +33492,59 @@ async function fetchRadio538TopSongs(){
     return;
   }
 
-  const page = await fetchRawHtmlAnyProxy(src.url);
-  log.push(...page.log);
-  if(!page.html){ fail(); return; }
-
-  const pdfUrl = extract538CurrentPdfUrl(page.html);
-  if(!pdfUrl){ fail([{ proxy: '— repérage du PDF —', status: 'Aucun lien PDF trouvé sur la page' }], page.html.slice(0,3000)); return; }
+  // v30.255 : une source peut répondre « 200 » avec une page sans la liste
+  // (page de consentement, protection anti-robots…). On essaie donc chaque
+  // source à tour de rôle jusqu'à obtenir une page qui contient bien un lien
+  // vers le PDF de la semaine.
+  let pageHtml = null, pdfUrl = null;
+  const tryHtml = (label, html) => {
+    if(!html){ return false; }
+    const u = extract538CurrentPdfUrl(html);
+    log.push({ proxy: label, status: u ? '✓ page reçue (' + html.length + ' car.), lien PDF trouvé' : 'page reçue (' + html.length + ' car.) mais aucun lien PDF dedans' });
+    if(!pageHtml) pageHtml = html;
+    if(u){ pdfUrl = u; return true; }
+    return false;
+  };
+  if(/^https:\/\//i.test(KWORB_APPS_SCRIPT_PROXY_URL || '')){
+    try{
+      const html = await fetchKworbViaAppsScript(src.url, 25000);
+      if(!tryHtml('Proxy Apps Script personnel', html) && !html) log.push({ proxy: 'Proxy Apps Script personnel', status: lastKworbProxyError || 'Aucune réponse' });
+    }catch(e){ log.push({ proxy: 'Proxy Apps Script personnel', status: 'Erreur : ' + (e.message || e) }); }
+  }
+  for(const makeProxy of CORS_PROXIES){
+    if(pdfUrl) break;
+    const proxyUrl = makeProxy(src.url);
+    let host = proxyUrl; try{ host = new URL(proxyUrl).hostname; }catch(e){}
+    try{
+      const resp = await fetch(proxyUrl, { signal: AbortSignal.timeout(10000) });
+      if(!resp.ok){ log.push({ proxy: host, status: 'HTTP ' + resp.status }); continue; }
+      tryHtml(host, await resp.text());
+    }catch(e){ log.push({ proxy: host, status: 'Échec : ' + (e.message || e) }); }
+  }
+  if(!pdfUrl){ fail([{ proxy: '— repérage du PDF —', status: 'Aucun lien PDF trouvé sur la page, quelle que soit la source' }], (pageHtml || '').slice(0,3000)); return; }
   log.push({ proxy: '— repérage du PDF —', status: '✓ ' + pdfUrl });
 
+  // Téléchargement du PDF : direct, puis via l'autre domaine Contentful
+  // (assets.* ↔ images.*), puis via les proxies CORS publics en binaire.
+  const isPdf = buf => { try{ const h = new Uint8Array(buf.slice(0, 5)); return String.fromCharCode(...h) === '%PDF-'; }catch(e){ return false; } };
+  const pdfCandidates = [{ label:'Téléchargement direct du PDF', url: pdfUrl }];
+  const alt = /\/\/assets\.ctfassets\.net\//.test(pdfUrl) ? pdfUrl.replace('//assets.ctfassets.net/', '//images.ctfassets.net/')
+            : /\/\/images\.ctfassets\.net\//.test(pdfUrl) ? pdfUrl.replace('//images.ctfassets.net/', '//assets.ctfassets.net/') : null;
+  if(alt) pdfCandidates.push({ label:'Téléchargement direct (autre domaine Contentful)', url: alt });
+  CORS_PROXIES.forEach(mk => { const u = mk(pdfUrl); let h = u; try{ h = new URL(u).hostname; }catch(e){} pdfCandidates.push({ label:'PDF via ' + h, url: u }); });
   let pdfBytes = null;
-  try{
-    const resp = await fetch(pdfUrl);
-    if(resp.ok){
-      pdfBytes = await resp.arrayBuffer();
-      log.push({ proxy: 'Téléchargement direct du PDF', status: '✓ ' + pdfBytes.byteLength + ' octets reçus' });
-    } else {
-      log.push({ proxy: 'Téléchargement direct du PDF', status: 'HTTP ' + resp.status + " (CORS probablement bloqué — pas encore de proxy binaire pour les PDF)" });
+  for(const c of pdfCandidates){
+    try{
+      const resp = await fetch(c.url, { signal: AbortSignal.timeout(15000) });
+      if(!resp.ok){ log.push({ proxy: c.label, status: 'HTTP ' + resp.status }); continue; }
+      const buf = await resp.arrayBuffer();
+      if(!isPdf(buf)){ log.push({ proxy: c.label, status: buf.byteLength + ' octets reçus, mais ce n\'est pas un PDF' }); continue; }
+      pdfBytes = buf;
+      log.push({ proxy: c.label, status: '✓ ' + buf.byteLength + ' octets reçus' });
+      break;
+    }catch(e){
+      log.push({ proxy: c.label, status: 'Échec : ' + (e.message || e) + (c.label.startsWith('Téléchargement direct') ? ' (CORS probablement bloqué)' : '') });
     }
-  }catch(e){
-    log.push({ proxy: 'Téléchargement direct du PDF', status: 'Échec : ' + (e.message || e) + ' (CORS probablement bloqué)' });
   }
   if(!pdfBytes){ fail(); return; }
 
