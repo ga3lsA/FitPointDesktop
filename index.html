@@ -4698,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.256';
-const FPA_BUILD_ISO = '2026-11-28T14:00:00+01:00';
+const FPA_VERSION   = 'v30.258';
+const FPA_BUILD_ISO = '2026-11-28T16:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -33544,7 +33544,7 @@ function parse538TopBlock(items, gridTracks){
         const toks = it.str.split(/\s+/);
         if(!toks.every(t => /^\d{1,2}$/.test(t))){ cols.push(null); return; }
         const step = toks.length > 1 ? (it.w / toks.length) : 0;
-        toks.forEach((t,k) => cols.push({ rank: parseInt(t,10), x: it.x + k*step }));
+        toks.forEach((t,k) => cols.push({ rank: parseInt(t,10), x: it.x + k*step, cx: it.x + k*step + (toks.length > 1 ? step : it.w)/2 }));
       });
       if(cols.some(c => !c) || cols.length < 2) return;
       const ok = cols.every((c,k) => k === 0 || c.rank === cols[k-1].rank + 1) && cols[0].rank >= 2 && cols[cols.length-1].rank <= 10;
@@ -33558,39 +33558,59 @@ function parse538TopBlock(items, gridTracks){
       const hit = pts.find(p => r11.artist.toUpperCase().startsWith(p.str.toUpperCase()) && p.str.length >= 3 && p.y < rankRows[rankRows.length-1].y);
       if(hit) yFloor = hit.y + 2;
     }
-    // Polices artiste / titre apprises sur les rangs 11-50
-    // (police d'abord, puis taille de caractères si la police ne suffit pas)
-    const votes = { artist:{}, title:{} };
-    const keys = p => ['f:' + p.font, 's:' + p.size];
-    gridTracks.filter(t => t.rank >= 11).forEach(t => {
-      pts.forEach(p => {
+    // Artiste ou titre : par la TAILLE des caractères (v30.258). Vérifié sur
+    // le PDF réel (semaine 48) : les polices diffèrent entre le collage
+    // (f13/f17 artistes, f16 titres) et la liste 11-50 (f24/f26), et les
+    // « & », « . », « , » ont leur propre police — inutilisable. La taille,
+    // elle, est nette : artistes en corps 21-24, titres en corps 60 (liste :
+    // 22 / 66). Sens appris sur la liste (titre plus gros que l'artiste par
+    // défaut) ; dans chaque colonne, une ligne est « titre » si sa taille est
+    // plus proche de la plus grande taille de la colonne que de la plus petite.
+    let titleBigger = true;
+    {
+      let sa = 0, na = 0, st = 0, nt = 0;
+      gridTracks.filter(t => t.rank >= 11).forEach(t => pts.forEach(p => {
         if(p.str.length < 3) return;
         const u = p.str.toUpperCase();
         const inA = t.artist && t.artist.toUpperCase().includes(u), inT = t.title && t.title.toUpperCase().includes(u);
-        if(inA && !inT) keys(p).forEach(k => { votes.artist[k] = (votes.artist[k] || 0) + 1; });
-        if(inT && !inA) keys(p).forEach(k => { votes.title[k] = (votes.title[k] || 0) + 1; });
-      });
-    });
-    const roleOfKey = k => {
-      const a = votes.artist[k] || 0, t = votes.title[k] || 0;
-      if(a > 2*t && a >= 2) return 'artist';
-      if(t > 2*a && t >= 2) return 'title';
-      return null;
-    };
-    const roleOfItem = p => roleOfKey('f:' + p.font) || roleOfKey('s:' + p.size);
+        if(inA && !inT){ sa += p.size; na++; }
+        if(inT && !inA){ st += p.size; nt++; }
+      }));
+      if(na >= 3 && nt >= 3) titleBigger = (st/nt) >= (sa/na);
+    }
     const out = [];
     rankRows.forEach((rr, k) => {
       const yTop = rr.y - 1;
       const yBottom = k + 1 < rankRows.length ? rankRows[k+1].y + 1 : yFloor;
       const cols = rr.cols;
-      const bounds = cols.map((c,i) => i === 0 ? -Infinity : (cols[i-1].x + c.x) / 2);
+      // Les mots d'une même ligne visuelle sont d'abord regroupés en
+      // SEGMENTS (coupure aux grands écarts horizontaux : ~6 pt entre deux
+      // mots, 45 pt et plus entre deux colonnes sur le PDF réel), puis chaque
+      // segment est rattaché à la colonne dont le numéro est le plus proche
+      // de son début. Rattacher mot par mot envoyait la fin des noms longs
+      // (« … JASON DERULO & ») dans la colonne voisine.
       const colItems = cols.map(() => []);
-      pts.forEach(p => {
-        if(!(p.y < yTop && p.y > yBottom)) return;
-        if(isNumStr(p.str)) return;
-        let ci = 0;
-        for(let i=0;i<cols.length;i++) if(p.x >= bounds[i]) ci = i;
-        colItems[ci].push(p);
+      const zone = pts.filter(p => p.y < yTop && p.y > yBottom && !isNumStr(p.str)).sort((a,b) => b.y - a.y || a.x - b.x);
+      const vlines = [];
+      zone.forEach(p => {
+        let l = vlines.find(l => Math.abs(l.y - p.y) <= 3);
+        if(!l){ l = { y: p.y, items: [] }; vlines.push(l); }
+        l.items.push(p);
+      });
+      vlines.forEach(l => {
+        l.items.sort((a,b) => a.x - b.x);
+        const segs = [];
+        l.items.forEach(p => {
+          const last = segs[segs.length-1];
+          const prev = last && last[last.length-1];
+          if(!prev || p.x - (prev.x + prev.w) > 25) segs.push([p]); else last.push(p);
+        });
+        segs.forEach(seg => {
+          const left = seg[0].x;
+          let ci = 0, best = Infinity;
+          cols.forEach((c,i) => { const d = Math.abs(left - c.x); if(d < best){ best = d; ci = i; } });
+          seg.forEach(p => colItems[ci].push(p));
+        });
       });
       cols.forEach((c, ci) => {
         // Lignes de la colonne (haut → bas)
@@ -33602,21 +33622,21 @@ function parse538TopBlock(items, gridTracks){
         });
         lines.forEach(l => {
           l.items.sort((a,b) => a.x - b.x);
-          l.text = l.items.map(i => i.str).join(' ').replace(/\s+/g,' ').trim();
-          const roles = l.items.map(roleOfItem).filter(Boolean);
-          l.role = roles.length ? (roles.filter(r => r === 'artist').length >= roles.length/2 ? 'artist' : 'title') : null;
+          l.text = l.items.map(i => i.str).join(' ').replace(/\s+/g,' ').replace(/\s+([,.)])/g,'$1').replace(/\s+-\s+/g,'-').trim();
+          l.size = Math.max(...l.items.map(i => i.size));
         });
         if(!lines.length) return;
+        const smax = Math.max(...lines.map(l => l.size)), smin = Math.min(...lines.map(l => l.size));
         let artistLines, titleLines;
-        if(lines.every(l => l.role)){
-          artistLines = lines.filter(l => l.role === 'artist');
-          titleLines  = lines.filter(l => l.role === 'title');
-        } else {
-          if(lines.length > 2){ out.push(null); return; } // ambigu sans repère typographique : on s'abstient
-          artistLines = lines.slice(0, Math.max(1, lines.length - 1));
-          titleLines  = lines.slice(Math.max(1, lines.length - 1));
-        }
-        const joinWrap = ls => ls.map(l => l.text).join(' ').replace(/\s+/g,' ').replace(/\s+([,)])/g,'$1').trim();
+        if(smax >= smin * 1.4){
+          const isTitle = l => titleBigger ? (smax - l.size) < (l.size - smin) : (l.size - smin) < (smax - l.size);
+          artistLines = lines.filter(l => !isTitle(l));
+          titleLines  = lines.filter(isTitle);
+        } else if(lines.length === 2){
+          artistLines = [lines[0]]; titleLines = [lines[1]];
+        } else { out.push(null); return; } // ambigu : on s'abstient
+        if(!artistLines.length || !titleLines.length){ out.push(null); return; }
+        const joinWrap = ls => ls.map(l => l.text).join(' ').replace(/\s+/g,' ').trim();
         const artist = joinWrap(artistLines), title = joinWrap(titleLines);
         if(artist && title) out.push({ rank: c.rank, artist: decodeHtmlEntitiesSimple(artist), title: decodeHtmlEntitiesSimple(title) });
       });
@@ -33776,7 +33796,12 @@ async function fetchRadio538TopSongs(){
   // deux mots d'un même titre — information perdue dès qu'on aplati tout en
   // texte simple. But : coller ce dump ici pour reconstruire le Top 10 de
   // façon fiable, comme cela avait été fait pour les rangs 11-50.
-  const top10PosDump = items.slice(0, 120).map(it => 'x=' + Math.round(it.x) + ' y=' + Math.round(it.y) + ' w=' + Math.round(it.width || 0) + ' t=' + Math.round(it.size || 0) + ' f=' + (it.font || '') + ' : ' + it.str).join('\n');
+  // Dump positionnel de la zone du collage (au-dessus de l'artiste du rang
+  // 11), trié de haut en bas — l'ordre du flux PDF ne suit pas la page.
+  const r11a = tracks && tracks.find(t => t.rank === 11);
+  const r11Item = r11a && items.find(it => it.str && r11a.artist && r11a.artist.toUpperCase().startsWith(it.str.trim().toUpperCase()) && it.str.trim().length >= 3);
+  const dumpItems = items.filter(it => !r11Item || it.y >= r11Item.y - 2).sort((a,b) => b.y - a.y || a.x - b.x).slice(0, 160);
+  const top10PosDump = dumpItems.map(it => 'x=' + Math.round(it.x) + ' y=' + Math.round(it.y) + ' w=' + Math.round(it.width || 0) + ' t=' + Math.round(it.size || 0) + ' f=' + (it.font || '') + ' : ' + it.str).join('\n');
 
   radioTopSongsData['radio538'] = { tracks, rawSample: fullText.slice(0,8000), top10PosDump, log, fetchedAt: new Date().toISOString() };
   radioTopSongsSaveToStorage();
@@ -33884,7 +33909,7 @@ function renderRadioChartsPanel(){
       ? `<details style="margin-top:6px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer">Texte brut extrait (échantillon)</summary><pre style="font-size:10px;color:var(--text2);white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;max-height:280px;overflow:auto">${escHtml(d.rawSample)}</pre></details>`
       : '';
     const top10PosDumpHtml = d && d.top10PosDump
-      ? `<details style="margin-top:6px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer">🎯 Positions x/y du Top 10 (pour finaliser l'extraction — à coller à Claude si demandé)</summary><pre style="font-size:9.5px;color:var(--text2);white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;max-height:280px;overflow:auto">${escHtml(d.top10PosDump)}</pre></details>`
+      ? `<details style="margin-top:6px"><summary style="font-size:10.5px;color:var(--muted);cursor:pointer">🎯 Positions x/y du Top 10 (pour finaliser l'extraction — à coller à Claude si demandé)</summary><button type="button" class="btn-ghost" style="font-size:10.5px;padding:4px 10px;margin-top:6px" onclick="navigator.clipboard.writeText(this.nextElementSibling.textContent).then(()=>showToast('Positions copiées dans le presse-papiers','success'),()=>showToast('Copie impossible : sélectionnez le texte à la main','err'))">📋 Copier les positions</button><pre style="font-size:9.5px;color:var(--text2);white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px;margin-top:6px;max-height:280px;overflow:auto">${escHtml(d.top10PosDump)}</pre></details>`
       : '';
     const cardIcon = src.logo ? `<img src="${src.logo}" alt="${escHtml(src.label)}" height="20" style="vertical-align:middle;object-fit:contain" onerror="this.replaceWith(document.createTextNode('📻'))">` : '📻';
     return `<div style="padding:16px 18px;background:var(--white);border:1.5px solid var(--border);border-radius:12px;margin-bottom:14px">
