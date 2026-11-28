@@ -4698,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.261';
-const FPA_BUILD_ISO = '2026-11-28T19:00:00+01:00';
+const FPA_VERSION   = 'v30.262';
+const FPA_BUILD_ISO = '2026-11-28T20:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -37414,9 +37414,9 @@ function renderPredictionEntryPage(){
 
   document.getElementById('predEntryContent').innerHTML = summary +
     `<div style="background:var(--white);border:1.5px solid var(--border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)">
-      ${header}${tableRows || '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Aucun candidat actif pour cette recherche — voir « Rejetés »/« En attente » ci-dessous si filtré.</div>'}
+      ${header}${tableRows || '<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Aucun candidat actif pour cette recherche.</div>'}
     </div>
-    ${buildCollapsible('predEntryReviewedWrap', '❌', 'Rejetés (Non / Gold)', reviewedRows)}
+    ${'' /* v30.262 : les titres tranchés (Non, Gold, « Oui, déjà joué et arrêté ») ne sont plus affichés du tout — seul le journal des retours ci-dessous en garde la trace */}
     ${buildPredEntryFeedbackLogSection()}
     <div style="margin-top:12px;padding:10px 16px;background:var(--bg);border:1.5px solid var(--border);border-radius:8px;font-size:11px;color:var(--muted)">
       Score d'entrée = moyenne pondérée de 4 signaux déjà calculés ailleurs dans FPA (Veille, Recherche interne, Concurrence, Fenêtre d'opportunité), renormalisée sur les signaux disponibles pour ce titre, puis ajustée par le retour terrain appris sur l'artiste (badge ⭐/⚠️ si présent). Le vivier Marché (📡) couvre tout titre suivi par votre import Airplay, sans ajout manuel requis. Cliquez 🔬 pour le détail du calcul, 📝 pour donner un retour terrain (Oui/Non/Peut-être). Une piste pour le Comité d'Écoute — pas une décision automatique.
