@@ -4698,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.259';
-const FPA_BUILD_ISO = '2026-11-28T17:00:00+01:00';
+const FPA_VERSION   = 'v30.261';
+const FPA_BUILD_ISO = '2026-11-28T19:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -36108,6 +36108,7 @@ const predEntryParamsTable_DEFS = [
 
   { key:'artistBoost',   group:'Apprentissage par retour terrain', label:'Boost artiste marqué "format/star"', default:15, step:1, min:0, max:100 },
   { key:'artistPenalty', group:'Apprentissage par retour terrain', label:'Pénalité artiste marqué "hors format"', default:35, step:1, min:0, max:100 },
+  { key:'artistMalus',   group:'Apprentissage par retour terrain', label:'Index négatif artiste "déjà joué et arrêté sans résultats"', default:15, step:1, min:0, max:100 },
   { key:'snoozeWeeksTropTot',       group:'Apprentissage par retour terrain', label:'"Trop tôt" : relance indicative après (semaines)', default:6, step:1, min:1, max:52 },
   { key:'snoozeWeeksEnvironnement', group:'Apprentissage par retour terrain', label:'"En attente d\'environnement" : relance après (semaines)', default:3, step:1, min:1, max:52 },
 ];
@@ -36187,13 +36188,23 @@ const PRED_ENTRY_REASONS = {
     { key:'interessant_developper', label:'Intéressant à développer' },
     { key:'son_format',          label:'Son dans le format' },
     { key:'gold_oui',            label:'Oui mais titre gold',                  isGold:true },
+    // v30.260 — titres déjà joués puis arrêtés : le TITRE n'est plus jamais
+    // proposé (endsTitle), l'ARTISTE reste proposable avec un bonus (bons
+    // résultats) ou un index négatif (sans résultats, malus plus léger que
+    // « hors format » : l'artiste n'est pas hors format, il n'a juste pas
+    // fonctionné à l'antenne).
+    { key:'joue_arrete_bons_resultats', label:'Oui, joué et arrêté avec bons résultats', artistEffect:'boost', endsTitle:true },
+    { key:'joue_arrete_sans_resultats', label:'Oui, déjà joué et arrêté sans résultats', artistEffect:'malus', endsTitle:true },
   ],
   non: [
     { key:'titre_hors_format',   label:'Titre hors format' },
     { key:'artiste_hors_format', label:'Artiste hors format',                  artistEffect:'penalty' },
     { key:'titre_sans_potentiel', label:'Titre sans potentiel' },
     { key:'artiste_ok_titre_sans_potentiel', label:'Artiste dans format mais titre sans potentiel' },
-    { key:'deja_joue_sans_resultats', label:'Déjà joué, sans résultats' },
+    // v30.261 : remplacée par « Oui, déjà joué et arrêté sans résultats » (sous Oui).
+    // Conservée (retired) pour lire et afficher les anciens retours, mais n'est
+    // plus proposée dans la fenêtre, sauf si on rouvre un ancien retour qui l'a cochée.
+    { key:'deja_joue_sans_resultats', label:'Déjà joué, sans résultats', retired:true },
     { key:'gold_non',            label:'Non mais titre gold',                  isGold:true },
   ],
   'peut-etre': [
@@ -36311,31 +36322,41 @@ function predEntrySaveFeedbackSilent(title, artist, decision, raisonKeys){
   // même par un futur changement d'avis sur ce même titre.
   predEntryLogFeedback(ACTIVE_STATION, { title, artist, decision, raisons: raisonKeys, at: now });
 
+  // Priorité en cas de raisons cumulées : hors format > sans résultats > boost
   const hasPenalty = reasonDefs.some(r => r.artistEffect === 'penalty');
-  const hasBoost   = reasonDefs.some(r => r.artistEffect === 'boost');
-  if(hasPenalty || hasBoost){
+  const hasMalus   = !hasPenalty && reasonDefs.some(r => r.artistEffect === 'malus');
+  const hasBoost   = !hasPenalty && !hasMalus && reasonDefs.some(r => r.artistEffect === 'boost');
+  if(hasPenalty || hasMalus || hasBoost){
     const status = loadPredEntryArtistStatus();
     const ak = norm(artist);
     const prevEvents = status[ak]?.events || [];
+    const reasonKey = hasPenalty ? 'artiste_hors_format'
+      : hasMalus ? 'joue_arrete_sans_resultats'
+      : raisonKeys.includes('star_format') ? 'star_format'
+      : raisonKeys.includes('joue_arrete_bons_resultats') ? 'joue_arrete_bons_resultats'
+      : 'artiste_format';
     status[ak] = {
       artist,
-      status: hasPenalty ? 'penalty' : 'boost',
-      reasonKey: hasPenalty ? 'artiste_hors_format' : (raisonKeys.includes('star_format') ? 'star_format' : 'artiste_format'),
+      status: hasPenalty ? 'penalty' : hasMalus ? 'malus' : 'boost',
+      reasonKey,
       date: now.slice(0,10),
       // Détail des titres ayant contribué à ce statut — pas seulement un
       // compteur : indispensable pour comprendre/auditer POURQUOI un
       // artiste est marqué ainsi, et sur quels titres précis ça s'appuie.
-      events: [...prevEvents, { title, decision, reasonKey: hasPenalty ? 'artiste_hors_format' : (raisonKeys.includes('star_format') ? 'star_format' : 'artiste_format'), date: now.slice(0,10) }],
+      events: [...prevEvents, { title, decision, reasonKey, date: now.slice(0,10) }],
       titlesCount: prevEvents.length + 1
     };
     savePredEntryArtistStatus(status);
   }
-  return { hasPenalty, hasBoost };
+  return { hasPenalty, hasBoost, hasMalus };
 }
 function predEntrySaveFeedback(title, artist, decision, raisonKeys){
-  const { hasPenalty, hasBoost } = predEntrySaveFeedbackSilent(title, artist, decision, raisonKeys);
+  const { hasPenalty, hasBoost, hasMalus } = predEntrySaveFeedbackSilent(title, artist, decision, raisonKeys);
   const toastMsg = `✓ Retour enregistré pour « ${titleCaseDisplay(title)} »`
-    + (hasPenalty ? ` — ${titleCaseDisplay(artist)} marqué hors format pour ses prochains titres`
+    + (hasMalus ? ` — ce titre ne sera plus proposé ; ${titleCaseDisplay(artist)} reste proposable avec un index négatif`
+      : raisonKeys.includes('joue_arrete_bons_resultats') ? ` — ce titre ne sera plus proposé ; ${titleCaseDisplay(artist)} bénéficie d'un bonus pour ses prochains titres`
+      : '')
+    + (hasMalus || raisonKeys.includes('joue_arrete_bons_resultats') ? '' : hasPenalty ? ` — ${titleCaseDisplay(artist)} marqué hors format pour ses prochains titres`
       : (hasBoost ? ` — ${titleCaseDisplay(artist)} marqué format pour ses prochains titres` : ''));
   showToast(toastMsg, 'success');
   closePredEntryFeedbackModal();
@@ -36458,7 +36479,7 @@ function predEntryFeedbackPickDecision(decision, preCheckedKeys){
   });
   const list = document.getElementById('pefReasonsList');
   const pre = preCheckedKeys || [];
-  list.innerHTML = (PRED_ENTRY_REASONS[decision] || []).map(r => `
+  list.innerHTML = (PRED_ENTRY_REASONS[decision] || []).filter(r => !r.retired || pre.includes(r.key)).map(r => `
     <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer">
       <input type="checkbox" value="${r.key}" ${pre.includes(r.key)?'checked':''} style="width:14px;height:14px;cursor:pointer;accent-color:${colors[decision]}">
       ${escHtml(r.label)}
@@ -37096,8 +37117,8 @@ function buildPredictionEntryRows(){
     const aStatus = artistStatus[norm(c.artist)] || null;
     let score = baseScore;
     if(aStatus){
-      score = aStatus.status === 'penalty'
-        ? Math.max(0, score - entryParams.artistPenalty)
+      score = aStatus.status === 'penalty' ? Math.max(0, score - entryParams.artistPenalty)
+        : aStatus.status === 'malus' ? Math.max(0, score - entryParams.artistMalus)
         : Math.min(100, score + entryParams.artistBoost);
     }
     const scoreBeforeSourceWeight = score;
@@ -37139,7 +37160,11 @@ function buildPredictionEntryRows(){
     if(fb){
       const raisonDefs = (PRED_ENTRY_REASONS[fb.decision] || []).filter(r => fb.raisons.includes(r.key));
       const isGold = raisonDefs.some(r => r.isGold);
-      if(fb.decision === 'peut-etre'){
+      const ended = raisonDefs.find(r => r.endsTitle);
+      if(ended){
+        feedbackStatus = 'reviewed';
+        feedbackNote = `⏹ ${ended.label} (${new Date(fb.date).toLocaleDateString('fr-FR')}) — ne sera plus suggéré`;
+      } else if(fb.decision === 'peut-etre'){
         const raisonLabel = (PRED_ENTRY_REASONS['peut-etre'].find(r=>fb.raisons.includes(r.key))||{}).label || 'peut-être';
         feedbackNote = (fb.snoozeUntil && fb.snoozeUntil > today)
           ? `🤔 Peut-être (« ${raisonLabel} ») le ${new Date(fb.date).toLocaleDateString('fr-FR')} — relance prévue le ${new Date(fb.snoozeUntil).toLocaleDateString('fr-FR')}`
@@ -37270,13 +37295,18 @@ function renderPredictionEntryPage(){
   const artistBadgeHtml = r => {
     if(!r.artistStatus) return '';
     const isPenalty = r.artistStatus.status === 'penalty';
-    const color = isPenalty ? '#CC2222' : '#0DA76B';
-    const bg = isPenalty ? '#FFEAEA' : '#E3F6EC';
-    const label = isPenalty ? 'hors format' : (r.artistStatus.reasonKey === 'star_format' ? 'star format' : 'format');
+    const isMalus = r.artistStatus.status === 'malus';
+    const isNeg = isPenalty || isMalus;
+    const color = isPenalty ? '#CC2222' : isMalus ? '#B35C00' : '#0DA76B';
+    const bg = isPenalty ? '#FFEAEA' : isMalus ? '#FFF1E0' : '#E3F6EC';
+    const label = isPenalty ? 'hors format' : isMalus ? 'joué sans résultats'
+      : r.artistStatus.reasonKey === 'star_format' ? 'star format'
+      : r.artistStatus.reasonKey === 'joue_arrete_bons_resultats' ? 'bons résultats' : 'format';
     const ep = predEntryParams();
-    return `<span title="${isPenalty?'⚠️':'⭐'} ${escHtml(titleCaseDisplay(r.artist))} marqué ${label} pour ${escHtml(STATION_LABELS[ACTIVE_STATION])} le ${new Date(r.artistStatus.date).toLocaleDateString('fr-FR')} (${r.artistStatus.titlesCount} titre(s) évalué(s)) — score ${isPenalty?'pénalisé de -'+ep.artistPenalty:'boosté de +'+ep.artistBoost} pts. Statut propre à cette station (peut différer pour l'autre station). Cliquer pour retirer ce statut."
+    const effectTxt = isPenalty ? 'pénalisé de -' + ep.artistPenalty : isMalus ? 'index négatif de -' + ep.artistMalus : 'boosté de +' + ep.artistBoost;
+    return `<span title="${isNeg?'⚠️':'⭐'} ${escHtml(titleCaseDisplay(r.artist))} marqué ${label} pour ${escHtml(STATION_LABELS[ACTIVE_STATION])} le ${new Date(r.artistStatus.date).toLocaleDateString('fr-FR')} (${r.artistStatus.titlesCount} titre(s) évalué(s)) — score ${effectTxt} pts. Statut propre à cette station (peut différer pour l'autre station). Cliquer pour retirer ce statut."
       onclick="event.stopPropagation();predEntryConfirmClearArtistStatus('${jsAttrEscape(r.artist)}')"
-      style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:${color};background:${bg};border:1px solid ${color}55;border-radius:10px;padding:1px 7px;margin-left:6px;cursor:pointer;white-space:nowrap">${isPenalty?'⚠️':'⭐'} ${label}</span>`;
+      style="display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:800;color:${color};background:${bg};border:1px solid ${color}55;border-radius:10px;padding:1px 7px;margin-left:6px;cursor:pointer;white-space:nowrap">${isPenalty?'⚠️':isMalus?'↘︎':'⭐'} ${label}</span>`;
   };
 
   const gridCols = '24px 32px 24px 0.8fr 100px 100px 1.2fr 150px 40px';
