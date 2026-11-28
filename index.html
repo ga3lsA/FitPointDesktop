@@ -310,7 +310,7 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
   #appHeader #datasDropdownMenu > button{font-size:14px!important;padding:13px 16px!important;min-height:46px}
 
   /* ── TOAST ──────────────────────────────────────────────────────────── */
-  #toast{left:12px!important;right:12px!important;bottom:calc(var(--m-tab) + var(--m-safe-b) + 10px)!important;font-size:13px!important}
+  #toast{bottom:calc(var(--m-tab) + var(--m-safe-b) + 10px)!important;font-size:13px!important}
 
   /* ── SOUS-HEADERS STICKY DES PAGES ──────────────────────────────────── */
   .m-subhdr{top:var(--m-hdr)!important;padding-left:12px!important;padding-right:12px!important;height:auto!important;min-height:48px;flex-wrap:wrap!important;row-gap:6px!important;column-gap:8px!important}
@@ -4634,7 +4634,45 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 <!-- /MODAL CONFIGURATION CENTRALISÉE ────────────────────────────────────── -->
 
 <!-- Toast notification -->
-<div id="toast" style="display:none;position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:12px 20px;border-radius:10px;font-size:12px;font-weight:600;box-shadow:var(--shadow-md);z-index:999;display:flex;align-items:center;gap:8px;max-width:320px"></div>
+<div id="toast" class="fpa-toast" role="status" aria-live="polite" aria-hidden="true"></div>
+<style>
+  /* Messages d'alerte — v30.253 : verre navy translucide, entrée/sortie en
+     glissant depuis la droite, compte à rebours de 5 s (cyan = succès,
+     fuchsia = échec), échec effaçable d'un clic. */
+  .fpa-toast{position:fixed;right:24px;bottom:24px;z-index:9990;max-width:380px;min-width:260px;
+    display:flex;align-items:center;gap:11px;padding:12px 14px 14px;border-radius:7px;overflow:hidden;
+    background:rgba(11,29,58,.74);color:#fff;border:1px solid rgba(255,255,255,.10);
+    -webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);
+    box-shadow:0 10px 30px rgba(11,29,58,.28);font-size:12.5px;font-weight:600;line-height:1.45;
+    transform:translateX(calc(100% + 40px));opacity:0;visibility:hidden;pointer-events:none;
+    transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .45s ease,visibility 0s linear .45s}
+  .fpa-toast.is-in{transform:translateX(0);opacity:1;visibility:visible;pointer-events:auto;
+    transition:transform .45s cubic-bezier(.2,.8,.2,1),opacity .45s ease,visibility 0s}
+  .fpa-toast.is-err{background:rgba(11,29,58,.82);cursor:pointer}
+  .fpa-toast-ic{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .fpa-toast-ic svg{width:15px;height:15px}
+  .fpa-toast.is-ok   .fpa-toast-ic{background:#00B8C8;color:#0B1D3A}
+  .fpa-toast.is-err  .fpa-toast-ic{background:#E61E82;color:#fff}
+  .fpa-toast.is-info .fpa-toast-ic{background:#1E6FD9;color:#fff}
+  .fpa-toast.is-load .fpa-toast-ic{background:rgba(255,255,255,.12);color:#3FE3F0}
+  .fpa-toast.is-load .fpa-toast-ic svg{animation:fpaToastSpin 1s linear infinite}
+  @keyframes fpaToastSpin{to{transform:rotate(360deg)}}
+  .fpa-toast-msg{flex:1;min-width:0;overflow-wrap:anywhere}
+  .fpa-toast-x{flex-shrink:0;margin-left:2px;width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7)}
+  .fpa-toast:hover .fpa-toast-x{background:rgba(255,255,255,.12);color:#fff}
+  .fpa-toast-x svg{width:13px;height:13px}
+  .fpa-toast-bar{position:absolute;left:0;bottom:0;height:2.5px;width:100%;transform-origin:left;transform:scaleX(1)}
+  .fpa-toast.is-ok .fpa-toast-bar,.fpa-toast.is-info .fpa-toast-bar{background:#00B8C8}
+  .fpa-toast.is-err .fpa-toast-bar{background:#E61E82}
+  @media (max-width:900px){
+    .fpa-toast{left:12px;right:12px;max-width:none;min-width:0;transform:translateY(calc(100% + 40px))}
+    .fpa-toast.is-in{transform:translateY(0)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    .fpa-toast,.fpa-toast.is-in{transition:opacity .2s ease,visibility 0s}
+    .fpa-toast{transform:none}
+  }
+</style>
 
 <!-- PIED DE PAGE ─────────────────────────────────────────────────────────── -->
 <div style="text-align:center;padding:14px 20px 20px;color:var(--border);font-size:10px;letter-spacing:.03em;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -4660,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.252';
-const FPA_BUILD_ISO = '2026-11-27T21:00:00+01:00';
+const FPA_VERSION   = 'v30.255';
+const FPA_BUILD_ISO = '2026-11-28T12:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -4976,14 +5014,59 @@ function goHome(){
   updateHomeSummaries();
 }
 
-function showToast(msg,type='success'){
-  const t=document.getElementById('toast');
-  const icon=type==='success'?'✓':type==='err'?'✗':'⏳';
-  const bg=type==='success'?'#0A8056':type==='err'?'#CC2222':'#0B1D3A';
-  t.style.cssText=`position:fixed;bottom:24px;right:24px;background:${bg};color:#fff;padding:12px 20px;border-radius:10px;font-size:12px;font-weight:600;box-shadow:0 4px 20px rgba(11,29,58,.2);z-index:999;display:flex;align-items:center;gap:8px`;
-  t.innerHTML=`<span style="font-size:15px">${icon}</span>${msg}`;
-  t.style.display='flex';
-  if(type!=='loading')setTimeout(()=>t.style.display='none',3500);
+const FPA_TOAST_MS = 5000;
+const FPA_TOAST_ICONS = {
+  ok:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+  err:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="12" y1="11" x2="12" y2="17"/><line x1="12" y1="7" x2="12.01" y2="7"/></svg>',
+  load: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.56"/></svg>'
+};
+let __fpaToastTimer = null, __fpaToastSwap = null;
+function hideToast(){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  clearTimeout(__fpaToastTimer); __fpaToastTimer = null;
+  t.classList.remove('is-in');
+  t.setAttribute('aria-hidden', 'true');
+}
+/** Message d'alerte en bas de page. type : 'success' (défaut), 'err',
+ *  'info' ou 'loading' (reste affiché jusqu'au message suivant ou
+ *  hideToast()). Succès / info / échec : 5 s, avec barre de compte à
+ *  rebours ; un échec s'efface aussi d'un clic. `msg` peut contenir du HTML. */
+function showToast(msg, type='success'){
+  const t = document.getElementById('toast');
+  if(!t) return;
+  const kind = type === 'err' ? 'err' : type === 'loading' ? 'load' : type === 'info' ? 'info' : 'ok';
+  // L'icône remplace les symboles ✓ / ✗ en tête de certains messages
+  const text = String(msg == null ? '' : msg).replace(/^\s*(✓|✔|✔️|✅|✗|✘|❌)\s*/, '');
+  const render = () => {
+    t.className = 'fpa-toast is-' + kind;
+    t.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+    t.setAttribute('aria-live', kind === 'err' ? 'assertive' : 'polite');
+    t.innerHTML = '<span class="fpa-toast-ic" aria-hidden="true">' + FPA_TOAST_ICONS[kind] + '</span>'
+      + '<span class="fpa-toast-msg">' + text + '</span>'
+      + (kind === 'err' ? '<span class="fpa-toast-x" aria-hidden="true">' + FPA_TOAST_ICONS.err + '</span>' : '')
+      + (kind !== 'load' ? '<span class="fpa-toast-bar"></span>' : '');
+    t.title = kind === 'err' ? 'Cliquer pour fermer' : '';
+    t.onclick = kind === 'err' ? hideToast : null;
+    t.setAttribute('aria-hidden', 'false');
+    void t.offsetWidth; // repart de la position hors écran
+    t.classList.add('is-in');
+    if(kind !== 'load'){
+      const bar = t.querySelector('.fpa-toast-bar');
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        if(bar){ bar.style.transition = 'transform ' + FPA_TOAST_MS + 'ms linear'; bar.style.transform = 'scaleX(0)'; }
+      }));
+      __fpaToastTimer = setTimeout(hideToast, FPA_TOAST_MS);
+    }
+  };
+  clearTimeout(__fpaToastTimer); __fpaToastTimer = null;
+  clearTimeout(__fpaToastSwap);
+  // Un message déjà affiché sort d'abord en glissant, puis le nouveau entre
+  if(t.classList.contains('is-in')){
+    t.classList.remove('is-in');
+    __fpaToastSwap = setTimeout(render, 260);
+  } else render();
 }
 
 function detectCols(headers){
@@ -51564,6 +51647,174 @@ async function fpaStorageFreeAll(){
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
   if(MQ.addEventListener) MQ.addEventListener('change', schedule);
+})();
+</script>
+<style>
+  /* ── Cartes — design « Verre givré » (v30.255) ─────────────────────────
+     Appliqué à toutes les cartes de FPA (classe .card et cartes en style en
+     ligne « fond blanc + bordure ») : blanc dépoli translucide, liseré blanc,
+     ombre douce, arrondi unifié à 14 px. Le flou ne s'applique qu'aux cartes
+     de premier niveau (pas aux cartes imbriquées ni dans les fenêtres) pour
+     garder un défilement fluide. Fond de page : halos navy / cyan / fuchsia
+     très légers, fixes, qui donnent sa matière au verre. */
+  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:
+      radial-gradient(38vw 38vw at 4% 8%, rgba(0,184,200,.16), transparent 70%),
+      radial-gradient(34vw 34vw at 98% 38%, rgba(230,30,130,.10), transparent 70%),
+      radial-gradient(42vw 42vw at 30% 104%, rgba(30,111,217,.13), transparent 70%),
+      var(--bg)}
+  body{background:transparent!important}
+  .card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"]){
+    background:rgba(255,255,255,.62)!important;
+    border:1px solid rgba(255,255,255,.78)!important;
+    box-shadow:0 8px 28px rgba(11,29,58,.07),0 1px 2px rgba(11,29,58,.04)!important;
+    -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);
+    transition:box-shadow .2s ease}
+  .card,.clab-panel,.mkt-card,.ov-card,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:7px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:8px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:9px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:10px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:12px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:14px"]{border-radius:14px!important}
+  .card:hover,.clab-panel:hover,.mkt-card:hover,.ov-card:hover,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"]):hover{box-shadow:0 14px 34px rgba(11,29,58,.12),0 1px 2px rgba(11,29,58,.05)!important}
+  /* Cartes imbriquées : verre plus léger, sans flou (déjà sur du verre) */
+  :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])) :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])){-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.55)!important;border-color:rgba(11,29,58,.07)!important;box-shadow:none!important}
+  :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])) :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])):hover{box-shadow:0 6px 18px rgba(11,29,58,.08)!important}
+  /* Dans les fenêtres (fond déjà blanc) : pas de flou, liseré visible */
+  .fpa-mcard :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])){-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(240,243,249,.45)!important;border-color:rgba(11,29,58,.08)!important;box-shadow:none!important}
+  .fpa-mcard :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])):hover{box-shadow:0 6px 18px rgba(11,29,58,.08)!important}
+  @media (max-width:900px){ .card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"]){-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)} }
+</style>
+<style>
+  /* ── Fenêtres FPA — design « Carte verre » (v30.254) ───────────────────
+     Appliqué automatiquement à toutes les fenêtres (voir fpaModalEnhance) :
+     fond navy flouté, carte à coins de 16 px, bandeau d'en-tête navy avec
+     liseré cyan, bouton de fermeture unifié, ouverture animée, Échap. */
+  .fpa-mback{background:rgba(11,29,58,.45)!important;-webkit-backdrop-filter:blur(6px) saturate(120%);backdrop-filter:blur(6px) saturate(120%)}
+  .fpa-mcard{border-radius:16px!important;box-shadow:0 24px 70px rgba(11,29,58,.34),0 2px 8px rgba(11,29,58,.12)!important;border:none!important}
+  .fpa-mback.fpa-m-enter{animation:fpaMBackIn .3s ease both}
+  .fpa-mback.fpa-m-enter>.fpa-mcard{animation:fpaMCardIn .42s cubic-bezier(.2,.8,.2,1) both}
+  @keyframes fpaMBackIn{from{opacity:0}to{opacity:1}}
+  @keyframes fpaMCardIn{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+  .fpa-mhead{background:#0B1D3A!important;color:#fff!important;border-radius:16px 16px 0 0;border-bottom:none!important;position:relative;box-shadow:inset 0 -2px 0 #00B8C8}
+  .fpa-mhead [style*="color:var(--navy)"],.fpa-mhead [style*="color:var(--text)"],.fpa-mhead [style*="color:#0B1D3A"],.fpa-mhead [style*="color: var(--navy)"]{color:#fff!important}
+  .fpa-mhead [style*="color:var(--text2)"],.fpa-mhead [style*="color:var(--muted)"]{color:rgba(255,255,255,.66)!important}
+  .fpa-mhead [style*="color:var(--cyan)"]{color:#3FE3F0!important}
+  .fpa-mhead [style*="border-bottom:1px solid var(--border)"],.fpa-mhead [style*="border-bottom:1.5px solid var(--border)"]{border-bottom-color:rgba(255,255,255,.12)!important}
+  .fpa-mhead img:not([id$="Cover"]){background:#fff;border-radius:7px;padding:3px 7px;box-sizing:content-box}
+  .fpa-mhead button:not(.fpa-mx):not(.btn-primary),.fpa-mhead a[role="button"]{background:rgba(255,255,255,.12)!important;color:#fff!important;border-color:rgba(255,255,255,.22)!important}
+  .fpa-mhead button:not(.fpa-mx):not(.btn-primary):hover{background:rgba(255,255,255,.2)!important}
+  .fpa-mhead select,.fpa-mhead input{background:rgba(255,255,255,.10)!important;color:#fff!important;border-color:rgba(255,255,255,.22)!important}
+  .fpa-mhead select option{color:#0B1D3A}
+  .fpa-mx{width:34px!important;height:34px!important;min-width:34px;padding:0!important;border-radius:9px!important;display:inline-flex!important;align-items:center;justify-content:center;
+    background:var(--bg)!important;border:none!important;color:var(--text2)!important;font-size:0!important;cursor:pointer;transition:background .15s,color .15s}
+  .fpa-mx::before{content:'';width:14px;height:14px;background:currentColor;
+    -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E") center/contain no-repeat;
+            mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.6' stroke-linecap='round'%3E%3Cline x1='18' y1='6' x2='6' y2='18'/%3E%3Cline x1='6' y1='6' x2='18' y2='18'/%3E%3C/svg%3E") center/contain no-repeat}
+  .fpa-mx:hover{background:var(--border)!important;color:var(--navy)!important}
+  .fpa-mhead .fpa-mx{background:rgba(255,255,255,.12)!important;color:#fff!important}
+  .fpa-mhead .fpa-mx:hover{background:rgba(255,255,255,.22)!important}
+  .fpa-mx:focus-visible{outline:2px solid #00B8C8;outline-offset:2px}
+  @media (max-width:900px){ .fpa-mhead{border-radius:12px} }
+  @media (prefers-reduced-motion:reduce){ .fpa-mback.fpa-m-enter,.fpa-mback.fpa-m-enter>.fpa-mcard{animation:none} }
+</style>
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   FENÊTRES — design unifié « Carte verre » (v30.254)
+   ══════════════════════════════════════════════════════════════════════════
+   FPA compte une trentaine de fenêtres, statiques ou créées à la volée, chacune
+   avec ses styles en ligne. Plutôt que de réécrire chacune, ce module les
+   reconnaît (calque plein écran « position:fixed;inset:0 » sur fond navy) et
+   leur applique le design commun : fond flouté, carte arrondie, bandeau
+   d'en-tête navy, bouton de fermeture unifié, ouverture animée, touche Échap.
+   Exclus : écran de connexion, menus mobiles (feuilles du bas), alertes. */
+(function(){
+  const EXCLUDE = new Set(['fpaLoginOverlay', 'toast']);
+  const CLOSE_TXT = /^(✕|×|✖|✗|x|X|✖️)$/;
+  const seen = new WeakSet();
+  function isOverlay(el){
+    if(!el || el.nodeType !== 1 || EXCLUDE.has(el.id)) return false;
+    const st = el.getAttribute('style') || '';
+    if(!/position:\s*fixed/.test(st) || !/inset:\s*0/.test(st)) return false;
+    if(!/rgba\(\s*(11,\s*29,\s*58|6,\s*14,\s*30)/.test(st)) return false;
+    if(/align-items:\s*flex-end/.test(st)) return false; // feuilles du bas (mobile)
+    return !!el.firstElementChild;
+  }
+  function visible(el){ return el.style.display !== 'none' && getComputedStyle(el).display !== 'none'; }
+  function findClose(card){
+    return Array.from(card.querySelectorAll('button,span,div,a')).find(b =>
+      CLOSE_TXT.test((b.textContent || '').trim()) && !b.children.length && b.getBoundingClientRect().width < 60);
+  }
+  function enhanceHeader(card, close){
+    if(card.dataset.fpaHead) return;
+    card.dataset.fpaHead = '1';
+    // En-tête = enfant direct de la carte qui contient le bouton de fermeture
+    let head = close;
+    while(head && head.parentElement !== card) head = head.parentElement;
+    if(!head || head !== card.firstElementChild) return;
+    if(head.querySelector('canvas,table,textarea')) return;
+    if(head.getBoundingClientRect().height > 260) return;
+    head.classList.add('fpa-mhead');
+    const cs = getComputedStyle(card);
+    const pt = parseFloat(cs.paddingTop) || 0, pl = parseFloat(cs.paddingLeft) || 0, pr = parseFloat(cs.paddingRight) || 0;
+    const hs = getComputedStyle(head);
+    if(pt || pl || pr){
+      head.style.marginTop = (-pt) + 'px';
+      head.style.marginLeft = (-pl) + 'px';
+      head.style.marginRight = (-pr) + 'px';
+      head.style.paddingLeft = Math.max(pl, 18) + 'px';
+      head.style.paddingRight = Math.max(pr, 18) + 'px';
+    }
+    if((parseFloat(hs.paddingTop) || 0) < 12) head.style.paddingTop = '14px';
+    if((parseFloat(hs.paddingBottom) || 0) < 12) head.style.paddingBottom = '14px';
+    if((parseFloat(hs.marginBottom) || 0) < 14) head.style.marginBottom = '16px';
+  }
+  function enhance(ov){
+    if(!isOverlay(ov)) return;
+    const card = ov.firstElementChild;
+    if(!seen.has(ov)){
+      seen.add(ov);
+      ov.classList.add('fpa-mback');
+      card.classList.add('fpa-mcard');
+      ov.setAttribute('role', 'dialog');
+      ov.setAttribute('aria-modal', 'true');
+      new MutationObserver(() => onToggle(ov)).observe(ov, { attributes:true, attributeFilter:['style'] });
+    }
+    onToggle(ov);
+  }
+  function onToggle(ov){
+    const open = visible(ov);
+    if(open && !ov.dataset.fpaOpen){
+      ov.dataset.fpaOpen = '1';
+      const card = ov.firstElementChild;
+      const close = findClose(card);
+      if(close){ close.classList.add('fpa-mx'); close.setAttribute('aria-label', 'Fermer'); close.setAttribute('title', 'Fermer (Échap)'); }
+      // L'en-tête se construit parfois juste après l'ouverture : on attend une image
+      requestAnimationFrame(() => { const c2 = close || findClose(card); if(c2){ c2.classList.add('fpa-mx'); enhanceHeader(card, c2); } });
+      ov.classList.remove('fpa-m-enter'); void ov.offsetWidth; ov.classList.add('fpa-m-enter');
+      setTimeout(() => ov.classList.remove('fpa-m-enter'), 500);
+    } else if(!open && ov.dataset.fpaOpen){
+      delete ov.dataset.fpaOpen;
+    }
+  }
+  function scan(root){
+    if(root.nodeType !== 1) return;
+    if(isOverlay(root)) enhance(root);
+    root.querySelectorAll && root.querySelectorAll('[style*="position:fixed"]').forEach(el => { if(isOverlay(el)) enhance(el); });
+  }
+  function init(){
+    scan(document.body);
+    new MutationObserver(muts => muts.forEach(m => m.addedNodes.forEach(n => { if(n.nodeType === 1 && (n.getAttribute('style') || '').includes('fixed')) scan(n); })))
+      .observe(document.body, { childList:true, subtree:true });
+    // Échap : ferme la fenêtre ouverte la plus haute
+    document.addEventListener('keydown', e => {
+      if(e.key !== 'Escape' || e.defaultPrevented) return;
+      const open = Array.from(document.querySelectorAll('.fpa-mback')).filter(visible);
+      if(!open.length) return;
+      const top = open.reduce((a,b) => (parseInt(getComputedStyle(b).zIndex) || 0) >= (parseInt(getComputedStyle(a).zIndex) || 0) ? b : a);
+      const close = top.querySelector('.fpa-mx') || findClose(top.firstElementChild);
+      if(close) close.click();
+      else top.dispatchEvent(new MouseEvent('click', { bubbles:true }));
+      e.preventDefault();
+    });
+  }
+  window.fpaModalEnhance = scan;
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();
 </script>
 </body>
