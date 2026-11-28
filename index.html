@@ -4698,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.255';
-const FPA_BUILD_ISO = '2026-11-28T13:00:00+01:00';
+const FPA_VERSION   = 'v30.256';
+const FPA_BUILD_ISO = '2026-11-28T14:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -25742,7 +25742,7 @@ function renderChartTable(){
     titleEl.innerHTML = rLogo + (rsrc ? escHtml(rsrc.label) : 'Radio') + ' — Top Songs';
     isEmpty = !rd || !rd.tracks || !rd.tracks.length;
     if(rd && rd.tracks && rd.tracks.length){
-      const top10Note = rid === 'radio538' ? ' · top 10 non disponible automatiquement (mise en page en affiche graphique) — classement à partir du rang 11' : '';
+      const top10Note = rid === 'radio538' ? ' · rangs 2 à 10 non disponibles automatiquement (mise en page en affiche graphique)' : '';
       subEl.textContent = (rd.fetchedAt ? 'récupéré le ' + new Date(rd.fetchedAt).toLocaleString('fr-FR', {day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit'}) : '') + ' · ' + rd.tracks.length + ' titres · source ' + (rsrc ? escHtml(rsrc.label) : '') + ' (site web)' + top10Note;
       const e2RankMap = computeE2RankMap();
       entries = rd.tracks.map(t => {
@@ -33378,8 +33378,60 @@ const NL_MONTHS_RE = /\b(JANUARI|FEBRUARI|MAART|APRIL|MEI|JUNI|JULI|AUGUSTUS|SEP
  *  sans motif fixe exploitable de façon fiable — le texte correspondant
  *  est renvoyé tel quel dans remainderRawSample pour vérification
  *  manuelle plutôt que de risquer un mauvais appariement titre/artiste. */
+/** Mise en page du Top 50 538 depuis fin 2026 (vérifiée sur le texte brut
+ *  réel de la semaine 48 avec Gaël) : le rang n'est plus seul sur sa ligne,
+ *  il est regroupé avec la position précédente et la mention « WK » du
+ *  nombre de semaines — « 13 16 WK », « 14 WK », ou « 48 » seul pour une
+ *  entrée « NEW ». Chaque entrée suit le motif :
+ *    ARTISTE · [nb de semaines / position précédente] · RANG … WK · TITRE
+ *  L'artiste est la dernière ligne de texte AVANT la ligne du rang, le
+ *  titre la première ligne de texte APRÈS. Vérifié sur des couples connus :
+ *  Kensington → Carry On (24), Karol G → BbY WOW (15), Dua Lipa → Go Easy
+ *  (20), Teddy Swims → Perfect Man (29), Claude → Alles Wat Ik Wil (35),
+ *  Lost Frequencies → Don't Forget (About Me) (42).
+ *  Le n° 1 a sa propre mise en avant : « 1 », puis artiste, puis titre.
+ *  Les rangs 2 à 10 sont en collage multi-colonnes (plusieurs artistes et
+ *  titres fusionnés sur une même ligne) : non extraits automatiquement. */
+function parse538GridLayout(texts){
+  const isNumLine = t => /^(\d{1,3}|WK|NEW)( (\d{1,3}|WK|NEW))*$/i.test(t);
+  const isHeader  = t => /CONTACT|MEER INFO|538\.NL|NIET PUBLICEREN|^WEEK$|^WEEK\s+\d+$/i.test(t) || NL_MONTHS_RE.test(t) || /^20\d\d$/.test(t);
+  const isText    = t => !!t && !isNumLine(t) && !isHeader(t) && /[A-Za-zÀ-ÿ]/.test(t);
+  const prevText = i => { for(let j=i-1;j>=0 && j>=i-4;j--){ if(isText(texts[j])) return j; if(!isNumLine(texts[j])) return -1; } return -1; };
+  const nextText = i => { for(let j=i+1;j<texts.length && j<=i+4;j++){ if(isText(texts[j])) return j; if(!isNumLine(texts[j])) return -1; } return -1; };
+  const tracks = [];
+  let pos = 0;
+  for(let r=11; r<=50; r++){
+    let found = -1;
+    for(let j=pos; j<texts.length && (pos === 0 || j < pos+14); j++){
+      const t = texts[j];
+      if(!isNumLine(t)) continue;
+      const tok = t.split(' ');
+      if(parseInt(tok[0],10) === r && (tok.length === 1 || /WK/i.test(t))){ found = j; break; }
+    }
+    if(found < 0) continue;
+    const ai = prevText(found), ti = nextText(found);
+    if(ti >= 0) tracks.push({ rank: r, title: decodeHtmlEntitiesSimple(texts[ti]), artist: ai >= 0 ? decodeHtmlEntitiesSimple(texts[ai]) : '' });
+    pos = found + 1;
+  }
+  // N° 1 : « 1 » seul en tête de page, suivi de l'artiste puis du titre
+  const firstRankIdx = tracks.length ? texts.findIndex(t => t === String(tracks[0].rank) || t.startsWith(tracks[0].rank + ' ')) : texts.length;
+  for(let j=0; j<Math.min(20, firstRankIdx); j++){
+    if(texts[j] === '1' && isText(texts[j+1]) && isText(texts[j+2])){
+      tracks.unshift({ rank: 1, artist: decodeHtmlEntitiesSimple(texts[j+1]), title: decodeHtmlEntitiesSimple(texts[j+2]) });
+      break;
+    }
+  }
+  return tracks;
+}
+
 function parse538TopSongsFromLines(lines){
   const texts = lines.map(l => l.text).filter(Boolean);
+  // Mise en page actuelle (rangs regroupés avec « WK ») en priorité
+  const grid = parse538GridLayout(texts);
+  if(grid.filter(t => t.rank >= 11).length >= 10){
+    const firstIdx = texts.findIndex(t => /^11( |$)/.test(t));
+    return { tracks: grid, remainderRawSample: texts.slice(0, Math.max(0, firstIdx - 1)).join(' | ') };
+  }
 
   // 1) Repère la plus longue séquence de nombres consécutifs (rang N,
   //    N+1, N+2...) parmi les lignes purement numériques — c'est la
@@ -33451,6 +33503,129 @@ function parse538TopSongsFromLines(lines){
   const remainder = texts.slice(0, top10EndIdx);
 
   return { tracks: tracks.length ? tracks : null, remainderRawSample: remainder.join(' | ') };
+}
+
+/** Rangs 2 à 10 du Top 50 538 — lecture POSITIONNELLE du collage (v30.256).
+ *  Le texte à plat fusionne les colonnes (« DJ GOJA & JASON DERULO & ELLA
+ *  LANGLEY » mêle les rangs 2 et 4) : il faut les coordonnées des fragments.
+ *  Mise en page vérifiée avec Gaël (semaine 48) : trois rangées de trois
+ *  colonnes (2-3-4, 5-6-7, 8-9-10) ; sous chaque numéro de rang, l'artiste
+ *  (1 à 3 lignes) puis le titre (1 à 2 lignes).
+ *  1) Rangées : lignes visuelles dont tous les fragments sont des numéros
+ *     consécutifs (« 2 3 4 »…) ; leurs abscisses donnent les colonnes.
+ *  2) Chaque fragment de texte situé sous une rangée (et au-dessus de la
+ *     suivante, ou de l'artiste du rang 11 pour la dernière) est rattaché à
+ *     la colonne la plus proche (frontières à mi-chemin entre colonnes).
+ *  3) Artiste ou titre : on apprend la police (fontName) des artistes et des
+ *     titres sur les rangs 11 à 50, déjà identifiés par parse538GridLayout ;
+ *     à défaut de différence de police, l'artiste est la ou les premières
+ *     lignes de la colonne et le titre la dernière.
+ *  N'est retenu que si les 9 rangs sont reconstitués avec artiste ET titre ;
+ *  sinon rien n'est ajouté (pas de donnée douteuse). */
+function parse538TopBlock(items, gridTracks){
+  try{
+    if(!Array.isArray(items) || !items.length || !gridTracks || !gridTracks.length) return [];
+    const pts = items.filter(it => it.str && it.str.trim()).map(it => ({ str: it.str.trim(), x: it.x, y: it.y, w: it.width || 0, font: it.font || '', size: Math.round(it.size || 0) }));
+    const isNumTok = t => /^(\d{1,3}|WK|NEW)$/i.test(t);
+    const isNumStr = t => t.split(/\s+/).every(isNumTok);
+    // Lignes visuelles (même tolérance que groupPdfItemsIntoLines)
+    const rows = [];
+    pts.slice().sort((a,b) => b.y - a.y || a.x - b.x).forEach(p => {
+      let r = rows.find(r => Math.abs(r.y - p.y) <= 3);
+      if(!r){ r = { y: p.y, items: [] }; rows.push(r); }
+      r.items.push(p);
+    });
+    rows.sort((a,b) => b.y - a.y);
+    // Numéros de rang : un fragment par numéro, ou un fragment « 2 3 4 »
+    const rankRows = [];
+    rows.forEach(r => {
+      const cols = [];
+      r.items.slice().sort((a,b) => a.x - b.x).forEach(it => {
+        const toks = it.str.split(/\s+/);
+        if(!toks.every(t => /^\d{1,2}$/.test(t))){ cols.push(null); return; }
+        const step = toks.length > 1 ? (it.w / toks.length) : 0;
+        toks.forEach((t,k) => cols.push({ rank: parseInt(t,10), x: it.x + k*step }));
+      });
+      if(cols.some(c => !c) || cols.length < 2) return;
+      const ok = cols.every((c,k) => k === 0 || c.rank === cols[k-1].rank + 1) && cols[0].rank >= 2 && cols[cols.length-1].rank <= 10;
+      if(ok) rankRows.push({ y: r.y, cols });
+    });
+    if(!rankRows.length) return [];
+    // Limite basse : artiste du rang 11
+    const r11 = gridTracks.find(t => t.rank === 11);
+    let yFloor = -Infinity;
+    if(r11 && r11.artist){
+      const hit = pts.find(p => r11.artist.toUpperCase().startsWith(p.str.toUpperCase()) && p.str.length >= 3 && p.y < rankRows[rankRows.length-1].y);
+      if(hit) yFloor = hit.y + 2;
+    }
+    // Polices artiste / titre apprises sur les rangs 11-50
+    // (police d'abord, puis taille de caractères si la police ne suffit pas)
+    const votes = { artist:{}, title:{} };
+    const keys = p => ['f:' + p.font, 's:' + p.size];
+    gridTracks.filter(t => t.rank >= 11).forEach(t => {
+      pts.forEach(p => {
+        if(p.str.length < 3) return;
+        const u = p.str.toUpperCase();
+        const inA = t.artist && t.artist.toUpperCase().includes(u), inT = t.title && t.title.toUpperCase().includes(u);
+        if(inA && !inT) keys(p).forEach(k => { votes.artist[k] = (votes.artist[k] || 0) + 1; });
+        if(inT && !inA) keys(p).forEach(k => { votes.title[k] = (votes.title[k] || 0) + 1; });
+      });
+    });
+    const roleOfKey = k => {
+      const a = votes.artist[k] || 0, t = votes.title[k] || 0;
+      if(a > 2*t && a >= 2) return 'artist';
+      if(t > 2*a && t >= 2) return 'title';
+      return null;
+    };
+    const roleOfItem = p => roleOfKey('f:' + p.font) || roleOfKey('s:' + p.size);
+    const out = [];
+    rankRows.forEach((rr, k) => {
+      const yTop = rr.y - 1;
+      const yBottom = k + 1 < rankRows.length ? rankRows[k+1].y + 1 : yFloor;
+      const cols = rr.cols;
+      const bounds = cols.map((c,i) => i === 0 ? -Infinity : (cols[i-1].x + c.x) / 2);
+      const colItems = cols.map(() => []);
+      pts.forEach(p => {
+        if(!(p.y < yTop && p.y > yBottom)) return;
+        if(isNumStr(p.str)) return;
+        let ci = 0;
+        for(let i=0;i<cols.length;i++) if(p.x >= bounds[i]) ci = i;
+        colItems[ci].push(p);
+      });
+      cols.forEach((c, ci) => {
+        // Lignes de la colonne (haut → bas)
+        const lines = [];
+        colItems[ci].sort((a,b) => b.y - a.y || a.x - b.x).forEach(p => {
+          let l = lines.find(l => Math.abs(l.y - p.y) <= 3);
+          if(!l){ l = { y: p.y, items: [] }; lines.push(l); }
+          l.items.push(p);
+        });
+        lines.forEach(l => {
+          l.items.sort((a,b) => a.x - b.x);
+          l.text = l.items.map(i => i.str).join(' ').replace(/\s+/g,' ').trim();
+          const roles = l.items.map(roleOfItem).filter(Boolean);
+          l.role = roles.length ? (roles.filter(r => r === 'artist').length >= roles.length/2 ? 'artist' : 'title') : null;
+        });
+        if(!lines.length) return;
+        let artistLines, titleLines;
+        if(lines.every(l => l.role)){
+          artistLines = lines.filter(l => l.role === 'artist');
+          titleLines  = lines.filter(l => l.role === 'title');
+        } else {
+          if(lines.length > 2){ out.push(null); return; } // ambigu sans repère typographique : on s'abstient
+          artistLines = lines.slice(0, Math.max(1, lines.length - 1));
+          titleLines  = lines.slice(Math.max(1, lines.length - 1));
+        }
+        const joinWrap = ls => ls.map(l => l.text).join(' ').replace(/\s+/g,' ').replace(/\s+([,)])/g,'$1').trim();
+        const artist = joinWrap(artistLines), title = joinWrap(titleLines);
+        if(artist && title) out.push({ rank: c.rank, artist: decodeHtmlEntitiesSimple(artist), title: decodeHtmlEntitiesSimple(title) });
+      });
+    });
+    if(out.some(t => !t)) return [];
+    const ranks = new Set(out.map(t => t.rank));
+    for(let r=2;r<=10;r++) if(!ranks.has(r)) return [];
+    return out.sort((a,b) => a.rank - b.rank);
+  }catch(e){ return []; }
 }
 
 /** Récupère et parse le Top 50 de Radio 538 — cas particulier parmi les
@@ -33557,7 +33732,7 @@ async function fetchRadio538TopSongs(){
       const pg = await pdf.getPage(p);
       const content = await pg.getTextContent();
       content.items.forEach(it => {
-        if(it.str && it.str.trim()) items.push({ str: it.str, x: it.transform[4], y: it.transform[5], width: it.width });
+        if(it.str && it.str.trim()) items.push({ str: it.str, x: it.transform[4], y: it.transform[5], width: it.width, size: Math.hypot(it.transform[0], it.transform[1]), font: it.fontName || '' });
       });
     }
     lines = groupPdfItemsIntoLines(items);
@@ -33570,11 +33745,23 @@ async function fetchRadio538TopSongs(){
   }
 
   const parsed = parse538TopSongsFromLines(lines);
-  const tracks = parsed.tracks;
+  let tracks = parsed.tracks;
+  // Rangs 2 à 10 (collage) : lecture positionnelle
+  let top10Ok = false;
+  if(tracks){
+    const top = parse538TopBlock(items, tracks);
+    if(top.length === 9){
+      tracks = tracks.filter(t => t.rank < 2 || t.rank > 10).concat(top).sort((a,b) => a.rank - b.rank);
+      top10Ok = true;
+      log.push({ proxy: '— rangs 2 à 10 —', status: '✓ reconstitués par position : ' + top.map(t => t.rank + '. ' + t.artist + ' – ' + t.title).join(' · ') });
+    } else {
+      log.push({ proxy: '— rangs 2 à 10 —', status: 'Collage non reconstitué automatiquement (voir le dump positionnel ci-dessous)' });
+    }
+  }
   if(tracks){
     const withArtist = tracks.filter(t => t.artist).length;
     log.push({ proxy: '— parsing —', status: '✓ ' + tracks.length + ' titres extraits (rangs ' + tracks[0].rank + ' à ' + tracks[tracks.length - 1].rank + '), dont ' + withArtist + ' avec artiste' });
-    if(parsed.remainderRawSample){
+    if(parsed.remainderRawSample && !top10Ok){
       log.push({ proxy: '— top 10 —', status: 'Non extrait automatiquement (mise en page en collage graphique — voir doc de parse538TopSongsFromLines) — texte brut pour vérification manuelle : ' + parsed.remainderRawSample.slice(0, 500) });
     }
   } else {
@@ -33589,13 +33776,13 @@ async function fetchRadio538TopSongs(){
   // deux mots d'un même titre — information perdue dès qu'on aplati tout en
   // texte simple. But : coller ce dump ici pour reconstruire le Top 10 de
   // façon fiable, comme cela avait été fait pour les rangs 11-50.
-  const top10PosDump = items.slice(0, 90).map(it => 'x=' + Math.round(it.x) + ' y=' + Math.round(it.y) + ' : ' + it.str).join('\n');
+  const top10PosDump = items.slice(0, 120).map(it => 'x=' + Math.round(it.x) + ' y=' + Math.round(it.y) + ' w=' + Math.round(it.width || 0) + ' t=' + Math.round(it.size || 0) + ' f=' + (it.font || '') + ' : ' + it.str).join('\n');
 
   radioTopSongsData['radio538'] = { tracks, rawSample: fullText.slice(0,8000), top10PosDump, log, fetchedAt: new Date().toISOString() };
   radioTopSongsSaveToStorage();
   renderRadioChartsPanel();
   if(activeChartTab === 'radio_radio538') renderChartTable();
-  if(tracks) showToast('✓ « ' + src.label + ' » — ' + tracks.length + ' titres récupérés avec rang, titre et artiste (rangs 11-50 ; top 10 non automatisé, voir détail par proxy)', 'success');
+  if(tracks) showToast('✓ « ' + src.label + ' » — ' + tracks.length + ' titres récupérés' + (top10Ok ? ' (classement complet)' : ' (n° 1 et rangs 11 à 50 ; rangs 2 à 10 non reconstitués, voir détail par proxy)'), 'success');
   else showToast('❌ Extraction impossible pour « ' + src.label + ' » — détail par proxy consultable ci-dessous', 'err');
 }
 
