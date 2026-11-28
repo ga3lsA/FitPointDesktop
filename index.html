@@ -4698,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.262';
-const FPA_BUILD_ISO = '2026-11-28T20:00:00+01:00';
+const FPA_VERSION   = 'v30.263';
+const FPA_BUILD_ISO = '2026-11-28T21:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -36103,6 +36103,7 @@ const predEntryParamsTable_DEFS = [
   { key:'sourceWeightCallOut',  group:'Poids global par vivier (origine du candidat)', label:'Call Out/OMT — poids global (1 = neutre)', default:1, step:0.1, min:0, max:2 },
   { key:'sourceWeightMarche',   group:'Poids global par vivier (origine du candidat)', label:'Marché — poids global (1 = neutre)', default:1, step:0.1, min:0, max:2 },
 
+  { key:'maxRecommendations', group:'Filtres d\'éligibilité', label:'Nombre de recommandations affichées (les meilleures)', default:30, step:5, min:5, max:200 },
   { key:'maxAirplay',   group:'Filtres d\'éligibilité', label:'Passages max (E2/RFM) pour rester "pas encore entré"', default:2, step:1, min:0, max:20 },
   { key:'maxAgeYears',  group:'Filtres d\'éligibilité', label:'Âge max du titre si date de sortie connue (années)', default:2, step:0.5, min:0, max:20 },
 
@@ -37116,10 +37117,17 @@ function buildPredictionEntryRows(){
     // déclassement fort mais visible via artistBadge. ──
     const aStatus = artistStatus[norm(c.artist)] || null;
     let score = baseScore;
+    // v30.263 : on garde aussi un score BRUT, sans plafond à 100 ni plancher
+    // à 0 (rankScore, plus bas) — le plafonnement mettait à égalité des titres
+    // aux performances différentes (ex. 92 + bonus 15 et 100 + bonus 15 → 100
+    // tous les deux). Le score affiché reste borné 0-100 ; le classement et
+    // la sélection des meilleures recommandations utilisent le score brut.
+    let rawScore = baseScore;
     if(aStatus){
-      score = aStatus.status === 'penalty' ? Math.max(0, score - entryParams.artistPenalty)
-        : aStatus.status === 'malus' ? Math.max(0, score - entryParams.artistMalus)
-        : Math.min(100, score + entryParams.artistBoost);
+      rawScore += aStatus.status === 'penalty' ? -entryParams.artistPenalty
+        : aStatus.status === 'malus' ? -entryParams.artistMalus
+        : entryParams.artistBoost;
+      score = Math.max(0, Math.min(100, rawScore));
     }
     const scoreBeforeSourceWeight = score;
 
@@ -37135,6 +37143,7 @@ function buildPredictionEntryRows(){
     const sourceWeightKey = { veille:'sourceWeightVeille', digital:'sourceWeightDigital', callout:'sourceWeightCallOut', market:'sourceWeightMarche' }[c.source];
     const sourceWeight = sourceWeightKey ? entryParams[sourceWeightKey] : 1;
     score = Math.max(0, Math.min(100, Math.round(score * sourceWeight)));
+    let rankScore = rawScore * sourceWeight;
 
     let level, levelColor, levelBg, levelBorder, levelIcon;
     if(score >= 65){ level='Entrée recommandée'; levelColor='var(--green-text)'; levelBg='var(--green-bg)'; levelBorder='var(--green-border)'; levelIcon='🟢'; }
@@ -37189,12 +37198,13 @@ function buildPredictionEntryRows(){
       const hasPositiveWait = (PRED_ENTRY_REASONS['peut-etre'] || []).some(r => r.titleEffect === 'boost' && fb.raisons.includes(r.key));
       if(hasPositiveWait){
         score = 100;
+        rankScore = 1000 + rankScore; // garantie de tête de liste, ordre interne conservé
         level = 'Entrée recommandée'; levelColor = 'var(--green-text)'; levelBg = 'var(--green-bg)'; levelBorder = 'var(--green-border)'; levelIcon = '🟢';
       }
     }
 
     return {
-      ...c, compRow, oppRow, score, baseScore, scoreBeforeSourceWeight, coverage, level, levelColor, levelBg, levelBorder, levelIcon,
+      ...c, compRow, oppRow, score, rankScore, baseScore, scoreBeforeSourceWeight, coverage, level, levelColor, levelBg, levelBorder, levelIcon,
       sourceLabel: SOURCE_LABELS[c.source] || c.source,
       breakdown, reasons,
       artistStatus: aStatus, feedback: fb, feedbackStatus, feedbackNote
@@ -37282,13 +37292,23 @@ function renderPredictionEntryPage(){
   // (voir buildPredictionEntryRows). Les titres "Peut-être" restent
   // toujours dans la liste active, avec leur badge 🤔 dédié — plus de
   // section "En attente" séparée. ──
-  const activeRows   = allRows.filter(r => r.feedbackStatus === 'active'   && matchQuery(r));
+  // v30.263 : les artistes marqués « hors format » ne sont plus proposés du
+  // tout (sauf un titre précis pour lequel un Oui / Peut-être a été donné
+  // explicitement), et la liste est limitée aux N meilleures recommandations
+  // (30 par défaut, réglable), classées sur le score brut non plafonné.
+  const isHorsFormat = r => r.artistStatus && r.artistStatus.status === 'penalty' && !r.feedback;
+  const byRank = (a,b) => (b.rankScore ?? b.score) - (a.rankScore ?? a.score) || (b.coverage || 0) - (a.coverage || 0) || (b.baseScore || 0) - (a.baseScore || 0);
+  const eligibleRows = allRows.filter(r => r.feedbackStatus === 'active' && !isHorsFormat(r)).sort(byRank);
+  const maxReco = Math.max(1, Math.round(predEntryParams().maxRecommendations || 30));
+  // Recherche : porte sur tous les candidats éligibles (pour retrouver un
+  // titre hors du top), sinon on n'affiche que les N meilleurs.
+  const activeRows   = query ? eligibleRows.filter(matchQuery) : eligibleRows.slice(0, maxReco);
   const reviewedRows = allRows.filter(r => r.feedbackStatus === 'reviewed' && matchQuery(r));
 
   const sortKey = document.getElementById('predEntrySortKey')?.value || 'score';
   const sortFn = (a,b) => {
-    if(sortKey === 'source') return a.sourceLabel.localeCompare(b.sourceLabel) || b.score - a.score;
-    return b.score - a.score;
+    if(sortKey === 'source') return a.sourceLabel.localeCompare(b.sourceLabel) || byRank(a,b);
+    return byRank(a,b);
   };
   const filtered = [...activeRows].sort(sortFn);
 
@@ -37357,7 +37377,7 @@ function renderPredictionEntryPage(){
         ${noteHtml}
       </div>
       <div style="padding:10px 8px;text-align:center">
-        <span style="font-size:16px;font-weight:800;color:${r.levelColor}">${r.score}</span>
+        <span style="font-size:16px;font-weight:800;color:${r.levelColor}" title="Indice de classement (score brut, sans plafond à 100) : ${r.rankScore != null ? (r.rankScore >= 1000 ? 'en tête (attente positive)' : Math.round(r.rankScore)) : r.score}">${r.score}</span>
         <div style="font-size:9px;color:var(--muted);font-weight:700;margin-top:1px">${r.coverage}/4 signaux</div>
       </div>
       <div style="padding:10px 8px;text-align:center;font-size:11px;color:var(--text2);white-space:nowrap">${r.sourceLabel}</div>
@@ -37392,7 +37412,7 @@ function renderPredictionEntryPage(){
     </div>
     <div style="padding:10px 16px;background:var(--white);border:1.5px solid var(--border);border-radius:10px;display:flex;align-items:center;gap:8px">
       <span style="font-size:22px;font-weight:800;color:var(--navy)">${filtered.length}</span>
-      <span style="font-size:11px;font-weight:700;color:var(--text2)">candidats évalués</span>
+      <span style="font-size:11px;font-weight:700;color:var(--text2)">${query ? 'résultat(s) sur ' + eligibleRows.length + ' candidats éligibles' : 'meilleures recommandations sur ' + eligibleRows.length + ' candidats éligibles'}</span>
     </div>
   </div>`;
 
