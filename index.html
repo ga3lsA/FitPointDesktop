@@ -4698,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.255';
-const FPA_BUILD_ISO = '2026-11-28T12:00:00+01:00';
+const FPA_VERSION   = 'v30.254';
+const FPA_BUILD_ISO = '2026-11-28T11:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -51649,37 +51649,6 @@ async function fpaStorageFreeAll(){
   if(MQ.addEventListener) MQ.addEventListener('change', schedule);
 })();
 </script>
-<style>
-  /* ── Cartes — design « Verre givré » (v30.255) ─────────────────────────
-     Appliqué à toutes les cartes de FPA (classe .card et cartes en style en
-     ligne « fond blanc + bordure ») : blanc dépoli translucide, liseré blanc,
-     ombre douce, arrondi unifié à 14 px. Le flou ne s'applique qu'aux cartes
-     de premier niveau (pas aux cartes imbriquées ni dans les fenêtres) pour
-     garder un défilement fluide. Fond de page : halos navy / cyan / fuchsia
-     très légers, fixes, qui donnent sa matière au verre. */
-  body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
-    background:
-      radial-gradient(38vw 38vw at 4% 8%, rgba(0,184,200,.16), transparent 70%),
-      radial-gradient(34vw 34vw at 98% 38%, rgba(230,30,130,.10), transparent 70%),
-      radial-gradient(42vw 42vw at 30% 104%, rgba(30,111,217,.13), transparent 70%),
-      var(--bg)}
-  body{background:transparent!important}
-  .card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"]){
-    background:rgba(255,255,255,.62)!important;
-    border:1px solid rgba(255,255,255,.78)!important;
-    box-shadow:0 8px 28px rgba(11,29,58,.07),0 1px 2px rgba(11,29,58,.04)!important;
-    -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);
-    transition:box-shadow .2s ease}
-  .card,.clab-panel,.mkt-card,.ov-card,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:7px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:8px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:9px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:10px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:12px"],div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])[style*="border-radius:14px"]{border-radius:14px!important}
-  .card:hover,.clab-panel:hover,.mkt-card:hover,.ov-card:hover,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"]):hover{box-shadow:0 14px 34px rgba(11,29,58,.12),0 1px 2px rgba(11,29,58,.05)!important}
-  /* Cartes imbriquées : verre plus léger, sans flou (déjà sur du verre) */
-  :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])) :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])){-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(255,255,255,.55)!important;border-color:rgba(11,29,58,.07)!important;box-shadow:none!important}
-  :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])) :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])):hover{box-shadow:0 6px 18px rgba(11,29,58,.08)!important}
-  /* Dans les fenêtres (fond déjà blanc) : pas de flou, liseré visible */
-  .fpa-mcard :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])){-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(240,243,249,.45)!important;border-color:rgba(11,29,58,.08)!important;box-shadow:none!important}
-  .fpa-mcard :is(.card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"])):hover{box-shadow:0 6px 18px rgba(11,29,58,.08)!important}
-  @media (max-width:900px){ .card,.clab-panel,.clab-stat,.mkt-card,.ov-card,.dp-side,div[style*="background:var(--white)"][style*="solid var(--border)"]:not([style*="position:absolute"]):not([style*="position:fixed"]):not([style*="border-radius:50%"]):not([style*="border-radius:20px"]):not([style*="border-radius:99"]){-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)} }
-</style>
 <style>
   /* ── Fenêtres FPA — design « Carte verre » (v30.254) ───────────────────
      Appliqué automatiquement à toutes les fenêtres (voir fpaModalEnhance) :
