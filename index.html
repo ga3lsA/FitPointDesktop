@@ -4698,8 +4698,8 @@ button{cursor:pointer;border:none;border-radius:8px;padding:9px 18px;transition:
 // Numéro de version + horodatage de génération de ce fichier — à mettre à
 // jour à chaque nouvelle livraison. Affiché dans l'en-tête (survol pour le
 // détail complet, jour de semaine + heure).
-const FPA_VERSION   = 'v30.258';
-const FPA_BUILD_ISO = '2026-11-28T16:00:00+01:00';
+const FPA_VERSION   = 'v30.259';
+const FPA_BUILD_ISO = '2026-11-28T17:00:00+01:00';
 
 // ── Logos officiels des plateformes (Spotify, Deezer, Apple Music, iTunes,
 //    YouTube, Billboard) — utilisés dans les onglets Classements, les cartes
@@ -8880,30 +8880,84 @@ function isFetchedToday(entry){
  *  « chargée » : elle sera retentée automatiquement. */
 function keyPlaylistFreshToday(p){ return !!(p && p.tracks && p.tracks.length && isFetchedToday(p)); }
 
+/** Liste détaillée des sources chargées automatiquement par « Tout charger »
+ *  (mêmes sources et mêmes critères que l'ancien compteur), avec pour chacune
+ *  son libellé et l'onglet où l'ouvrir — sert au compteur « x/y classements
+ *  chargés » et à la fenêtre qui détaille les sources manquantes (v30.259). */
+function listAutoChartSources(){
+  const L = [];
+  const add = (label, loaded, tab) => L.push({ label, loaded: !!loaded, tab });
+  add('🇫🇷 Shazam France', chartsLoaded.fr, 'shzfr');
+  add('🌍 Shazam Monde', chartsLoaded.ww, 'shzww');
+  add('🎧 Deezer France', deezerLoaded, 'dzfr');
+  add('🌱 Futurs Hits', futursHitsLoaded, 'fh');
+  add('🏆 Billboard Global 200', billboardGlobalLoaded, 'bbg200');
+  add('🏆 Billboard Hot 100', billboardLoaded, 'bbus');
+  add('🍎 Apple Music US', appleMusicState.us.loaded, 'amus');
+  add('🍎 Apple Music France', appleMusicState.fr.loaded, 'amfr');
+  add('🛒 iTunes France', itunesState.fr.loaded, 'itfr');
+  add('🏆 Billboard Radio (Airplay US)', kworbRadioLoaded, 'kwradio');
+  add('🌍 Top Artistes Spotify (Monde)', kworbListenersLoaded, 'kwtop');
+  add('▶️ YouTube Monde', kworbYoutubeLoaded, 'yt');
+  Object.keys(KWORB_YOUTUBE_COUNTRIES).forEach(cc => add(KWORB_YOUTUBE_COUNTRIES[cc].flag + ' ' + KWORB_YOUTUBE_COUNTRIES[cc].label, kworbYoutubeCountryState[cc].loaded, 'yt' + cc));
+  Object.keys(KWORB_COUNTRIES).forEach(cc => add(KWORB_COUNTRIES[cc].flag + ' ' + KWORB_COUNTRIES[cc].label, kworbSpotifyState[cc].loaded, 'kw' + cc));
+  // Playlists Spotify clés + Radios clés (Top Songs) suivies — comptées ici
+  // aussi pour que le total corresponde à toutes les sources réellement
+  // chargées par « Tout charger ».
+  keyPlaylists.forEach(p => add('🎵 ' + (p.label || p.name || p.id), keyPlaylistFreshToday(p), 'kp_' + p.id));
+  RADIO_TOP_SONGS_SOURCES.forEach(r => add('📻 ' + r.label, isFetchedToday(radioTopSongsData[r.id]), 'radio_' + r.id));
+  DEEZER_KEY_PLAYLISTS.forEach(p => add((p.icon || '🎧') + ' ' + p.label + ' (Deezer)', !!deezerKeyPlaylistLoaded[p.id], 'dzkp_' + p.id));
+  // Playlists clés Apple Music : seulement une fois l'URL configurée (sinon
+  // la barre semblerait bloquée pour un utilisateur qui ne les utilise pas).
+  APPLE_KEY_PLAYLISTS.filter(p => appleKeyPlaylistUrl(p.id)).forEach(p => add((p.icon || '🍎') + ' ' + p.label + ' (Apple Music)', !!appleKeyPlaylistLoaded[p.id], 'akp_' + p.id));
+  return L;
+}
+
 function countLoadedAutoCharts(){
-  let loaded = 0, total = 3; // Shazam FR + Shazam WW + Deezer + Futurs Hits + ...
-  const flags = [
-    chartsLoaded.fr, chartsLoaded.ww, deezerLoaded, futursHitsLoaded,
-    billboardGlobalLoaded, billboardLoaded,
-    appleMusicState.us.loaded, appleMusicState.fr.loaded, itunesState.fr.loaded,
-    kworbRadioLoaded, kworbListenersLoaded, kworbYoutubeLoaded,
-    ...Object.keys(KWORB_YOUTUBE_COUNTRIES).map(cc => kworbYoutubeCountryState[cc].loaded),
-    ...Object.keys(KWORB_COUNTRIES).map(cc => kworbSpotifyState[cc].loaded),
-    // Playlists Spotify clés + Radios clés (Top Songs) suivies — comptées ici
-    // aussi pour que le total affiché corresponde à toutes les sources
-    // réellement chargées par "Tout charger", pas seulement les classements
-    // "génériques" historiques.
-    ...keyPlaylists.map(p => keyPlaylistFreshToday(p)),
-    ...RADIO_TOP_SONGS_SOURCES.map(r => isFetchedToday(radioTopSongsData[r.id])),
-    ...DEEZER_KEY_PLAYLISTS.map(p => !!deezerKeyPlaylistLoaded[p.id]),
-    // Playlists clés Apple Music : comptées seulement une fois l'URL
-    // configurée au moins une fois (sinon la barre de progression semblerait
-    // bloquée en permanence pour un utilisateur qui ne les utilise pas).
-    ...APPLE_KEY_PLAYLISTS.filter(p => appleKeyPlaylistUrl(p.id)).map(p => !!appleKeyPlaylistLoaded[p.id]),
-  ];
-  total = flags.length;
-  loaded = flags.filter(Boolean).length;
-  return { loaded, total };
+  const L = listAutoChartSources();
+  return { loaded: L.filter(x => x.loaded).length, total: L.length };
+}
+
+/** Ouvre la page Classements sur l'onglet d'une source (ce qui déclenche son
+ *  chargement si elle n'est pas encore chargée). */
+function goToChartSource(tab){
+  document.getElementById('missingChartsModal')?.remove();
+  if(typeof chartsPageOpen !== 'undefined' && !chartsPageOpen) toggleChartsPage();
+  switchChartTab(tab);
+}
+
+/** Fenêtre : quels classements ne sont pas chargés. */
+function openMissingChartsModal(){
+  document.getElementById('missingChartsModal')?.remove();
+  const L = listAutoChartSources();
+  const missing = L.filter(x => !x.loaded);
+  const ov = document.createElement('div');
+  ov.id = 'missingChartsModal';
+  ov.style.cssText = 'position:fixed;inset:0;background:rgba(11,29,58,.45);z-index:1200;display:flex;align-items:center;justify-content:center;padding:20px';
+  ov.addEventListener('click', e => { if(e.target === ov) ov.remove(); });
+  const rows = missing.map(x => `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <span style="font-size:13px;font-weight:600;color:var(--navy)">${escHtml(x.label)}</span>
+      <button type="button" class="btn-ghost" style="font-size:11.5px;padding:6px 12px;white-space:nowrap" onclick="goToChartSource('${x.tab}')">Ouvrir et charger</button>
+    </div>`).join('');
+  ov.innerHTML = `
+    <div style="background:var(--white);border-radius:16px;width:min(520px,100%);max-height:85vh;display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:16px 20px">
+        <div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:800;color:var(--navy)">${missing.length ? missing.length + ' classement' + (missing.length > 1 ? 's' : '') + ' non chargé' + (missing.length > 1 ? 's' : '') : 'Tous les classements sont chargés'}</div>
+          <div style="font-size:11.5px;color:var(--muted);margin-top:3px">${L.length - missing.length} / ${L.length} chargés aujourd'hui</div>
+        </div>
+        <button type="button" onclick="document.getElementById('missingChartsModal').remove()" style="background:var(--bg);border:none;border-radius:8px;width:32px;height:32px;cursor:pointer;color:var(--text2)">✕</button>
+      </div>
+      <div style="padding:0 20px;overflow:auto">
+        ${missing.length ? rows : '<p style="font-size:13px;color:var(--text2);padding:8px 0 16px">Rien à charger : toutes les sources automatiques sont à jour.</p>'}
+        ${missing.length ? '<p style="font-size:11px;color:var(--muted);line-height:1.5;margin:12px 0 4px">« Ouvrir et charger » affiche la source et lance son chargement. Si une source échoue de façon répétée, son onglet indique la cause (proxy, site modifié…).</p>' : ''}
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;padding:14px 20px">
+        ${missing.length ? '<button type="button" class="btn-primary" style="font-size:12px;padding:8px 14px" onclick="document.getElementById(\'missingChartsModal\').remove(); loadAllCharts();">↻ Relancer le chargement</button>' : ''}
+      </div>
+    </div>`;
+  document.body.appendChild(ov);
 }
 
 function updateLoadAllChartsStatus(){
@@ -8913,6 +8967,19 @@ function updateLoadAllChartsStatus(){
   if(el){
     el.textContent = label;
     el.style.color = loaded === total ? 'var(--green-text)' : 'var(--muted)';
+    // Cliquable : détail des classements non chargés
+    el.style.cursor = 'pointer';
+    el.style.textDecoration = loaded === total ? 'none' : 'underline dotted';
+    el.style.textUnderlineOffset = '3px';
+    el.title = loaded === total ? 'Tous les classements sont chargés' : 'Voir les classements non chargés';
+    el.onclick = openMissingChartsModal;
+  }
+  const hc = document.getElementById('homeLoadAllCount');
+  if(hc && !hc.dataset.clickBound){
+    hc.dataset.clickBound = '1';
+    hc.style.cursor = 'pointer';
+    hc.title = 'Voir les classements non chargés';
+    hc.onclick = openMissingChartsModal;
   }
   // Miroir sur la home — sans ça, le compteur affiché restait figé sur le
   // dernier message d'une session de "Tout charger" passée (ex. un total
